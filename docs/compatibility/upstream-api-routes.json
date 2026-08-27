@@ -1,0 +1,4343 @@
+{
+  "schemaVersion": 1,
+  "kind": "upstream_http_routes",
+  "provenance": {
+    "repository": "https://github.com/dani-garcia/vaultwarden",
+    "commit": "fa2566d14fc745937ce104011475eca9e6c7a6f6",
+    "checkout": "/home/david/opensource/vaultwarden",
+    "generator": "scripts/compatibilityInventory.ts"
+  },
+  "normalization": "Prepend the Rocket mount, remove the declared query portion after ?, and retain path parameters and declared trailing slashes.",
+  "deduplication": "Do not collapse repeated method/path pairs; each declaration is identified by source file, line, handler, and Rocket rank.",
+  "statusPolicy": "not_implemented means OneWarden has no corresponding compatible implementation; the /alive, HEAD /alive, and /api/alive contracts are marked compatible only when their database-backed readiness behavior is satisfied.",
+  "counts": {
+    "total": 307,
+    "byGroup": {
+      "admin": 28,
+      "core/accounts": 39,
+      "core/ciphers": 58,
+      "core/emergency_access": 18,
+      "core/events": 4,
+      "core/folders": 7,
+      "core/meta": 9,
+      "core/organizations": 77,
+      "core/public": 1,
+      "core/sends": 14,
+      "core/two_factor/authenticator": 4,
+      "core/two_factor/duo": 3,
+      "core/two_factor/email": 4,
+      "core/two_factor": 5,
+      "core/two_factor/protected_actions": 2,
+      "core/two_factor/webauthn": 5,
+      "core/two_factor/yubikey": 3,
+      "icons": 2,
+      "identity": 10,
+      "notifications": 2,
+      "web": 12
+    },
+    "byStatus": {
+      "not_implemented": 303,
+      "compatible": 4
+    }
+  },
+  "routes": [
+    {
+      "id": "GET /admin/ src/api/admin.rs:100 admin_disabled rank=default",
+      "method": "GET",
+      "path": "/admin/",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 100,
+        "handler": "admin_disabled"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/ src/api/admin.rs:184 post_admin_login rank=default",
+      "method": "POST",
+      "path": "/admin/",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 184,
+        "handler": "post_admin_login"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/ src/api/admin.rs:283 admin_page rank=default",
+      "method": "GET",
+      "path": "/admin/",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 283,
+        "handler": "admin_page"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/ src/api/admin.rs:288 admin_page_login rank=2",
+      "method": "GET",
+      "path": "/admin/",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": 2,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 288,
+        "handler": "admin_page_login"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/invite src/api/admin.rs:307 invite_user rank=default",
+      "method": "POST",
+      "path": "/admin/invite",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 307,
+        "handler": "invite_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/test/smtp src/api/admin.rs:337 test_smtp rank=default",
+      "method": "POST",
+      "path": "/admin/test/smtp",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 337,
+        "handler": "test_smtp"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/logout src/api/admin.rs:348 logout rank=default",
+      "method": "GET",
+      "path": "/admin/logout",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 348,
+        "handler": "logout"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/users src/api/admin.rs:354 get_users_json rank=default",
+      "method": "GET",
+      "path": "/admin/users",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 354,
+        "handler": "get_users_json"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/users/overview src/api/admin.rs:372 users_overview rank=default",
+      "method": "GET",
+      "path": "/admin/users/overview",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 372,
+        "handler": "users_overview"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/users/by-mail/<mail> src/api/admin.rs:397 get_user_by_mail_json rank=default",
+      "method": "GET",
+      "path": "/admin/users/by-mail/<mail>",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 397,
+        "handler": "get_user_by_mail_json"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/users/<user_id> src/api/admin.rs:409 get_user_json rank=default",
+      "method": "GET",
+      "path": "/admin/users/<user_id>",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 409,
+        "handler": "get_user_json"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/delete src/api/admin.rs:418 delete_user rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/delete",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 418,
+        "handler": "delete_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /admin/users/<user_id>/sso src/api/admin.rs:442 delete_sso_user rank=default",
+      "method": "DELETE",
+      "path": "/admin/users/<user_id>/sso",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 442,
+        "handler": "delete_sso_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/deauth src/api/admin.rs:463 deauth_user rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/deauth",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 463,
+        "handler": "deauth_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/disable src/api/admin.rs:484 disable_user rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/disable",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 484,
+        "handler": "disable_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/enable src/api/admin.rs:499 enable_user rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/enable",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 499,
+        "handler": "enable_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/remove-2fa src/api/admin.rs:507 remove_2fa rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/remove-2fa",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 507,
+        "handler": "remove_2fa"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/<user_id>/invite/resend src/api/admin.rs:516 resend_user_invite rank=default",
+      "method": "POST",
+      "path": "/admin/users/<user_id>/invite/resend",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 516,
+        "handler": "resend_user_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/org_type src/api/admin.rs:547 update_membership_type rank=default",
+      "method": "POST",
+      "path": "/admin/users/org_type",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 547,
+        "handler": "update_membership_type"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/users/update_revision src/api/admin.rs:587 update_revision_users rank=default",
+      "method": "POST",
+      "path": "/admin/users/update_revision",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 587,
+        "handler": "update_revision_users"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/organizations/overview src/api/admin.rs:592 organizations_overview rank=default",
+      "method": "GET",
+      "path": "/admin/organizations/overview",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 592,
+        "handler": "organizations_overview"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/organizations/<org_id>/delete src/api/admin.rs:612 delete_organization rank=default",
+      "method": "POST",
+      "path": "/admin/organizations/<org_id>/delete",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 612,
+        "handler": "delete_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/diagnostics src/api/admin.rs:749 diagnostics rank=default",
+      "method": "GET",
+      "path": "/admin/diagnostics",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 749,
+        "handler": "diagnostics"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/diagnostics/config src/api/admin.rs:817 get_diagnostics_config rank=default",
+      "method": "GET",
+      "path": "/admin/diagnostics/config",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 817,
+        "handler": "get_diagnostics_config"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /admin/diagnostics/http src/api/admin.rs:823 get_diagnostics_http rank=default",
+      "method": "GET",
+      "path": "/admin/diagnostics/http",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 823,
+        "handler": "get_diagnostics_http"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/config src/api/admin.rs:828 post_config rank=default",
+      "method": "POST",
+      "path": "/admin/config",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 828,
+        "handler": "post_config"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/config/delete src/api/admin.rs:837 delete_config rank=default",
+      "method": "POST",
+      "path": "/admin/config/delete",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 837,
+        "handler": "delete_config"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /admin/config/backup_db src/api/admin.rs:845 backup_db rank=default",
+      "method": "POST",
+      "path": "/admin/config/backup_db",
+      "group": "admin",
+      "mount": "/admin",
+      "rank": null,
+      "source": {
+        "file": "src/api/admin.rs",
+        "line": 845,
+        "handler": "backup_db"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/set-password src/api/core/accounts.rs:438 post_set_password rank=default",
+      "method": "POST",
+      "path": "/api/accounts/set-password",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 438,
+        "handler": "post_set_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/accounts/profile src/api/core/accounts.rs:501 profile rank=default",
+      "method": "GET",
+      "path": "/api/accounts/profile",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 501,
+        "handler": "profile"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/accounts/profile src/api/core/accounts.rs:513 put_profile rank=default",
+      "method": "PUT",
+      "path": "/api/accounts/profile",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 513,
+        "handler": "put_profile"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/profile src/api/core/accounts.rs:518 post_profile rank=default",
+      "method": "POST",
+      "path": "/api/accounts/profile",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 518,
+        "handler": "post_profile"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/accounts/avatar src/api/core/accounts.rs:541 put_avatar rank=default",
+      "method": "PUT",
+      "path": "/api/accounts/avatar",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 541,
+        "handler": "put_avatar"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/users/<user_id>/public-key src/api/core/accounts.rs:561 get_public_keys rank=default",
+      "method": "GET",
+      "path": "/api/users/<user_id>/public-key",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 561,
+        "handler": "get_public_keys"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/keys src/api/core/accounts.rs:576 post_keys rank=default",
+      "method": "POST",
+      "path": "/api/accounts/keys",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 576,
+        "handler": "post_keys"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/password src/api/core/accounts.rs:607 post_password rank=default",
+      "method": "POST",
+      "path": "/api/accounts/password",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 607,
+        "handler": "post_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/kdf src/api/core/accounts.rs:724 post_kdf rank=default",
+      "method": "POST",
+      "path": "/api/accounts/kdf",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 724,
+        "handler": "post_kdf"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/key-management/rotate-user-account-keys src/api/core/accounts.rs:906 post_rotatekey rank=default",
+      "method": "POST",
+      "path": "/api/accounts/key-management/rotate-user-account-keys",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 906,
+        "handler": "post_rotatekey"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/security-stamp src/api/core/accounts.rs:1028 post_sstamp rank=default",
+      "method": "POST",
+      "path": "/api/accounts/security-stamp",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1028,
+        "handler": "post_sstamp"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/email-token src/api/core/accounts.rs:1052 post_email_token rank=default",
+      "method": "POST",
+      "path": "/api/accounts/email-token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1052,
+        "handler": "post_email_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/email src/api/core/accounts.rs:1114 post_email rank=default",
+      "method": "POST",
+      "path": "/api/accounts/email",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1114,
+        "handler": "post_email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/verify-email src/api/core/accounts.rs:1166 post_verify_email rank=default",
+      "method": "POST",
+      "path": "/api/accounts/verify-email",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1166,
+        "handler": "post_verify_email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/verify-email-token src/api/core/accounts.rs:1188 post_verify_email_token rank=default",
+      "method": "POST",
+      "path": "/api/accounts/verify-email-token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1188,
+        "handler": "post_verify_email_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/delete-recover src/api/core/accounts.rs:1218 post_delete_recover rank=default",
+      "method": "POST",
+      "path": "/api/accounts/delete-recover",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1218,
+        "handler": "post_delete_recover"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/delete-recover-token src/api/core/accounts.rs:1247 post_delete_recover_token rank=default",
+      "method": "POST",
+      "path": "/api/accounts/delete-recover-token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1247,
+        "handler": "post_delete_recover_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/delete src/api/core/accounts.rs:1265 post_delete_account rank=default",
+      "method": "POST",
+      "path": "/api/accounts/delete",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1265,
+        "handler": "post_delete_account"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/accounts src/api/core/accounts.rs:1270 delete_account rank=default",
+      "method": "DELETE",
+      "path": "/api/accounts",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1270,
+        "handler": "delete_account"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/accounts/revision-date src/api/core/accounts.rs:1281 revision_date rank=default",
+      "method": "GET",
+      "path": "/api/accounts/revision-date",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1281,
+        "handler": "revision_date"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/password-hint src/api/core/accounts.rs:1293 password_hint rank=default",
+      "method": "POST",
+      "path": "/api/accounts/password-hint",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1293,
+        "handler": "password_hint"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/prelogin src/api/core/accounts.rs:1342 post_prelogin rank=default",
+      "method": "POST",
+      "path": "/api/accounts/prelogin",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1342,
+        "handler": "post_prelogin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/verify-password src/api/core/accounts.rs:1390 verify_password rank=default",
+      "method": "POST",
+      "path": "/api/accounts/verify-password",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1390,
+        "handler": "verify_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/api-key src/api/core/accounts.rs:1422 post_api_key rank=default",
+      "method": "POST",
+      "path": "/api/accounts/api-key",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1422,
+        "handler": "post_api_key"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/rotate-api-key src/api/core/accounts.rs:1427 rotate_api_key rank=default",
+      "method": "POST",
+      "path": "/api/accounts/rotate-api-key",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1427,
+        "handler": "rotate_api_key"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/devices/knowndevice src/api/core/accounts.rs:1432 get_known_device rank=default",
+      "method": "GET",
+      "path": "/api/devices/knowndevice",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1432,
+        "handler": "get_known_device"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/devices src/api/core/accounts.rs:1484 get_all_devices rank=default",
+      "method": "GET",
+      "path": "/api/devices",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1484,
+        "handler": "get_all_devices"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/devices/identifier/<device_id> src/api/core/accounts.rs:1496 get_device rank=default",
+      "method": "GET",
+      "path": "/api/devices/identifier/<device_id>",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1496,
+        "handler": "get_device"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/devices/identifier/<device_id>/token src/api/core/accounts.rs:1510 post_device_token rank=default",
+      "method": "POST",
+      "path": "/api/devices/identifier/<device_id>/token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1510,
+        "handler": "post_device_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/devices/identifier/<device_id>/token src/api/core/accounts.rs:1515 put_device_token rank=default",
+      "method": "PUT",
+      "path": "/api/devices/identifier/<device_id>/token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1515,
+        "handler": "put_device_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/devices/identifier/<device_id>/clear-token src/api/core/accounts.rs:1542 put_clear_device_token rank=default",
+      "method": "PUT",
+      "path": "/api/devices/identifier/<device_id>/clear-token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1542,
+        "handler": "put_clear_device_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/devices/identifier/<device_id>/clear-token src/api/core/accounts.rs:1566 post_clear_device_token rank=default",
+      "method": "POST",
+      "path": "/api/devices/identifier/<device_id>/clear-token",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1566,
+        "handler": "post_clear_device_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/tasks src/api/core/accounts.rs:1571 get_tasks rank=default",
+      "method": "GET",
+      "path": "/api/tasks",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1571,
+        "handler": "get_tasks"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/auth-requests src/api/core/accounts.rs:1591 post_auth_request rank=default",
+      "method": "POST",
+      "path": "/api/auth-requests",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1591,
+        "handler": "post_auth_request"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/auth-requests/<auth_request_id> src/api/core/accounts.rs:1646 get_auth_request rank=default",
+      "method": "GET",
+      "path": "/api/auth-requests/<auth_request_id>",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1646,
+        "handler": "get_auth_request"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/auth-requests/<auth_request_id> src/api/core/accounts.rs:1679 put_auth_request rank=default",
+      "method": "PUT",
+      "path": "/api/auth-requests/<auth_request_id>",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1679,
+        "handler": "put_auth_request"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/auth-requests/<auth_request_id>/response src/api/core/accounts.rs:1752 get_auth_request_response rank=default",
+      "method": "GET",
+      "path": "/api/auth-requests/<auth_request_id>/response",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1752,
+        "handler": "get_auth_request_response"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/auth-requests src/api/core/accounts.rs:1789 get_auth_requests rank=default",
+      "method": "GET",
+      "path": "/api/auth-requests",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1789,
+        "handler": "get_auth_requests"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/auth-requests/pending src/api/core/accounts.rs:1794 get_auth_requests_pending rank=default",
+      "method": "GET",
+      "path": "/api/auth-requests/pending",
+      "group": "core/accounts",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/accounts.rs",
+        "line": 1794,
+        "handler": "get_auth_requests_pending"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/sync src/api/core/ciphers.rs:121 sync rank=default",
+      "method": "GET",
+      "path": "/api/sync",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 121,
+        "handler": "sync"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers src/api/core/ciphers.rs:206 get_ciphers rank=default",
+      "method": "GET",
+      "path": "/api/ciphers",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 206,
+        "handler": "get_ciphers"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers/<cipher_id> src/api/core/ciphers.rs:225 get_cipher rank=default",
+      "method": "GET",
+      "path": "/api/ciphers/<cipher_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 225,
+        "handler": "get_cipher"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers/<cipher_id>/admin src/api/core/ciphers.rs:238 get_cipher_admin rank=default",
+      "method": "GET",
+      "path": "/api/ciphers/<cipher_id>/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 238,
+        "handler": "get_cipher_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers/<cipher_id>/details src/api/core/ciphers.rs:244 get_cipher_details rank=default",
+      "method": "GET",
+      "path": "/api/ciphers/<cipher_id>/details",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 244,
+        "handler": "get_cipher_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/admin src/api/core/ciphers.rs:319 post_ciphers_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 319,
+        "handler": "post_ciphers_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/create src/api/core/ciphers.rs:327 post_ciphers_create rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/create",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 327,
+        "handler": "post_ciphers_create"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers src/api/core/ciphers.rs:361 post_ciphers rank=default",
+      "method": "POST",
+      "path": "/api/ciphers",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 361,
+        "handler": "post_ciphers"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/import src/api/core/ciphers.rs:597 post_ciphers_import rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/import",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 597,
+        "handler": "post_ciphers_import"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/admin src/api/core/ciphers.rs:649 put_cipher_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 649,
+        "handler": "put_cipher_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/admin src/api/core/ciphers.rs:660 post_cipher_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 660,
+        "handler": "post_cipher_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id> src/api/core/ciphers.rs:671 post_cipher rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 671,
+        "handler": "post_cipher"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id> src/api/core/ciphers.rs:682 put_cipher rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 682,
+        "handler": "put_cipher"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/partial src/api/core/ciphers.rs:710 post_cipher_partial rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/partial",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 710,
+        "handler": "post_cipher_partial"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/partial src/api/core/ciphers.rs:721 put_cipher_partial rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/partial",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 721,
+        "handler": "put_cipher_partial"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/collections_v2 src/api/core/ciphers.rs:759 put_collections2_update rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/collections_v2",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 759,
+        "handler": "put_collections2_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/collections_v2 src/api/core/ciphers.rs:770 post_collections2_update rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/collections_v2",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 770,
+        "handler": "post_collections2_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/collections src/api/core/ciphers.rs:786 put_collections_update rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/collections",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 786,
+        "handler": "put_collections_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/collections src/api/core/ciphers.rs:797 post_collections_update rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/collections",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 797,
+        "handler": "post_collections_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/collections-admin src/api/core/ciphers.rs:866 put_collections_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/collections-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 866,
+        "handler": "put_collections_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/collections-admin src/api/core/ciphers.rs:877 post_collections_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/collections-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 877,
+        "handler": "post_collections_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/share src/api/core/ciphers.rs:955 post_cipher_share rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/share",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 955,
+        "handler": "post_cipher_share"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/share src/api/core/ciphers.rs:968 put_cipher_share rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/share",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 968,
+        "handler": "put_cipher_share"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/share src/api/core/ciphers.rs:988 put_cipher_share_selected rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/share",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 988,
+        "handler": "put_cipher_share_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers/<cipher_id>/attachment/<attachment_id> src/api/core/ciphers.rs:1094 get_attachment rank=default",
+      "method": "GET",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1094,
+        "handler": "get_attachment"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment/v2 src/api/core/ciphers.rs:1134 post_attachment_v2 rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment/v2",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1134,
+        "handler": "post_attachment_v2"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment/<attachment_id> src/api/core/ciphers.rs:1356 post_attachment_v2_data rank=1",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1356,
+        "handler": "post_attachment_v2_data"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment src/api/core/ciphers.rs:1377 post_attachment rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1377,
+        "handler": "post_attachment"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment-admin src/api/core/ciphers.rs:1394 post_attachment_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1394,
+        "handler": "post_attachment_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment/<attachment_id>/share src/api/core/ciphers.rs:1405 post_attachment_share rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>/share",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1405,
+        "handler": "post_attachment_share"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment/<attachment_id>/delete-admin src/api/core/ciphers.rs:1418 delete_attachment_post_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>/delete-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1418,
+        "handler": "delete_attachment_post_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/attachment/<attachment_id>/delete src/api/core/ciphers.rs:1429 delete_attachment_post rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>/delete",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1429,
+        "handler": "delete_attachment_post"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers/<cipher_id>/attachment/<attachment_id> src/api/core/ciphers.rs:1440 delete_attachment rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1440,
+        "handler": "delete_attachment"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers/<cipher_id>/attachment/<attachment_id>/admin src/api/core/ciphers.rs:1451 delete_attachment_admin rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers/<cipher_id>/attachment/<attachment_id>/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1451,
+        "handler": "delete_attachment_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/delete src/api/core/ciphers.rs:1462 delete_cipher_post rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/delete",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1462,
+        "handler": "delete_cipher_post"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/<cipher_id>/delete-admin src/api/core/ciphers.rs:1468 delete_cipher_post_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/<cipher_id>/delete-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1468,
+        "handler": "delete_cipher_post_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/delete src/api/core/ciphers.rs:1474 delete_cipher_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/delete",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1474,
+        "handler": "delete_cipher_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/delete-admin src/api/core/ciphers.rs:1480 delete_cipher_put_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/delete-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1480,
+        "handler": "delete_cipher_put_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers/<cipher_id> src/api/core/ciphers.rs:1486 delete_cipher rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers/<cipher_id>",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1486,
+        "handler": "delete_cipher"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers/<cipher_id>/admin src/api/core/ciphers.rs:1492 delete_cipher_admin rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers/<cipher_id>/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1492,
+        "handler": "delete_cipher_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers src/api/core/ciphers.rs:1498 delete_cipher_selected rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1498,
+        "handler": "delete_cipher_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/delete src/api/core/ciphers.rs:1509 delete_cipher_selected_post rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/delete",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1509,
+        "handler": "delete_cipher_selected_post"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/delete src/api/core/ciphers.rs:1520 delete_cipher_selected_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/delete",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1520,
+        "handler": "delete_cipher_selected_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/ciphers/admin src/api/core/ciphers.rs:1531 delete_cipher_selected_admin rank=default",
+      "method": "DELETE",
+      "path": "/api/ciphers/admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1531,
+        "handler": "delete_cipher_selected_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/delete-admin src/api/core/ciphers.rs:1542 delete_cipher_selected_post_admin rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/delete-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1542,
+        "handler": "delete_cipher_selected_post_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/delete-admin src/api/core/ciphers.rs:1553 delete_cipher_selected_put_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/delete-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1553,
+        "handler": "delete_cipher_selected_put_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/restore src/api/core/ciphers.rs:1564 restore_cipher_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/restore",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1564,
+        "handler": "restore_cipher_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/restore-admin src/api/core/ciphers.rs:1569 restore_cipher_put_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/restore-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1569,
+        "handler": "restore_cipher_put_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/restore-admin src/api/core/ciphers.rs:1574 restore_cipher_selected_admin rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/restore-admin",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1574,
+        "handler": "restore_cipher_selected_admin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/restore src/api/core/ciphers.rs:1584 restore_cipher_selected rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/restore",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1584,
+        "handler": "restore_cipher_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/move src/api/core/ciphers.rs:1602 move_cipher_selected rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/move",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1602,
+        "handler": "move_cipher_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/move src/api/core/ciphers.rs:1656 move_cipher_selected_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/move",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1656,
+        "handler": "move_cipher_selected_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/purge src/api/core/ciphers.rs:1675 purge_org_vault rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/purge",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1675,
+        "handler": "purge_org_vault"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/purge src/api/core/ciphers.rs:1715 purge_personal_vault rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/purge",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1715,
+        "handler": "purge_personal_vault"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/archive src/api/core/ciphers.rs:1741 archive_cipher_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/archive",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1741,
+        "handler": "archive_cipher_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/archive src/api/core/ciphers.rs:1746 archive_cipher_selected rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/archive",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1746,
+        "handler": "archive_cipher_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/<cipher_id>/unarchive src/api/core/ciphers.rs:1756 unarchive_cipher_put rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/<cipher_id>/unarchive",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1756,
+        "handler": "unarchive_cipher_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/ciphers/unarchive src/api/core/ciphers.rs:1761 unarchive_cipher_selected rank=default",
+      "method": "PUT",
+      "path": "/api/ciphers/unarchive",
+      "group": "core/ciphers",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/ciphers.rs",
+        "line": 1761,
+        "handler": "unarchive_cipher_selected"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/emergency-access/trusted src/api/core/emergency_access.rs:48 get_contacts rank=default",
+      "method": "GET",
+      "path": "/api/emergency-access/trusted",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 48,
+        "handler": "get_contacts"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/emergency-access/granted src/api/core/emergency_access.rs:69 get_grantees rank=default",
+      "method": "GET",
+      "path": "/api/emergency-access/granted",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 69,
+        "handler": "get_grantees"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/emergency-access/<emer_id> src/api/core/emergency_access.rs:88 get_emergency_access rank=default",
+      "method": "GET",
+      "path": "/api/emergency-access/<emer_id>",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 88,
+        "handler": "get_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/emergency-access/<emer_id> src/api/core/emergency_access.rs:115 put_emergency_access rank=default",
+      "method": "PUT",
+      "path": "/api/emergency-access/<emer_id>",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 115,
+        "handler": "put_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id> src/api/core/emergency_access.rs:125 post_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 125,
+        "handler": "post_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/emergency-access/<emer_id> src/api/core/emergency_access.rs:162 delete_emergency_access rank=default",
+      "method": "DELETE",
+      "path": "/api/emergency-access/<emer_id>",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 162,
+        "handler": "delete_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/delete src/api/core/emergency_access.rs:185 post_delete_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/delete",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 185,
+        "handler": "post_delete_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/invite src/api/core/emergency_access.rs:202 send_invite rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/invite",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 202,
+        "handler": "send_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/reinvite src/api/core/emergency_access.rs:281 resend_invite rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/reinvite",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 281,
+        "handler": "resend_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/accept src/api/core/emergency_access.rs:331 accept_invite rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/accept",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 331,
+        "handler": "accept_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/confirm src/api/core/emergency_access.rs:392 confirm_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/confirm",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 392,
+        "handler": "confirm_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/initiate src/api/core/emergency_access.rs:445 initiate_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/initiate",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 445,
+        "handler": "initiate_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/approve src/api/core/emergency_access.rs:483 approve_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/approve",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 483,
+        "handler": "approve_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/reject src/api/core/emergency_access.rs:518 reject_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/reject",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 518,
+        "handler": "reject_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/view src/api/core/emergency_access.rs:555 view_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/view",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 555,
+        "handler": "view_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/takeover src/api/core/emergency_access.rs:593 takeover_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/takeover",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 593,
+        "handler": "takeover_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/emergency-access/<emer_id>/password src/api/core/emergency_access.rs:631 password_emergency_access rank=default",
+      "method": "POST",
+      "path": "/api/emergency-access/<emer_id>/password",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 631,
+        "handler": "password_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/emergency-access/<emer_id>/policies src/api/core/emergency_access.rs:677 policies_emergency_access rank=default",
+      "method": "GET",
+      "path": "/api/emergency-access/<emer_id>/policies",
+      "group": "core/emergency_access",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/emergency_access.rs",
+        "line": 677,
+        "handler": "policies_emergency_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /events/organizations/<org_id>/events src/api/core/events.rs:33 get_org_events rank=default",
+      "method": "GET",
+      "path": "/events/organizations/<org_id>/events",
+      "group": "core/events",
+      "mount": "/events",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/events.rs",
+        "line": 33,
+        "handler": "get_org_events"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /events/ciphers/<cipher_id>/events src/api/core/events.rs:65 get_cipher_events rank=default",
+      "method": "GET",
+      "path": "/events/ciphers/<cipher_id>/events",
+      "group": "core/events",
+      "mount": "/events",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/events.rs",
+        "line": 65,
+        "handler": "get_cipher_events"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /events/organizations/<org_id>/users/<member_id>/events src/api/core/events.rs:91 get_user_events rank=default",
+      "method": "GET",
+      "path": "/events/organizations/<org_id>/users/<member_id>/events",
+      "group": "core/events",
+      "mount": "/events",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/events.rs",
+        "line": 91,
+        "handler": "get_user_events"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /events/collect src/api/core/events.rs:164 post_events_collect rank=default",
+      "method": "POST",
+      "path": "/events/collect",
+      "group": "core/events",
+      "mount": "/events",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/events.rs",
+        "line": 164,
+        "handler": "post_events_collect"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/folders src/api/core/folders.rs:18 get_folders rank=default",
+      "method": "GET",
+      "path": "/api/folders",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 18,
+        "handler": "get_folders"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/folders/<folder_id> src/api/core/folders.rs:30 get_folder rank=default",
+      "method": "GET",
+      "path": "/api/folders/<folder_id>",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 30,
+        "handler": "get_folder"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/folders src/api/core/folders.rs:47 post_folders rank=default",
+      "method": "POST",
+      "path": "/api/folders",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 47,
+        "handler": "post_folders"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/folders/<folder_id> src/api/core/folders.rs:59 post_folder rank=default",
+      "method": "POST",
+      "path": "/api/folders/<folder_id>",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 59,
+        "handler": "post_folder"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/folders/<folder_id> src/api/core/folders.rs:70 put_folder rank=default",
+      "method": "PUT",
+      "path": "/api/folders/<folder_id>",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 70,
+        "handler": "put_folder"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/folders/<folder_id>/delete src/api/core/folders.rs:92 delete_folder_post rank=default",
+      "method": "POST",
+      "path": "/api/folders/<folder_id>/delete",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 92,
+        "handler": "delete_folder_post"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/folders/<folder_id> src/api/core/folders.rs:97 delete_folder rank=default",
+      "method": "DELETE",
+      "path": "/api/folders/<folder_id>",
+      "group": "core/folders",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/folders.rs",
+        "line": 97,
+        "handler": "delete_folder"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/settings/domains src/api/core/mod.rs:75 get_settings_domains rank=default",
+      "method": "GET",
+      "path": "/api/settings/domains",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 75,
+        "handler": "get_settings_domains"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/settings/domains src/api/core/mod.rs:112 post_settings_domains rank=default",
+      "method": "POST",
+      "path": "/api/settings/domains",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 112,
+        "handler": "post_settings_domains"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/settings/domains src/api/core/mod.rs:138 put_settings_domains rank=default",
+      "method": "PUT",
+      "path": "/api/settings/domains",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 138,
+        "handler": "put_settings_domains"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/hibp/breach src/api/core/mod.rs:148 hibp_breach rank=default",
+      "method": "GET",
+      "path": "/api/hibp/breach",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 148,
+        "handler": "hibp_breach"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/alive src/api/core/mod.rs:183 alive rank=default",
+      "method": "GET",
+      "path": "/api/alive",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 183,
+        "handler": "alive"
+      },
+      "status": "compatible"
+    },
+    {
+      "id": "GET /api/now src/api/core/mod.rs:188 now rank=default",
+      "method": "GET",
+      "path": "/api/now",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 188,
+        "handler": "now"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/version src/api/core/mod.rs:193 version rank=default",
+      "method": "GET",
+      "path": "/api/version",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 193,
+        "handler": "version"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/webauthn src/api/core/mod.rs:198 get_api_webauthn rank=default",
+      "method": "GET",
+      "path": "/api/webauthn",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 198,
+        "handler": "get_api_webauthn"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/config src/api/core/mod.rs:210 config rank=default",
+      "method": "GET",
+      "path": "/api/config",
+      "group": "core/meta",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/mod.rs",
+        "line": 210,
+        "handler": "config"
+      },
+      "status": "compatible"
+    },
+    {
+      "id": "POST /api/organizations src/api/core/organizations.rs:194 create_organization rank=default",
+      "method": "POST",
+      "path": "/api/organizations",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 194,
+        "handler": "create_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id> src/api/core/organizations.rs:228 delete_organization rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 228,
+        "handler": "delete_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/delete src/api/core/organizations.rs:248 post_delete_organization rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/delete",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 248,
+        "handler": "post_delete_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/leave src/api/core/organizations.rs:258 leave_organization rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/leave",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 258,
+        "handler": "leave_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id> src/api/core/organizations.rs:285 get_organization rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 285,
+        "handler": "get_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id> src/api/core/organizations.rs:297 put_organization rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 297,
+        "handler": "put_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id> src/api/core/organizations.rs:307 post_organization rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 307,
+        "handler": "post_organization"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/collections src/api/core/organizations.rs:344 get_user_collections rank=default",
+      "method": "GET",
+      "path": "/api/collections",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 344,
+        "handler": "get_user_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<identifier>/auto-enroll-status src/api/core/organizations.rs:360 get_auto_enroll_status rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<identifier>/auto-enroll-status",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 360,
+        "handler": "get_auto_enroll_status"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/collections src/api/core/organizations.rs:387 get_org_collections rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/collections",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 387,
+        "handler": "get_org_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/collections/details src/api/core/organizations.rs:404 get_org_collections_details rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/collections/details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 404,
+        "handler": "get_org_collections_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/collections src/api/core/organizations.rs:496 post_organization_collections rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/collections",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 496,
+        "handler": "post_organization_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/collections/bulk-access src/api/core/organizations.rs:564 post_bulk_access_collections rank=1",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/collections/bulk-access",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 564,
+        "handler": "post_bulk_access_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/collections/<col_id> src/api/core/organizations.rs:635 put_organization_collection_update rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/collections/<col_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 635,
+        "handler": "put_organization_collection_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/collections/<col_id> src/api/core/organizations.rs:646 post_organization_collection_update rank=2",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/collections/<col_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 2,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 646,
+        "handler": "post_organization_collection_update"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/collections/<col_id> src/api/core/organizations.rs:738 delete_organization_collection rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/collections/<col_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 738,
+        "handler": "delete_organization_collection"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/collections/<col_id>/delete src/api/core/organizations.rs:748 post_organization_collection_delete rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/collections/<col_id>/delete",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 748,
+        "handler": "post_organization_collection_delete"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/collections src/api/core/organizations.rs:764 bulk_delete_organization_collections rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/collections",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 764,
+        "handler": "bulk_delete_organization_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/collections/<col_id>/details src/api/core/organizations.rs:786 get_org_collection_detail rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/collections/<col_id>/details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 786,
+        "handler": "get_org_collection_detail"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/collections/<col_id>/users src/api/core/organizations.rs:853 get_collection_users rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/collections/<col_id>/users",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 853,
+        "handler": "get_collection_users"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/ciphers/organization-details src/api/core/organizations.rs:887 get_org_details rank=default",
+      "method": "GET",
+      "path": "/api/ciphers/organization-details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 887,
+        "handler": "get_org_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/domain/sso/verified src/api/core/organizations.rs:923 get_org_domain_sso_verified rank=default",
+      "method": "POST",
+      "path": "/api/organizations/domain/sso/verified",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 923,
+        "handler": "get_org_domain_sso_verified"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/users src/api/core/organizations.rs:946 get_members rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/users",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 946,
+        "handler": "get_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/keys src/api/core/organizations.rs:980 post_org_keys rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/keys",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 980,
+        "handler": "post_org_keys"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/invite src/api/core/organizations.rs:1042 send_invite rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/invite",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1042,
+        "handler": "send_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/reinvite src/api/core/organizations.rs:1193 bulk_reinvite_members rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/reinvite",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1193,
+        "handler": "bulk_reinvite_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/<member_id>/reinvite src/api/core/organizations.rs:1228 reinvite_member rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/<member_id>/reinvite",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1228,
+        "handler": "reinvite_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/<member_id>/accept src/api/core/organizations.rs:1291 accept_invite rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/<member_id>/accept",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1291,
+        "handler": "accept_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/confirm src/api/core/organizations.rs:1359 bulk_confirm_invite rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/confirm",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1359,
+        "handler": "bulk_confirm_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/<member_id>/confirm src/api/core/organizations.rs:1402 confirm_invite rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/<member_id>/confirm",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1402,
+        "handler": "confirm_invite"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/users/mini-details src/api/core/organizations.rs:1483 get_org_user_mini_details rank=1",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/users/mini-details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1483,
+        "handler": "get_org_user_mini_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/users/<member_id> src/api/core/organizations.rs:1500 get_user rank=2",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/users/<member_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 2,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1500,
+        "handler": "get_user"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id> src/api/core/organizations.rs:1531 put_member rank=1",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1531,
+        "handler": "put_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/<member_id> src/api/core/organizations.rs:1542 edit_member rank=1",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/<member_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1542,
+        "handler": "edit_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/users src/api/core/organizations.rs:1653 bulk_delete_member rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/users",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1653,
+        "handler": "bulk_delete_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/users/<member_id> src/api/core/organizations.rs:1689 delete_member rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/users/<member_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1689,
+        "handler": "delete_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/users/public-keys src/api/core/organizations.rs:1753 bulk_public_keys rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/users/public-keys",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1753,
+        "handler": "bulk_public_keys"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/import-organization src/api/core/organizations.rs:1814 post_org_import rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/import-organization",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1814,
+        "handler": "post_org_import"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/ciphers/bulk-collections src/api/core/organizations.rs:1914 post_bulk_collections rank=default",
+      "method": "POST",
+      "path": "/api/ciphers/bulk-collections",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1914,
+        "handler": "post_bulk_collections"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/policies src/api/core/organizations.rs:1968 list_policies rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/policies",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1968,
+        "handler": "list_policies"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/policies/token src/api/core/organizations.rs:1983 list_policies_token rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/policies/token",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 1983,
+        "handler": "list_policies_token"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/00000000-01DC-01DC-01DC-000000000000/policies/master-password src/api/core/organizations.rs:2008 get_dummy_master_password_policy rank=1",
+      "method": "GET",
+      "path": "/api/organizations/00000000-01DC-01DC-01DC-000000000000/policies/master-password",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2008,
+        "handler": "get_dummy_master_password_policy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/policies/master-password src/api/core/organizations.rs:2019 get_master_password_policy rank=2",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/policies/master-password",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 2,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2019,
+        "handler": "get_master_password_policy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/policies/<pol_type> src/api/core/organizations.rs:2034 get_policy rank=3",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/policies/<pol_type>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 3,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2034,
+        "handler": "get_policy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/policies/<pol_type> src/api/core/organizations.rs:2067 put_policy rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/policies/<pol_type>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2067,
+        "handler": "put_policy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/policies/<pol_type>/vnext src/api/core/organizations.rs:2187 put_policy_vnext rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/policies/<pol_type>/vnext",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2187,
+        "handler": "put_policy_vnext"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/plans src/api/core/organizations.rs:2198 get_plans rank=default",
+      "method": "GET",
+      "path": "/api/plans",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2198,
+        "handler": "get_plans"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<_org_id>/billing/metadata src/api/core/organizations.rs:2226 get_billing_metadata rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<_org_id>/billing/metadata",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2226,
+        "handler": "get_billing_metadata"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<_org_id>/billing/vnext/warnings src/api/core/organizations.rs:2232 get_billing_warnings rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<_org_id>/billing/vnext/warnings",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2232,
+        "handler": "get_billing_warnings"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<_org_id>/billing/vnext/self-host/metadata src/api/core/organizations.rs:2242 get_self_host_billing_metadata rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<_org_id>/billing/vnext/self-host/metadata",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2242,
+        "handler": "get_self_host_billing_metadata"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id>/revoke src/api/core/organizations.rs:2265 revoke_member rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>/revoke",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2265,
+        "handler": "revoke_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/revoke src/api/core/organizations.rs:2275 bulk_revoke_members rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/revoke",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2275,
+        "handler": "bulk_revoke_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id>/restore/vnext src/api/core/organizations.rs:2358 restore_member_vnext rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>/restore/vnext",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2358,
+        "handler": "restore_member_vnext"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id>/restore src/api/core/organizations.rs:2370 restore_member rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>/restore",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2370,
+        "handler": "restore_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/restore src/api/core/organizations.rs:2380 bulk_restore_members rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/restore",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2380,
+        "handler": "bulk_restore_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/groups src/api/core/organizations.rs:2509 get_groups rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/groups",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2509,
+        "handler": "get_groups"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/groups/details src/api/core/organizations.rs:2514 get_groups_details rank=1",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/groups/details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2514,
+        "handler": "get_groups_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/groups/<group_id> src/api/core/organizations.rs:2577 post_group rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/groups/<group_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2577,
+        "handler": "post_group"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/groups src/api/core/organizations.rs:2588 post_groups rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/groups",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2588,
+        "handler": "post_groups"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/groups/<group_id> src/api/core/organizations.rs:2621 put_group rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/groups/<group_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2621,
+        "handler": "put_group"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/groups/<group_id>/details src/api/core/organizations.rs:2703 get_group_details rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/groups/<group_id>/details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2703,
+        "handler": "get_group_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/groups/<group_id>/delete src/api/core/organizations.rs:2724 post_delete_group rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/groups/<group_id>/delete",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2724,
+        "handler": "post_delete_group"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/groups/<group_id> src/api/core/organizations.rs:2734 delete_group rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/groups/<group_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2734,
+        "handler": "delete_group"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/organizations/<org_id>/groups src/api/core/organizations.rs:2770 bulk_delete_groups rank=default",
+      "method": "DELETE",
+      "path": "/api/organizations/<org_id>/groups",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2770,
+        "handler": "bulk_delete_groups"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/groups/<group_id> src/api/core/organizations.rs:2792 get_group rank=2",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/groups/<group_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": 2,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2792,
+        "handler": "get_group"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/groups/<group_id>/users src/api/core/organizations.rs:2808 get_group_members rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/groups/<group_id>/users",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2808,
+        "handler": "get_group_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/groups/<group_id>/users src/api/core/organizations.rs:2835 put_group_members rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/groups/<group_id>/users",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2835,
+        "handler": "put_group_members"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/groups/<group_id>/delete-user/<member_id> src/api/core/organizations.rs:2882 post_delete_group_member rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/groups/<group_id>/delete-user/<member_id>",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2882,
+        "handler": "post_delete_group_member"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/public-key src/api/core/organizations.rs:2942 get_organization_public_key rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/public-key",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2942,
+        "handler": "get_organization_public_key"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/keys src/api/core/organizations.rs:2959 get_organization_keys rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/keys",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2959,
+        "handler": "get_organization_keys"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id>/recover-account src/api/core/organizations.rs:2966 put_recover_account rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>/recover-account",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2966,
+        "handler": "put_recover_account"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<member_id>/reset-password src/api/core/organizations.rs:2984 put_reset_password rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<member_id>/reset-password",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 2984,
+        "handler": "put_reset_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/users/<member_id>/reset-password-details src/api/core/organizations.rs:3055 get_reset_password_details rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/users/<member_id>/reset-password-details",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 3055,
+        "handler": "get_reset_password_details"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/organizations/<org_id>/users/<user_id>/reset-password-enrollment src/api/core/organizations.rs:3128 put_reset_password_enrollment rank=default",
+      "method": "PUT",
+      "path": "/api/organizations/<org_id>/users/<user_id>/reset-password-enrollment",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 3128,
+        "handler": "put_reset_password_enrollment"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/organizations/<org_id>/export src/api/core/organizations.rs:3186 get_org_export rank=default",
+      "method": "GET",
+      "path": "/api/organizations/<org_id>/export",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 3186,
+        "handler": "get_org_export"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/api-key src/api/core/organizations.rs:3235 post_api_key rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/api-key",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 3235,
+        "handler": "post_api_key"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/organizations/<org_id>/rotate-api-key src/api/core/organizations.rs:3245 rotate_api_key rank=default",
+      "method": "POST",
+      "path": "/api/organizations/<org_id>/rotate-api-key",
+      "group": "core/organizations",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/organizations.rs",
+        "line": 3245,
+        "handler": "rotate_api_key"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/public/organization/import src/api/core/public.rs:53 ldap_import rank=default",
+      "method": "POST",
+      "path": "/api/public/organization/import",
+      "group": "core/public",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/public.rs",
+        "line": 53,
+        "handler": "ldap_import"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/sends src/api/core/sends.rs:175 get_sends rank=default",
+      "method": "GET",
+      "path": "/api/sends",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 175,
+        "handler": "get_sends"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/sends/<send_id> src/api/core/sends.rs:187 get_send rank=default",
+      "method": "GET",
+      "path": "/api/sends/<send_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 187,
+        "handler": "get_send"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends src/api/core/sends.rs:196 post_send rank=default",
+      "method": "POST",
+      "path": "/api/sends",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 196,
+        "handler": "post_send"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/file src/api/core/sends.rs:237 post_send_file rank=default",
+      "method": "POST",
+      "path": "/api/sends/file",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 237,
+        "handler": "post_send_file"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/file/v2 src/api/core/sends.rs:309 post_send_file_v2 rank=default",
+      "method": "POST",
+      "path": "/api/sends/file/v2",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 309,
+        "handler": "post_send_file_v2"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/<send_id>/file/<file_id> src/api/core/sends.rs:381 post_send_file_v2_data rank=2",
+      "method": "POST",
+      "path": "/api/sends/<send_id>/file/<file_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": 2,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 381,
+        "handler": "post_send_file_v2_data"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/access src/api/core/sends.rs:451 post_access rank=default",
+      "method": "POST",
+      "path": "/api/sends/access",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 451,
+        "handler": "post_access"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/access/<access_id> src/api/core/sends.rs:469 post_access_legacy rank=default",
+      "method": "POST",
+      "path": "/api/sends/access/<access_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 469,
+        "handler": "post_access_legacy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/access/file/<file_id> src/api/core/sends.rs:526 post_access_file rank=1",
+      "method": "POST",
+      "path": "/api/sends/access/file/<file_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": 1,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 526,
+        "handler": "post_access_file"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/sends/<send_id>/access/file/<file_id> src/api/core/sends.rs:544 post_access_file_legacy rank=default",
+      "method": "POST",
+      "path": "/api/sends/<send_id>/access/file/<file_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 544,
+        "handler": "post_access_file_legacy"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/sends/<send_id>/<file_id> src/api/core/sends.rs:615 download_send rank=default",
+      "method": "GET",
+      "path": "/api/sends/<send_id>/<file_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 615,
+        "handler": "download_send"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/sends/<send_id> src/api/core/sends.rs:625 put_send rank=default",
+      "method": "PUT",
+      "path": "/api/sends/<send_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 625,
+        "handler": "put_send"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/sends/<send_id> src/api/core/sends.rs:703 delete_send rank=default",
+      "method": "DELETE",
+      "path": "/api/sends/<send_id>",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 703,
+        "handler": "delete_send"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/sends/<send_id>/remove-password src/api/core/sends.rs:722 put_remove_password rank=default",
+      "method": "PUT",
+      "path": "/api/sends/<send_id>/remove-password",
+      "group": "core/sends",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/sends.rs",
+        "line": 722,
+        "handler": "put_remove_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-authenticator src/api/core/two_factor/authenticator.rs:21 generate_authenticator rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-authenticator",
+      "group": "core/two_factor/authenticator",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/authenticator.rs",
+        "line": 21,
+        "handler": "generate_authenticator"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/authenticator src/api/core/two_factor/authenticator.rs:56 activate_authenticator rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/authenticator",
+      "group": "core/two_factor/authenticator",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/authenticator.rs",
+        "line": 56,
+        "handler": "activate_authenticator"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/authenticator src/api/core/two_factor/authenticator.rs:96 activate_authenticator_put rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/authenticator",
+      "group": "core/two_factor/authenticator",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/authenticator.rs",
+        "line": 96,
+        "handler": "activate_authenticator_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/two-factor/authenticator src/api/core/two_factor/authenticator.rs:191 disable_authenticator rank=default",
+      "method": "DELETE",
+      "path": "/api/two-factor/authenticator",
+      "group": "core/two_factor/authenticator",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/authenticator.rs",
+        "line": 191,
+        "handler": "disable_authenticator"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-duo src/api/core/two_factor/duo.rs:92 get_duo rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-duo",
+      "group": "core/two_factor/duo",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/duo.rs",
+        "line": 92,
+        "handler": "get_duo"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/duo src/api/core/two_factor/duo.rs:158 activate_duo rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/duo",
+      "group": "core/two_factor/duo",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/duo.rs",
+        "line": 158,
+        "handler": "activate_duo"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/duo src/api/core/two_factor/duo.rs:196 activate_duo_put rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/duo",
+      "group": "core/two_factor/duo",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/duo.rs",
+        "line": 196,
+        "handler": "activate_duo_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/send-email-login src/api/core/two_factor/email.rs:39 send_email_login rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/send-email-login",
+      "group": "core/two_factor/email",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/email.rs",
+        "line": 39,
+        "handler": "send_email_login"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-email src/api/core/two_factor/email.rs:126 get_email rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-email",
+      "group": "core/two_factor/email",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/email.rs",
+        "line": 126,
+        "handler": "get_email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/send-email src/api/core/two_factor/email.rs:159 send_email rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/send-email",
+      "group": "core/two_factor/email",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/email.rs",
+        "line": 159,
+        "handler": "send_email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/email src/api/core/two_factor/email.rs:203 email rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/email",
+      "group": "core/two_factor/email",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/email.rs",
+        "line": 203,
+        "handler": "email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/two-factor src/api/core/two_factor/mod.rs:90 get_twofactor rank=default",
+      "method": "GET",
+      "path": "/api/two-factor",
+      "group": "core/two_factor",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/mod.rs",
+        "line": 90,
+        "handler": "get_twofactor"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-recover src/api/core/two_factor/mod.rs:108 get_recover rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-recover",
+      "group": "core/two_factor",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/mod.rs",
+        "line": 108,
+        "handler": "get_recover"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/disable src/api/core/two_factor/mod.rs:137 disable_twofactor rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/disable",
+      "group": "core/two_factor",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/mod.rs",
+        "line": 137,
+        "handler": "disable_twofactor"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/disable src/api/core/two_factor/mod.rs:169 disable_twofactor_put rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/disable",
+      "group": "core/two_factor",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/mod.rs",
+        "line": 169,
+        "handler": "disable_twofactor_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /api/two-factor/get-device-verification-settings src/api/core/two_factor/mod.rs:295 get_device_verification_settings rank=default",
+      "method": "GET",
+      "path": "/api/two-factor/get-device-verification-settings",
+      "group": "core/two_factor",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/mod.rs",
+        "line": 295,
+        "handler": "get_device_verification_settings"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/request-otp src/api/core/two_factor/protected_actions.rs:64 request_otp rank=default",
+      "method": "POST",
+      "path": "/api/accounts/request-otp",
+      "group": "core/two_factor/protected_actions",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/protected_actions.rs",
+        "line": 64,
+        "handler": "request_otp"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/accounts/verify-otp src/api/core/two_factor/protected_actions.rs:106 verify_otp rank=default",
+      "method": "POST",
+      "path": "/api/accounts/verify-otp",
+      "group": "core/two_factor/protected_actions",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/protected_actions.rs",
+        "line": 106,
+        "handler": "verify_otp"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-webauthn src/api/core/two_factor/webauthn.rs:110 get_webauthn rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-webauthn",
+      "group": "core/two_factor/webauthn",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/webauthn.rs",
+        "line": 110,
+        "handler": "get_webauthn"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-webauthn-challenge src/api/core/two_factor/webauthn.rs:131 generate_webauthn_challenge rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-webauthn-challenge",
+      "group": "core/two_factor/webauthn",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/webauthn.rs",
+        "line": 131,
+        "handler": "generate_webauthn_challenge"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/webauthn src/api/core/two_factor/webauthn.rs:255 activate_webauthn rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/webauthn",
+      "group": "core/two_factor/webauthn",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/webauthn.rs",
+        "line": 255,
+        "handler": "activate_webauthn"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/webauthn src/api/core/two_factor/webauthn.rs:306 activate_webauthn_put rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/webauthn",
+      "group": "core/two_factor/webauthn",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/webauthn.rs",
+        "line": 306,
+        "handler": "activate_webauthn_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "DELETE /api/two-factor/webauthn src/api/core/two_factor/webauthn.rs:318 delete_webauthn rank=default",
+      "method": "DELETE",
+      "path": "/api/two-factor/webauthn",
+      "group": "core/two_factor/webauthn",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/webauthn.rs",
+        "line": 318,
+        "handler": "delete_webauthn"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/get-yubikey src/api/core/two_factor/yubikey.rs:117 generate_yubikey rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/get-yubikey",
+      "group": "core/two_factor/yubikey",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/yubikey.rs",
+        "line": 117,
+        "handler": "generate_yubikey"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /api/two-factor/yubikey src/api/core/two_factor/yubikey.rs:150 activate_yubikey rank=default",
+      "method": "POST",
+      "path": "/api/two-factor/yubikey",
+      "group": "core/two_factor/yubikey",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/yubikey.rs",
+        "line": 150,
+        "handler": "activate_yubikey"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "PUT /api/two-factor/yubikey src/api/core/two_factor/yubikey.rs:209 activate_yubikey_put rank=default",
+      "method": "PUT",
+      "path": "/api/two-factor/yubikey",
+      "group": "core/two_factor/yubikey",
+      "mount": "/api",
+      "rank": null,
+      "source": {
+        "file": "src/api/core/two_factor/yubikey.rs",
+        "line": 209,
+        "handler": "activate_yubikey_put"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /icons/<host>/icon.png src/api/icons.rs:85 icon_external rank=default",
+      "method": "GET",
+      "path": "/icons/<host>/icon.png",
+      "group": "icons",
+      "mount": "/icons",
+      "rank": null,
+      "source": {
+        "file": "src/api/icons.rs",
+        "line": 85,
+        "handler": "icon_external"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /icons/<host>/icon.png src/api/icons.rs:111 icon_internal rank=default",
+      "method": "GET",
+      "path": "/icons/<host>/icon.png",
+      "group": "icons",
+      "mount": "/icons",
+      "rank": null,
+      "source": {
+        "file": "src/api/icons.rs",
+        "line": 111,
+        "handler": "icon_internal"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/connect/token src/api/identity.rs:59 login rank=default",
+      "method": "POST",
+      "path": "/identity/connect/token",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 59,
+        "handler": "login"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/accounts/prelogin src/api/identity.rs:1026 post_prelogin rank=default",
+      "method": "POST",
+      "path": "/identity/accounts/prelogin",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1026,
+        "handler": "post_prelogin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/accounts/prelogin/password src/api/identity.rs:1031 prelogin_password rank=default",
+      "method": "POST",
+      "path": "/identity/accounts/prelogin/password",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1031,
+        "handler": "prelogin_password"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/accounts/register src/api/identity.rs:1036 identity_register rank=default",
+      "method": "POST",
+      "path": "/identity/accounts/register",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1036,
+        "handler": "identity_register"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/accounts/register/send-verification-email src/api/identity.rs:1056 register_verification_email rank=default",
+      "method": "POST",
+      "path": "/identity/accounts/register/send-verification-email",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1056,
+        "handler": "register_verification_email"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "POST /identity/accounts/register/finish src/api/identity.rs:1100 register_finish rank=default",
+      "method": "POST",
+      "path": "/identity/accounts/register/finish",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1100,
+        "handler": "register_finish"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /identity/sso/prevalidate src/api/identity.rs:1176 prevalidate rank=default",
+      "method": "GET",
+      "path": "/identity/sso/prevalidate",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1176,
+        "handler": "prevalidate"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /identity/connect/oidc-signin src/api/identity.rs:1190 oidcsignin rank=1",
+      "method": "GET",
+      "path": "/identity/connect/oidc-signin",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": 1,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1190,
+        "handler": "oidcsignin"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /identity/connect/oidc-signin src/api/identity.rs:1198 oidcsignin_error rank=2",
+      "method": "GET",
+      "path": "/identity/connect/oidc-signin",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": 2,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1198,
+        "handler": "oidcsignin_error"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /identity/connect/authorize src/api/identity.rs:1292 authorize rank=default",
+      "method": "GET",
+      "path": "/identity/connect/authorize",
+      "group": "identity",
+      "mount": "/identity",
+      "rank": null,
+      "source": {
+        "file": "src/api/identity.rs",
+        "line": 1292,
+        "handler": "authorize"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /notifications/hub src/api/notifications.rs:122 websockets_hub rank=default",
+      "method": "GET",
+      "path": "/notifications/hub",
+      "group": "notifications",
+      "mount": "/notifications",
+      "rank": null,
+      "source": {
+        "file": "src/api/notifications.rs",
+        "line": 122,
+        "handler": "websockets_hub"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /notifications/anonymous-hub src/api/notifications.rs:206 anonymous_websockets_hub rank=default",
+      "method": "GET",
+      "path": "/notifications/anonymous-hub",
+      "group": "notifications",
+      "mount": "/notifications",
+      "rank": null,
+      "source": {
+        "file": "src/api/notifications.rs",
+        "line": 206,
+        "handler": "anonymous_websockets_hub"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /css/vaultwarden.css src/api/web.rs:81 vaultwarden_css rank=default",
+      "method": "GET",
+      "path": "/css/vaultwarden.css",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 81,
+        "handler": "vaultwarden_css"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET / src/api/web.rs:152 web_index rank=default",
+      "method": "GET",
+      "path": "/",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 152,
+        "handler": "web_index"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /index.html src/api/web.rs:159 web_index_direct rank=default",
+      "method": "GET",
+      "path": "/index.html",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 159,
+        "handler": "web_index_direct"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "HEAD / src/api/web.rs:164 web_index_head rank=default",
+      "method": "HEAD",
+      "path": "/",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 164,
+        "handler": "web_index_head"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /app-id.json src/api/web.rs:175 app_id rank=default",
+      "method": "GET",
+      "path": "/app-id.json",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 175,
+        "handler": "app_id"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /.well-known/apple-app-site-association src/api/web.rs:207 apple_app_site_association rank=default",
+      "method": "GET",
+      "path": "/.well-known/apple-app-site-association",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 207,
+        "handler": "apple_app_site_association"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /<p..> src/api/web.rs:225 web_files rank=10",
+      "method": "GET",
+      "path": "/<p..>",
+      "group": "web",
+      "mount": "/",
+      "rank": 10,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 225,
+        "handler": "web_files"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /attachments/<cipher_id>/<file_id> src/api/web.rs:230 attachments rank=default",
+      "method": "GET",
+      "path": "/attachments/<cipher_id>/<file_id>",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 230,
+        "handler": "attachments"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /alive src/api/web.rs:243 alive rank=default",
+      "method": "GET",
+      "path": "/alive",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 243,
+        "handler": "alive"
+      },
+      "status": "compatible"
+    },
+    {
+      "id": "HEAD /alive src/api/web.rs:248 alive_head rank=default",
+      "method": "HEAD",
+      "path": "/alive",
+      "group": "web",
+      "mount": "/",
+      "rank": null,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 248,
+        "handler": "alive_head"
+      },
+      "status": "compatible"
+    },
+    {
+      "id": "GET /vw_static/<filename> src/api/web.rs:260 static_files_dev rank=1",
+      "method": "GET",
+      "path": "/vw_static/<filename>",
+      "group": "web",
+      "mount": "/",
+      "rank": 1,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 260,
+        "handler": "static_files_dev"
+      },
+      "status": "not_implemented"
+    },
+    {
+      "id": "GET /vw_static/<filename> src/api/web.rs:278 static_files rank=2",
+      "method": "GET",
+      "path": "/vw_static/<filename>",
+      "group": "web",
+      "mount": "/",
+      "rank": 2,
+      "source": {
+        "file": "src/api/web.rs",
+        "line": 278,
+        "handler": "static_files"
+      },
+      "status": "not_implemented"
+    }
+  ]
+}
