@@ -1,0 +1,141 @@
+{
+  "name": "@adaptive-ds/onewarden",
+  "version": "0.1.0",
+  "description": "Backend-first clean-room foundation for a future Bitwarden-compatible server, built with Bun and TypeScript.",
+  "keywords": [
+    "onewarden",
+    "bitwarden",
+    "bitwarden-compatible",
+    "password-manager",
+    "vault-server",
+    "backend",
+    "hono",
+    "sqlite",
+    "drizzle",
+    "valibot",
+    "typescript",
+    "bun",
+    "solid",
+    "vite",
+    "tailwindcss",
+    "adaptive-ds"
+  ],
+  "homepage": "https://github.com/david1gp/onewarden",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david1gp/onewarden.git"
+  },
+  "bugs": {
+    "url": "https://github.com/david1gp/onewarden/issues"
+  },
+  "author": {
+    "name": "David Siewert",
+    "url": "https://david-siewert.com/"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/david1gp"
+  },
+  "license": "MIT",
+  "readme": "README.md",
+  "type": "module",
+  "private": false,
+  "sideEffects": false,
+  "main": "./dist/library/outputs/library.js",
+  "types": "./dist/library/outputs/library.d.ts",
+  "bin": {
+    "onewarden": "./dist/cli/cli.js"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.3.0"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/outputs/server.ts",
+    "dev:server": "bun run --watch src/outputs/server.ts",
+    "dev:web": "vite --host 127.0.0.1 --port 3041",
+    "dev:cli": "bun run src/outputs/cli.ts",
+    "cli": "bun run src/outputs/cli.ts",
+    "start": "bun run dist/server/server.js",
+    "test": "bun test --pass-with-no-tests",
+    "compatibility:generate": "bun run scripts/compatibilityInventory.ts --write",
+    "compatibility:check": "bun run scripts/compatibilityInventory.ts",
+    "typecheck": "tsc -p ./tsconfig.json --noEmit && tsc -p ./tsconfig.web.json --noEmit",
+    "tsc": "bun run typecheck",
+    "build": "bun run clean && bun run typecheck && bun run build:library && bun run build:server && bun run build:cli && bun run build:web",
+    "build:web": "vite build",
+    "preview:web": "vite preview --host 127.0.0.1 --port 3041",
+    "build:library": "tsc -p ./tsconfig.lib.json && cp ./package.json ./dist/package.json",
+    "build:server": "bun build ./src/outputs/server.ts --outfile ./dist/server/server.js --target bun --format esm",
+    "build:cli": "bun build ./src/outputs/cli.ts --outfile ./dist/cli/cli.js --target bun --format esm && chmod +x ./dist/cli/cli.js",
+    "format": "biome format --write src test ops docs scripts index.html package.json tsconfig.json tsconfig.lib.json tsconfig.web.json biome.json bunfig.toml cliff.toml vite.config.ts README.md",
+    "format:check": "biome format src test ops docs scripts index.html package.json tsconfig.json tsconfig.lib.json tsconfig.web.json biome.json bunfig.toml cliff.toml vite.config.ts README.md",
+    "check": "bun run format:check && bun run typecheck && bun run test && bun run compatibility:check && bun run build",
+    "release": "bash ./ops/release.sh",
+    "deploy": "bash ./ops/deploy.sh",
+    "clean": "rm -rf ./dist"
+  },
+  "imports": {
+    "#result": "@adaptive-ds/result",
+    "#ui/*": "./ui/*",
+    "#utils/*": "@adaptive-ds/utils/*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/library/outputs/library.d.ts",
+      "import": "./dist/library/outputs/library.js"
+    },
+    "./library": {
+      "types": "./dist/library/outputs/library.d.ts",
+      "import": "./dist/library/outputs/library.js"
+    },
+    "./server": {
+      "import": "./dist/server/server.js"
+    },
+    "./cli": {
+      "import": "./dist/cli/cli.js"
+    },
+    "./web": "./dist/web/index.html",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120,
+    "trailingComma": "all"
+  },
+  "dependencies": {
+    "@adaptive-ds/mdi": "^0.1.2",
+    "@adaptive-ds/result": "^0.4.0",
+    "@adaptive-ds/utils": "^0.14.0",
+    "@corvu/dialog": "^0.2.4",
+    "@corvu/popover": "^0.2.0",
+    "@solid-primitives/keyed": "^1.5.3",
+    "@solid-primitives/scheduled": "^1.5.3",
+    "@stricli/core": "^1.3.0",
+    "@tanstack/solid-router": "^1.170.30",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.2",
+    "solid-js": "^1.9.15",
+    "tailwind-merge": "^3.6.0",
+    "valibot": "^1.4.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bun": "^1.3.14",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2",
+    "vite-plugin-solid": "^2.11.14"
+  }
+}

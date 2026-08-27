@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "#ui/*": ["./ui/*"]
+    },
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "lib": ["ESNext"],
+    "types": ["bun"],
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": true,
+    "moduleDetection": "force",
+    "noUncheckedSideEffectImports": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src", "test", "scripts"],
+  "exclude": [
+    ".github",
+    ".roo",
+    ".idea",
+    ".vscode",
+    "changelogs",
+    "build",
+    "dist",
+    "out",
+    "data",
+    "docs",
+    "node_modules",
+    "ops",
+    "src/web",
+    "src/outputs/web.ts"
+  ]
+}
