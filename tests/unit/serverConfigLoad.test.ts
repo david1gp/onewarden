@@ -10,6 +10,9 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       HOST: "127.0.0.1",
       PORT: 3000,
       DATABASE_PATH: "./data/onewarden.sqlite3",
+      SENDS_FOLDER: "./data/sends",
+      SENDS_ALLOWED: true,
+      USER_SEND_LIMIT: undefined,
       LOG_LEVEL: "info",
       PROXY: false,
       ENABLE_WEBSOCKET: true,
@@ -45,6 +48,9 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       LOG_LEVEL: "debug",
       PORT: 8080,
       PROXY: true,
+      SENDS_FOLDER: "./data/sends",
+      SENDS_ALLOWED: true,
+      USER_SEND_LIMIT: undefined,
       ENABLE_WEBSOCKET: true,
       PUBLIC_ORIGIN: "https://vault.example.com",
       PUSH_ENABLED: false,
@@ -106,4 +112,10 @@ test("serverConfigLoad parses web vault settings", () => {
     success: true,
     data: { WEB_VAULT_ENABLED: false, WEB_VAULT_FOLDER: "/srv/onewarden/web" },
   })
+})
+
+test("serverConfigLoad parses the global sends policy", () => {
+  const result = serverConfigLoad({ SENDS_ALLOWED: "false" })
+
+  expect(result).toMatchObject({ success: true, data: { SENDS_ALLOWED: false } })
 })
