@@ -6,44 +6,47 @@ import { passwordHashVerify } from "../../../shared/crypto/passwordHashVerify.js
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import type { DatabaseConnection } from "../../database/database.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { folderFindByUser } from "../folders/folderFindByUser.js"
+import { folderUpdate } from "../folders/folderUpdate.js"
+import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
+import { identityAccountChangeEmailDataSchema } from "./identityAccountChangeEmailDataSchema.js"
+import { identityAccountDeleteRecover } from "./identityAccountDeleteRecover.js"
+import { identityAccountDeleteRecoverDataSchema } from "./identityAccountDeleteRecoverDataSchema.js"
+import { identityAccountDeleteRecoverTokenDataSchema } from "./identityAccountDeleteRecoverTokenDataSchema.js"
+import { identityAccountEmailTokenDataSchema } from "./identityAccountEmailTokenDataSchema.js"
+import { identityAccountKdfApply } from "./identityAccountKdfApply.js"
+import { identityAccountKdfChangeDataSchema } from "./identityAccountKdfChangeDataSchema.js"
+import { identityAccountKdfDataNormalize } from "./identityAccountKdfDataNormalize.js"
+import { identityAccountKeysDataSchema } from "./identityAccountKeysDataSchema.js"
+import { identityAccountPasswordDataSchema } from "./identityAccountPasswordDataSchema.js"
+import { identityAccountPasswordHintDataSchema } from "./identityAccountPasswordHintDataSchema.js"
+import type { IdentityAccountPasswordOrOtpData } from "./identityAccountPasswordOrOtpDataSchema.js"
+import { identityAccountPasswordOrOtpDataSchema } from "./identityAccountPasswordOrOtpDataSchema.js"
+import { identityAccountProfileDataSchema } from "./identityAccountProfileDataSchema.js"
+import { identityAccountRotateKeysDataSchema } from "./identityAccountRotateKeysDataSchema.js"
+import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswordDataSchema.js"
+import { identityAccountVerifyEmailTokenDataSchema } from "./identityAccountVerifyEmailTokenDataSchema.js"
+import { identityAccountVerifyPasswordDataSchema } from "./identityAccountVerifyPasswordDataSchema.js"
+import { identityApiKeyCreate } from "./identityApiKeyCreate.js"
+import { identityDeleteAccountTokenDecode } from "./identityDeleteAccountTokenDecode.js"
 import { identityDeviceDeleteAllByUser } from "./identityDeviceDeleteAllByUser.js"
 import { identityDeviceFindByUser } from "./identityDeviceFindByUser.js"
 import { identityDeviceFindByUuidAndUser } from "./identityDeviceFindByUuidAndUser.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
 import { identityDeviceToJson } from "./identityDeviceToJson.js"
 import { identityDeviceWithAuthRequestToJson } from "./identityDeviceWithAuthRequestToJson.js"
-import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
-import { identityAccountChangeEmailDataSchema } from "./identityAccountChangeEmailDataSchema.js"
-import { identityAccountDeleteRecoverDataSchema } from "./identityAccountDeleteRecoverDataSchema.js"
-import { identityAccountDeleteRecoverTokenDataSchema } from "./identityAccountDeleteRecoverTokenDataSchema.js"
-import { identityAccountKdfApply } from "./identityAccountKdfApply.js"
-import { identityAccountKdfChangeDataSchema } from "./identityAccountKdfChangeDataSchema.js"
-import { identityAccountKdfDataNormalize } from "./identityAccountKdfDataNormalize.js"
-import { identityAccountKeysDataSchema } from "./identityAccountKeysDataSchema.js"
-import { identityAccountPasswordDataSchema } from "./identityAccountPasswordDataSchema.js"
-import { identityAccountPasswordOrOtpDataSchema } from "./identityAccountPasswordOrOtpDataSchema.js"
-import { identityAccountPasswordHintDataSchema } from "./identityAccountPasswordHintDataSchema.js"
-import { identityAccountProfileDataSchema } from "./identityAccountProfileDataSchema.js"
-import { identityAccountRotateKeysDataSchema } from "./identityAccountRotateKeysDataSchema.js"
-import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswordDataSchema.js"
-import { identityAccountEmailTokenDataSchema } from "./identityAccountEmailTokenDataSchema.js"
-import { identityAccountVerifyEmailTokenDataSchema } from "./identityAccountVerifyEmailTokenDataSchema.js"
-import type { IdentityAccountPasswordOrOtpData } from "./identityAccountPasswordOrOtpDataSchema.js"
-import { identityAccountVerifyPasswordDataSchema } from "./identityAccountVerifyPasswordDataSchema.js"
-import { identityApiKeyCreate } from "./identityApiKeyCreate.js"
-import type { IdentityRouteOptions } from "./identityRouteOptions.js"
-import { identityAccountDeleteRecover } from "./identityAccountDeleteRecover.js"
-import { identityDeleteAccountTokenDecode } from "./identityDeleteAccountTokenDecode.js"
+import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityEmailChangeComplete } from "./identityEmailChangeComplete.js"
 import { identityEmailChangeRequest } from "./identityEmailChangeRequest.js"
 import { identityEmailVerificationSend } from "./identityEmailVerificationSend.js"
-import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
-import { identityPasswordHintSend } from "./identityPasswordHintSend.js"
 import { identityOriginResolve } from "./identityOriginResolve.js"
+import { identityPasswordHintSend } from "./identityPasswordHintSend.js"
+import type { IdentityRouteOptions } from "./identityRouteOptions.js"
 import { identityUserDelete } from "./identityUserDelete.js"
 import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import { identityUserFindByUuid } from "./identityUserFindByUuid.js"
@@ -51,9 +54,6 @@ import { identityUserPasswordSet } from "./identityUserPasswordSet.js"
 import { identityUserProfileToJson } from "./identityUserProfileToJson.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityVerifyEmailTokenDecode } from "./identityVerifyEmailTokenDecode.js"
-import type { DatabaseConnection } from "../../database/database.js"
-import { folderFindByUser } from "../folders/folderFindByUser.js"
-import { folderUpdate } from "../folders/folderUpdate.js"
 
 export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -71,7 +71,9 @@ export function identityAccountRoutesRegister(
   const profile = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = identityAccountRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    return context.json(identityUserProfileToJson(requestContext.data.authentication.user, options.config))
+    return context.json(
+      identityUserProfileToJson(requestContext.data.authentication.user, options.config, requestContext.data.database),
+    )
   }
 
   const updateProfile = async (context: Context<AuthenticationEnvironment>) => {
@@ -90,7 +92,7 @@ export function identityAccountRoutesRegister(
     user.name = bodyResult.data.name
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
-    return context.json(identityUserProfileToJson(user, options.config))
+    return context.json(identityUserProfileToJson(user, options.config, requestContext.data.database))
   }
 
   const updateAvatar = async (context: Context<AuthenticationEnvironment>) => {
@@ -110,7 +112,7 @@ export function identityAccountRoutesRegister(
     user.avatarColor = avatarColor
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
-    return context.json(identityUserProfileToJson(user, options.config))
+    return context.json(identityUserProfileToJson(user, options.config, requestContext.data.database))
   }
 
   const publicKey = (context: Context<AuthenticationEnvironment>) => {
