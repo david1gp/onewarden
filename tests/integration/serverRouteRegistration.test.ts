@@ -80,6 +80,8 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
   { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },
   { basePath: "/", method: "GET", path: "/identity/sso/prevalidate" },
+  { basePath: "/", method: "GET", path: "/notifications/anonymous-hub" },
+  { basePath: "/", method: "GET", path: "/notifications/hub" },
   { basePath: "/", method: "POST", path: "/api/accounts/api-key" },
   { basePath: "/", method: "POST", path: "/api/accounts/api-key" },
   { basePath: "/", method: "POST", path: "/api/accounts/delete" },
