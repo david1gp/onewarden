@@ -18,6 +18,7 @@ import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js
 import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
+import { organizationPublicRoutesRegister } from "./contexts/organizations/organizationPublicRoutesRegister.js"
 import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
 import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
@@ -52,6 +53,7 @@ type ServerAppOptions = {
   identifier?: Identifier
   logger?: Logger
   notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
+  organizations?: { groupsEnabled?: boolean }
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
   sends?: {
     notification?: SendNotificationAdapter
@@ -166,6 +168,17 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     push,
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
+  })
+  organizationPublicRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    identifier: identityIdentifier,
+    mail: identityOptions?.mail ?? identityMailAdapterCreate(identityClock),
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
   })
   folderRoutesRegister(app, {
     clock: identityClock,
