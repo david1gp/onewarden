@@ -28,6 +28,16 @@ const serverConfigPushEnabledSchema = v.pipe(
 const serverConfigPushUriSchema = v.pipe(v.string(), v.trim())
 const serverConfigPushCredentialSchema = v.pipe(v.string(), v.trim())
 const serverConfigWebVaultFolderSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
+const serverConfigAdminTokenSchema = v.pipe(v.string(), v.trim())
+const serverConfigAdminSessionLifetimeSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.regex(/^\d+$/, "ADMIN_SESSION_LIFETIME must be a positive integer"),
+  v.transform(Number),
+  v.integer(),
+  v.minValue(1),
+)
+const serverConfigInvitationOrganizationNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
 
 export const serverConfigSchema = v.object({
   HOST: v.optional(serverConfigHostSchema, "127.0.0.1"),
@@ -44,6 +54,10 @@ export const serverConfigSchema = v.object({
   PUSH_INSTALLATION_KEY: v.optional(serverConfigPushCredentialSchema, ""),
   WEB_VAULT_ENABLED: v.optional(serverConfigProxySchema, "true"),
   WEB_VAULT_FOLDER: v.optional(serverConfigWebVaultFolderSchema, "./build/web"),
+  ADMIN_TOKEN: v.optional(serverConfigAdminTokenSchema),
+  DISABLE_ADMIN_TOKEN: v.optional(serverConfigProxySchema, "false"),
+  ADMIN_SESSION_LIFETIME: v.optional(serverConfigAdminSessionLifetimeSchema, "20"),
+  INVITATION_ORG_NAME: v.optional(serverConfigInvitationOrganizationNameSchema, "Vaultwarden"),
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>
