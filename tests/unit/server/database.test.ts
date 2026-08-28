@@ -136,6 +136,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
   expect(result.data.query("SELECT version FROM schema_version ORDER BY version").all()).toEqual([
     { version: 1 },
     { version: 2 },
+    { version: 3 },
   ])
   expect(
     result.data
@@ -145,10 +146,97 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
   expect(
     result.data
       .query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys') ORDER BY name",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices') ORDER BY name",
       )
       .all(),
-  ).toEqual([{ name: "identity_signing_keys" }, { name: "invitations" }, { name: "users" }])
+  ).toEqual([{ name: "devices" }, { name: "identity_signing_keys" }, { name: "invitations" }, { name: "users" }])
+  const deviceColumns = result.data
+    .query<{ name: string; type: string; notnull: number; pk: number }, []>("PRAGMA table_info(devices)")
+    .all()
+    .map(({ name, type, notnull, pk }) => ({ name, type, notnull, pk }))
+  expect(deviceColumns).toEqual([
+    { name: "uuid", type: "TEXT", notnull: 1, pk: 1 },
+    { name: "created_at", type: "TEXT", notnull: 1, pk: 0 },
+    { name: "updated_at", type: "TEXT", notnull: 1, pk: 0 },
+    { name: "user_uuid", type: "TEXT", notnull: 1, pk: 2 },
+    { name: "name", type: "TEXT", notnull: 1, pk: 0 },
+    { name: "atype", type: "INTEGER", notnull: 1, pk: 0 },
+    { name: "push_uuid", type: "TEXT", notnull: 0, pk: 0 },
+    { name: "push_token", type: "TEXT", notnull: 0, pk: 0 },
+    { name: "refresh_token", type: "TEXT", notnull: 1, pk: 0 },
+    { name: "twofactor_remember", type: "TEXT", notnull: 0, pk: 0 },
+  ])
+  expect(result.data.query("PRAGMA foreign_key_list(devices)").all()).toEqual([
+    {
+      id: 0,
+      seq: 0,
+      table: "users",
+      from: "user_uuid",
+      to: "uuid",
+      on_update: "NO ACTION",
+      on_delete: "NO ACTION",
+      match: "NONE",
+    },
+  ])
+  databaseClose(result.data)
+})
+
+test("databaseMigrate preserves device refresh secrets and composite user identity", () => {
+  const result = databaseTestCreate()
+  expect(result.success).toBe(true)
+  if (!result.success) return
+
+  for (const uuid of ["user-one", "user-two"]) {
+    result.data.run(
+      `INSERT INTO users (uuid, created_at, updated_at, email, name, password_hash, salt, password_iterations, akey, security_stamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uuid,
+        "2026-08-28T00:00:00.000Z",
+        "2026-08-28T00:00:00.000Z",
+        `${uuid}@example.com`,
+        uuid,
+        new Uint8Array([1]),
+        new Uint8Array([2]),
+        100_000,
+        "akey",
+        `${uuid}-stamp`,
+      ],
+    )
+  }
+  for (const userUuid of ["user-one", "user-two"]) {
+    result.data.run(
+      `INSERT INTO devices (uuid, created_at, updated_at, user_uuid, name, atype, refresh_token)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        "same-device-identifier",
+        "2026-08-27T00:00:00.000Z",
+        "2026-08-28T00:00:00.000Z",
+        userUuid,
+        `${userUuid} device`,
+        7,
+        `${userUuid}-refresh-secret`,
+      ],
+    )
+  }
+
+  expect(databaseMigrate(result.data)).toEqual({ success: true, data: undefined })
+  expect(
+    result.data.query("SELECT uuid, user_uuid, name, refresh_token FROM devices ORDER BY user_uuid").all(),
+  ).toEqual([
+    {
+      uuid: "same-device-identifier",
+      user_uuid: "user-one",
+      name: "user-one device",
+      refresh_token: "user-one-refresh-secret",
+    },
+    {
+      uuid: "same-device-identifier",
+      user_uuid: "user-two",
+      name: "user-two device",
+      refresh_token: "user-two-refresh-secret",
+    },
+  ])
   databaseClose(result.data)
 })
 
@@ -227,7 +315,11 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
   const result = databaseTestCreate()
   expect(result.success).toBe(true)
   if (result.success) {
-    expect(result.data.query("SELECT version FROM schema_version").all()).toEqual([{ version: 1 }, { version: 2 }])
+    expect(result.data.query("SELECT version FROM schema_version").all()).toEqual([
+      { version: 1 },
+      { version: 2 },
+      { version: 3 },
+    ])
     databaseClose(result.data)
   }
 
@@ -250,6 +342,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 2 })
+  expect(await response.json()).toEqual({ version: 3 })
   databaseClose(databaseResult.data)
 })

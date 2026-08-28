@@ -11,6 +11,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "POST", path: "/identity/accounts/register" },
   { basePath: "/", method: "POST", path: "/identity/accounts/register/finish" },
   { basePath: "/", method: "POST", path: "/identity/accounts/register/send-verification-email" },
+  { basePath: "/", method: "POST", path: "/identity/connect/token" },
 ]
 
 test("serverAppCreate route registrations match the current compatibility baseline", () => {
