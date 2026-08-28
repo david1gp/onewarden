@@ -88,8 +88,6 @@ export function webRoutesRegister(app: Hono<AuthenticationEnvironment>, options:
   app.get("/api/version", version)
   app.get("/api/webauthn", webauthn)
   app.get("/api/config", config)
-  app.get("/attachments/:cipher_id/:file_id", () => webNotFoundApiResponse("webAttachments"))
-
   app.get("/vw_static/:filename", async (context) => {
     const filename = context.req.param("filename")
     if (!staticFileNames.has(filename)) return webNotFoundApiResponse("webStaticFile")

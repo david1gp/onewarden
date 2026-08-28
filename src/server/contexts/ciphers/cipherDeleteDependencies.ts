@@ -9,6 +9,7 @@ export function cipherDeleteDependencies(database: DatabaseConnection, cipherUui
     database.run("DELETE FROM folders_ciphers WHERE cipher_uuid = ?", [cipherUuid])
     database.run("DELETE FROM favorites WHERE cipher_uuid = ?", [cipherUuid])
     database.run("DELETE FROM archives WHERE cipher_uuid = ?", [cipherUuid])
+    database.run("DELETE FROM attachments WHERE cipher_uuid = ?", [cipherUuid])
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Cipher dependency deletion failed.")
