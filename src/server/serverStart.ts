@@ -64,6 +64,9 @@ const notificationHub = notificationHubCreate({
 })
 
 const app = serverAppCreate({
+  ciphers: {
+    maxNoteSize: configResult.data.INCREASE_NOTE_SIZE_LIMIT ? 100_000 : 10_000,
+  },
   database,
   admin: {
     config: adminConfigCreate({

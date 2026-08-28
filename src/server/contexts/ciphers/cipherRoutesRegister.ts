@@ -20,6 +20,8 @@ import { cipherIdsDataSchema } from "./cipherIdsDataSchema.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import { cipherFindByUser } from "./cipherFindByUser.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
+import { cipherImport } from "./cipherImport.js"
+import { cipherImportDataSchema } from "./cipherImportDataSchema.js"
 import { cipherMove } from "./cipherMove.js"
 import { cipherMoveDataSchema } from "./cipherMoveDataSchema.js"
 import { cipherNotificationAdapterCreate } from "./cipherNotificationAdapterCreate.js"
@@ -96,6 +98,30 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     const body = bodyResult.data
     const data = "cipher" in body ? body.cipher : body
     return cipherCreateResponse(context, requestContext.data, data, options)
+  }
+
+  const importCiphers = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = cipherRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const bodyResult = await requestBodyParse(context, cipherImportDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const importResult = cipherImport(
+      requestContext.data.database,
+      requestContext.data.userUuid,
+      bodyResult.data,
+      options.clock,
+      options.identifier,
+      options.maxNoteSize,
+    )
+    if (!importResult.success) return apiErrorResponseCreate(importResult)
+    await cipherUserNotificationSend(
+      notification,
+      cipherUpdateType.syncVault,
+      requestContext.data.userUuid,
+      importResult.data.revisionDate,
+      requestContext.data.device,
+    )
+    return new Response(null, { status: 200 })
   }
 
   const update = async (context: Context<AuthenticationEnvironment>) => {
@@ -283,6 +309,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   app.post("/api/ciphers", authenticate("post_ciphers"), create)
   app.post("/api/ciphers/create", authenticate("post_ciphers_create"), createWrapped)
   app.post("/api/ciphers/admin", authenticate("post_ciphers_admin"), createWrapped)
+  app.post("/api/ciphers/import", authenticate("post_ciphers_import"), importCiphers)
   app.delete("/api/ciphers", authenticate("delete_cipher_selected"), (context) => bulkDelete(context, false))
   app.post("/api/ciphers/delete", authenticate("delete_cipher_selected_post"), (context) => bulkDelete(context, false))
   app.put("/api/ciphers/delete", authenticate("delete_cipher_selected_put"), (context) => bulkDelete(context, true))

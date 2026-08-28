@@ -31,7 +31,7 @@ export function cipherCreate(
     deletedAt: null,
     reprompt: null,
   }
-  const result = cipherApplyData(cipher, database, userUuid, data, clock, now)
+  const result = cipherApplyData(cipher, database, userUuid, data, clock, { revisionDate: now })
   if (!result.success) return result
   return resultCreate(result.data)
 }

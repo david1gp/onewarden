@@ -5,14 +5,20 @@ import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
 import type { Cipher } from "./cipher.js"
-import type { CipherData } from "./cipherDataSchema.js"
-import { cipherDataPrepare } from "./cipherDataPrepare.js"
 import { cipherArchiveSet } from "./cipherArchiveSet.js"
+import { cipherDataPrepare } from "./cipherDataPrepare.js"
+import type { CipherData } from "./cipherDataSchema.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import { cipherFavoriteSet } from "./cipherFavoriteSet.js"
 import { cipherFolderSet } from "./cipherFolderSet.js"
 import { cipherSave } from "./cipherSave.js"
 import { cipherUserRevisionUpdate } from "./cipherUserRevisionUpdate.js"
+
+type CipherApplyDataOptions = {
+  revisionDate?: string
+  transaction?: boolean
+  updateRevision?: boolean
+}
 
 function cipherDateNormalize(value: string): string | undefined {
   const timestamp = Date.parse(value)
@@ -26,7 +32,7 @@ export function cipherApplyData(
   userUuid: string,
   data: CipherData,
   clock: Clock,
-  revisionDate?: string,
+  options: CipherApplyDataOptions = {},
 ): Result<Cipher> {
   const preparedResult = cipherDataPrepare(data)
   if (!preparedResult.success) return preparedResult
@@ -40,7 +46,7 @@ export function cipherApplyData(
       return cipherErrorCreate("cipherApplyData", "Invalid folder", "Folder does not exist or belongs to another user")
   }
 
-  const now = revisionDate ?? clock.now().toISOString()
+  const now = options.revisionDate ?? clock.now().toISOString()
   const nextCipher = {
     ...cipher,
     data: prepared.data,
@@ -53,9 +59,11 @@ export function cipherApplyData(
     updatedAt: now,
     userUuid,
   }
-  const result = databaseTransaction(database, () => {
-    const revisionResult = cipherUserRevisionUpdate(database, userUuid, now)
-    if (!revisionResult.success) return revisionResult
+  const persist = () => {
+    if (options.updateRevision !== false) {
+      const revisionResult = cipherUserRevisionUpdate(database, userUuid, now)
+      if (!revisionResult.success) return revisionResult
+    }
     const saveResult = cipherSave(database, nextCipher)
     if (!saveResult.success) return saveResult
     const folderResult = cipherFolderSet(database, nextCipher.uuid, prepared.folderUuid)
@@ -71,6 +79,6 @@ export function cipherApplyData(
       if (!archiveResult.success) return archiveResult
     }
     return resultCreate(nextCipher)
-  })
-  return result
+  }
+  return options.transaction === false ? persist() : databaseTransaction(database, persist)
 }

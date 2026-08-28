@@ -46,7 +46,7 @@ type ServerAppEnvironment = AuthenticationEnvironment
 type ServerAppOptions = {
   clock?: Clock
   database?: DatabaseConnection
-  ciphers?: { notification?: CipherNotificationAdapter }
+  ciphers?: { maxNoteSize?: number; notification?: CipherNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
   icons?: Partial<IconRouteOptions>
   identity?: Partial<IdentityRouteOptions>
@@ -193,6 +193,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     database: identityDatabase,
     identifier: identityIdentifier,
+    maxNoteSize: options?.ciphers?.maxNoteSize,
     notification: options?.ciphers?.notification ?? notificationHub.adapter,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
