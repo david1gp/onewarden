@@ -1,4 +1,3 @@
-import type { Folder } from "./folder.js"
 import type { folderUpdateType } from "./folderUpdateType.js"
 
 export type FolderNotification = {
@@ -9,5 +8,4 @@ export type FolderNotification = {
     UserId: string
   }
   type: (typeof folderUpdateType)[keyof typeof folderUpdateType]
-  folder: Folder
 }

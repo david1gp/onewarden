@@ -12,7 +12,6 @@ export async function folderNotificationSend(
   try {
     await adapter.sendFolderUpdate({
       contextId: device.uuid,
-      folder,
       payload: { Id: folder.uuid, RevisionDate: folder.updatedAt, UserId: folder.userUuid },
       type,
     })

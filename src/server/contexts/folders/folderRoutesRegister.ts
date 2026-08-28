@@ -96,7 +96,12 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
     const pathResult = requestPathParse(context, folderPathSchema)
     if (!pathResult.success) return apiErrorResponseCreate(pathResult)
-    const result = folderDelete(requestContext.data.database, pathResult.data.folder_id, requestContext.data.userUuid)
+    const result = folderDelete(
+      requestContext.data.database,
+      pathResult.data.folder_id,
+      requestContext.data.userUuid,
+      options.clock,
+    )
     if (!result.success) return apiErrorResponseCreate(result)
     await folderNotificationSend(notification, folderUpdateType.delete, result.data, requestContext.data.device)
     return new Response(null, { status: 200 })
