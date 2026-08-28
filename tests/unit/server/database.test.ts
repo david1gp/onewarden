@@ -143,6 +143,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 8 },
     { version: 9 },
     { version: 10 },
+    { version: 11 },
   ])
   expect(
     result.data
@@ -353,6 +354,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 8 },
       { version: 9 },
       { version: 10 },
+      { version: 11 },
     ])
     databaseClose(result.data)
   }
@@ -376,6 +378,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 10 })
+  expect(await response.json()).toEqual({ version: 11 })
   databaseClose(databaseResult.data)
 })
