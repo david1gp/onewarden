@@ -17,6 +17,8 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
       PUSH_INSTALLATION_ID: "",
       PUSH_INSTALLATION_KEY: "",
+      WEB_VAULT_ENABLED: true,
+      WEB_VAULT_FOLDER: "./build/web",
     },
   })
 })
@@ -45,6 +47,8 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
       PUSH_INSTALLATION_ID: "",
       PUSH_INSTALLATION_KEY: "",
+      WEB_VAULT_ENABLED: true,
+      WEB_VAULT_FOLDER: "./build/web",
     },
   })
 })
@@ -85,4 +89,13 @@ test("serverConfigLoad validates enabled push relay credentials and HTTPS endpoi
       PUSH_RELAY_URI: "https://relay.example",
     }).success,
   ).toBe(false)
+})
+
+test("serverConfigLoad parses web vault settings", () => {
+  const result = serverConfigLoad({ WEB_VAULT_ENABLED: "false", WEB_VAULT_FOLDER: " /srv/onewarden/web " })
+
+  expect(result).toMatchObject({
+    success: true,
+    data: { WEB_VAULT_ENABLED: false, WEB_VAULT_FOLDER: "/srv/onewarden/web" },
+  })
 })
