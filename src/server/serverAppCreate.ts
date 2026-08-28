@@ -16,6 +16,8 @@ import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
 import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
 import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
+import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
+import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
@@ -33,6 +35,7 @@ type ServerAppOptions = {
   database?: DatabaseConnection
   ciphers?: { notification?: CipherNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
+  icons?: Partial<IconRouteOptions>
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
   logger?: Logger
@@ -41,6 +44,7 @@ type ServerAppOptions = {
 
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
   const app = new Hono<ServerAppEnvironment>()
+  const serverClock = options?.clock ?? clockCreate()
   const database = options?.database
   if (database !== undefined) {
     app.use("*", async (context, next) => {
@@ -82,7 +86,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     : identityTokenKeyPairResolve(identityOptions?.database ?? database)
   const defaultPrivateKey = defaultKeyPairResult?.success ? defaultKeyPairResult.data.privateKey : undefined
   const defaultPublicKey = defaultKeyPairResult?.success ? defaultKeyPairResult.data.publicKey : undefined
-  const identityClock = identityOptions?.clock ?? options?.clock ?? clockCreate()
+  const identityClock = identityOptions?.clock ?? serverClock
   const identityConfig = identityOptions?.config ?? identityConfigCreate()
   const identityDatabase = identityOptions?.database ?? database
   const identityIdentifier = identityOptions?.identifier ?? options?.identifier ?? identifierCreate()
@@ -123,6 +127,11 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     notification: options?.ciphers?.notification,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+  })
+  iconRoutesRegister(app, {
+    ...options?.icons,
+    clock: options?.icons?.clock ?? serverClock,
+    logger: options?.icons?.logger ?? options?.logger,
   })
   return app
 }
