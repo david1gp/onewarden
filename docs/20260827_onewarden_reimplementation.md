@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8, 9, 10, 11, 13, 14, 28, 29, 30, 31, and 32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage.
+- Current context: tasks 8, 9, 10, 11, 13, 14, 25, and 28-32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; task 27 public compatibility is implemented and verified in its isolated worktree, excluding organization-policy and organization-key domain behavior assigned to tasks 19-24.
 
 # Tasks
 
@@ -51,7 +51,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [ ] 22. Port group CRUD, membership, collection access, directory-sync compatibility, and bulk behavior with tests.
 - [ ] 23. Port organization policies, organization domains, SSO configuration, and policy enforcement behavior with tests.
 - [ ] 24. Port organization event logging, event retrieval, retention rules, and event notification hooks with tests.
-- [ ] 25. Port Send text/file CRUD, access, passwords, download tokens, quotas, expiration, and deletion behavior with tests.
+- [x] 25. Port Send text/file CRUD, access, passwords, download tokens, quotas, expiration, and deletion behavior with tests.
 - [ ] 26. Port emergency-access invite, accept, confirm, initiate, approve, reject, view, takeover, timeout, and reminder behavior with tests.
 - [ ] 27. Port public organization import and remaining public compatibility endpoints with tests.
 - [x] 28. Port authenticated and anonymous notification hubs, SignalR MessagePack framing, ping behavior, update types, and connection limits with tests.
