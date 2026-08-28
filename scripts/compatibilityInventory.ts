@@ -643,9 +643,12 @@ async function compatibilityInventoryRun(): Promise<number> {
 
   const routeReadResult = await compatibilityFileRead(routeInventoryPath)
   const testReadResult = await compatibilityFileRead(testInventoryPath)
-  if (!routeReadResult.success || !testReadResult.success) {
-    const errorMessage = !routeReadResult.success ? routeReadResult.errorMessage : testReadResult.errorMessage
-    process.stderr.write(`Compatibility inventory failed: ${errorMessage}\n`)
+  if (!routeReadResult.success) {
+    process.stderr.write(`Compatibility inventory failed: ${routeReadResult.errorMessage}\n`)
+    return 1
+  }
+  if (!testReadResult.success) {
+    process.stderr.write(`Compatibility inventory failed: ${testReadResult.errorMessage}\n`)
     return 1
   }
   if (routeReadResult.data !== routeContent || testReadResult.data !== testContent) {

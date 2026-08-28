@@ -31,7 +31,7 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "test", "scripts"],
+  "include": ["src", "test", "tests", "tools", "scripts"],
   "exclude": [
     ".github",
     ".roo",
