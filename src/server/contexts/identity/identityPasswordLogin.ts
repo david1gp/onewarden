@@ -20,6 +20,7 @@ import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
 import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
+import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 
 type IdentityPasswordLoginOptions = {
   clock: Clock
@@ -31,6 +32,7 @@ type IdentityPasswordLoginOptions = {
   privateKey: KeyInput | undefined
   rateLimiter: { check: (key: string) => Result<void> }
   clientIp: string
+  push?: PushRelayAdapter
 }
 
 async function identityPasswordVerificationRequire(
@@ -109,6 +111,7 @@ export async function identityPasswordLogin(
   const deviceResult = identityDeviceResolve(database, data, user.uuid, options.clock, options.identifier)
   if (!deviceResult.success) return deviceResult
   const device = deviceResult.data
+  const deviceIsNew = device.createdAt === device.updatedAt
 
   const bundleResult = await identityTokenBundleCreate(
     user,
@@ -122,5 +125,11 @@ export async function identityPasswordLogin(
   if (!bundleResult.success) return bundleResult
   const saveResult = identityDeviceSave(database, device, options.clock, true)
   if (!saveResult.success) return saveResult
+  if (!deviceIsNew && options.push !== undefined) {
+    const registerResult = await options.push.registerDevice(device)
+    if (!registerResult.success) return registerResult
+    const pushUuidSaveResult = identityDeviceSave(database, device, options.clock, false)
+    if (!pushUuidSaveResult.success) return pushUuidSaveResult
+  }
   return resultCreate(identityUserTokenResponseCreate(user, bundleResult.data))
 }

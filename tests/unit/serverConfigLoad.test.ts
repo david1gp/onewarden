@@ -12,6 +12,11 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       DATABASE_PATH: "./data/onewarden.sqlite3",
       LOG_LEVEL: "info",
       PROXY: false,
+      PUSH_ENABLED: false,
+      PUSH_RELAY_URI: "https://push.bitwarden.com",
+      PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
+      PUSH_INSTALLATION_ID: "",
+      PUSH_INSTALLATION_KEY: "",
     },
   })
 })
@@ -35,6 +40,11 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       PORT: 8080,
       PROXY: true,
       PUBLIC_ORIGIN: "https://vault.example.com",
+      PUSH_ENABLED: false,
+      PUSH_RELAY_URI: "https://push.bitwarden.com",
+      PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
+      PUSH_INSTALLATION_ID: "",
+      PUSH_INSTALLATION_KEY: "",
     },
   })
 })
@@ -44,4 +54,35 @@ test("serverConfigLoad rejects invalid log level, proxy, and public origin", () 
 
   expect(result.success).toBe(false)
   expect(result).toMatchObject({ op: "serverConfigLoad", success: false })
+})
+
+test("serverConfigLoad validates enabled push relay credentials and HTTPS endpoints", () => {
+  const result = serverConfigLoad({
+    PUSH_ENABLED: "true",
+    PUSH_IDENTITY_URI: "https://identity.example",
+    PUSH_INSTALLATION_ID: "installation-id",
+    PUSH_INSTALLATION_KEY: "installation-key",
+    PUSH_RELAY_URI: "https://relay.example",
+  })
+
+  expect(result).toMatchObject({
+    success: true,
+    data: {
+      PUSH_ENABLED: true,
+      PUSH_IDENTITY_URI: "https://identity.example",
+      PUSH_INSTALLATION_ID: "installation-id",
+      PUSH_INSTALLATION_KEY: "installation-key",
+      PUSH_RELAY_URI: "https://relay.example",
+    },
+  })
+  expect(serverConfigLoad({ PUSH_ENABLED: "true" }).success).toBe(false)
+  expect(
+    serverConfigLoad({
+      PUSH_ENABLED: "true",
+      PUSH_IDENTITY_URI: "http://identity.example",
+      PUSH_INSTALLATION_ID: "installation-id",
+      PUSH_INSTALLATION_KEY: "installation-key",
+      PUSH_RELAY_URI: "https://relay.example",
+    }).success,
+  ).toBe(false)
 })

@@ -25,6 +25,7 @@ import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityUserTokenResponseCreate } from "./identityUserTokenResponseCreate.js"
+import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 
 type IdentitySsoLoginOptions = {
   clock: Clock
@@ -35,6 +36,7 @@ type IdentitySsoLoginOptions = {
   privateKey: KeyInput | undefined
   rateLimiter: { check: (key: string) => Result<void> }
   clientIp: string
+  push?: PushRelayAdapter
   sso: IdentitySsoAdapter
 }
 
@@ -192,6 +194,7 @@ export async function identitySsoLogin(
 
   const deviceResult = identityDeviceResolve(database, data, user.uuid, options.clock, options.identifier)
   if (!deviceResult.success) return deviceResult
+  const deviceIsNew = deviceResult.data.createdAt === deviceResult.data.updatedAt
   const bundleResult = await identitySsoTokenBundleCreate(
     user,
     deviceResult.data,
@@ -205,6 +208,12 @@ export async function identitySsoLogin(
   if (!bundleResult.success) return bundleResult
   const deviceSaveResult = identityDeviceSave(database, deviceResult.data, options.clock, true)
   if (!deviceSaveResult.success) return deviceSaveResult
+  if (!deviceIsNew && options.push !== undefined) {
+    const registerResult = await options.push.registerDevice(deviceResult.data)
+    if (!registerResult.success) return registerResult
+    const pushUuidSaveResult = identityDeviceSave(database, deviceResult.data, options.clock, false)
+    if (!pushUuidSaveResult.success) return pushUuidSaveResult
+  }
   const deleteResult = identitySsoAuthDelete(database, auth.state)
   if (!deleteResult.success) return deleteResult
   return resultCreate(identityUserTokenResponseCreate(user, bundleResult.data))
