@@ -11,6 +11,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/folders/:folder_id" },
   { basePath: "/", method: "GET", path: "/api/folders/:folder_id" },
   { basePath: "/", method: "GET", path: "/health" },
+  { basePath: "/", method: "GET", path: "/icons/:host/icon.png" },
   { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
   { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },
   { basePath: "/", method: "GET", path: "/identity/sso/prevalidate" },
