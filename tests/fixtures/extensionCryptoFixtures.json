@@ -1,0 +1,27 @@
+{
+  "passwordLogin": {
+    "email": "User@example.com",
+    "password": "correct horse battery staple",
+    "kdf": {
+      "kdfType": 0,
+      "iterations": 1,
+      "memory": null,
+      "parallelism": null
+    },
+    "masterKey": [
+      33, 118, 243, 123, 185, 4, 184, 155, 110, 136, 149, 89, 202, 76, 209, 206, 239, 172, 242, 45, 212, 138, 51, 3,
+      145, 19, 29, 222, 3, 90, 93, 47
+    ],
+    "masterPasswordHash": [
+      62, 179, 248, 16, 224, 102, 81, 110, 238, 232, 59, 220, 190, 232, 24, 219, 209, 247, 43, 96, 111, 143, 125, 238,
+      136, 129, 80, 127, 122, 76, 205, 150
+    ],
+    "userKey": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+      31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
+      59, 60, 61, 62, 63
+    ],
+    "userKeyEnc": "2.Dw4NDAsKCQgHBgUEAwIBAA==|rW+026GclEdqJCakiU6owKkmg0RITIq+byx6oK4PyZchSTT2AnWmAlPdIgsr8tycftFPivnSoMSiJ/s4DIadljdQkGVRkmcKlPa210wu940=|/JczXl/ea2oCdjznCyLra3gWxsnkkSPL+rIkZHYEuoI=",
+    "fieldEnc": "2.EBESExQVFhcYGRobHB0eHw==|xICsnGRD+ACs6f/ge+bStw==|qRrQThax5Onxb0HIpWbXqtTJGTrEE6b5jTv75+wL+eo="
+  }
+}

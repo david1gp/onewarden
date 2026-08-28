@@ -1,0 +1,311 @@
+import { expect, test } from "bun:test"
+import type { Result } from "#result"
+import type { ExtensionAlarmsAdapter } from "../../../src/extension/background/extensionAlarmsAdapter.js"
+import { extensionBackgroundServiceCreate } from "../../../src/extension/background/extensionBackgroundServiceCreate.js"
+import { extensionTimeoutAlarmName } from "../../../src/extension/background/extensionTimeoutAlarmName.js"
+import { extensionPersonalLoginCipherEncrypt } from "../../../src/extension/crypto/extensionPersonalLoginCipherEncrypt.js"
+import { extensionVaultSessionCreate } from "../../../src/extension/session/extensionVaultSessionCreate.js"
+import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
+import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
+import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
+import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
+import type { BitwardenPasswordTokenResponse } from "../../../src/shared/api/bitwardenPasswordTokenResponseSchema.js"
+import type { BitwardenPreloginResponse } from "../../../src/shared/api/bitwardenPreloginResponseSchema.js"
+import type { BitwardenRefreshTokenResponse } from "../../../src/shared/api/bitwardenRefreshTokenResponseSchema.js"
+import type { BitwardenSyncEnvelope } from "../../../src/shared/api/bitwardenSyncEnvelopeSchema.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import fixtures from "../../fixtures/extensionCryptoFixtures.json"
+
+const passwordLogin = fixtures.passwordLogin
+const userKey = new Uint8Array(passwordLogin.userKey)
+const nowValue = 1_756_368_000_000
+
+const prelogin: BitwardenPreloginResponse = {
+  kdf: 0,
+  kdfIterations: 1,
+  kdfMemory: null,
+  kdfParallelism: null,
+  kdfSettings: { iterations: 1, kdfType: 0, memory: null, parallelism: null },
+  salt: null,
+}
+
+function tokenCreate(): BitwardenPasswordTokenResponse {
+  return {
+    access_token: "access-token",
+    expires_in: 3600,
+    token_type: "Bearer",
+    refresh_token: "refresh-token",
+    PrivateKey: null,
+    Kdf: 0,
+    KdfIterations: 1,
+    KdfMemory: null,
+    KdfParallelism: null,
+    ResetMasterPassword: false,
+    ForcePasswordReset: false,
+    MasterPasswordPolicy: { Object: "masterPasswordPolicy" },
+    scope: "api offline_access",
+    AccountKeys: null,
+    UserDecryptionOptions: {
+      HasMasterPassword: true,
+      MasterPasswordUnlock: {
+        Kdf: { KdfType: 0, Iterations: 1, Memory: null, Parallelism: null },
+        MasterKeyEncryptedUserKey: passwordLogin.userKeyEnc,
+        MasterKeyWrappedUserKey: "",
+        Salt: passwordLogin.email,
+      },
+      Object: "userDecryptionOptions",
+    },
+  }
+}
+
+const refreshResponse: BitwardenRefreshTokenResponse = {
+  access_token: "refreshed-access-token",
+  expires_in: 3600,
+  token_type: "Bearer",
+  refresh_token: "refreshed-refresh-token",
+  scope: "api offline_access",
+}
+
+function storageAreaCreate() {
+  const values = new Map<string, unknown>()
+  const area: ExtensionStorageArea = {
+    async get<T extends Record<string, unknown> = Record<string, unknown>>(
+      keys?: string | string[] | null,
+    ): Promise<T> {
+      const requestedKeys =
+        keys === undefined || keys === null ? [...values.keys()] : typeof keys === "string" ? [keys] : keys
+      const result: Record<string, unknown> = {}
+      for (const key of requestedKeys) {
+        const value = values.get(key)
+        if (value !== undefined) result[key] = value
+      }
+      return result as T
+    },
+    async set(items) {
+      for (const [key, value] of Object.entries(items)) values.set(key, value)
+    },
+    async remove(keys) {
+      for (const key of typeof keys === "string" ? [keys] : keys) values.delete(key)
+    },
+  }
+  return { area, values }
+}
+
+function serviceCreate(now: () => number = () => nowValue) {
+  const local = storageAreaCreate()
+  const session = storageAreaCreate()
+  const adapter: ExtensionStorageAdapter = extensionStorageAdapterCreate({ local: local.area, session: session.area })
+  const storage = extensionStorageCreate(adapter)
+  const vaultSession = extensionVaultSessionCreate(storage, now)
+  const alarmCalls: { name: string; delayInMinutes: number }[] = []
+  const clearCalls: string[] = []
+  let alarmListener: ((alarm: { name: string }) => void) | null = null
+  const alarms: ExtensionAlarmsAdapter = {
+    create: async (name, alarmInfo) => {
+      alarmCalls.push({ name, ...alarmInfo })
+    },
+    clear: async (name) => {
+      clearCalls.push(name)
+      return true
+    },
+    onAlarm: (listener) => {
+      alarmListener = listener
+    },
+  }
+  return {
+    local,
+    session,
+    storage,
+    vaultSession,
+    alarms,
+    alarmCalls,
+    clearCalls,
+    alarmListenerRead: () => alarmListener,
+  }
+}
+
+function plainCipherCreate() {
+  return {
+    object: "cipherDetails" as const,
+    id: "cipher-id",
+    type: 1 as const,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    revisionDate: "2026-08-28T00:00:00.000Z",
+    deletedDate: null,
+    organizationId: null,
+    folderId: null,
+    name: "Synthetic login",
+    notes: "Synthetic notes",
+    favorite: false,
+    login: {
+      username: "synthetic-user",
+      password: "synthetic-password",
+      uris: [{ uri: "https://example.test/login", match: 0 }],
+      uri: "https://example.test/login",
+      totp: null,
+    },
+    fields: [{ name: "Synthetic field", value: "Synthetic value", type: 0, linkedId: null }],
+  }
+}
+
+test("extensionBackgroundServiceCreate logs in and coalesces concurrent refreshes", async () => {
+  const context = serviceCreate()
+  let refreshCalls = 0
+  let refreshResolve!: (result: Result<BitwardenRefreshTokenResponse>) => void
+  const refreshPromise = new Promise<Result<BitwardenRefreshTokenResponse>>((resolve) => {
+    refreshResolve = resolve
+  })
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => {
+        refreshCalls += 1
+        return refreshPromise
+      },
+      revisionDate: async () => resultCreate(nowValue),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+
+  const loginResult = await service.passwordLogin({ email: passwordLogin.email, password: passwordLogin.password })
+  expect(loginResult.success).toBe(true)
+  expect(context.vaultSession.isUnlocked()).toBe(false)
+  expect((await context.storage.authSessionLoad()).success).toBe(true)
+
+  const expiredAuth = await context.storage.authSessionLoad()
+  expect(expiredAuth.success).toBe(true)
+  if (!expiredAuth.success || expiredAuth.data === null) return
+  await context.storage.authSessionSave({ ...expiredAuth.data, expiresAt: 0 })
+
+  const firstRefresh = service.refreshToken()
+  const secondRefresh = service.refreshToken()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(refreshCalls).toBe(1)
+  refreshResolve(resultCreate(refreshResponse))
+  expect(await firstRefresh).toEqual(await secondRefresh)
+  const refreshedAuth = await context.storage.authSessionLoad()
+  expect(refreshedAuth.success).toBe(true)
+  if (!refreshedAuth.success) return
+  expect(refreshedAuth.data?.accessToken).toBe("refreshed-access-token")
+})
+
+test("extensionBackgroundServiceCreate performs conditional and manual sync while persisting only encrypted data", async () => {
+  const context = serviceCreate()
+  const encryptedCipherResult = await extensionPersonalLoginCipherEncrypt(plainCipherCreate(), userKey)
+  expect(encryptedCipherResult.success).toBe(true)
+  if (!encryptedCipherResult.success) return
+  const envelope: BitwardenSyncEnvelope = {
+    profile: {},
+    folders: [],
+    collections: [],
+    policies: [],
+    ciphers: [encryptedCipherResult.data],
+    sends: [],
+    object: "sync",
+  }
+  let syncCalls = 0
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => {
+        syncCalls += 1
+        return resultCreate(envelope)
+      },
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const fullResult = await service.fullSync()
+  expect(fullResult).toMatchObject({ success: true, data: { status: "synced", changed: true, revisionDate: 123 } })
+  expect(syncCalls).toBe(1)
+  const rawCache = context.local.values.get("onewarden.sync-cache") as {
+    snapshot: { ciphertext: string }
+    ciphers: unknown[]
+  }
+  expect(rawCache.snapshot.ciphertext).not.toContain("Synthetic login")
+  expect(JSON.stringify(rawCache)).not.toContain("synthetic-password")
+  expect(rawCache.ciphers).toHaveLength(1)
+
+  const conditionalResult = await service.conditionalSync()
+  expect(conditionalResult).toMatchObject({ success: true, data: { status: "unchanged", changed: false } })
+  expect(syncCalls).toBe(1)
+  expect((await service.manualSync()).success).toBe(true)
+  expect(syncCalls).toBe(2)
+})
+
+test("extensionBackgroundServiceCreate applies inactivity and restart lock/logout actions through alarms", async () => {
+  let now = nowValue
+  const context = serviceCreate(() => now)
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => now,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(nowValue),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  expect((await service.lockPolicySave({ action: "lock", timeoutMinutes: 1 })).success).toBe(true)
+  expect(context.alarmCalls.at(-1)).toEqual({ name: extensionTimeoutAlarmName, delayInMinutes: 1 })
+  now += 60_000
+  expect((await service.timeoutAlarmHandle({ name: extensionTimeoutAlarmName })).success).toBe(true)
+  expect(context.vaultSession.isUnlocked()).toBe(false)
+  const lockedAuth = await context.storage.authSessionLoad()
+  expect(lockedAuth.success).toBe(true)
+  if (!lockedAuth.success) return
+  expect(lockedAuth.data).not.toBeNull()
+
+  const restartedContext = serviceCreate(() => now)
+  await restartedContext.storage.authSessionSave({
+    accessToken: "access-token",
+    refreshToken: "refresh-token",
+    expiresAt: now + 60_000,
+    tokenType: "Bearer",
+    scope: "api offline_access",
+    accountId: null,
+    email: passwordLogin.email,
+  })
+  await restartedContext.storage.sessionStateSave({ status: "unlocked", unlockedAt: now })
+  await restartedContext.storage.lockPolicySave({ action: "logout", timeoutMinutes: null })
+  const restartedService = extensionBackgroundServiceCreate({
+    storage: restartedContext.storage,
+    vaultSession: restartedContext.vaultSession,
+    alarms: restartedContext.alarms,
+    now: () => now,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(nowValue),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+  expect((await restartedService.start()).success).toBe(true)
+  const restartedAuth = await restartedContext.storage.authSessionLoad()
+  const restartedState = await restartedContext.storage.sessionStateLoad()
+  expect(restartedAuth.success).toBe(true)
+  expect(restartedState.success).toBe(true)
+  if (!restartedAuth.success || !restartedState.success) return
+  expect(restartedAuth.data).toBeNull()
+  expect(restartedState.data).toBeNull()
+  expect(restartedContext.clearCalls).toContain(extensionTimeoutAlarmName)
+  expect(restartedContext.alarmListenerRead()).not.toBeNull()
+})
