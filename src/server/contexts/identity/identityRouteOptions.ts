@@ -6,6 +6,7 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
+import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 
 export type IdentityRouteOptions = {
   clock: Clock
@@ -16,6 +17,7 @@ export type IdentityRouteOptions = {
   privateKey: KeyInput | undefined
   publicKey: KeyInput | undefined
   publicOrigin: string | undefined
+  push?: PushRelayAdapter
   rateLimiter: { check: (key: string) => Result<void> }
   sso?: IdentitySsoAdapter
 }
