@@ -618,7 +618,11 @@ async function emergencyAccessView(
   if (!ciphersResult.success) return apiErrorResponseCreate(ciphersResult)
   const ciphers: Record<string, unknown>[] = []
   for (const cipher of ciphersResult.data) {
-    const jsonResult = cipherToJson(requestResult.data.database, cipher, accessResult.data.grantorUuid)
+    const jsonResult = await cipherToJson(requestResult.data.database, cipher, accessResult.data.grantorUuid, {
+      clock: options.clock,
+      origin: new URL(options.publicOrigin ?? context.req.url).origin,
+      privateKey: options.privateKey,
+    })
     if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
     ciphers.push(jsonResult.data)
   }

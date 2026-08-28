@@ -1,7 +1,11 @@
+import type { KeyInput } from "jose"
 import { type Result } from "#result"
+import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { attachmentFindByCipher } from "../attachments/attachmentFindByCipher.js"
+import { attachmentToJson } from "../attachments/attachmentToJson.js"
 import type { Cipher } from "./cipher.js"
 import { cipherArchiveFind } from "./cipherArchiveFind.js"
 import { cipherFavoriteFind } from "./cipherFavoriteFind.js"
@@ -33,13 +37,35 @@ export function cipherToJson(
   database: DatabaseConnection,
   cipher: Cipher,
   userUuid: string,
-): Result<Record<string, unknown>> {
+  options?: { clock: Clock; origin: string; privateKey: KeyInput | undefined },
+): Promise<Result<Record<string, unknown>>> {
+  return cipherToJsonAsync(database, cipher, userUuid, options)
+}
+
+async function cipherToJsonAsync(
+  database: DatabaseConnection,
+  cipher: Cipher,
+  userUuid: string,
+  options: { clock: Clock; origin: string; privateKey: KeyInput | undefined } | undefined,
+): Promise<Result<Record<string, unknown>>> {
   const folderResult = cipherFolderFindByUser(database, cipher.uuid, userUuid)
   if (!folderResult.success) return folderResult
   const favoriteResult = cipherFavoriteFind(database, cipher.uuid, userUuid)
   if (!favoriteResult.success) return favoriteResult
   const archiveResult = cipherArchiveFind(database, cipher.uuid, userUuid)
   if (!archiveResult.success) return archiveResult
+  const attachmentsResult = attachmentFindByCipher(database, cipher.uuid)
+  if (!attachmentsResult.success) return attachmentsResult
+  let attachments: unknown[] | null = null
+  if (attachmentsResult.data.length > 0) {
+    if (options === undefined) return resultErrorCreate("cipherToJson", "Attachment URL signing is unavailable.")
+    attachments = []
+    for (const attachment of attachmentsResult.data) {
+      const attachmentResult = await attachmentToJson(attachment, options)
+      if (!attachmentResult.success) return attachmentResult
+      attachments.push(attachmentResult.data)
+    }
+  }
 
   const typeData = jsonObjectParse(cipher.data)
   const typeKey =
@@ -66,7 +92,7 @@ export function cipherToJson(
     reprompt: cipher.reprompt === 0 || cipher.reprompt === 1 ? cipher.reprompt : 0,
     organizationId: cipher.organizationUuid,
     key: cipher.key,
-    attachments: null,
+    attachments,
     organizationUseTotp: true,
     collectionIds: [],
     name: cipher.name,

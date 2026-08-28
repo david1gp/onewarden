@@ -11,6 +11,9 @@ import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
 import type { AdminRouteOptions } from "./contexts/admin/adminRouteOptions.js"
 import { adminRoutesRegister } from "./contexts/admin/adminRoutesRegister.js"
 import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
+import type { AttachmentFileStorageAdapter } from "./contexts/attachments/attachmentFileStorageAdapter.js"
+import { attachmentFileStorageAdapterCreate } from "./contexts/attachments/attachmentFileStorageAdapterCreate.js"
+import { attachmentRoutesRegister } from "./contexts/attachments/attachmentRoutesRegister.js"
 import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotificationAdapter.js"
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { EmergencyAccessNotificationAdapter } from "./contexts/emergencyAccess/emergencyAccessNotificationAdapter.js"
@@ -70,6 +73,15 @@ type ServerAppOptions = {
     Pick<WebRouteOptions, "publicOrigin" | "staticFolder" | "version" | "webVaultEnabled" | "webVaultFolder">
   >
   admin?: Omit<Partial<AdminRouteOptions>, "config"> & { config?: Partial<AdminRouteOptions["config"]> }
+  attachments?: {
+    maxFileSizeBytes?: number
+    notification?: CipherNotificationAdapter
+    organizationQuotaBytes?: number | null
+    push?: PushRelayAdapter
+    quotaBytes?: number | null
+    storage?: AttachmentFileStorageAdapter
+    userQuotaBytes?: number | null
+  }
 }
 
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
@@ -130,6 +142,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
       identifier: identityIdentifier,
       logger: options?.logger,
     })
+  const attachmentStorage = options?.attachments?.storage ?? attachmentFileStorageAdapterCreate()
   const adminOptions = options?.admin
   const adminConfig = adminConfigCreate(adminOptions?.config)
   adminRoutesRegister(app, {
@@ -205,13 +218,30 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     push,
   })
   cipherRoutesRegister(app, {
+    attachmentStorage,
     clock: identityClock,
     database: identityDatabase,
     identifier: identityIdentifier,
     maxNoteSize: options?.ciphers?.maxNoteSize,
     notification: options?.ciphers?.notification ?? notificationHub.adapter,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+  })
+  attachmentRoutesRegister(app, {
+    clock: identityClock,
+    database: identityDatabase,
+    identifier: identityIdentifier,
+    maxFileSizeBytes: options?.attachments?.maxFileSizeBytes,
+    notification: options?.attachments?.notification ?? notificationHub.adapter,
+    organizationQuotaBytes: options?.attachments?.organizationQuotaBytes,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+    push: options?.attachments?.push ?? push,
+    quotaBytes: options?.attachments?.quotaBytes,
+    storage: attachmentStorage,
+    userQuotaBytes: options?.attachments?.userQuotaBytes,
   })
   sendRoutesRegister(app, {
     clock: identityClock,
