@@ -64,6 +64,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/users/:user_id/public-key" },
   ...duplicatedRouteRegistrations,
   { basePath: "/", method: "GET", path: "/health" },
+  { basePath: "/", method: "GET", path: "/icons/:host/icon.png" },
   { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
   { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },
   { basePath: "/", method: "GET", path: "/identity/sso/prevalidate" },
