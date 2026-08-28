@@ -19,6 +19,7 @@ const serverConfigProxySchema = v.pipe(
   v.transform((value) => value === "true"),
 )
 const serverConfigPublicOriginSchema = v.pipe(v.string(), v.trim(), v.url())
+const serverConfigWebVaultFolderSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
 
 export const serverConfigSchema = v.object({
   HOST: v.optional(serverConfigHostSchema, "127.0.0.1"),
@@ -27,6 +28,8 @@ export const serverConfigSchema = v.object({
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
   PUBLIC_ORIGIN: v.optional(serverConfigPublicOriginSchema),
+  WEB_VAULT_ENABLED: v.optional(serverConfigProxySchema, "true"),
+  WEB_VAULT_FOLDER: v.optional(serverConfigWebVaultFolderSchema, "./build/web"),
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>

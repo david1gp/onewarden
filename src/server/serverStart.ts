@@ -38,6 +38,10 @@ const app = serverAppCreate({
   database,
   identity: { config: identityConfigResult.data, publicOrigin: configResult.data.PUBLIC_ORIGIN },
   logger,
+  web: {
+    webVaultEnabled: configResult.data.WEB_VAULT_ENABLED,
+    webVaultFolder: configResult.data.WEB_VAULT_FOLDER,
+  },
 })
 try {
   const server = Bun.serve({
