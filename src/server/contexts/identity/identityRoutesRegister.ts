@@ -22,6 +22,7 @@ import { identitySsoLogin } from "./identitySsoLogin.js"
 import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateTokenCreate.js"
 import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
+import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
 
 export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
   const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
@@ -100,6 +101,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
         sso,
+        push: options.push,
       })
       if (!result.success) return apiErrorResponseCreate(result)
       return context.json(result.data)
@@ -130,6 +132,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
+        push: options.push,
       })
       if (!result.success) return apiErrorResponseCreate(result)
       return context.json(result.data)
@@ -273,6 +276,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json(result.data.token)
   })
   identityAccountRoutesRegister(app, options)
+  identityDevicePushRoutesRegister(app, options)
 }
 
 function identityInvalidGrantResponse(): Response {

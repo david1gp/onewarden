@@ -10,10 +10,8 @@ import type { AuthenticationContext } from "../authentication/authenticationCont
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
-import { identityDeviceClearPushTokenByUuid } from "./identityDeviceClearPushTokenByUuid.js"
 import { identityDeviceDeleteAllByUser } from "./identityDeviceDeleteAllByUser.js"
 import { identityDeviceFindByUser } from "./identityDeviceFindByUser.js"
-import { identityDeviceFindByUuid } from "./identityDeviceFindByUuid.js"
 import { identityDeviceFindByUuidAndUser } from "./identityDeviceFindByUuidAndUser.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
 import { identityDeviceSave } from "./identityDeviceSave.js"
@@ -27,7 +25,6 @@ import { identityAccountKeysDataSchema } from "./identityAccountKeysDataSchema.j
 import { identityAccountPasswordDataSchema } from "./identityAccountPasswordDataSchema.js"
 import { identityAccountPasswordOrOtpDataSchema } from "./identityAccountPasswordOrOtpDataSchema.js"
 import { identityAccountProfileDataSchema } from "./identityAccountProfileDataSchema.js"
-import { identityAccountPushTokenDataSchema } from "./identityAccountPushTokenDataSchema.js"
 import { identityAccountRotateKeysDataSchema } from "./identityAccountRotateKeysDataSchema.js"
 import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswordDataSchema.js"
 import type { IdentityAccountPasswordOrOtpData } from "./identityAccountPasswordOrOtpDataSchema.js"
@@ -586,50 +583,6 @@ export function identityAccountRoutesRegister(
     return context.json(identityDeviceToJson(deviceResult.data))
   }
 
-  const updateDeviceToken = async (context: Context<AuthenticationEnvironment>) => {
-    const requestContext = identityAccountRequestContextResolve(context, options)
-    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const bodyResult = await requestBodyParse(context, identityAccountPushTokenDataSchema)
-    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
-    const deviceResult = identityDeviceFindByUuidAndUser(
-      requestContext.data.database,
-      requestContext.data.authentication.device.uuid,
-      requestContext.data.authentication.user.uuid,
-    )
-    if (!deviceResult.success) return apiErrorResponseCreate(deviceResult)
-    if (deviceResult.data === null)
-      return apiErrorResponseCreate(
-        identityDomainErrorCreate(
-          "identityAccountDeviceToken",
-          `Error: device ${context.req.param("device_id")} should be present before a token can be assigned`,
-        ),
-      )
-    if (deviceResult.data.pushToken === bodyResult.data.pushToken) return new Response(null, { status: 200 })
-    deviceResult.data.pushToken = bodyResult.data.pushToken
-    const saveResult = identityDeviceSave(requestContext.data.database, deviceResult.data, options.clock, true)
-    if (!saveResult.success) return apiErrorResponseCreate(saveResult)
-    return new Response(null, { status: 200 })
-  }
-
-  const clearDeviceToken = (context: Context<AuthenticationEnvironment>) => {
-    const rateLimitResult = options.rateLimiter.check(identityAccountClientIpResolve(context))
-    if (!rateLimitResult.success) return apiErrorResponseCreate(rateLimitResult)
-    const database = options.database ?? context.get("database")
-    if (database === undefined)
-      return apiErrorResponseCreate(
-        apiErrorCreate("identityAccountClearDeviceToken", "platform.internal", "Database unavailable."),
-      )
-    const deviceId = context.req.param("device_id")
-    if (deviceId === undefined) return new Response(null, { status: 200 })
-    const deviceResult = identityDeviceFindByUuid(database, deviceId)
-    if (!deviceResult.success) return apiErrorResponseCreate(deviceResult)
-    if (deviceResult.data !== null) {
-      const clearResult = identityDeviceClearPushTokenByUuid(database, deviceId)
-      if (!clearResult.success) return apiErrorResponseCreate(clearResult)
-    }
-    return new Response(null, { status: 200 })
-  }
-
   app.post("/api/accounts/set-password", authenticate("post_set_password"), setPassword)
   app.get("/api/accounts/profile", authenticate("profile"), profile)
   app.put("/api/accounts/profile", authenticate("put_profile"), updateProfile)
@@ -650,10 +603,6 @@ export function identityAccountRoutesRegister(
   app.get("/api/devices/knowndevice", knownDevice)
   app.get("/api/devices", authenticate("get_all_devices"), devices)
   app.get("/api/devices/identifier/:device_id", authenticate("get_device"), device)
-  app.post("/api/devices/identifier/:device_id/token", authenticate("post_device_token"), updateDeviceToken)
-  app.put("/api/devices/identifier/:device_id/token", authenticate("put_device_token"), updateDeviceToken)
-  app.put("/api/devices/identifier/:device_id/clear-token", clearDeviceToken)
-  app.post("/api/devices/identifier/:device_id/clear-token", clearDeviceToken)
 }
 
 function identityAccountRequestContextResolve(
