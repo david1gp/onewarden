@@ -6,6 +6,7 @@ import type { Cipher } from "./cipher.js"
 import { cipherArchiveFind } from "./cipherArchiveFind.js"
 import { cipherFavoriteFind } from "./cipherFavoriteFind.js"
 import { cipherFolderFindByUser } from "./cipherFolderFindByUser.js"
+import { cipherPasswordHistoryNormalize } from "./cipherPasswordHistoryNormalize.js"
 
 function jsonObjectParse(value: string): Record<string, unknown> {
   try {
@@ -71,7 +72,7 @@ export function cipherToJson(
     name: cipher.name,
     notes: cipher.notes,
     fields: jsonArrayParse(cipher.fields),
-    passwordHistory: jsonArrayParse(cipher.passwordHistory),
+    passwordHistory: cipherPasswordHistoryNormalize(cipher.passwordHistory),
     login: null,
     secureNote: null,
     card: null,
