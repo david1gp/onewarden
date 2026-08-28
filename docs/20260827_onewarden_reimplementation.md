@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8, 9, 10, 13, and 14 are complete on main; tasks 29, 30, and 32 are verified, separately committed, and pushed on isolated branches, and remain queued for one-at-a-time integration and reverification on main.
+- Current context: tasks 8, 9, 10, 13, 14, and 29 are complete on main; tasks 30 and 32 are verified, separately committed, and pushed on isolated branches, and remain queued for one-at-a-time integration and reverification on main.
 
 # Tasks
 
@@ -55,7 +55,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [ ] 26. Port emergency-access invite, accept, confirm, initiate, approve, reject, view, takeover, timeout, and reminder behavior with tests.
 - [ ] 27. Port public organization import and remaining public compatibility endpoints with tests.
 - [ ] 28. Port authenticated and anonymous notification hubs, SignalR MessagePack framing, ping behavior, update types, and connection limits with tests.
-- [ ] 29. Port optional push-relay device registration, token caching, dispatch, and failure behavior behind an adapter with tests.
+- [x] 29. Port optional push-relay device registration, token caching, dispatch, and failure behavior behind an adapter with tests.
 - [ ] 30. Port icon retrieval, caching, fallback, SSRF protection, redirect, and content-type behavior with tests.
 - [ ] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
 - [ ] 32. Port static/web compatibility routes, health endpoints, configuration endpoints, legacy aliases, and fallback behavior with tests.
