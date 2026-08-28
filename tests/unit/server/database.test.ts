@@ -142,6 +142,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 6 },
     { version: 8 },
     { version: 9 },
+    { version: 10 },
     { version: 11 },
     { version: 12 },
   ])
@@ -354,6 +355,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 6 },
       { version: 8 },
       { version: 9 },
+      { version: 10 },
       { version: 11 },
       { version: 12 },
     ])
