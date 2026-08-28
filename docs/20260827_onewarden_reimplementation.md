@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8, 9, 10, 11, 13, 14, 25, 27, and 28-32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; task 27 excludes organization-policy restore enforcement and organization-key mutation assigned to tasks 19-24.
+- Current context: tasks 8, 9, 10, 11, 13, 14, 18, 25, 27, and 28-32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; task 26 emergency access is implemented and verified in an isolated worktree pending a separate commit/push step; task 27 excludes organization-policy restore enforcement and organization-key mutation assigned to tasks 19-24.
 
 # Tasks
 
@@ -44,7 +44,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [ ] 15. Port cipher sharing, collection assignment, organization ownership transfer, and access-control behavior with tests.
 - [ ] 16. Port attachment metadata, upload, download-token, download, replacement, quota, and deletion behavior with tests.
 - [ ] 17. Port sync responses, domains, equivalent domains, profile composition, revisions, and exclusion rules with tests.
-- [ ] 18. Port personal import/export and cipher-password-history behavior with tests.
+- [x] 18. Port personal import/export and cipher-password-history behavior with tests.
 - [ ] 19. Port organization creation, update, deletion, keys, billing compatibility, limits, and seat behavior with tests.
 - [ ] 20. Port organization membership invite, accept, confirm, update, remove, restore, resend, and bulk behavior with tests.
 - [ ] 21. Port collection CRUD, user/group assignments, access details, and bulk behavior with tests.
