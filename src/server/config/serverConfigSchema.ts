@@ -19,6 +19,14 @@ const serverConfigProxySchema = v.pipe(
   v.transform((value) => value === "true"),
 )
 const serverConfigPublicOriginSchema = v.pipe(v.string(), v.trim(), v.url())
+const serverConfigPushEnabledSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.picklist(["false", "true"]),
+  v.transform((value) => value === "true"),
+)
+const serverConfigPushUriSchema = v.pipe(v.string(), v.trim())
+const serverConfigPushCredentialSchema = v.pipe(v.string(), v.trim())
 
 export const serverConfigSchema = v.object({
   HOST: v.optional(serverConfigHostSchema, "127.0.0.1"),
@@ -27,6 +35,11 @@ export const serverConfigSchema = v.object({
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
   PUBLIC_ORIGIN: v.optional(serverConfigPublicOriginSchema),
+  PUSH_ENABLED: v.optional(serverConfigPushEnabledSchema, "false"),
+  PUSH_RELAY_URI: v.optional(serverConfigPushUriSchema, "https://push.bitwarden.com"),
+  PUSH_IDENTITY_URI: v.optional(serverConfigPushUriSchema, "https://identity.bitwarden.com"),
+  PUSH_INSTALLATION_ID: v.optional(serverConfigPushCredentialSchema, ""),
+  PUSH_INSTALLATION_KEY: v.optional(serverConfigPushCredentialSchema, ""),
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>

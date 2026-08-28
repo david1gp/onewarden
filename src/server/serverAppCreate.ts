@@ -10,6 +10,10 @@ import type { Logger } from "../shared/logging/logger.js"
 import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
+import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
+import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
+import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
+import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
@@ -29,6 +33,7 @@ type ServerAppOptions = {
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
   logger?: Logger
+  push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
 }
 
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
@@ -78,6 +83,14 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   const identityConfig = identityOptions?.config ?? identityConfigCreate()
   const identityDatabase = identityOptions?.database ?? database
   const identityIdentifier = identityOptions?.identifier ?? options?.identifier ?? identifierCreate()
+  const push =
+    options?.push?.adapter ??
+    identityOptions?.push ??
+    pushRelayAdapterCreate(options?.push?.configuration ?? pushRelayConfigurationCreate(), {
+      clock: identityClock,
+      identifier: identityIdentifier,
+      logger: options?.logger,
+    })
   identityRoutesRegister(app, {
     clock: identityClock,
     config: identityConfig,
@@ -87,6 +100,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+    push,
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
   })
@@ -97,6 +111,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     notification: options?.folders?.notification,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+    push,
   })
   return app
 }

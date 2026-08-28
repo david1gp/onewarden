@@ -38,6 +38,15 @@ const app = serverAppCreate({
   database,
   identity: { config: identityConfigResult.data, publicOrigin: configResult.data.PUBLIC_ORIGIN },
   logger,
+  push: {
+    configuration: {
+      enabled: configResult.data.PUSH_ENABLED,
+      relayUri: configResult.data.PUSH_RELAY_URI,
+      identityUri: configResult.data.PUSH_IDENTITY_URI,
+      installationId: configResult.data.PUSH_INSTALLATION_ID,
+      installationKey: configResult.data.PUSH_INSTALLATION_KEY,
+    },
+  },
 })
 try {
   const server = Bun.serve({
