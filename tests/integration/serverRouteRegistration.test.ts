@@ -80,6 +80,22 @@ const duplicatedEmergencyAccessRouteRegistrations = [
 ].flatMap((registration) => [registration, registration])
 
 const currentRouteRegistrations = [
+  ...[
+    { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/v2" },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment" },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment-admin" },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/:attachment_id/share" },
+    {
+      basePath: "/",
+      method: "POST",
+      path: "/api/ciphers/:cipher_id/attachment/:attachment_id/delete-admin",
+    },
+    { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/:attachment_id/delete" },
+    { basePath: "/", method: "DELETE", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
+    { basePath: "/", method: "DELETE", path: "/api/ciphers/:cipher_id/attachment/:attachment_id/admin" },
+  ].flatMap((registration) => [registration, registration]),
   { basePath: "/", method: "GET", path: "/api/sends/:send_id/:file_id" },
   { basePath: "/", method: "DELETE", path: "/api/accounts" },
   { basePath: "/", method: "DELETE", path: "/api/accounts" },
