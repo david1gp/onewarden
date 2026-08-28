@@ -6,10 +6,13 @@ import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
+import { sendFileStorageAdapterCreate } from "./contexts/sends/sendFileStorageAdapterCreate.js"
+import { sendPurge } from "./contexts/sends/sendPurge.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
 import { serverAppCreate } from "./serverAppCreate.js"
+import { clockCreate } from "../shared/clock/clockCreate.js"
 
 const defaultLogger = loggerCreate()
 const configResult = serverConfigLoad()
@@ -52,6 +55,7 @@ if (!tokenKeyPairResult.success) {
   process.exit(1)
 }
 const tokenKeyPair = tokenKeyPairResult.data
+const sendStorage = sendFileStorageAdapterCreate({ directory: configResult.data.SENDS_FOLDER })
 const notificationHub = notificationHubCreate({
   enabled: configResult.data.ENABLE_WEBSOCKET,
   proxy: configResult.data.PROXY,
@@ -91,6 +95,11 @@ const app = serverAppCreate({
       installationKey: configResult.data.PUSH_INSTALLATION_KEY,
     },
   },
+  sends: {
+    quotaBytes: configResult.data.USER_SEND_LIMIT === undefined ? undefined : configResult.data.USER_SEND_LIMIT * 1_024,
+    sendsAllowed: configResult.data.SENDS_ALLOWED,
+    storage: sendStorage,
+  },
   web: {
     webVaultEnabled: configResult.data.WEB_VAULT_ENABLED,
     webVaultFolder: configResult.data.WEB_VAULT_FOLDER,
@@ -112,6 +121,14 @@ try {
     port: configResult.data.PORT,
   })
 
+  const purgeClock = clockCreate()
+  const purgeSends = async (): Promise<void> => {
+    const result = await sendPurge(database, purgeClock, sendStorage)
+    if (!result.success) logger.error("send.purge-failed", { errorMessage: result.errorMessage })
+  }
+  const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
+  void purgeSends()
+
   let shutdownPromise: Promise<void> | undefined
   const shutdown = (): Promise<void> => {
     if (shutdownPromise !== undefined) return shutdownPromise
@@ -121,6 +138,7 @@ try {
       } catch {
         logger.error("server.stop-failed", { error: "stop-failed" })
       }
+      clearInterval(purgeInterval)
       const closeResult = databaseClose(database)
       if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
     })()

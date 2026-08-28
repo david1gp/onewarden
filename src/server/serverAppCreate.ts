@@ -22,6 +22,10 @@ import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
 import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
 import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
+import type { SendNotificationAdapter } from "./contexts/sends/sendNotificationAdapter.js"
+import { sendRoutesRegister } from "./contexts/sends/sendRoutesRegister.js"
+import type { SendFileStorageAdapter } from "./contexts/sends/sendFileStorageAdapter.js"
+import type { SendRateLimiter } from "./contexts/sends/sendRouteOptions.js"
 import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
 import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
@@ -49,6 +53,14 @@ type ServerAppOptions = {
   logger?: Logger
   notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
+  sends?: {
+    notification?: SendNotificationAdapter
+    push?: PushRelayAdapter
+    quotaBytes?: number | null
+    rateLimiter?: SendRateLimiter
+    sendsAllowed?: boolean
+    storage?: SendFileStorageAdapter
+  }
   web?: Partial<
     Pick<WebRouteOptions, "publicOrigin" | "staticFolder" | "version" | "webVaultEnabled" | "webVaultFolder">
   >
@@ -171,6 +183,20 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     notification: options?.ciphers?.notification ?? notificationHub.adapter,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+  })
+  sendRoutesRegister(app, {
+    clock: identityClock,
+    database: identityDatabase,
+    identifier: identityIdentifier,
+    notification: options?.sends?.notification ?? notificationHub.adapter,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+    push: options?.sends?.push ?? push,
+    quotaBytes: options?.sends?.quotaBytes,
+    rateLimiter: options?.sends?.rateLimiter ?? identityOptions?.rateLimiter,
+    sendsAllowed: options?.sends?.sendsAllowed,
+    storage: options?.sends?.storage,
   })
   iconRoutesRegister(app, {
     ...options?.icons,
