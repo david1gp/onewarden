@@ -8,6 +8,7 @@ export type CipherRouteOptions = {
   clock: Clock
   database: DatabaseConnection | undefined
   identifier: Identifier
+  maxNoteSize?: number
   notification?: CipherNotificationAdapter
   publicKey: KeyInput | undefined
   publicOrigin: string | undefined

@@ -56,6 +56,7 @@ export const serverConfigSchema = v.object({
   SENDS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/sends"),
   SENDS_ALLOWED: v.optional(serverConfigProxySchema, "true"),
   USER_SEND_LIMIT: serverConfigOptionalNonNegativeIntegerSchema,
+  INCREASE_NOTE_SIZE_LIMIT: v.optional(serverConfigProxySchema, "false"),
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
   ENABLE_WEBSOCKET: v.optional(serverConfigProxySchema, "true"),

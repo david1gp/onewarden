@@ -3,4 +3,5 @@ export const cipherUpdateType = {
   create: 1,
   delete: 2,
   sync: 4,
+  syncVault: 5,
 } as const
