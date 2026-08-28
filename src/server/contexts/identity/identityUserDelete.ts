@@ -53,6 +53,11 @@ export function identityUserDelete(database: DatabaseConnection, user: IdentityU
       database.run("DELETE FROM sso_users WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM users_organizations WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM invitations WHERE email = ?", [user.email])
+      database.run(
+        `DELETE FROM emergency_access
+         WHERE grantor_uuid = ? OR grantee_uuid = ? OR email = ?`,
+        [user.uuid, user.uuid, user.email],
+      )
       database.run("DELETE FROM devices WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM users WHERE uuid = ?", [user.uuid])
       return resultCreate(undefined)

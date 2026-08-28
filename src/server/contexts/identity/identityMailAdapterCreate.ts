@@ -64,5 +64,37 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
     },
     sendInvite: async () => resultCreate(undefined),
     sendTest: async () => resultCreate(undefined),
+    sendEmergencyAccessInvite: async (email, userId, emergencyAccessId, _grantorName, grantorEmail, token) => {
+      record("emergencyAccessInvite", email, token, userId, emergencyAccessId, grantorEmail)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessInviteAccepted: async (email, granteeEmail) => {
+      record("emergencyAccessInviteAccepted", email, null, null, granteeEmail)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessInviteConfirmed: async (email, grantorName) => {
+      record("emergencyAccessInviteConfirmed", email, null, null, null, grantorName)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessRecoveryInitiated: async (email, granteeName, type, waitTimeDays) => {
+      record("emergencyAccessRecoveryInitiated", email, null, null, `${type}:${waitTimeDays}`, granteeName)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessRecoveryApproved: async (email, grantorName) => {
+      record("emergencyAccessRecoveryApproved", email, null, null, null, grantorName)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessRecoveryRejected: async (email, grantorName) => {
+      record("emergencyAccessRecoveryRejected", email, null, null, null, grantorName)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessRecoveryReminder: async (email, granteeName, type, daysLeft) => {
+      record("emergencyAccessRecoveryReminder", email, null, null, `${type}:${daysLeft}`, granteeName)
+      return resultCreate(undefined)
+    },
+    sendEmergencyAccessRecoveryTimedOut: async (email, granteeName, type) => {
+      record("emergencyAccessRecoveryTimedOut", email, null, null, type, granteeName)
+      return resultCreate(undefined)
+    },
   }
 }

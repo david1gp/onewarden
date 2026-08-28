@@ -10,6 +10,14 @@ export type IdentityMailMessage = {
     | "verifyEmail"
     | "deleteAccount"
     | "passwordHint"
+    | "emergencyAccessInvite"
+    | "emergencyAccessInviteAccepted"
+    | "emergencyAccessInviteConfirmed"
+    | "emergencyAccessRecoveryInitiated"
+    | "emergencyAccessRecoveryApproved"
+    | "emergencyAccessRecoveryRejected"
+    | "emergencyAccessRecoveryReminder"
+    | "emergencyAccessRecoveryTimedOut"
   token: string | null
   userId: string | null
   targetEmail: string | null
