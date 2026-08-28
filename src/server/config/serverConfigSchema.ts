@@ -35,6 +35,7 @@ export const serverConfigSchema = v.object({
   DATABASE_PATH: v.optional(serverConfigDatabasePathSchema, "./data/onewarden.sqlite3"),
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
+  ENABLE_WEBSOCKET: v.optional(serverConfigProxySchema, "true"),
   PUBLIC_ORIGIN: v.optional(serverConfigPublicOriginSchema),
   PUSH_ENABLED: v.optional(serverConfigPushEnabledSchema, "false"),
   PUSH_RELAY_URI: v.optional(serverConfigPushUriSchema, "https://push.bitwarden.com"),

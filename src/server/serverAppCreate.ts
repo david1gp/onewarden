@@ -12,6 +12,9 @@ import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotific
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
+import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
+import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
+import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
 import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
 import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
@@ -41,6 +44,7 @@ type ServerAppOptions = {
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
   logger?: Logger
+  notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
   web?: Partial<
     Pick<WebRouteOptions, "publicOrigin" | "staticFolder" | "version" | "webVaultEnabled" | "webVaultFolder">
@@ -104,6 +108,16 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
       identifier: identityIdentifier,
       logger: options?.logger,
     })
+  const notificationHub =
+    options?.notifications?.hub ??
+    notificationHubCreate({
+      clock: identityClock,
+      enabled: options?.notifications?.enabled,
+      identifier: identityIdentifier,
+      proxy: options?.notifications?.proxy,
+      publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+      publicOrigin: identityOptions?.publicOrigin,
+    })
   identityRoutesRegister(app, {
     clock: identityClock,
     config: identityConfig,
@@ -121,7 +135,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     database: identityDatabase,
     identifier: identityIdentifier,
-    notification: options?.folders?.notification,
+    notification: options?.folders?.notification ?? notificationHub.adapter,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
     push,
@@ -130,7 +144,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     database: identityDatabase,
     identifier: identityIdentifier,
-    notification: options?.ciphers?.notification,
+    notification: options?.ciphers?.notification ?? notificationHub.adapter,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
   })
@@ -149,5 +163,6 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     webVaultEnabled,
     webVaultFolder: options?.web?.webVaultFolder,
   })
+  notificationRoutesRegister(app, notificationHub.enabled)
   return app
 }
