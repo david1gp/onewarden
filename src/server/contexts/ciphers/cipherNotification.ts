@@ -1,5 +1,6 @@
 export type CipherNotification = {
   contextId: string
+  userIds?: readonly string[]
   payload: {
     Id: string
     UserId: string | null
