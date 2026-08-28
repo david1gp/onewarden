@@ -62,5 +62,7 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
       record("passwordHint", email)
       return resultCreate(undefined)
     },
+    sendInvite: async () => resultCreate(undefined),
+    sendTest: async () => resultCreate(undefined),
   }
 }

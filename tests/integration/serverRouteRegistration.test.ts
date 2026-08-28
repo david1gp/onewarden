@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
+import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 import { serverRouteRegistrationDrift } from "../../src/server/serverRouteRegistrationDrift.js"
 import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteRegistrationIntrospect.js"
-import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 
 const duplicatedRouteRegistrations = [
   { basePath: "/", method: "DELETE", path: "/api/ciphers" },
@@ -66,6 +66,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/" },
   { basePath: "/", method: "GET", path: "/*" },
   { basePath: "/", method: "GET", path: "/.well-known/apple-app-site-association" },
+  { basePath: "/", method: "GET", path: "/admin/" },
   { basePath: "/", method: "GET", path: "/alive" },
   { basePath: "/", method: "GET", path: "/api/alive" },
   { basePath: "/", method: "GET", path: "/api/config" },
