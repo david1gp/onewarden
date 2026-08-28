@@ -143,6 +143,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 8 },
     { version: 9 },
     { version: 11 },
+    { version: 12 },
   ])
   expect(
     result.data
@@ -152,11 +153,12 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
   expect(
     result.data
       .query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'favorites', 'archives', 'sends', 'emergency_access') ORDER BY name",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'favorites', 'archives', 'sends', 'emergency_access', 'attachments') ORDER BY name",
       )
       .all(),
   ).toEqual([
     { name: "archives" },
+    { name: "attachments" },
     { name: "ciphers" },
     { name: "collections" },
     { name: "collections_groups" },
@@ -353,6 +355,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 8 },
       { version: 9 },
       { version: 11 },
+      { version: 12 },
     ])
     databaseClose(result.data)
   }
@@ -376,6 +379,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 11 })
+  expect(await response.json()).toEqual({ version: 12 })
   databaseClose(databaseResult.data)
 })
