@@ -14,7 +14,6 @@ import { identityDeviceDeleteAllByUser } from "./identityDeviceDeleteAllByUser.j
 import { identityDeviceFindByUser } from "./identityDeviceFindByUser.js"
 import { identityDeviceFindByUuidAndUser } from "./identityDeviceFindByUuidAndUser.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
-import { identityDeviceSave } from "./identityDeviceSave.js"
 import { identityDeviceToJson } from "./identityDeviceToJson.js"
 import { identityDeviceWithAuthRequestToJson } from "./identityDeviceWithAuthRequestToJson.js"
 import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
