@@ -2,6 +2,8 @@ import { loggerCreate } from "../shared/logging/loggerCreate.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
+import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
+import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
@@ -41,14 +43,35 @@ if (!migrationResult.success) {
   process.exit(1)
 }
 
+const tokenKeyPairResult = identityTokenKeyPairResolve(database)
+if (!tokenKeyPairResult.success) {
+  logger.error("identity.key-pair-failed", { errorMessage: tokenKeyPairResult.errorMessage })
+  const closeResult = databaseClose(database)
+  if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
+  process.exit(1)
+}
+const tokenKeyPair = tokenKeyPairResult.data
+const notificationHub = notificationHubCreate({
+  enabled: configResult.data.ENABLE_WEBSOCKET,
+  proxy: configResult.data.PROXY,
+  publicKey: tokenKeyPair.publicKey,
+  publicOrigin: configResult.data.PUBLIC_ORIGIN,
+})
+
 const app = serverAppCreate({
   database,
   icons: {
     cache: iconCacheAdapterCreate({ directory: iconConfigResult.data.ICON_CACHE_FOLDER }),
     config: iconConfigResult.data,
   },
-  identity: { config: identityConfigResult.data, publicOrigin: configResult.data.PUBLIC_ORIGIN },
+  identity: {
+    config: identityConfigResult.data,
+    privateKey: tokenKeyPair.privateKey,
+    publicKey: tokenKeyPair.publicKey,
+    publicOrigin: configResult.data.PUBLIC_ORIGIN,
+  },
   logger,
+  notifications: { hub: notificationHub },
   push: {
     configuration: {
       enabled: configResult.data.PUSH_ENABLED,
@@ -65,9 +88,14 @@ const app = serverAppCreate({
 })
 try {
   const server = Bun.serve({
-    fetch: app.fetch,
+    fetch: async (request, bunServer) => {
+      const upgradeResult = await notificationHub.upgrade(request, bunServer)
+      if (upgradeResult !== undefined) return upgradeResult
+      return app.fetch(request)
+    },
     hostname: configResult.data.HOST,
     port: configResult.data.PORT,
+    websocket: notificationHub.websocket,
   })
   logger.info("server.started", {
     host: configResult.data.HOST,
