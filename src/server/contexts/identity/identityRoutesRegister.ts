@@ -1,5 +1,6 @@
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
+import type { ResultErr } from "#result"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { identityOriginResolve } from "./identityOriginResolve.js"
@@ -23,6 +24,7 @@ import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateToken
 import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
+import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
 
 export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
   const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
@@ -49,6 +51,30 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
       })
       if (!result.success) return identityInvalidGrantResponse()
       return context.json(result.data)
+    }
+    if (data.grantType === "send_access") {
+      if (data.clientId === undefined)
+        return identitySendAccessErrorResponse("client_id cannot be blank", "send_id_invalid", 400)
+      if (data.sendId === undefined)
+        return identitySendAccessErrorResponse("send_id cannot be blank", "send_id_invalid", 400)
+      if (options.database === undefined)
+        return identitySendAccessErrorResponse("Database unavailable.", "send_id_invalid", 500)
+      const result = await sendAccessTokenCreate(
+        options.database,
+        data.sendId,
+        data.passwordHashB64,
+        identityClientIpResolve(context),
+        options.privateKey,
+        issuer,
+        options.clock,
+      )
+      if (!result.success) return identitySendAccessResultErrorResponse(result)
+      return context.json({
+        access_token: result.data.accessToken,
+        expires_in: result.data.expiresIn,
+        token_type: "Bearer",
+        scope: "api.send.access",
+      })
     }
     if (data.grantType === "client_credentials") {
       const requiredFields: Array<[string, string | undefined]> = [
@@ -285,6 +311,39 @@ function identityInvalidGrantResponse(): Response {
     headers: { "content-type": "application/json" },
     status: 400,
   })
+}
+
+function identitySendAccessResultErrorResponse(error: ResultErr): Response {
+  let sendAccessErrorType = "send_id_invalid"
+  if (error.errorData !== undefined && error.errorData !== null) {
+    try {
+      const data: unknown = JSON.parse(error.errorData)
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        typeof (data as { sendAccessErrorType?: unknown }).sendAccessErrorType === "string"
+      )
+        sendAccessErrorType = (data as { sendAccessErrorType: string }).sendAccessErrorType
+    } catch {
+      sendAccessErrorType = "send_id_invalid"
+    }
+  }
+  return identitySendAccessErrorResponse(
+    error.errorMessage,
+    sendAccessErrorType,
+    error.statusCode === 404 ? 404 : error.statusCode === 500 ? 500 : 400,
+  )
+}
+
+function identitySendAccessErrorResponse(message: string, sendAccessErrorType: string, status: number): Response {
+  return new Response(
+    JSON.stringify({
+      error: status === 404 ? "invalid_grant" : "invalid_request",
+      error_description: message,
+      send_access_error_type: sendAccessErrorType,
+    }),
+    { headers: { "content-type": "application/json" }, status },
+  )
 }
 
 function identityClientIpResolve(context: Context): string {

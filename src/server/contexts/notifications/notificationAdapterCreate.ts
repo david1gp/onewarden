@@ -1,6 +1,7 @@
 import type { CipherNotification } from "../ciphers/cipherNotification.js"
 import type { CipherUserNotification } from "../ciphers/cipherUserNotification.js"
 import type { FolderNotification } from "../folders/folderNotification.js"
+import type { SendNotification } from "../sends/sendNotification.js"
 import type { NotificationAdapter } from "./notificationAdapter.js"
 import type { NotificationConnectionRegistry } from "./notificationConnectionRegistry.js"
 import { notificationUpdateFrameCreate } from "./notificationUpdateFrameCreate.js"
@@ -51,5 +52,20 @@ export function notificationAdapterCreate(registry: NotificationConnectionRegist
     })
   }
 
-  return { sendCipherUpdate, sendFolderUpdate, sendUpdate, sendUserUpdate }
+  const sendSendUpdate = (notification: SendNotification): void => {
+    const userIds = notification.userIds ?? (notification.payload.UserId === null ? [] : [notification.payload.UserId])
+    if (userIds.length === 0) return
+    sendUpdate(userIds, {
+      contextId: notification.contextId,
+      payload: {
+        Id: notification.payload.Id,
+        UserId: notification.payload.UserId,
+        OrganizationId: notification.payload.OrganizationId,
+        RevisionDate: new Date(notification.payload.RevisionDate),
+      },
+      type: notification.type,
+    })
+  }
+
+  return { sendCipherUpdate, sendFolderUpdate, sendSendUpdate, sendUpdate, sendUserUpdate }
 }

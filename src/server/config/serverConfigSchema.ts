@@ -38,11 +38,24 @@ const serverConfigAdminSessionLifetimeSchema = v.pipe(
   v.minValue(1),
 )
 const serverConfigInvitationOrganizationNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
+const serverConfigOptionalNonNegativeIntegerSchema = v.optional(
+  v.pipe(
+    v.string(),
+    v.trim(),
+    v.regex(/^\d+$/, "The value must be a non-negative integer."),
+    v.transform(Number),
+    v.integer(),
+    v.minValue(0),
+  ),
+)
 
 export const serverConfigSchema = v.object({
   HOST: v.optional(serverConfigHostSchema, "127.0.0.1"),
   PORT: v.optional(serverConfigPortSchema, "3000"),
   DATABASE_PATH: v.optional(serverConfigDatabasePathSchema, "./data/onewarden.sqlite3"),
+  SENDS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/sends"),
+  SENDS_ALLOWED: v.optional(serverConfigProxySchema, "true"),
+  USER_SEND_LIMIT: serverConfigOptionalNonNegativeIntegerSchema,
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
   ENABLE_WEBSOCKET: v.optional(serverConfigProxySchema, "true"),
