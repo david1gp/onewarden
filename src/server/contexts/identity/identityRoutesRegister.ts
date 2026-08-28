@@ -14,6 +14,7 @@ import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityPasswordLogin } from "./identityPasswordLogin.js"
 import { identityRefreshLogin } from "./identityRefreshLogin.js"
 import type { IdentityRouteOptions } from "./identityRouteOptions.js"
+import { identityAccountRoutesRegister } from "./identityAccountRoutesRegister.js"
 import { identitySsoAuthorize } from "./identitySsoAuthorize.js"
 import { identitySsoAuthorizeDataSchema } from "./identitySsoAuthorizeDataSchema.js"
 import { identitySsoCallback } from "./identitySsoCallback.js"
@@ -271,6 +272,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     if (result.data.kind === "noContent") return new Response(null, { status: 204 })
     return context.json(result.data.token)
   })
+  identityAccountRoutesRegister(app, options)
 }
 
 function identityInvalidGrantResponse(): Response {
