@@ -12,6 +12,8 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       DATABASE_PATH: "./data/onewarden.sqlite3",
       LOG_LEVEL: "info",
       PROXY: false,
+      WEB_VAULT_ENABLED: true,
+      WEB_VAULT_FOLDER: "./build/web",
     },
   })
 })
@@ -35,6 +37,8 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       PORT: 8080,
       PROXY: true,
       PUBLIC_ORIGIN: "https://vault.example.com",
+      WEB_VAULT_ENABLED: true,
+      WEB_VAULT_FOLDER: "./build/web",
     },
   })
 })
@@ -44,4 +48,13 @@ test("serverConfigLoad rejects invalid log level, proxy, and public origin", () 
 
   expect(result.success).toBe(false)
   expect(result).toMatchObject({ op: "serverConfigLoad", success: false })
+})
+
+test("serverConfigLoad parses web vault settings", () => {
+  const result = serverConfigLoad({ WEB_VAULT_ENABLED: "false", WEB_VAULT_FOLDER: " /srv/onewarden/web " })
+
+  expect(result).toMatchObject({
+    success: true,
+    data: { WEB_VAULT_ENABLED: false, WEB_VAULT_FOLDER: "/srv/onewarden/web" },
+  })
 })

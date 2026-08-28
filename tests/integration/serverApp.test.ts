@@ -51,7 +51,7 @@ test("serverAppCreate correlates requests and logs only safe request metadata", 
 })
 
 test("serverAppCreate maps not-found and thrown errors to API errors", async () => {
-  const app = serverAppCreate()
+  const app = serverAppCreate({ web: { webVaultEnabled: false } })
   app.get("/unauthorized", () => {
     throw new HTTPException(401, { message: "Authentication is required." })
   })
