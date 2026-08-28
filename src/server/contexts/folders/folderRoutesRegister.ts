@@ -21,6 +21,7 @@ import type { FolderRouteOptions } from "./folderRouteOptions.js"
 import { folderToJson } from "./folderToJson.js"
 import { folderUpdate } from "./folderUpdate.js"
 import { folderUpdateType } from "./folderUpdateType.js"
+import { pushRelayFolderUpdate } from "../push/pushRelayFolderUpdate.js"
 
 const folderPathSchema = v.object({ folder_id: v.string() })
 
@@ -69,6 +70,14 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     )
     if (!result.success) return apiErrorResponseCreate(result)
     await folderNotificationSend(notification, folderUpdateType.create, result.data, requestContext.data.device)
+    if (options.push !== undefined)
+      await pushRelayFolderUpdate(
+        options.push,
+        folderUpdateType.create,
+        result.data,
+        requestContext.data.device,
+        requestContext.data.database,
+      )
     return context.json(folderToJson(result.data))
   }
 
@@ -88,6 +97,14 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     )
     if (!result.success) return apiErrorResponseCreate(result)
     await folderNotificationSend(notification, folderUpdateType.update, result.data, requestContext.data.device)
+    if (options.push !== undefined)
+      await pushRelayFolderUpdate(
+        options.push,
+        folderUpdateType.update,
+        result.data,
+        requestContext.data.device,
+        requestContext.data.database,
+      )
     return context.json(folderToJson(result.data))
   }
 
@@ -104,6 +121,14 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     )
     if (!result.success) return apiErrorResponseCreate(result)
     await folderNotificationSend(notification, folderUpdateType.delete, result.data, requestContext.data.device)
+    if (options.push !== undefined)
+      await pushRelayFolderUpdate(
+        options.push,
+        folderUpdateType.delete,
+        result.data,
+        requestContext.data.device,
+        requestContext.data.database,
+      )
     return new Response(null, { status: 200 })
   }
 
