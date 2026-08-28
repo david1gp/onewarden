@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: task 5 route compatibility manifest and Hono registration drift verification are complete and all non-e2e checks pass; task 6 identity prelogin and registration behavior is next.
+- Current context: task 6 identity prelogin and registration behavior, focused compatibility fixtures, and Hono route registration drift verification are complete and all non-e2e checks pass; task 7 password-grant token issuance and refresh-token behavior is next.
 
 # Tasks
 
@@ -32,7 +32,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 3. Add shared `Result`, API error envelope, request validation, logging, configuration, clock, identifier, and cryptographic utility foundations.
 - [x] 4. Add SQLite connection lifecycle, migration runner, transaction helpers, test database factory, and initial schema-version table.
 - [x] 5. Build a mechanical upstream route/alias compatibility manifest and a Hono route-registration drift test.
-- [ ] 6. Port identity prelogin, registration capability, registration, verification, and account-creation behavior with tests.
+- [x] 6. Port identity prelogin, registration capability, registration, verification, and account-creation behavior with tests.
 - [ ] 7. Port password-grant token issuance, refresh-token rotation, device identity, token claims, and revocation behavior with tests.
 - [ ] 8. Port API-key, organization API-key, authorization-code, and SSO token grant behavior with tests.
 - [ ] 9. Port authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards with tests.

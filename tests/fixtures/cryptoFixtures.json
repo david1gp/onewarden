@@ -1,0 +1,41 @@
+{
+  "base64": {
+    "bytes": [0, 1, 2, 251, 255],
+    "standard": "AAEC+/8=",
+    "url": "AAEC-_8",
+    "urlPadded": "AAEC-_8="
+  },
+  "sha256": {
+    "input": "abc",
+    "hex": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "hmacSha256": {
+    "key": "key",
+    "input": "The quick brown fox jumps over the lazy dog",
+    "hex": "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+  },
+  "passwordHash": {
+    "password": "password",
+    "salt": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+      31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
+      59, 60, 61, 62, 63
+    ],
+    "defaultIterations": 600000,
+    "defaultHex": "889df5007258eb61bb60720277dc9fd1c99870d23a1df42ed0cc5a908a1cc1d1",
+    "singleIterationSalt": "salt",
+    "singleIterationHex": "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"
+  },
+  "jwt": {
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5N4u9qURbjofiZAUu41h\nwi4QE9VOM6glsprNQpjOE1MC9ShRgALshCHNbbOHY5H7AgzQrQy48CUZNKwTCWou\nJFrE9yn1oQ8GRurPj5/zAF1nZTCEHy4Wk7ma0pQYH7d3qYDwAKBsFrrt5VvELHrT\nX7lMfd4yeR6vgQkYxxCH22xV4uZvqp25xr4Sh1+epIiLXAymxZGkZpgTdS38zojF\na9EmIro46yK53S5YdFSMZdz3cQEb1ZbuLEPKVB5hNmb2P9aKhU8+jN1efUP04Pka\n49G2RGE3y6xMZ3xh+Rn7Hai/j1PA9eVZtyOiaGQi7BVg3hdRbcMGLX32SzwawYQk\nXwIDAQAB\n-----END PUBLIC KEY-----\n",
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3ZhdWx0LmV4YW1wbGV8bG9naW4iLCJzdWIiOiJ1c2VyLTEyMyIsIm5iZiI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwLCJzY29wZSI6WyJhcGkiLCJvZmZsaW5lX2FjY2VzcyJdfQ.zryIDZoe_e8VpdkzIIWtfwIFHfRmHTQTGgtHCHMrrHYlAizHstVWNbPIZyR4NHVhskm2UkhmOQ-lf5QfXtSe13GIHWHL3OlzX1iFjYLG9qPfr3OxPQeb7VL50M_zX7bUsXcnGhSoK83IKGqLDyMspC4a-8GUAuGj32qQ0XYckwDSHMsXYuAMKucJA29UyB-Ops-O_z7boDxqHRPftbKm-BJA_EIIlTnLg3KOyaKoTdI1dC275Q4JS_xGLovyL034QW2GbFaR4YMCmHV6xwX6nuryjQrC0J3yoFhlH6OEeEFXAtGLXVd6rXaJAZ3WpfQuMibjDnk1eh2VdK28CP_1mQ",
+    "issuer": "https://vault.example|login",
+    "claims": {
+      "iss": "https://vault.example|login",
+      "sub": "user-123",
+      "nbf": 1700000000,
+      "exp": 1700003600,
+      "scope": ["api", "offline_access"]
+    }
+  }
+}

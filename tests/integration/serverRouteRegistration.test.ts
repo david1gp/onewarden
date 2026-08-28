@@ -4,21 +4,24 @@ import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteR
 import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 
 const currentRouteRegistrations = [
-  { basePath: "/", method: "GET", path: "/alive" },
-  { basePath: "/", method: "GET", path: "/api/alive" },
-  { basePath: "/", method: "GET", path: "/api/config" },
-  { basePath: "/", method: "HEAD", path: "/alive" },
+  { basePath: "/", method: "GET", path: "/health" },
+  { basePath: "/", method: "POST", path: "/api/accounts/prelogin" },
+  { basePath: "/", method: "POST", path: "/identity/accounts/prelogin" },
+  { basePath: "/", method: "POST", path: "/identity/accounts/prelogin/password" },
+  { basePath: "/", method: "POST", path: "/identity/accounts/register" },
+  { basePath: "/", method: "POST", path: "/identity/accounts/register/finish" },
+  { basePath: "/", method: "POST", path: "/identity/accounts/register/send-verification-email" },
 ]
 
 test("serverAppCreate route registrations match the current compatibility baseline", () => {
-  const registrations = serverRouteRegistrationIntrospect(serverAppCreate({}))
+  const registrations = serverRouteRegistrationIntrospect(serverAppCreate())
 
   expect(registrations).toEqual(currentRouteRegistrations)
   expect(serverRouteRegistrationDrift(registrations, currentRouteRegistrations)).toEqual({ extra: [], missing: [] })
 })
 
 test("route-registration drift rejects an unplanned route even when its path is upstream-compatible", () => {
-  const app = serverAppCreate({})
+  const app = serverAppCreate()
   app.get("/api/ciphers", (context) => context.json({}))
 
   const registrations = serverRouteRegistrationIntrospect(app)

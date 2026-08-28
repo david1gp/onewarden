@@ -1,0 +1,82 @@
+{
+  "emails": {
+    "mixedCase": "Alice@Example.com",
+    "normalized": "alice@example.com",
+    "invited": "invited@example.com",
+    "restricted": "restricted@other.example"
+  },
+  "legacyRegistration": {
+    "email": "Alice@Example.com",
+    "kdf": 0,
+    "kdfIterations": 100000,
+    "key": "legacy-wrapped-user-key",
+    "masterPasswordHash": "legacy-client-password-hash",
+    "masterPasswordHint": "  family name  ",
+    "name": "Alice Legacy",
+    "keys": {
+      "encryptedPrivateKey": "legacy-encrypted-private-key",
+      "publicKey": "legacy-public-key"
+    }
+  },
+  "legacyAliases": {
+    "email": "legacy@example.com",
+    "kdfType": 0,
+    "iterations": 100000,
+    "memory": null,
+    "parallelism": null,
+    "userSymmetricKey": "legacy-alias-key",
+    "master_password_hash": "legacy-alias-password-hash",
+    "userAsymmetricKeys": {
+      "encryptedPrivateKey": "legacy-alias-encrypted-private-key",
+      "publicKey": "legacy-alias-public-key"
+    },
+    "token": "legacy-alias-invite-token"
+  },
+  "currentRegistration": {
+    "email": "current@example.com",
+    "masterPasswordAuthentication": {
+      "kdf": {
+        "kdf": 0,
+        "kdfIterations": 100000,
+        "kdfMemory": null,
+        "kdfParallelism": null
+      },
+      "salt": "current@example.com",
+      "hash": "current-client-password-hash"
+    },
+    "masterPasswordUnlock": {
+      "kdf": {
+        "kdf": 0,
+        "kdfIterations": 100000,
+        "kdfMemory": null,
+        "kdfParallelism": null
+      },
+      "salt": "current@example.com",
+      "key": "current-wrapped-user-key"
+    },
+    "masterPasswordHint": "current hint",
+    "name": "Current User"
+  },
+  "argon2Registration": {
+    "email": "argon@example.com",
+    "kdf": 1,
+    "kdfIterations": 3,
+    "kdfMemory": 64,
+    "kdfParallelism": 2,
+    "key": "argon-wrapped-user-key",
+    "masterPasswordHash": "argon-client-password-hash"
+  },
+  "verification": {
+    "email": "verify@example.com",
+    "name": "Verified User"
+  },
+  "organizationInvite": {
+    "email": "org@example.com",
+    "organizationUserId": "member-123",
+    "organizationId": "organization-123"
+  },
+  "emergencyInvite": {
+    "email": "emergency@example.com",
+    "emergencyAccessId": "emergency-123"
+  }
+}
