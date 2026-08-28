@@ -26,6 +26,7 @@ const duplicatedRouteRegistrations = [
   { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/partial" },
   { basePath: "/", method: "POST", path: "/api/ciphers/admin" },
   { basePath: "/", method: "POST", path: "/api/ciphers/create" },
+  { basePath: "/", method: "POST", path: "/api/ciphers/import" },
   { basePath: "/", method: "POST", path: "/api/ciphers/delete" },
   { basePath: "/", method: "POST", path: "/api/ciphers/delete-admin" },
   { basePath: "/", method: "POST", path: "/api/ciphers/move" },

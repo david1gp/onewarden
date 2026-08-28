@@ -11,6 +11,7 @@ const expectedCipherRoutes = [
   ["POST", "/api/ciphers"],
   ["POST", "/api/ciphers/admin"],
   ["POST", "/api/ciphers/create"],
+  ["POST", "/api/ciphers/import"],
   ["POST", "/api/ciphers/:cipher_id"],
   ["POST", "/api/ciphers/:cipher_id/admin"],
   ["POST", "/api/ciphers/:cipher_id/delete"],
