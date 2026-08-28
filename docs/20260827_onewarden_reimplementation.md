@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8, 9, 10, 11, 13, 14, 28, 29, 30, and 32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; task 31 admin compatibility is implemented and tested in an isolated worktree pending a separate integration.
+- Current context: tasks 8, 9, 10, 11, 13, 14, 28, 29, 30, 31, and 32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage.
 
 # Tasks
 
@@ -57,7 +57,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 28. Port authenticated and anonymous notification hubs, SignalR MessagePack framing, ping behavior, update types, and connection limits with tests.
 - [x] 29. Port optional push-relay device registration, token caching, dispatch, and failure behavior behind an adapter with tests.
 - [x] 30. Port icon retrieval, caching, fallback, SSRF protection, redirect, and content-type behavior with tests.
-- [ ] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
+- [x] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
 - [x] 32. Port static/web compatibility routes, health endpoints, configuration endpoints, legacy aliases, and fallback behavior with tests.
 - [ ] 33. Build accessible authentication, registration, verification, unlock, and two-factor UI flows with browser tests.
 - [ ] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
