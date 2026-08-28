@@ -8,7 +8,7 @@ import { identityPrelogin } from "./identityPrelogin.js"
 import { identityPreloginDataSchema } from "./identityPreloginDataSchema.js"
 import { identityRegistration } from "./identityRegistration.js"
 import { identityRegistrationDataSchema } from "./identityRegistrationDataSchema.js"
-import { identityRegistrationVerificationDataSchema } from "./identityRegistrationVerificationDataSchema.js"
+import { identityAccountRegisterVerificationDataSchema } from "./identityAccountRegisterVerificationDataSchema.js"
 import { identityRegistrationVerificationEmail } from "./identityRegistrationVerificationEmail.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityPasswordLogin } from "./identityPasswordLogin.js"
@@ -158,6 +158,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
       identifier: options.identifier,
       issuer: identityOriginResolve(options.publicOrigin, context.req.url),
       mail: options.mail,
+      privateKey: options.privateKey,
       publicKey: options.publicKey,
     })
     if (!result.success) return apiErrorResponseCreate(result)
@@ -261,7 +262,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
   app.post("/identity/accounts/register/send-verification-email", async (context) => {
     const rateLimitResult = options.rateLimiter.check(identityClientIpResolve(context))
     if (!rateLimitResult.success) return apiErrorResponseCreate(rateLimitResult)
-    const bodyResult = await requestBodyParse(context, identityRegistrationVerificationDataSchema)
+    const bodyResult = await requestBodyParse(context, identityAccountRegisterVerificationDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
     const result = await identityRegistrationVerificationEmail(bodyResult.data.email, bodyResult.data.name ?? null, {
       clock: options.clock,

@@ -13,7 +13,6 @@ import { identityDeviceSave } from "./identityDeviceSave.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import type { IdentityPasswordTokenResponse } from "./identityPasswordTokenResponseSchema.js"
-import { identityRegistrationVerifyTokenCreate } from "./identityRegistrationVerifyTokenCreate.js"
 import { identityTokenBundleCreate } from "./identityTokenBundleCreate.js"
 import { identityUserTokenResponseCreate } from "./identityUserTokenResponseCreate.js"
 import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
@@ -21,6 +20,7 @@ import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
 import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
+import { identityVerifyEmailTokenCreate } from "./identityVerifyEmailTokenCreate.js"
 
 type IdentityPasswordLoginOptions = {
   clock: Clock
@@ -52,15 +52,14 @@ async function identityPasswordVerificationRequire(
       user.loginVerifyCount += 1
       identityUserSave(options.database as DatabaseConnection, user)
       try {
-        const tokenResult = await identityRegistrationVerifyTokenCreate(
-          user.email,
-          user.name,
-          false,
+        const tokenResult = await identityVerifyEmailTokenCreate(
+          user.uuid,
           options.issuer,
           options.privateKey,
           options.clock,
+          options.config.INVITATION_EXPIRATION_HOURS,
         )
-        if (tokenResult.success) await options.mail.sendRegisterVerifyEmail(user.email, tokenResult.data)
+        if (tokenResult.success) await options.mail.sendVerifyEmail?.(user.email, user.uuid, tokenResult.data)
       } catch {
         void 0
       }

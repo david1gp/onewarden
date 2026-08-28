@@ -43,10 +43,13 @@ export function identityUserDelete(database: DatabaseConnection, user: IdentityU
       database.run("DELETE FROM users_collections WHERE user_uuid = ?", [user.uuid])
       database.run(
         `DELETE FROM folders_ciphers
-         WHERE folder_uuid IN (SELECT uuid FROM folders WHERE user_uuid = ?)`,
+          WHERE folder_uuid IN (SELECT uuid FROM folders WHERE user_uuid = ?)`,
         [user.uuid],
       )
       database.run("DELETE FROM folders WHERE user_uuid = ?", [user.uuid])
+      database.run("DELETE FROM favorites WHERE user_uuid = ?", [user.uuid])
+      database.run("DELETE FROM archives WHERE user_uuid = ?", [user.uuid])
+      database.run("DELETE FROM ciphers WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM sso_users WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM users_organizations WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM invitations WHERE email = ?", [user.email])

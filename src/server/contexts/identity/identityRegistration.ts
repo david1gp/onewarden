@@ -17,6 +17,7 @@ import { identityRegistrationDataNormalize } from "./identityRegistrationDataNor
 import type { IdentityRegistrationData } from "./identityRegistrationDataSchema.js"
 import { identityRegistrationInviteTokenDecode } from "./identityRegistrationInviteTokenDecode.js"
 import { identityRegistrationVerifyTokenDecode } from "./identityRegistrationVerifyTokenDecode.js"
+import { identityVerifyEmailTokenCreate } from "./identityVerifyEmailTokenCreate.js"
 import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
@@ -28,6 +29,7 @@ type IdentityRegistrationOptions = {
   identifier: Identifier
   issuer: string
   mail: IdentityMailAdapter
+  privateKey?: KeyInput
   publicKey: KeyInput | undefined
 }
 
@@ -321,8 +323,19 @@ export async function identityRegistration(
   if (options.config.MAIL_ENABLED) {
     if (options.config.SIGNUPS_VERIFY && !emailVerified) {
       account.lastVerifyingAt = account.createdAt
+      const tokenResult = await identityVerifyEmailTokenCreate(
+        account.uuid,
+        options.issuer,
+        options.privateKey,
+        options.clock,
+        options.config.INVITATION_EXPIRATION_HOURS,
+      )
       try {
-        await options.mail.sendWelcomeMustVerify(account.email, account.uuid)
+        await options.mail.sendWelcomeMustVerify(
+          account.email,
+          account.uuid,
+          tokenResult.success ? tokenResult.data : undefined,
+        )
       } catch {
         void 0
       }

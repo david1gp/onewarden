@@ -109,7 +109,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     config: identityConfig,
     database: identityDatabase,
     identifier: identityIdentifier,
-    mail: identityOptions?.mail ?? identityMailAdapterCreate(),
+    mail: identityOptions?.mail ?? identityMailAdapterCreate(identityClock),
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,

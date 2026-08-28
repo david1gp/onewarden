@@ -60,15 +60,23 @@ export async function identityRegistrationVerificationEmail(
     const userResult = identityUserFindByEmail(database, email)
     if (!userResult.success) return userResult
     if (userResult.data?.privateKey !== null && userResult.data?.privateKey !== undefined) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
       return resultCreate({ kind: "noContent" })
     }
   }
-  const mailResult = await options.mail.sendRegisterVerifyEmail(email, tokenResult.data)
-  if (!mailResult.success)
+  try {
+    const mailResult = await options.mail.sendRegisterVerifyEmail(email, tokenResult.data)
+    if (!mailResult.success)
+      return resultErrorCreate(op, "Error sending verification email.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+  } catch {
     return resultErrorCreate(op, "Error sending verification email.", {
       code: "platform.invalid-request",
       statusCode: 400,
     })
+  }
   return resultCreate({ kind: "noContent" })
 }
 

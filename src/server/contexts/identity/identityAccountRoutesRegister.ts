@@ -17,26 +17,40 @@ import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefresh
 import { identityDeviceToJson } from "./identityDeviceToJson.js"
 import { identityDeviceWithAuthRequestToJson } from "./identityDeviceWithAuthRequestToJson.js"
 import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
+import { identityAccountChangeEmailDataSchema } from "./identityAccountChangeEmailDataSchema.js"
+import { identityAccountDeleteRecoverDataSchema } from "./identityAccountDeleteRecoverDataSchema.js"
+import { identityAccountDeleteRecoverTokenDataSchema } from "./identityAccountDeleteRecoverTokenDataSchema.js"
 import { identityAccountKdfApply } from "./identityAccountKdfApply.js"
 import { identityAccountKdfChangeDataSchema } from "./identityAccountKdfChangeDataSchema.js"
 import { identityAccountKdfDataNormalize } from "./identityAccountKdfDataNormalize.js"
 import { identityAccountKeysDataSchema } from "./identityAccountKeysDataSchema.js"
 import { identityAccountPasswordDataSchema } from "./identityAccountPasswordDataSchema.js"
 import { identityAccountPasswordOrOtpDataSchema } from "./identityAccountPasswordOrOtpDataSchema.js"
+import { identityAccountPasswordHintDataSchema } from "./identityAccountPasswordHintDataSchema.js"
 import { identityAccountProfileDataSchema } from "./identityAccountProfileDataSchema.js"
 import { identityAccountRotateKeysDataSchema } from "./identityAccountRotateKeysDataSchema.js"
 import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswordDataSchema.js"
+import { identityAccountEmailTokenDataSchema } from "./identityAccountEmailTokenDataSchema.js"
+import { identityAccountVerifyEmailTokenDataSchema } from "./identityAccountVerifyEmailTokenDataSchema.js"
 import type { IdentityAccountPasswordOrOtpData } from "./identityAccountPasswordOrOtpDataSchema.js"
 import { identityAccountVerifyPasswordDataSchema } from "./identityAccountVerifyPasswordDataSchema.js"
 import { identityApiKeyCreate } from "./identityApiKeyCreate.js"
 import type { IdentityRouteOptions } from "./identityRouteOptions.js"
+import { identityAccountDeleteRecover } from "./identityAccountDeleteRecover.js"
+import { identityDeleteAccountTokenDecode } from "./identityDeleteAccountTokenDecode.js"
+import { identityEmailChangeComplete } from "./identityEmailChangeComplete.js"
+import { identityEmailChangeRequest } from "./identityEmailChangeRequest.js"
+import { identityEmailVerificationSend } from "./identityEmailVerificationSend.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
+import { identityPasswordHintSend } from "./identityPasswordHintSend.js"
+import { identityOriginResolve } from "./identityOriginResolve.js"
 import { identityUserDelete } from "./identityUserDelete.js"
 import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import { identityUserFindByUuid } from "./identityUserFindByUuid.js"
 import { identityUserPasswordSet } from "./identityUserPasswordSet.js"
 import { identityUserProfileToJson } from "./identityUserProfileToJson.js"
 import { identityUserSave } from "./identityUserSave.js"
+import { identityVerifyEmailTokenDecode } from "./identityVerifyEmailTokenDecode.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderUpdate } from "../folders/folderUpdate.js"
@@ -472,6 +486,150 @@ export function identityAccountRoutesRegister(
     return new Response(null, { status: 200 })
   }
 
+  const requestEmailToken = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = identityAccountRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const bodyResult = await requestBodyParse(context, identityAccountEmailTokenDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await identityEmailChangeRequest(requestContext.data.authentication.user, bodyResult.data, {
+      clock: options.clock,
+      config: options.config,
+      database: requestContext.data.database,
+      mail: options.mail,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const completeEmailChange = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = identityAccountRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const bodyResult = await requestBodyParse(context, identityAccountChangeEmailDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await identityEmailChangeComplete(requestContext.data.authentication.user, bodyResult.data, {
+      clock: options.clock,
+      config: options.config,
+      database: requestContext.data.database,
+      identifier: options.identifier,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const sendEmailVerification = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = identityAccountRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const result = await identityEmailVerificationSend(requestContext.data.authentication.user, {
+      clock: options.clock,
+      config: options.config,
+      issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+      mail: options.mail,
+      privateKey: options.privateKey,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const verifyEmail = async (context: Context<AuthenticationEnvironment>) => {
+    const database = options.database ?? context.get("database")
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        apiErrorCreate("identityAccountVerifyEmail", "platform.internal", "Database unavailable."),
+      )
+    const bodyResult = await requestBodyParse(context, identityAccountVerifyEmailTokenDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const userResult = identityUserFindByUuid(database, bodyResult.data.userId)
+    if (!userResult.success) return apiErrorResponseCreate(userResult)
+    if (userResult.data === null)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identityAccountVerifyEmail", "User doesn't exist"))
+    const claimsResult = await identityVerifyEmailTokenDecode(
+      bodyResult.data.token,
+      identityOriginResolve(options.publicOrigin, context.req.url),
+      options.publicKey,
+      options.clock,
+    )
+    if (!claimsResult.success || claimsResult.data.sub !== bodyResult.data.userId)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identityAccountVerifyEmail", "Invalid claim"))
+    const user = userResult.data
+    user.verifiedAt = options.clock.now().toISOString()
+    user.lastVerifyingAt = null
+    user.loginVerifyCount = 0
+    user.updatedAt = options.clock.now().toISOString()
+    const saveResult = identityUserSave(database, user)
+    if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    return new Response(null, { status: 200 })
+  }
+
+  const requestAccountDelete = async (context: Context<AuthenticationEnvironment>) => {
+    const rateLimitResult = options.rateLimiter.check(identityAccountClientIpResolve(context))
+    if (!rateLimitResult.success) return apiErrorResponseCreate(rateLimitResult)
+    const database = options.database ?? context.get("database")
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        apiErrorCreate("identityAccountDeleteRecover", "platform.internal", "Database unavailable."),
+      )
+    const bodyResult = await requestBodyParse(context, identityAccountDeleteRecoverDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await identityAccountDeleteRecover(bodyResult.data.email, {
+      clock: options.clock,
+      config: options.config,
+      database,
+      issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+      mail: options.mail,
+      privateKey: options.privateKey,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const completeAccountDelete = async (context: Context<AuthenticationEnvironment>) => {
+    const database = options.database ?? context.get("database")
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        apiErrorCreate("identityAccountDeleteRecoverToken", "platform.internal", "Database unavailable."),
+      )
+    const bodyResult = await requestBodyParse(context, identityAccountDeleteRecoverTokenDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const userResult = identityUserFindByUuid(database, bodyResult.data.userId)
+    if (!userResult.success) return apiErrorResponseCreate(userResult)
+    if (userResult.data === null)
+      return apiErrorResponseCreate(
+        identityDomainErrorCreate("identityAccountDeleteRecoverToken", "User doesn't exist"),
+      )
+    const claimsResult = await identityDeleteAccountTokenDecode(
+      bodyResult.data.token,
+      identityOriginResolve(options.publicOrigin, context.req.url),
+      options.publicKey,
+      options.clock,
+    )
+    if (!claimsResult.success)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identityAccountDeleteRecoverToken", "Invalid claim"))
+    if (claimsResult.data.sub !== bodyResult.data.userId)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identityAccountDeleteRecoverToken", "Invalid claim"))
+    const deleteResult = identityUserDelete(database, userResult.data)
+    if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
+    return new Response(null, { status: 200 })
+  }
+
+  const passwordHint = async (context: Context<AuthenticationEnvironment>) => {
+    const rateLimitResult = options.rateLimiter.check(identityAccountClientIpResolve(context))
+    if (!rateLimitResult.success) return apiErrorResponseCreate(rateLimitResult)
+    const database = options.database ?? context.get("database")
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        apiErrorCreate("identityAccountPasswordHint", "platform.internal", "Database unavailable."),
+      )
+    const bodyResult = await requestBodyParse(context, identityAccountPasswordHintDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await identityPasswordHintSend(bodyResult.data.email, {
+      config: options.config,
+      database,
+      mail: options.mail,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
   const revisionDate = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = identityAccountRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
@@ -593,9 +751,16 @@ export function identityAccountRoutesRegister(
   app.post("/api/accounts/kdf", authenticate("post_kdf"), changeKdf)
   app.post("/api/accounts/key-management/rotate-user-account-keys", authenticate("post_rotatekey"), rotateKeys)
   app.post("/api/accounts/security-stamp", authenticate("post_sstamp"), securityStamp)
+  app.post("/api/accounts/email-token", authenticate("post_email_token"), requestEmailToken)
+  app.post("/api/accounts/email", authenticate("post_email"), completeEmailChange)
+  app.post("/api/accounts/verify-email", authenticate("post_verify_email"), sendEmailVerification)
+  app.post("/api/accounts/verify-email-token", verifyEmail)
+  app.post("/api/accounts/delete-recover", requestAccountDelete)
+  app.post("/api/accounts/delete-recover-token", completeAccountDelete)
   app.post("/api/accounts/delete", authenticate("post_delete_account"), deleteAccount)
   app.delete("/api/accounts", authenticate("delete_account"), deleteAccount)
   app.get("/api/accounts/revision-date", authenticate("revision_date"), revisionDate)
+  app.post("/api/accounts/password-hint", passwordHint)
   app.post("/api/accounts/verify-password", authenticate("verify_password"), verifyPassword)
   app.post("/api/accounts/api-key", authenticate("post_api_key"), (context) => updateApiKey(context, false))
   app.post("/api/accounts/rotate-api-key", authenticate("rotate_api_key"), (context) => updateApiKey(context, true))
