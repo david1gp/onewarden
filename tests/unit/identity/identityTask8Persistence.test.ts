@@ -63,10 +63,34 @@ test("SSO auth persistence round-trips JSON fields and enforces the ten-minute l
     success: true,
     data: null,
   })
+  expect(
+    database.query("SELECT code_response_error, auth_response FROM sso_auth WHERE state = ?").get(auth.state),
+  ).toEqual({
+    code_response_error: JSON.stringify(auth.codeResponseError),
+    auth_response: JSON.stringify(auth.authResponse),
+  })
 })
 
-test("organization API keys upsert by composite identity and SSO users preserve uniqueness", () => {
+test("SSO persistence hides malformed serialized data and organization keys upsert by composite identity", () => {
   const database = databaseCreate()
+  database.run(
+    `INSERT INTO sso_auth (state, client_challenge, nonce, redirect_uri, code_response_error, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      "malformed",
+      "challenge",
+      "nonce",
+      "https://vault.example",
+      "not-json",
+      "2026-08-28T00:00:00.000Z",
+      "2026-08-28T00:00:00.000Z",
+    ],
+  )
+  expect(identitySsoAuthFindByState(database, "malformed", clockTestCreate("2026-08-28T00:01:00.000Z"))).toMatchObject({
+    success: false,
+    errorMessage: "SSO auth lookup failed.",
+  })
+
   const first = {
     uuid: "same-api-key",
     organizationUuid: "organization-one",
@@ -81,7 +105,42 @@ test("organization API keys upsert by composite identity and SSO users preserve 
     success: true,
     data: first,
   })
+  expect(identityOrganizationApiKeyFindByOrganizationUuid(database, second.organizationUuid)).toMatchObject({
+    success: true,
+    data: second,
+  })
+})
+
+test("SSO user persistence enforces the user foreign key and globally unique provider identifier", () => {
+  const database = databaseCreate()
+  for (const uuid of ["user-one", "user-two"]) {
+    database.run(
+      `INSERT INTO users (uuid, created_at, updated_at, email, name, password_hash, salt, password_iterations, akey, security_stamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uuid,
+        "2026-08-28T00:00:00.000Z",
+        "2026-08-28T00:00:00.000Z",
+        `${uuid}@example.com`,
+        uuid,
+        new Uint8Array(),
+        new Uint8Array(),
+        600_000,
+        "",
+        `${uuid}-stamp`,
+      ],
+    )
+  }
   expect(identitySsoUserSave(database, { userUuid: "missing-user", identifier: "missing" })).toMatchObject({
     success: false,
   })
+  expect(identitySsoUserSave(database, { userUuid: "user-one", identifier: "provider-id" })).toMatchObject({
+    success: true,
+  })
+  expect(identitySsoUserSave(database, { userUuid: "user-two", identifier: "provider-id" })).toMatchObject({
+    success: false,
+  })
+  expect(database.query("SELECT user_uuid, identifier FROM sso_users").all()).toEqual([
+    { user_uuid: "user-one", identifier: "provider-id" },
+  ])
 })

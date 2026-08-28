@@ -5,7 +5,7 @@ import { base64UrlDecode } from "../../../../src/shared/crypto/base64UrlDecode.j
 import { base64UrlDecodePadded } from "../../../../src/shared/crypto/base64UrlDecodePadded.js"
 import { base64UrlEncode } from "../../../../src/shared/crypto/base64UrlEncode.js"
 import { base64UrlEncodePadded } from "../../../../src/shared/crypto/base64UrlEncodePadded.js"
-import fixtures from "../../../fixtures/cryptoFixtures.json" with { type: "json" }
+import fixtures from "../../../fixtures/cryptoFixtures.json"
 
 const bytes = new Uint8Array(fixtures.base64.bytes)
 

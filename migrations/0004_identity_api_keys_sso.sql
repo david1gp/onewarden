@@ -15,8 +15,8 @@ CREATE TABLE sso_auth (
   code_response        TEXT,
   code_response_error  TEXT,
   auth_response        TEXT,
-  created_at            TEXT NOT NULL,
-  updated_at            TEXT NOT NULL,
+  created_at           TEXT NOT NULL,
+  updated_at           TEXT NOT NULL,
   binding_hash         TEXT
 );
 

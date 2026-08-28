@@ -144,6 +144,22 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json(result.data)
   }
 
+  const register = async (context: Context, emailVerification: boolean) => {
+    const bodyResult = await requestBodyParse(context, identityRegistrationDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await identityRegistration(bodyResult.data, emailVerification, {
+      clock: options.clock,
+      config: options.config,
+      database: options.database,
+      identifier: options.identifier,
+      issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+      mail: options.mail,
+      publicKey: options.publicKey,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    return context.json(result.data)
+  }
+
   const prevalidate = async (context: Context) => {
     if (!options.config.SSO_ENABLED)
       return apiErrorResponseCreate(
@@ -227,22 +243,6 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     const secure = new URL(context.req.url).protocol === "https:" || context.req.header("x-forwarded-proto") === "https"
     const clearCookie = `VW_SSO_BINDING=; Path=/identity/connect/; Max-Age=0; SameSite=Lax; HttpOnly${secure ? "; Secure" : ""}`
     return new Response(null, { headers: { location: result.data.location, "set-cookie": clearCookie }, status: 307 })
-  }
-
-  const register = async (context: Context, emailVerification: boolean) => {
-    const bodyResult = await requestBodyParse(context, identityRegistrationDataSchema)
-    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
-    const result = await identityRegistration(bodyResult.data, emailVerification, {
-      clock: options.clock,
-      config: options.config,
-      database: options.database,
-      identifier: options.identifier,
-      issuer: identityOriginResolve(options.publicOrigin, context.req.url),
-      mail: options.mail,
-      publicKey: options.publicKey,
-    })
-    if (!result.success) return apiErrorResponseCreate(result)
-    return context.json(result.data)
   }
 
   app.post("/identity/accounts/prelogin", prelogin)

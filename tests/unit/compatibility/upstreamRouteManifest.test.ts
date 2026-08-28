@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import * as v from "valibot"
-import manifest from "../../../tools/compatibility/upstream-route-manifest.json" with { type: "json" }
+import manifest from "../../../tools/compatibility/upstream-route-manifest.json"
 import { upstreamRouteManifestGenerate } from "../../../tools/compatibility/upstreamRouteManifestGenerate.js"
 
 const referenceRoot = "/home/david/opensource/vaultwarden"

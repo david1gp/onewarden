@@ -5,7 +5,7 @@ import { identityRegistrationInviteTokenDecode } from "../../../src/server/conte
 import { identityRegistrationVerifyTokenCreate } from "../../../src/server/contexts/identity/identityRegistrationVerifyTokenCreate.js"
 import { identityRegistrationVerifyTokenDecode } from "../../../src/server/contexts/identity/identityRegistrationVerifyTokenDecode.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
-import fixtures from "../../fixtures/identityFixtures.json" with { type: "json" }
+import fixtures from "../../fixtures/identityFixtures.json"
 
 const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
 const keyPairResult = rsaKeyPairGenerate()

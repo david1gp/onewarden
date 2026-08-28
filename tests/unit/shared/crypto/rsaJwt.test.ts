@@ -6,7 +6,7 @@ import { rsaKeyPairGenerate } from "../../../../src/shared/crypto/rsaKeyPairGene
 import { rsaPrivateKeyLoad } from "../../../../src/shared/crypto/rsaPrivateKeyLoad.js"
 import { rsaPublicKeyDerive } from "../../../../src/shared/crypto/rsaPublicKeyDerive.js"
 import { rsaPublicKeyLoad } from "../../../../src/shared/crypto/rsaPublicKeyLoad.js"
-import fixtures from "../../../fixtures/cryptoFixtures.json" with { type: "json" }
+import fixtures from "../../../fixtures/cryptoFixtures.json"
 
 test("RSA generation returns target-compatible PEM boundaries", () => {
   const result = rsaKeyPairGenerate()

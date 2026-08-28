@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: task 8 API-key, organization API-key, authorization-code, SSO token grants, provider refresh handling, persistence, claims, aliases, route verification, and focused compatibility coverage are complete and all final non-e2e checks pass; task 9 authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards is next.
+- Current context: task 8 is complete; task 9 authentication guards and authorization rules is in progress in the existing agent, while task 13 folder APIs is being implemented in parallel because it can remain isolated from task 9 files.
 
 # Tasks
 

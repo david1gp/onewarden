@@ -1,4 +1,2 @@
-[console]
-depth = 5
-
 [test]
+preload = ["./tests/webTestPreload.ts"]

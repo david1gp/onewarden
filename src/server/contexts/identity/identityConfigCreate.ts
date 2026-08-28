@@ -24,6 +24,7 @@ export function identityConfigCreate(overrides?: Partial<IdentityConfig>): Ident
     SSO_AUTHORIZE_EXTRA_PARAMS: overrides?.SSO_AUTHORIZE_EXTRA_PARAMS ?? "",
     SSO_PKCE: overrides?.SSO_PKCE ?? true,
     SSO_AUTH_ONLY_NOT_SESSION: overrides?.SSO_AUTH_ONLY_NOT_SESSION ?? false,
+    DISABLE_2FA_REMEMBER: overrides?.DISABLE_2FA_REMEMBER ?? false,
     UNAUTHENTICATED_RATELIMIT_SECONDS: overrides?.UNAUTHENTICATED_RATELIMIT_SECONDS ?? 60,
     UNAUTHENTICATED_RATELIMIT_MAX_BURST: overrides?.UNAUTHENTICATED_RATELIMIT_MAX_BURST ?? 50,
   }

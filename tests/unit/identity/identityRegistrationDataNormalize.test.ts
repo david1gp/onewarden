@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import * as v from "valibot"
-import fixtures from "../../fixtures/identityFixtures.json" with { type: "json" }
+import fixtures from "../../fixtures/identityFixtures.json"
 import { identityRegistrationDataNormalize } from "../../../src/server/contexts/identity/identityRegistrationDataNormalize.js"
 import { identityRegistrationDataSchema } from "../../../src/server/contexts/identity/identityRegistrationDataSchema.js"
 

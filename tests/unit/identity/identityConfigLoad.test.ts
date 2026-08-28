@@ -27,6 +27,7 @@ test("identityConfigLoad applies task 6 registration defaults", () => {
       SSO_AUTHORIZE_EXTRA_PARAMS: "",
       SSO_PKCE: true,
       SSO_AUTH_ONLY_NOT_SESSION: false,
+      DISABLE_2FA_REMEMBER: false,
       UNAUTHENTICATED_RATELIMIT_SECONDS: 60,
       UNAUTHENTICATED_RATELIMIT_MAX_BURST: 50,
     },

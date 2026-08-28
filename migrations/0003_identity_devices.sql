@@ -11,4 +11,4 @@ CREATE TABLE devices (
   twofactor_remember  TEXT,
   PRIMARY KEY (uuid, user_uuid),
   FOREIGN KEY (user_uuid) REFERENCES users(uuid)
- );
+);

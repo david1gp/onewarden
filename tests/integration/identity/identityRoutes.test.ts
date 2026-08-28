@@ -14,7 +14,7 @@ import { identifierTestCreate } from "../../../src/shared/identifier/identifierT
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
-import fixtures from "../../fixtures/identityFixtures.json" with { type: "json" }
+import fixtures from "../../fixtures/identityFixtures.json"
 
 type MailCalls = {
   registerVerify: Array<{ email: string; token: string }>

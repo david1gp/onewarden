@@ -47,6 +47,7 @@ export const identityConfigSchema = v.object({
   SSO_AUTHORIZE_EXTRA_PARAMS: v.optional(v.string(), ""),
   SSO_PKCE: v.optional(identityConfigBooleanSchema, "true"),
   SSO_AUTH_ONLY_NOT_SESSION: v.optional(identityConfigBooleanSchema, "false"),
+  DISABLE_2FA_REMEMBER: v.optional(identityConfigBooleanSchema, "false"),
   UNAUTHENTICATED_RATELIMIT_SECONDS: v.optional(identityConfigIntegerSchema, "60"),
   UNAUTHENTICATED_RATELIMIT_MAX_BURST: v.optional(identityConfigIntegerSchema, "50"),
 })

@@ -3,7 +3,7 @@ import { hmacSha256Digest } from "../../../../src/shared/crypto/hmacSha256Digest
 import { hmacSha256Hex } from "../../../../src/shared/crypto/hmacSha256Hex.js"
 import { sha256Digest } from "../../../../src/shared/crypto/sha256Digest.js"
 import { sha256Hex } from "../../../../src/shared/crypto/sha256Hex.js"
-import fixtures from "../../../fixtures/cryptoFixtures.json" with { type: "json" }
+import fixtures from "../../../fixtures/cryptoFixtures.json"
 
 function hexToBytes(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/.{1,2}/g) ?? [], (value) => Number.parseInt(value, 16))
