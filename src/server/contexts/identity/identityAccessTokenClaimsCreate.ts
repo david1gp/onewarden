@@ -12,6 +12,7 @@ export function identityAccessTokenClaimsCreate(
   clientId: string | undefined,
   issuer: string,
   config: IdentityConfig,
+  scope: string[] = ["api", "offline_access"],
 ): IdentityAccessTokenClaims {
   return {
     nbf,
@@ -26,7 +27,7 @@ export function identityAccessTokenClaimsCreate(
     device: device.uuid,
     devicetype: identityDeviceTypeName(device.type),
     client_id: clientId ?? "undefined",
-    scope: ["api", "offline_access"],
+    scope,
     amr: ["Application"],
   }
 }

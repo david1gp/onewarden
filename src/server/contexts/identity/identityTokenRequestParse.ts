@@ -32,9 +32,12 @@ const identityTokenRequestAliases: Record<string, keyof IdentityTokenRequest> = 
   twofactorremember: "twoFactorRemember",
   auth_request: "authRequest",
   authrequest: "authRequest",
+  codeverifier: "codeVerifier",
   code: "code",
   code_verifier: "codeVerifier",
+  sendid: "sendId",
   send_id: "sendId",
+  passwordhashb64: "passwordHashB64",
   password_hash_b64: "passwordHashB64",
 }
 

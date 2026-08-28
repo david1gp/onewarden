@@ -4,18 +4,14 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
-import type { IdentityMailAdapter } from "./identityMailAdapter.js"
-import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
 
-export type IdentityRouteOptions = {
+export type IdentityApiKeyLoginOptions = {
   clock: Clock
   config: IdentityConfig
   database: DatabaseConnection | undefined
   identifier: Identifier
-  mail: IdentityMailAdapter
+  issuer: string
   privateKey: KeyInput | undefined
-  publicKey: KeyInput | undefined
-  publicOrigin: string | undefined
   rateLimiter: { check: (key: string) => Result<void> }
-  sso?: IdentitySsoAdapter
+  clientIp: string
 }

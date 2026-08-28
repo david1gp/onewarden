@@ -6,7 +6,7 @@ export const identityRefreshTokenClaimsSchema = v.object({
   nbf: v.pipe(v.number(), v.integer()),
   exp: v.pipe(v.number(), v.integer()),
   iss: v.string(),
-  sub: v.literal("password"),
+  sub: v.union([v.literal("password"), v.literal("sso")]),
   device_token: v.string(),
   token: v.nullish(identityTokenWrapperSchema),
 })

@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: task 7 password-grant token issuance, refresh-token behavior, device identity, token claims, revocation checks, focused compatibility fixtures, and route/migration verification are complete and all final non-e2e checks pass; task 8 API-key, organization API-key, authorization-code, and SSO token grants is next.
+- Current context: task 8 API-key, organization API-key, authorization-code, SSO token grants, provider refresh handling, persistence, claims, aliases, route verification, and focused compatibility coverage are complete and all final non-e2e checks pass; task 9 authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards is next.
 
 # Tasks
 
@@ -34,7 +34,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 5. Build a mechanical upstream route/alias compatibility manifest and a Hono route-registration drift test.
 - [x] 6. Port identity prelogin, registration capability, registration, verification, and account-creation behavior with tests.
 - [x] 7. Port password-grant token issuance, refresh-token rotation, device identity, token claims, and revocation behavior with tests.
-- [ ] 8. Port API-key, organization API-key, authorization-code, and SSO token grant behavior with tests.
+- [x] 8. Port API-key, organization API-key, authorization-code, and SSO token grant behavior with tests.
 - [ ] 9. Port authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards with tests.
 - [ ] 10. Port user profile, keys, password changes, KDF changes, account revision, account deletion, and device management APIs with tests.
 - [ ] 11. Port email workflows and account lifecycle APIs, using deterministic mail adapters and behavior tests.

@@ -9,6 +9,7 @@ export function identityRefreshTokenClaimsCreate(
   device: IdentityDevice,
   nbf: number,
   issuer: string,
+  subject: "password" | "sso" = "password",
 ): IdentityRefreshTokenClaims {
   const validity = identityDeviceIsMobile(device)
     ? IDENTITY_MOBILE_REFRESH_VALIDITY_SECONDS
@@ -17,7 +18,7 @@ export function identityRefreshTokenClaimsCreate(
     nbf,
     exp: nbf + validity,
     iss: `${issuer}|login`,
-    sub: "password",
+    sub: subject,
     device_token: device.refreshToken,
     token: null,
   }

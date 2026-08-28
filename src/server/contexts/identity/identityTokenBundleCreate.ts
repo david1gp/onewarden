@@ -19,12 +19,13 @@ export async function identityTokenBundleCreate(
   privateKey: KeyInput | undefined,
   clock: Clock,
   config: IdentityConfig,
+  refreshSubject: "password" | "sso" = "password",
 ): Promise<Result<IdentityTokenBundle>> {
   const op = "identityTokenBundleCreate"
   if (privateKey === undefined) return resultErrorCreate(op, "Identity token signing is unavailable.")
   const now = Math.floor(clock.now().getTime() / 1000)
   const accessClaims = identityAccessTokenClaimsCreate(device, user, now, now + 2 * 60 * 60, clientId, issuer, config)
-  const refreshClaims = identityRefreshTokenClaimsCreate(device, now, issuer)
+  const refreshClaims = identityRefreshTokenClaimsCreate(device, now, issuer, refreshSubject)
   const accessTokenResult = await jwtSign(accessClaims, privateKey)
   if (!accessTokenResult.success) return resultErrorCreate(op, "Identity access token signing failed.")
   const refreshTokenResult = await jwtSign(refreshClaims, privateKey)

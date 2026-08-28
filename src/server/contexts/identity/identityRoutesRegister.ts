@@ -1,7 +1,9 @@
 import type { Context, Hono } from "hono"
+import * as v from "valibot"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { identityOriginResolve } from "./identityOriginResolve.js"
+import { identityApiKeyLogin } from "./identityApiKeyLogin.js"
 import { identityPrelogin } from "./identityPrelogin.js"
 import { identityPreloginDataSchema } from "./identityPreloginDataSchema.js"
 import { identityRegistration } from "./identityRegistration.js"
@@ -12,9 +14,16 @@ import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityPasswordLogin } from "./identityPasswordLogin.js"
 import { identityRefreshLogin } from "./identityRefreshLogin.js"
 import type { IdentityRouteOptions } from "./identityRouteOptions.js"
+import { identitySsoAuthorize } from "./identitySsoAuthorize.js"
+import { identitySsoAuthorizeDataSchema } from "./identitySsoAuthorizeDataSchema.js"
+import { identitySsoCallback } from "./identitySsoCallback.js"
+import { identitySsoLogin } from "./identitySsoLogin.js"
+import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateTokenCreate.js"
+import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 
 export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
+  const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
   const token = async (context: Context) => {
     let form: unknown
     try {
@@ -34,11 +43,69 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         issuer,
         privateKey: options.privateKey,
         publicKey: options.publicKey,
+        sso,
       })
       if (!result.success) return identityInvalidGrantResponse()
       return context.json(result.data)
     }
+    if (data.grantType === "client_credentials") {
+      const requiredFields: Array<[string, string | undefined]> = [
+        ["client_id", data.clientId],
+        ["client_secret", data.clientSecret],
+        ["scope", data.scope],
+        ["device_identifier", data.deviceIdentifier],
+        ["device_name", data.deviceName],
+        ["device_type", data.deviceType],
+      ]
+      for (const [field, value] of requiredFields) {
+        if (value === undefined)
+          return apiErrorResponseCreate(identityDomainErrorCreate("identityApiKeyLogin", `${field} cannot be blank`))
+      }
+      const result = await identityApiKeyLogin(data, {
+        clock: options.clock,
+        config: options.config,
+        database: options.database,
+        identifier: options.identifier,
+        issuer,
+        privateKey: options.privateKey,
+        rateLimiter: options.rateLimiter,
+        clientIp: identityClientIpResolve(context),
+      })
+      if (!result.success) return apiErrorResponseCreate(result)
+      return context.json(result.data)
+    }
+    if (data.grantType === "authorization_code" && !options.config.SSO_ENABLED)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identitySsoLogin", "SSO sign-in is not available"))
+    if (data.grantType === "authorization_code") {
+      const requiredFields: Array<[string, string | undefined]> = [
+        ["client_id", data.clientId],
+        ["code", data.code],
+        ["code verifier", data.codeVerifier],
+        ["device_identifier", data.deviceIdentifier],
+        ["device_name", data.deviceName],
+        ["device_type", data.deviceType],
+      ]
+      for (const [field, value] of requiredFields) {
+        if (value === undefined)
+          return apiErrorResponseCreate(identityDomainErrorCreate("identitySsoLogin", `${field} cannot be blank`))
+      }
+      const result = await identitySsoLogin(data, {
+        clock: options.clock,
+        config: options.config,
+        database: options.database,
+        identifier: options.identifier,
+        issuer,
+        privateKey: options.privateKey,
+        rateLimiter: options.rateLimiter,
+        clientIp: identityClientIpResolve(context),
+        sso,
+      })
+      if (!result.success) return apiErrorResponseCreate(result)
+      return context.json(result.data)
+    }
     if (data.grantType === "password") {
+      if (options.config.SSO_ENABLED && options.config.SSO_ONLY)
+        return apiErrorResponseCreate(identityDomainErrorCreate("identityPasswordLogin", "SSO sign-in is required"))
       const requiredFields: Array<[string, string | undefined]> = [
         ["client_id", data.clientId],
         ["password", data.password],
@@ -77,6 +144,91 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json(result.data)
   }
 
+  const prevalidate = async (context: Context) => {
+    if (!options.config.SSO_ENABLED)
+      return apiErrorResponseCreate(
+        identityDomainErrorCreate("identitySsoPrevalidateTokenCreate", "SSO sign-in is not available"),
+      )
+    const issuer = identityOriginResolve(options.publicOrigin, context.req.url)
+    const result = await identitySsoPrevalidateTokenCreate(issuer, options.privateKey, options.clock)
+    if (!result.success) return apiErrorResponseCreate(result)
+    return context.json({ token: result.data })
+  }
+
+  const authorize = async (context: Context) => {
+    const query = context.req.query()
+    const normalized: Record<string, string> = {}
+    const aliases: Record<string, string> = {
+      client_id: "clientId",
+      clientid: "clientId",
+      redirect_uri: "redirectUri",
+      redirecturi: "redirectUri",
+      response_type: "responseType",
+      responsetype: "responseType",
+      scope: "scope",
+      state: "state",
+      code_challenge: "codeChallenge",
+      codechallenge: "codeChallenge",
+      code_challenge_method: "codeChallengeMethod",
+      codechallengemethod: "codeChallengeMethod",
+      response_mode: "responseMode",
+      responsemode: "responseMode",
+      domain_hint: "domainHint",
+      domainhint: "domainHint",
+      ssotoken: "ssoToken",
+    }
+    for (const [key, value] of Object.entries(query)) {
+      const field = aliases[key.toLowerCase()]
+      if (field !== undefined && normalized[field] === undefined) normalized[field] = value
+    }
+    const parsed = v.safeParse(identitySsoAuthorizeDataSchema, normalized)
+    if (!parsed.success)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identitySsoAuthorize", "Invalid request."))
+    const issuer = identityOriginResolve(options.publicOrigin, context.req.url)
+    const result = await identitySsoAuthorize(parsed.output, {
+      clock: options.clock,
+      database: options.database,
+      issuer,
+      sso,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    const secure = new URL(context.req.url).protocol === "https:" || context.req.header("x-forwarded-proto") === "https"
+    const cookie = `VW_SSO_BINDING=${result.data.bindingToken}; Path=/identity/connect/; Max-Age=600; SameSite=Lax; HttpOnly${secure ? "; Secure" : ""}`
+    return new Response(null, {
+      headers: { location: result.data.authorizationUrl, "set-cookie": cookie },
+      status: 307,
+    })
+  }
+
+  const oidcSignin = async (context: Context) => {
+    const query = context.req.query()
+    const state = query.state
+    if (state === undefined || (query.code === undefined && query.error === undefined))
+      return apiErrorResponseCreate(identityDomainErrorCreate("identitySsoCallback", "Invalid request."))
+    const cookieHeader = context.req.header("cookie")
+    const bindingToken = cookieHeader
+      ?.split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith("VW_SSO_BINDING="))
+      ?.slice("VW_SSO_BINDING=".length)
+    const error =
+      query.code !== undefined || query.error === undefined
+        ? null
+        : { error: query.error, errorDescription: query.error_description ?? null }
+    const code = query.code ?? state
+    const issuer = identityOriginResolve(options.publicOrigin, context.req.url)
+    const result = await identitySsoCallback(state, code, error, {
+      clock: options.clock,
+      database: options.database,
+      issuer,
+      bindingToken,
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
+    const secure = new URL(context.req.url).protocol === "https:" || context.req.header("x-forwarded-proto") === "https"
+    const clearCookie = `VW_SSO_BINDING=; Path=/identity/connect/; Max-Age=0; SameSite=Lax; HttpOnly${secure ? "; Secure" : ""}`
+    return new Response(null, { headers: { location: result.data.location, "set-cookie": clearCookie }, status: 307 })
+  }
+
   const register = async (context: Context, emailVerification: boolean) => {
     const bodyResult = await requestBodyParse(context, identityRegistrationDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
@@ -97,6 +249,9 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
   app.post("/identity/accounts/prelogin/password", prelogin)
   app.post("/api/accounts/prelogin", prelogin)
   app.post("/identity/connect/token", token)
+  app.get("/identity/sso/prevalidate", prevalidate)
+  app.get("/identity/connect/authorize", authorize)
+  app.get("/identity/connect/oidc-signin", oidcSignin)
   app.post("/identity/accounts/register", (context) => register(context, false))
   app.post("/identity/accounts/register/finish", (context) => register(context, true))
   app.post("/identity/accounts/register/send-verification-email", async (context) => {

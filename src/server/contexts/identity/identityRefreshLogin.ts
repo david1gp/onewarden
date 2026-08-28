@@ -9,7 +9,10 @@ import { identityDeviceFindByRefreshToken } from "./identityDeviceFindByRefreshT
 import { identityDeviceSave } from "./identityDeviceSave.js"
 import type { IdentityRefreshTokenResponse } from "./identityRefreshTokenResponseSchema.js"
 import { identityRefreshTokenClaimsDecode } from "./identityRefreshTokenClaimsDecode.js"
+import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
+import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
 import { identityTokenBundleCreate } from "./identityTokenBundleCreate.js"
+import type { IdentitySsoAuthenticatedUser } from "./identitySsoAuthenticatedUserSchema.js"
 import { identityUserFindByUuid } from "./identityUserFindByUuid.js"
 
 type IdentityRefreshLoginOptions = {
@@ -19,6 +22,7 @@ type IdentityRefreshLoginOptions = {
   issuer: string
   privateKey: KeyInput | undefined
   publicKey: KeyInput | undefined
+  sso?: IdentitySsoAdapter
 }
 
 export async function identityRefreshLogin(
@@ -50,6 +54,84 @@ export async function identityRefreshLogin(
   const userResult = identityUserFindByUuid(database, device.userUuid)
   if (!userResult.success) return resultErrorCreate(op, "Impossible to find user")
   if (userResult.data === null) return resultErrorCreate(op, "Impossible to find user")
+  if (claimsResult.data.sub === "sso" && !options.config.SSO_ENABLED)
+    return resultErrorCreate(op, "SSO is now disabled, Login again using email and master password")
+  if (claimsResult.data.sub === "sso" && !options.config.SSO_AUTH_ONLY_NOT_SESSION) {
+    const sso = options.sso
+    const token = claimsResult.data.token
+    if (sso === undefined) return resultErrorCreate(op, "SSO refresh is unavailable")
+    if (token !== null && token !== undefined && "Refresh" in token) {
+      if (sso.refresh === undefined) return resultErrorCreate(op, "SSO refresh is unavailable")
+      const providerResult = await sso.refresh(token.Refresh)
+      if (!providerResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      const authenticatedUser: IdentitySsoAuthenticatedUser = {
+        refresh_token: providerResult.data.refresh_token ?? token.Refresh,
+        access_token: providerResult.data.access_token,
+        expires_in: providerResult.data.expires_in,
+        identifier: "refresh",
+        email: userResult.data.email,
+        email_verified: true,
+        user_name: userResult.data.name,
+      }
+      const bundleResult = await identitySsoTokenBundleCreate(
+        userResult.data,
+        device,
+        clientId,
+        authenticatedUser,
+        options.issuer,
+        options.privateKey,
+        options.clock,
+        options.config,
+      )
+      if (!bundleResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      const finalDeviceSaveResult = identityDeviceSave(database, device, options.clock, true)
+      if (!finalDeviceSaveResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      return resultCreate({
+        refresh_token: bundleResult.data.refreshToken,
+        access_token: bundleResult.data.accessToken,
+        expires_in: bundleResult.data.expiresIn,
+        token_type: "Bearer",
+        scope: "api offline_access",
+      })
+    }
+    if (token !== null && token !== undefined && "Access" in token) {
+      if (sso.validateAccessToken === undefined) return resultErrorCreate(op, "SSO refresh is unavailable")
+      const now = Math.floor(options.clock.now().getTime() / 1_000)
+      if (claimsResult.data.exp < now + 5 * 60) return resultErrorCreate(op, "Invalid refresh token")
+      const validationResult = await sso.validateAccessToken(token.Access)
+      if (!validationResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      const authenticatedUser: IdentitySsoAuthenticatedUser = {
+        refresh_token: null,
+        access_token: token.Access,
+        expires_in: Math.max(0, claimsResult.data.exp - now),
+        identifier: "refresh",
+        email: userResult.data.email,
+        email_verified: true,
+        user_name: userResult.data.name,
+      }
+      const bundleResult = await identitySsoTokenBundleCreate(
+        userResult.data,
+        device,
+        clientId,
+        authenticatedUser,
+        options.issuer,
+        options.privateKey,
+        options.clock,
+        options.config,
+      )
+      if (!bundleResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      const finalDeviceSaveResult = identityDeviceSave(database, device, options.clock, true)
+      if (!finalDeviceSaveResult.success) return resultErrorCreate(op, "Invalid refresh token")
+      return resultCreate({
+        refresh_token: bundleResult.data.refreshToken,
+        access_token: bundleResult.data.accessToken,
+        expires_in: bundleResult.data.expiresIn,
+        token_type: "Bearer",
+        scope: "api offline_access",
+      })
+    }
+    return resultErrorCreate(op, "Invalid refresh token")
+  }
   const bundleResult = await identityTokenBundleCreate(
     userResult.data,
     device,
@@ -58,6 +140,7 @@ export async function identityRefreshLogin(
     options.privateKey,
     options.clock,
     options.config,
+    claimsResult.data.sub,
   )
   if (!bundleResult.success) return resultErrorCreate(op, "Invalid refresh token")
   const finalDeviceSaveResult = identityDeviceSave(database, device, options.clock, true)

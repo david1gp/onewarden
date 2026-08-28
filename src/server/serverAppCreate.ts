@@ -13,6 +13,7 @@ import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.j
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
 import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOptions.js"
+import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
 import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
 import { packageVersion } from "../packageVersion.js"
@@ -131,6 +132,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
+    sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
   })
   return app
 }

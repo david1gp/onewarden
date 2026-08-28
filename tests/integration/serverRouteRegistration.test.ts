@@ -5,6 +5,9 @@ import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 
 const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/health" },
+  { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
+  { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },
+  { basePath: "/", method: "GET", path: "/identity/sso/prevalidate" },
   { basePath: "/", method: "POST", path: "/api/accounts/prelogin" },
   { basePath: "/", method: "POST", path: "/identity/accounts/prelogin" },
   { basePath: "/", method: "POST", path: "/identity/accounts/prelogin/password" },

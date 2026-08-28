@@ -137,6 +137,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 1 },
     { version: 2 },
     { version: 3 },
+    { version: 4 },
   ])
   expect(
     result.data
@@ -146,10 +147,18 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
   expect(
     result.data
       .query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices') ORDER BY name",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users') ORDER BY name",
       )
       .all(),
-  ).toEqual([{ name: "devices" }, { name: "identity_signing_keys" }, { name: "invitations" }, { name: "users" }])
+  ).toEqual([
+    { name: "devices" },
+    { name: "identity_signing_keys" },
+    { name: "invitations" },
+    { name: "organization_api_key" },
+    { name: "sso_auth" },
+    { name: "sso_users" },
+    { name: "users" },
+  ])
   const deviceColumns = result.data
     .query<{ name: string; type: string; notnull: number; pk: number }, []>("PRAGMA table_info(devices)")
     .all()
@@ -319,6 +328,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 1 },
       { version: 2 },
       { version: 3 },
+      { version: 4 },
     ])
     databaseClose(result.data)
   }
@@ -342,6 +352,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 3 })
+  expect(await response.json()).toEqual({ version: 4 })
   databaseClose(databaseResult.data)
 })
