@@ -263,3 +263,110 @@ test("cipher route aliases implement bulk delete, restore, and move", async () =
   expect(restore.status).toBe(200)
   expect((await restore.json()).data).toHaveLength(2)
 })
+
+test("personal cipher import maps folders, ignores client revisions, persists history, and sends one vault update", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [
+        {
+          id: "client-cipher-id",
+          type: 1,
+          name: "Imported",
+          organizationID: null,
+          login: { password: "encrypted-password" },
+          passwordHistory: [{ password: "old", lastUsedDate: "invalid" }],
+          lastKnownRevisionDate: "2020-01-01T00:00:00.000Z",
+        },
+      ],
+      folders: [{ id: "client-folder-id", name: "Imported folder" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe("")
+  expect(
+    context.database
+      .query<{ updated_at: string }, [string]>("SELECT updated_at FROM users WHERE uuid = ?")
+      .get("cipher-user")?.updated_at,
+  ).toBe(date)
+
+  const listResponse = await context.app.request("https://vault.example/api/ciphers", {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(await listResponse.json()).toMatchObject({
+    data: [
+      {
+        folderId: "cipher-one",
+        id: "cipher-two",
+        name: "Imported",
+        passwordHistory: [{ password: "old", lastUsedDate: "1970-01-01T00:00:00.000000Z" }],
+      },
+    ],
+  })
+  expect(context.notifications).toEqual([
+    {
+      contextId: "cipher-device",
+      payload: { Date: date, UserId: "cipher-user" },
+      type: 5,
+    },
+  ])
+})
+
+test("personal cipher import validates the complete batch before writing", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [
+        {
+          type: 1,
+          name: "Invalid",
+          login: {},
+          passwordHistory: [{ password: null }],
+        },
+      ],
+      folders: [{ name: "Should not persist" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({
+    message: "The model state is invalid.",
+    validationErrors: {
+      "Ciphers[0].Notes": ["The password history contains a `null` value. Only strings are allowed."],
+    },
+    object: "error",
+  })
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM folders").get()?.count).toBe(0)
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+  expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import rejects notes over the default encrypted size limit", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [{ type: 1, name: "Too large", login: {}, notes: "x".repeat(10_001) }],
+      folders: [],
+      folderRelationships: [],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({
+    message: "The model state is invalid.",
+    validationErrors: {
+      "Ciphers[0].Notes": ["The field Notes exceeds the maximum encrypted value length of 10000 characters."],
+    },
+  })
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+  expect(context.notifications).toEqual([])
+})

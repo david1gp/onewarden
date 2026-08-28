@@ -13,6 +13,7 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       SENDS_FOLDER: "./data/sends",
       SENDS_ALLOWED: true,
       USER_SEND_LIMIT: undefined,
+      INCREASE_NOTE_SIZE_LIMIT: false,
       LOG_LEVEL: "info",
       PROXY: false,
       ENABLE_WEBSOCKET: true,
@@ -34,6 +35,7 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
   const result = serverConfigLoad({
     DATABASE_PATH: " /var/lib/onewarden/db.sqlite3 ",
     HOST: "0.0.0.0",
+    INCREASE_NOTE_SIZE_LIMIT: "true",
     LOG_LEVEL: "debug",
     PORT: "8080",
     PROXY: "true",
@@ -51,6 +53,7 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       SENDS_FOLDER: "./data/sends",
       SENDS_ALLOWED: true,
       USER_SEND_LIMIT: undefined,
+      INCREASE_NOTE_SIZE_LIMIT: true,
       ENABLE_WEBSOCKET: true,
       PUBLIC_ORIGIN: "https://vault.example.com",
       PUSH_ENABLED: false,
