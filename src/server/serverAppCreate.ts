@@ -7,17 +7,16 @@ import { clockCreate } from "../shared/clock/clockCreate.js"
 import type { Identifier } from "../shared/identifier/identifier.js"
 import { identifierCreate } from "../shared/identifier/identifierCreate.js"
 import type { Logger } from "../shared/logging/logger.js"
+import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
+import type { AdminRouteOptions } from "./contexts/admin/adminRouteOptions.js"
+import { adminRoutesRegister } from "./contexts/admin/adminRoutesRegister.js"
 import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotificationAdapter.js"
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
-import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
-import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
-import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
-import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
-import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
 import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
+import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
@@ -25,10 +24,14 @@ import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOpti
 import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
 import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
-import type { DatabaseConnection } from "./database/database.js"
-import { requestLoggingMiddleware } from "./requestLoggingMiddleware.js"
+import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
+import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
+import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
+import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
 import type { WebRouteOptions } from "./contexts/web/webRouteOptions.js"
 import { webRoutesRegister } from "./contexts/web/webRoutesRegister.js"
+import type { DatabaseConnection } from "./database/database.js"
+import { requestLoggingMiddleware } from "./requestLoggingMiddleware.js"
 
 type ServerAppEnvironment = AuthenticationEnvironment
 
@@ -45,6 +48,7 @@ type ServerAppOptions = {
   web?: Partial<
     Pick<WebRouteOptions, "publicOrigin" | "staticFolder" | "version" | "webVaultEnabled" | "webVaultFolder">
   >
+  admin?: Omit<Partial<AdminRouteOptions>, "config"> & { config?: Partial<AdminRouteOptions["config"]> }
 }
 
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
@@ -104,6 +108,26 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
       identifier: identityIdentifier,
       logger: options?.logger,
     })
+  const adminOptions = options?.admin
+  const adminConfig = adminConfigCreate(adminOptions?.config)
+  adminRoutesRegister(app, {
+    clock: adminOptions?.clock ?? serverClock,
+    config: adminConfig,
+    database: adminOptions?.database ?? database,
+    databasePath: adminOptions?.databasePath,
+    diagnostics: adminOptions?.diagnostics,
+    identityConfig,
+    identifier: adminOptions?.identifier ?? identityIdentifier,
+    mail: adminOptions?.mail ?? identityOptions?.mail ?? identityMailAdapterCreate(),
+    privateKey: adminOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: adminOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: adminOptions?.publicOrigin ?? identityOptions?.publicOrigin,
+    push: adminOptions?.push ?? push,
+    backup: adminOptions?.backup,
+    configuration: adminOptions?.configuration,
+    version: adminOptions?.version ?? options?.web?.version,
+    webVaultEnabled: adminOptions?.webVaultEnabled ?? webVaultEnabled,
+  })
   identityRoutesRegister(app, {
     clock: identityClock,
     config: identityConfig,

@@ -6,5 +6,7 @@ export function identityMailAdapterCreate(): IdentityMailAdapter {
     sendRegisterVerifyEmail: async () => resultCreate(undefined),
     sendWelcome: async () => resultCreate(undefined),
     sendWelcomeMustVerify: async () => resultCreate(undefined),
+    sendInvite: async () => resultCreate(undefined),
+    sendTest: async () => resultCreate(undefined),
   }
 }

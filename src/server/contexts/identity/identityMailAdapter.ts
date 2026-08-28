@@ -4,4 +4,6 @@ export type IdentityMailAdapter = {
   sendRegisterVerifyEmail: (email: string, token: string) => Promise<Result<void>>
   sendWelcome: (email: string) => Promise<Result<void>>
   sendWelcomeMustVerify: (email: string, userId: string) => Promise<Result<void>>
+  sendInvite?: (email: string, organizationName: string, memberId: string) => Promise<Result<void>>
+  sendTest?: (email: string) => Promise<Result<void>>
 }
