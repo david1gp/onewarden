@@ -14,4 +14,29 @@ export type IdentityMailAdapter = {
   sendPasswordHint?: (email: string, hint: string | null) => Promise<Result<void>>
   sendInvite?: (email: string, organizationName: string, memberId: string) => Promise<Result<void>>
   sendTest?: (email: string) => Promise<Result<void>>
+  sendEmergencyAccessInvite?: (
+    email: string,
+    userId: string,
+    emergencyAccessId: string,
+    grantorName: string,
+    grantorEmail: string,
+    token: string,
+  ) => Promise<Result<void>>
+  sendEmergencyAccessInviteAccepted?: (email: string, granteeEmail: string) => Promise<Result<void>>
+  sendEmergencyAccessInviteConfirmed?: (email: string, grantorName: string) => Promise<Result<void>>
+  sendEmergencyAccessRecoveryInitiated?: (
+    email: string,
+    granteeName: string,
+    type: string,
+    waitTimeDays: number,
+  ) => Promise<Result<void>>
+  sendEmergencyAccessRecoveryApproved?: (email: string, grantorName: string) => Promise<Result<void>>
+  sendEmergencyAccessRecoveryRejected?: (email: string, grantorName: string) => Promise<Result<void>>
+  sendEmergencyAccessRecoveryReminder?: (
+    email: string,
+    granteeName: string,
+    type: string,
+    daysLeft: string,
+  ) => Promise<Result<void>>
+  sendEmergencyAccessRecoveryTimedOut?: (email: string, granteeName: string, type: string) => Promise<Result<void>>
 }
