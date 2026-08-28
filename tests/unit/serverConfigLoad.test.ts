@@ -19,6 +19,9 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       PUSH_INSTALLATION_KEY: "",
       WEB_VAULT_ENABLED: true,
       WEB_VAULT_FOLDER: "./build/web",
+      DISABLE_ADMIN_TOKEN: false,
+      ADMIN_SESSION_LIFETIME: 20,
+      INVITATION_ORG_NAME: "Vaultwarden",
     },
   })
 })
@@ -49,6 +52,9 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       PUSH_INSTALLATION_KEY: "",
       WEB_VAULT_ENABLED: true,
       WEB_VAULT_FOLDER: "./build/web",
+      DISABLE_ADMIN_TOKEN: false,
+      ADMIN_SESSION_LIFETIME: 20,
+      INVITATION_ORG_NAME: "Vaultwarden",
     },
   })
 })

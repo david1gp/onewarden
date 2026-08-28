@@ -1,8 +1,9 @@
 import { loggerCreate } from "../shared/logging/loggerCreate.js"
+import { serverConfigLoad } from "./config/serverConfigLoad.js"
+import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
-import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
@@ -43,6 +44,15 @@ if (!migrationResult.success) {
 
 const app = serverAppCreate({
   database,
+  admin: {
+    config: adminConfigCreate({
+      ADMIN_TOKEN: configResult.data.ADMIN_TOKEN,
+      DISABLE_ADMIN_TOKEN: configResult.data.DISABLE_ADMIN_TOKEN,
+      ADMIN_SESSION_LIFETIME: configResult.data.ADMIN_SESSION_LIFETIME,
+      INVITATION_ORG_NAME: configResult.data.INVITATION_ORG_NAME,
+    }),
+    databasePath: configResult.data.DATABASE_PATH,
+  },
   icons: {
     cache: iconCacheAdapterCreate({ directory: iconConfigResult.data.ICON_CACHE_FOLDER }),
     config: iconConfigResult.data,
