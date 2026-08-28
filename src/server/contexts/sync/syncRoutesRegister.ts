@@ -35,7 +35,7 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
       routeName,
     })
 
-  const sync = (context: Context<AuthenticationEnvironment>) => {
+  const sync = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = syncRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
     const clientVersionResult = authenticationClientVersionOptionalParse(context.req.header("Bitwarden-Client-Version"))
@@ -52,7 +52,7 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     const ciphers: Record<string, unknown>[] = []
     for (const cipher of ciphersResult.data) {
       if (!syncCipherVisible(cipher.type, clientVersionResult.data)) continue
-      const jsonResult = cipherToJson(database, cipher, authentication.user.uuid)
+      const jsonResult = await cipherToJson(database, cipher, authentication.user.uuid)
       if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
       ciphers.push(jsonResult.data)
     }
