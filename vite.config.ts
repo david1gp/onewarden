@@ -14,5 +14,5 @@ export default defineConfig({
   resolve: { alias: [{ find: "#ui", replacement: solidUiRoot }] },
   preview: { port: webPort, strictPort: true },
   publicDir: resolve(projectRoot, "public"),
-  server: { port: webPort, strictPort: true },
+  server: { allowedHosts: ["onewarden.david-siewert.com"], port: webPort, strictPort: true },
 })
