@@ -13,6 +13,8 @@ import { adminRoutesRegister } from "./contexts/admin/adminRoutesRegister.js"
 import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotificationAdapter.js"
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
+import type { EmergencyAccessNotificationAdapter } from "./contexts/emergencyAccess/emergencyAccessNotificationAdapter.js"
+import { emergencyAccessRoutesRegister } from "./contexts/emergencyAccess/emergencyAccessRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
 import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
@@ -47,6 +49,7 @@ type ServerAppOptions = {
   clock?: Clock
   database?: DatabaseConnection
   ciphers?: { notification?: CipherNotificationAdapter }
+  emergencyAccess?: { notification?: EmergencyAccessNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
   icons?: Partial<IconRouteOptions>
   identity?: Partial<IdentityRouteOptions>
@@ -118,6 +121,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   const webVaultEnabled = options?.web?.webVaultEnabled ?? true
   const identityDatabase = identityOptions?.database ?? database
   const identityIdentifier = identityOptions?.identifier ?? options?.identifier ?? identifierCreate()
+  const identityMail = identityOptions?.mail ?? identityMailAdapterCreate(identityClock)
   const push =
     options?.push?.adapter ??
     identityOptions?.push ??
@@ -136,7 +140,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     diagnostics: adminOptions?.diagnostics,
     identityConfig,
     identifier: adminOptions?.identifier ?? identityIdentifier,
-    mail: adminOptions?.mail ?? identityOptions?.mail ?? identityMailAdapterCreate(identityClock),
+    mail: adminOptions?.mail ?? identityMail,
     privateKey: adminOptions?.privateKey ?? defaultPrivateKey,
     publicKey: adminOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: adminOptions?.publicOrigin ?? identityOptions?.publicOrigin,
@@ -161,7 +165,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     config: identityConfig,
     database: identityDatabase,
     identifier: identityIdentifier,
-    mail: identityOptions?.mail ?? identityMailAdapterCreate(identityClock),
+    mail: identityMail,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
@@ -175,7 +179,18 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     identifier: identityIdentifier,
-    mail: identityOptions?.mail ?? identityMailAdapterCreate(identityClock),
+    mail: identityMail,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+  })
+  emergencyAccessRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    identifier: identityIdentifier,
+    mail: identityMail,
+    notification: options?.emergencyAccess?.notification,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,

@@ -8,6 +8,9 @@ import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKe
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { sendFileStorageAdapterCreate } from "./contexts/sends/sendFileStorageAdapterCreate.js"
 import { sendPurge } from "./contexts/sends/sendPurge.js"
+import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
+import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
+import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
@@ -62,8 +65,11 @@ const notificationHub = notificationHubCreate({
   publicKey: tokenKeyPair.publicKey,
   publicOrigin: configResult.data.PUBLIC_ORIGIN,
 })
+const serverClock = clockCreate()
+const mail = identityMailAdapterCreate(serverClock)
 
 const app = serverAppCreate({
+  clock: serverClock,
   database,
   admin: {
     config: adminConfigCreate({
@@ -83,6 +89,7 @@ const app = serverAppCreate({
     privateKey: tokenKeyPair.privateKey,
     publicKey: tokenKeyPair.publicKey,
     publicOrigin: configResult.data.PUBLIC_ORIGIN,
+    mail,
   },
   logger,
   notifications: { hub: notificationHub },
@@ -121,13 +128,34 @@ try {
     port: configResult.data.PORT,
   })
 
-  const purgeClock = clockCreate()
   const purgeSends = async (): Promise<void> => {
-    const result = await sendPurge(database, purgeClock, sendStorage)
+    const result = await sendPurge(database, serverClock, sendStorage)
     if (!result.success) logger.error("send.purge-failed", { errorMessage: result.errorMessage })
   }
+  const runEmergencyAccessTimeout = async (): Promise<void> => {
+    const result = await emergencyAccessTimeoutRun({
+      clock: serverClock,
+      config: identityConfigResult.data,
+      database,
+      mail,
+    })
+    if (!result.success) logger.error("emergency-access.timeout-failed", { errorMessage: result.errorMessage })
+  }
+  const runEmergencyAccessReminder = async (): Promise<void> => {
+    const result = await emergencyAccessReminderRun({
+      clock: serverClock,
+      config: identityConfigResult.data,
+      database,
+      mail,
+    })
+    if (!result.success) logger.error("emergency-access.reminder-failed", { errorMessage: result.errorMessage })
+  }
   const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
+  const emergencyAccessTimeoutInterval = setInterval(() => void runEmergencyAccessTimeout(), 60 * 60 * 1_000)
+  const emergencyAccessReminderInterval = setInterval(() => void runEmergencyAccessReminder(), 60 * 60 * 1_000)
   void purgeSends()
+  void runEmergencyAccessTimeout()
+  void runEmergencyAccessReminder()
 
   let shutdownPromise: Promise<void> | undefined
   const shutdown = (): Promise<void> => {
@@ -139,6 +167,8 @@ try {
         logger.error("server.stop-failed", { error: "stop-failed" })
       }
       clearInterval(purgeInterval)
+      clearInterval(emergencyAccessTimeoutInterval)
+      clearInterval(emergencyAccessReminderInterval)
       const closeResult = databaseClose(database)
       if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
     })()
