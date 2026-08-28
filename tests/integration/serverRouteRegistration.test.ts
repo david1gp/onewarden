@@ -57,6 +57,27 @@ const duplicatedRouteRegistrations = [
   { basePath: "/", method: "PUT", path: "/api/sends/:send_id/remove-password" },
 ].flatMap((registration) => [registration, registration])
 
+const duplicatedEmergencyAccessRouteRegistrations = [
+  { basePath: "/", method: "DELETE", path: "/api/emergency-access/:emer_id" },
+  { basePath: "/", method: "GET", path: "/api/emergency-access/:emer_id" },
+  { basePath: "/", method: "GET", path: "/api/emergency-access/:emer_id/policies" },
+  { basePath: "/", method: "GET", path: "/api/emergency-access/granted" },
+  { basePath: "/", method: "GET", path: "/api/emergency-access/trusted" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/accept" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/approve" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/confirm" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/delete" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/initiate" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/password" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/reinvite" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/reject" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/takeover" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/:emer_id/view" },
+  { basePath: "/", method: "POST", path: "/api/emergency-access/invite" },
+  { basePath: "/", method: "PUT", path: "/api/emergency-access/:emer_id" },
+].flatMap((registration) => [registration, registration])
+
 const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/sends/:send_id/:file_id" },
   { basePath: "/", method: "DELETE", path: "/api/accounts" },
@@ -79,6 +100,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/public-key" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/public-key" },
   ...duplicatedRouteRegistrations,
+  ...duplicatedEmergencyAccessRouteRegistrations,
   { basePath: "/", method: "GET", path: "/" },
   { basePath: "/", method: "GET", path: "/*" },
   { basePath: "/", method: "GET", path: "/.well-known/apple-app-site-association" },
