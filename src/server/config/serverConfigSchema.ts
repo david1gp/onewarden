@@ -27,6 +27,7 @@ const serverConfigPushEnabledSchema = v.pipe(
 )
 const serverConfigPushUriSchema = v.pipe(v.string(), v.trim())
 const serverConfigPushCredentialSchema = v.pipe(v.string(), v.trim())
+const serverConfigWebVaultFolderSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
 
 export const serverConfigSchema = v.object({
   HOST: v.optional(serverConfigHostSchema, "127.0.0.1"),
@@ -40,6 +41,8 @@ export const serverConfigSchema = v.object({
   PUSH_IDENTITY_URI: v.optional(serverConfigPushUriSchema, "https://identity.bitwarden.com"),
   PUSH_INSTALLATION_ID: v.optional(serverConfigPushCredentialSchema, ""),
   PUSH_INSTALLATION_KEY: v.optional(serverConfigPushCredentialSchema, ""),
+  WEB_VAULT_ENABLED: v.optional(serverConfigProxySchema, "true"),
+  WEB_VAULT_FOLDER: v.optional(serverConfigWebVaultFolderSchema, "./build/web"),
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>

@@ -58,6 +58,10 @@ const app = serverAppCreate({
       installationKey: configResult.data.PUSH_INSTALLATION_KEY,
     },
   },
+  web: {
+    webVaultEnabled: configResult.data.WEB_VAULT_ENABLED,
+    webVaultFolder: configResult.data.WEB_VAULT_FOLDER,
+  },
 })
 try {
   const server = Bun.serve({

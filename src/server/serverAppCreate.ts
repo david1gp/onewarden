@@ -27,6 +27,8 @@ import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapter
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
 import type { DatabaseConnection } from "./database/database.js"
 import { requestLoggingMiddleware } from "./requestLoggingMiddleware.js"
+import type { WebRouteOptions } from "./contexts/web/webRouteOptions.js"
+import { webRoutesRegister } from "./contexts/web/webRoutesRegister.js"
 
 type ServerAppEnvironment = AuthenticationEnvironment
 
@@ -40,6 +42,9 @@ type ServerAppOptions = {
   identifier?: Identifier
   logger?: Logger
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
+  web?: Partial<
+    Pick<WebRouteOptions, "publicOrigin" | "staticFolder" | "version" | "webVaultEnabled" | "webVaultFolder">
+  >
 }
 
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
@@ -88,6 +93,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   const defaultPublicKey = defaultKeyPairResult?.success ? defaultKeyPairResult.data.publicKey : undefined
   const identityClock = identityOptions?.clock ?? serverClock
   const identityConfig = identityOptions?.config ?? identityConfigCreate()
+  const webVaultEnabled = options?.web?.webVaultEnabled ?? true
   const identityDatabase = identityOptions?.database ?? database
   const identityIdentifier = identityOptions?.identifier ?? options?.identifier ?? identifierCreate()
   const push =
@@ -132,6 +138,16 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     ...options?.icons,
     clock: options?.icons?.clock ?? serverClock,
     logger: options?.icons?.logger ?? options?.logger,
+  })
+  webRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    publicOrigin: options?.web?.publicOrigin ?? identityOptions?.publicOrigin,
+    staticFolder: options?.web?.staticFolder,
+    version: options?.web?.version,
+    webVaultEnabled,
+    webVaultFolder: options?.web?.webVaultFolder,
   })
   return app
 }
