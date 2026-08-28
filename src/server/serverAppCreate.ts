@@ -8,6 +8,8 @@ import type { Identifier } from "../shared/identifier/identifier.js"
 import { identifierCreate } from "../shared/identifier/identifierCreate.js"
 import type { Logger } from "../shared/logging/logger.js"
 import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
+import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotificationAdapter.js"
+import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
@@ -25,6 +27,7 @@ type ServerAppEnvironment = AuthenticationEnvironment
 type ServerAppOptions = {
   clock?: Clock
   database?: DatabaseConnection
+  ciphers?: { notification?: CipherNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
@@ -95,6 +98,14 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     database: identityDatabase,
     identifier: identityIdentifier,
     notification: options?.folders?.notification,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+  })
+  cipherRoutesRegister(app, {
+    clock: identityClock,
+    database: identityDatabase,
+    identifier: identityIdentifier,
+    notification: options?.ciphers?.notification,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
   })
