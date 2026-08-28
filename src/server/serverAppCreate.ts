@@ -1,23 +1,23 @@
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
-import type { Clock } from "../shared/clock/clock.js"
-import type { Identifier } from "../shared/identifier/identifier.js"
-import type { Logger } from "../shared/logging/logger.js"
-import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import { apiErrorCreate } from "../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../shared/api/apiErrorResponseCreate.js"
+import type { Clock } from "../shared/clock/clock.js"
 import { clockCreate } from "../shared/clock/clockCreate.js"
+import type { Identifier } from "../shared/identifier/identifier.js"
 import { identifierCreate } from "../shared/identifier/identifierCreate.js"
-import type { DatabaseConnection } from "./database/database.js"
-import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
-import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
-import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
-import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOptions.js"
-import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
-import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
-import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
+import type { Logger } from "../shared/logging/logger.js"
+import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
+import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
+import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
+import { identityRateLimiter } from "./contexts/identity/identityRateLimiter.js"
+import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOptions.js"
+import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
+import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
+import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
+import type { DatabaseConnection } from "./database/database.js"
 import { requestLoggingMiddleware } from "./requestLoggingMiddleware.js"
 
 type ServerAppEnvironment = AuthenticationEnvironment
@@ -95,7 +95,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     database: identityDatabase,
     identifier: identityIdentifier,
     notification: options?.folders?.notification,
-    publicKey: defaultPublicKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
   })
   return app

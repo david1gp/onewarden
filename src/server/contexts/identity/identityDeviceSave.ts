@@ -13,7 +13,7 @@ export function identityDeviceSave(
 ): Result<void> {
   const op = "identityDeviceSave"
   try {
-    if (updateTime) device.updatedAt = clock.now().toISOString()
+    const updatedAt = updateTime ? clock.now().toISOString() : device.updatedAt
     database.run(
       `INSERT INTO devices (
          uuid, created_at, updated_at, user_uuid, name, atype, push_uuid,
@@ -31,7 +31,7 @@ export function identityDeviceSave(
       [
         device.uuid,
         device.createdAt,
-        device.updatedAt,
+        updatedAt,
         device.userUuid,
         device.name,
         device.type,
@@ -41,6 +41,7 @@ export function identityDeviceSave(
         device.twoFactorRemember,
       ],
     )
+    if (updateTime) device.updatedAt = updatedAt
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Device save failed.")

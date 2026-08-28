@@ -36,7 +36,7 @@ export async function authenticationContextResolve(
   if (!userResult.success || userResult.data === null)
     return authenticationGuardErrorCreate(op, "Device has no user associated")
 
-  const routeName = options.routeName ?? authenticationRouteNameResolve(context)
+  const routeName = options.routeName
   const stampResult = authenticationSecurityStampValidate(userResult.data, claims.sstamp, routeName, database, clock)
   if (!stampResult.success) return stampResult
 
@@ -48,12 +48,6 @@ export async function authenticationContextResolve(
     ip: authenticationClientIpResolve(context),
     user: userResult.data,
   })
-}
-
-function authenticationRouteNameResolve(context: Context<AuthenticationEnvironment>): string | undefined {
-  const routePath = context.req.routePath
-  if (routePath !== "*" && routePath.length > 0) return routePath
-  return context.req.path.length > 0 ? context.req.path : undefined
 }
 
 function authenticationHostResolve(

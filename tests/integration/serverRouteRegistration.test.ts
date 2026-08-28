@@ -4,17 +4,31 @@ import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteR
 import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 
 const currentRouteRegistrations = [
+  { basePath: "/", method: "DELETE", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "DELETE", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "GET", path: "/api/folders" },
+  { basePath: "/", method: "GET", path: "/api/folders" },
+  { basePath: "/", method: "GET", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "GET", path: "/api/folders/:folder_id" },
   { basePath: "/", method: "GET", path: "/health" },
   { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
   { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },
   { basePath: "/", method: "GET", path: "/identity/sso/prevalidate" },
   { basePath: "/", method: "POST", path: "/api/accounts/prelogin" },
+  { basePath: "/", method: "POST", path: "/api/folders" },
+  { basePath: "/", method: "POST", path: "/api/folders" },
+  { basePath: "/", method: "POST", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "POST", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "POST", path: "/api/folders/:folder_id/delete" },
+  { basePath: "/", method: "POST", path: "/api/folders/:folder_id/delete" },
   { basePath: "/", method: "POST", path: "/identity/accounts/prelogin" },
   { basePath: "/", method: "POST", path: "/identity/accounts/prelogin/password" },
   { basePath: "/", method: "POST", path: "/identity/accounts/register" },
   { basePath: "/", method: "POST", path: "/identity/accounts/register/finish" },
   { basePath: "/", method: "POST", path: "/identity/accounts/register/send-verification-email" },
   { basePath: "/", method: "POST", path: "/identity/connect/token" },
+  { basePath: "/", method: "PUT", path: "/api/folders/:folder_id" },
+  { basePath: "/", method: "PUT", path: "/api/folders/:folder_id" },
 ]
 
 test("serverAppCreate route registrations match the current compatibility baseline", () => {

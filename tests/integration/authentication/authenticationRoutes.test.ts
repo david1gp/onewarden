@@ -261,6 +261,9 @@ test("security-stamp route exceptions use explicit route names, expire at the up
     authenticationMiddleware(authenticationOptions(context, "accounts.profile")),
     (requestContext) => requestContext.json({ allowed: true }),
   )
+  context.app.get("/api/stamp-unmapped", authenticationMiddleware(authenticationOptions(context)), (requestContext) =>
+    requestContext.json({ allowed: true }),
+  )
   const token = await accessTokenCreate(context.app)
   authenticationSecurityStampExceptionSet(context.user, ["accounts.password"], context.clock)
   context.user.securityStamp = "new-stamp"
@@ -277,6 +280,13 @@ test("security-stamp route exceptions use explicit route names, expire at the up
     }),
     401,
     "Invalid security stamp: Current route and exception route do not match",
+  )
+  await expectGuardError(
+    await context.app.request("https://vault.example/api/stamp-unmapped", {
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    401,
+    "Error getting current route for stamp exception",
   )
 
   context.clock.advance(121)

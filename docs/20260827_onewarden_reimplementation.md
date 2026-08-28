@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: task 8 is complete; task 9 authentication guards and authorization rules is in progress in the existing agent, while task 13 folder APIs is being implemented in parallel because it can remain isolated from task 9 files.
+- Current context: tasks 8 and 9 are complete; task 13 folder APIs is being implemented in parallel because it can remain isolated from the completed task 9 authentication and authorization work.
 
 # Tasks
 
@@ -35,7 +35,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 6. Port identity prelogin, registration capability, registration, verification, and account-creation behavior with tests.
 - [x] 7. Port password-grant token issuance, refresh-token rotation, device identity, token claims, and revocation behavior with tests.
 - [x] 8. Port API-key, organization API-key, authorization-code, and SSO token grant behavior with tests.
-- [ ] 9. Port authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards with tests.
+- [x] 9. Port authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards with tests.
 - [ ] 10. Port user profile, keys, password changes, KDF changes, account revision, account deletion, and device management APIs with tests.
 - [ ] 11. Port email workflows and account lifecycle APIs, using deterministic mail adapters and behavior tests.
 - [ ] 12. Port authenticator, email, WebAuthn, Duo, YubiKey, recovery-code, and remembered-device two-factor behavior with tests.

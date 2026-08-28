@@ -222,3 +222,65 @@ test("trusted-device creation returns exact unavailable and disabled errors", as
     errorMessage: "2FA remember token signing is unavailable.",
   })
 })
+
+test("trusted-device persistence failures preserve state and allow a later retry", async () => {
+  const database = databaseCreate()
+  const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
+  const device = deviceCreate()
+  device.twoFactorRemember = "previous-token"
+  expect(identityDeviceSave(database, device, clock, false).success).toBe(true)
+  const previousUpdatedAt = device.updatedAt
+  database.run(
+    `CREATE TRIGGER fail_device_save BEFORE UPDATE ON devices
+     BEGIN SELECT RAISE(ABORT, 'device save failure'); END`,
+  )
+
+  const createResult = await authenticationTrustedDeviceCreate(device, trustedDeviceOptions(database, clock))
+  expect(createResult).toMatchObject({ success: false, op: "identityDeviceSave", errorMessage: "Device save failed." })
+  expect(device.twoFactorRemember).toBe("previous-token")
+  expect(device.updatedAt).toBe(previousUpdatedAt)
+  expect(database.query("SELECT twofactor_remember, updated_at FROM devices WHERE uuid = ?").get(device.uuid)).toEqual({
+    twofactor_remember: "previous-token",
+    updated_at: previousUpdatedAt,
+  })
+
+  database.run("DROP TRIGGER fail_device_save")
+  const retryDevice = deviceCreate("retry-device")
+  const retryCreateResult = await authenticationTrustedDeviceCreate(retryDevice, trustedDeviceOptions(database, clock))
+  expect(retryCreateResult.success).toBe(true)
+  if (!retryCreateResult.success) return
+  const retryToken = retryCreateResult.data
+  const retryUpdatedAt = retryDevice.updatedAt
+  database.run(
+    `CREATE TRIGGER fail_device_save BEFORE UPDATE ON devices
+     BEGIN SELECT RAISE(ABORT, 'device save failure'); END`,
+  )
+
+  const failedValidation = await authenticationTrustedDeviceValidate(
+    retryDevice,
+    `${retryToken}wrong`,
+    trustedDeviceOptions(database, clock),
+  )
+  expect(failedValidation).toMatchObject({
+    success: false,
+    op: "identityDeviceSave",
+    errorMessage: "Device save failed.",
+  })
+  expect(retryDevice.twoFactorRemember).toBe(retryToken)
+  expect(retryDevice.updatedAt).toBe(retryUpdatedAt)
+  expect(database.query("SELECT twofactor_remember FROM devices WHERE uuid = ?").get(retryDevice.uuid)).toEqual({
+    twofactor_remember: retryToken,
+  })
+
+  database.run("DROP TRIGGER fail_device_save")
+  const successfulRetry = await authenticationTrustedDeviceValidate(
+    retryDevice,
+    `${retryToken}wrong`,
+    trustedDeviceOptions(database, clock),
+  )
+  expect(successfulRetry).toEqual({ success: true, data: false })
+  expect(retryDevice.twoFactorRemember).toBeNull()
+  expect(database.query("SELECT twofactor_remember FROM devices WHERE uuid = ?").get(retryDevice.uuid)).toEqual({
+    twofactor_remember: null,
+  })
+})

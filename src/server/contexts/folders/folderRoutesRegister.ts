@@ -5,6 +5,7 @@ import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
+import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
@@ -13,6 +14,7 @@ import { folderDataSchema } from "./folderDataSchema.js"
 import { folderDelete } from "./folderDelete.js"
 import { folderErrorCreate } from "./folderErrorCreate.js"
 import { folderFindByUser } from "./folderFindByUser.js"
+import { folderFindByUuidAndUser } from "./folderFindByUuidAndUser.js"
 import { folderNotificationAdapterCreate } from "./folderNotificationAdapterCreate.js"
 import { folderNotificationSend } from "./folderNotificationSend.js"
 import type { FolderRouteOptions } from "./folderRouteOptions.js"
@@ -24,12 +26,14 @@ const folderPathSchema = v.object({ folder_id: v.string() })
 
 export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, options: FolderRouteOptions): void {
   const notification = options.notification ?? folderNotificationAdapterCreate()
-  const authenticate = authenticationMiddleware({
-    clock: options.clock,
-    database: options.database,
-    publicKey: options.publicKey,
-    publicOrigin: options.publicOrigin,
-  })
+  const authenticate = (routeName: string) =>
+    authenticationMiddleware({
+      clock: options.clock,
+      database: options.database,
+      publicKey: options.publicKey,
+      publicOrigin: options.publicOrigin,
+      routeName,
+    })
 
   const list = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = folderRequestContextResolve(context, options)
@@ -92,23 +96,19 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
     const pathResult = requestPathParse(context, folderPathSchema)
     if (!pathResult.success) return apiErrorResponseCreate(pathResult)
-    const result = folderDelete(
-      requestContext.data.database,
-      pathResult.data.folder_id,
-      requestContext.data.userUuid,
-    )
+    const result = folderDelete(requestContext.data.database, pathResult.data.folder_id, requestContext.data.userUuid)
     if (!result.success) return apiErrorResponseCreate(result)
     await folderNotificationSend(notification, folderUpdateType.delete, result.data, requestContext.data.device)
     return new Response(null, { status: 200 })
   }
 
-  app.get("/api/folders", authenticate, list)
-  app.get("/api/folders/:folder_id", authenticate, get)
-  app.post("/api/folders", authenticate, create)
-  app.post("/api/folders/:folder_id", authenticate, update)
-  app.put("/api/folders/:folder_id", authenticate, update)
-  app.post("/api/folders/:folder_id/delete", authenticate, remove)
-  app.delete("/api/folders/:folder_id", authenticate, remove)
+  app.get("/api/folders", authenticate("get_folders"), list)
+  app.get("/api/folders/:folder_id", authenticate("get_folder"), get)
+  app.post("/api/folders", authenticate("post_folders"), create)
+  app.post("/api/folders/:folder_id", authenticate("post_folder"), update)
+  app.put("/api/folders/:folder_id", authenticate("put_folder"), update)
+  app.post("/api/folders/:folder_id/delete", authenticate("delete_folder_post"), remove)
+  app.delete("/api/folders/:folder_id", authenticate("delete_folder"), remove)
 }
 
 function folderRequestContextResolve(
@@ -124,5 +124,12 @@ function folderRequestContextResolve(
 }
 
 type FolderRequestContextResult =
-  | { success: true; data: { database: NonNullable<FolderRouteOptions["database"]>; device: NonNullable<AuthenticationContext>["device"]; userUuid: string } }
+  | {
+      success: true
+      data: {
+        database: NonNullable<FolderRouteOptions["database"]>
+        device: NonNullable<AuthenticationContext>["device"]
+        userUuid: string
+      }
+    }
   | ResultErr
