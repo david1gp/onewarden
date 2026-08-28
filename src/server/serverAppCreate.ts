@@ -20,18 +20,6 @@ import type { EmergencyAccessNotificationAdapter } from "./contexts/emergencyAcc
 import { emergencyAccessRoutesRegister } from "./contexts/emergencyAccess/emergencyAccessRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
-import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
-import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
-import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
-import { organizationPublicRoutesRegister } from "./contexts/organizations/organizationPublicRoutesRegister.js"
-import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
-import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
-import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
-import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
-import type { SendNotificationAdapter } from "./contexts/sends/sendNotificationAdapter.js"
-import { sendRoutesRegister } from "./contexts/sends/sendRoutesRegister.js"
-import type { SendFileStorageAdapter } from "./contexts/sends/sendFileStorageAdapter.js"
-import type { SendRateLimiter } from "./contexts/sends/sendRouteOptions.js"
 import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
 import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
@@ -41,6 +29,19 @@ import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOpti
 import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
 import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
+import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
+import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
+import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
+import { organizationPublicRoutesRegister } from "./contexts/organizations/organizationPublicRoutesRegister.js"
+import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
+import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
+import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
+import { pushRelayConfigurationCreate } from "./contexts/push/pushRelayConfigurationCreate.js"
+import type { SendFileStorageAdapter } from "./contexts/sends/sendFileStorageAdapter.js"
+import type { SendNotificationAdapter } from "./contexts/sends/sendNotificationAdapter.js"
+import type { SendRateLimiter } from "./contexts/sends/sendRouteOptions.js"
+import { sendRoutesRegister } from "./contexts/sends/sendRoutesRegister.js"
+import { syncRoutesRegister } from "./contexts/sync/syncRoutesRegister.js"
 import type { WebRouteOptions } from "./contexts/web/webRouteOptions.js"
 import { webRoutesRegister } from "./contexts/web/webRoutesRegister.js"
 import type { DatabaseConnection } from "./database/database.js"
@@ -242,6 +243,13 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     quotaBytes: options?.attachments?.quotaBytes,
     storage: attachmentStorage,
     userQuotaBytes: options?.attachments?.userQuotaBytes,
+  })
+  syncRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
   })
   sendRoutesRegister(app, {
     clock: identityClock,
