@@ -23,7 +23,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8, 9, 10, 11, 13, 14, 29, 30, and 32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; later entries 28 notification hubs and 31 admin compatibility are being implemented concurrently in isolated worktrees.
+- Current context: tasks 8, 9, 10, 11, 13, 14, 28, 29, 30, and 32 are complete and verified on main; Task 11 includes deterministic mail delivery, account email workflows, lifecycle tokens, password hints, recovery, and compatibility coverage; task 31 admin compatibility is implemented and tested in an isolated worktree pending a separate integration.
 
 # Tasks
 
@@ -54,7 +54,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [ ] 25. Port Send text/file CRUD, access, passwords, download tokens, quotas, expiration, and deletion behavior with tests.
 - [ ] 26. Port emergency-access invite, accept, confirm, initiate, approve, reject, view, takeover, timeout, and reminder behavior with tests.
 - [ ] 27. Port public organization import and remaining public compatibility endpoints with tests.
-- [ ] 28. Port authenticated and anonymous notification hubs, SignalR MessagePack framing, ping behavior, update types, and connection limits with tests.
+- [x] 28. Port authenticated and anonymous notification hubs, SignalR MessagePack framing, ping behavior, update types, and connection limits with tests.
 - [x] 29. Port optional push-relay device registration, token caching, dispatch, and failure behavior behind an adapter with tests.
 - [x] 30. Port icon retrieval, caching, fallback, SSRF protection, redirect, and content-type behavior with tests.
 - [ ] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
