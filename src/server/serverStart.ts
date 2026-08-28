@@ -1,4 +1,6 @@
 import { loggerCreate } from "../shared/logging/loggerCreate.js"
+import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
+import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
 import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { databaseClose } from "./database/databaseClose.js"
@@ -14,6 +16,11 @@ if (!configResult.success) {
 }
 
 const logger = loggerCreate({ level: configResult.data.LOG_LEVEL })
+const iconConfigResult = iconConfigLoad()
+if (!iconConfigResult.success) {
+  logger.error("server.icon-configuration.invalid", { errorMessage: iconConfigResult.errorMessage })
+  process.exit(1)
+}
 const identityConfigResult = identityConfigLoad()
 if (!identityConfigResult.success) {
   logger.error("server.identity-configuration.invalid", { errorMessage: identityConfigResult.errorMessage })
@@ -36,6 +43,10 @@ if (!migrationResult.success) {
 
 const app = serverAppCreate({
   database,
+  icons: {
+    cache: iconCacheAdapterCreate({ directory: iconConfigResult.data.ICON_CACHE_FOLDER }),
+    config: iconConfigResult.data,
+  },
   identity: { config: identityConfigResult.data, publicOrigin: configResult.data.PUBLIC_ORIGIN },
   logger,
 })
