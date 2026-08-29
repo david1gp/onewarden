@@ -25,6 +25,8 @@ const deviceUuid = "00000000-0000-4000-8000-000000000102"
 const organizationUuid = "00000000-0000-4000-8000-000000000103"
 const membershipUuid = "00000000-0000-4000-8000-000000000104"
 const collectionUuid = "00000000-0000-4000-8000-000000000105"
+const invitedUserUuid = "00000000-0000-4000-8000-000000000106"
+const invitedSecurityStamp = "00000000-0000-4000-8000-000000000107"
 const databases: DatabaseConnection[] = []
 
 async function userCreate(): Promise<IdentityUser> {
@@ -109,7 +111,13 @@ async function contextCreate(configOverrides: Parameters<typeof identityConfigCr
   const app = serverAppCreate({
     clock,
     database,
-    identifier: identifierTestCreate([organizationUuid, membershipUuid, collectionUuid]),
+    identifier: identifierTestCreate([
+      organizationUuid,
+      membershipUuid,
+      collectionUuid,
+      invitedUserUuid,
+      invitedSecurityStamp,
+    ]),
     identity: {
       clock,
       config,
@@ -505,4 +513,49 @@ test("the final organization owner cannot leave", async () => {
   expect(leaveResponse.status).toBe(400)
   expect((await leaveResponse.json()).message).toBe("The last owner can't leave")
   expect(context.database.query("SELECT COUNT(*) AS count FROM users_organizations").get()).toEqual({ count: 1 })
+})
+
+test("membership invite endpoint uses the organization admin guard and persists an invitation", async () => {
+  const context = await contextCreate()
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const unauthorizedResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/users/invite`,
+    {
+      body: JSON.stringify({ emails: ["invited@example.com"], groups: [], type: 2 }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  )
+  expect(unauthorizedResponse.status).toBe(401)
+
+  const inviteResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/users/invite`,
+    {
+      body: JSON.stringify({ emails: ["invited@example.com"], groups: [], type: 2 }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    },
+  )
+  expect(inviteResponse.status).toBe(200)
+  expect(await inviteResponse.text()).toBe("")
+  expect(
+    context.database
+      .query("SELECT status, atype FROM users_organizations WHERE org_uuid = ? AND user_uuid != ?")
+      .get(organizationUuid, userUuid),
+  ).toEqual({
+    status: organizationMembershipStatus.invited,
+    atype: organizationMembershipType.user,
+  })
 })
