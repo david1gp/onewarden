@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
 import { extensionFullWindowLoginSearchMatch } from "../../../src/extension/fullwindow/extensionFullWindowLoginSearchMatch.js"
 import { extensionFullWindowLoginUriMatch } from "../../../src/extension/fullwindow/extensionFullWindowLoginUriMatch.js"
+import { extensionLoginSearchMatch } from "../../../src/extension/extensionLoginSearchMatch.js"
 
 const login: ExtensionFullWindowLogin = {
   id: "login-1",
@@ -15,12 +16,16 @@ test("extensionFullWindowLoginSearchMatch matches every login for an empty query
   expect(extensionFullWindowLoginSearchMatch(login, "   ")).toBe(true)
 })
 
-test("extensionFullWindowLoginSearchMatch matches name, username, uri and custom field labels", () => {
+test("extensionFullWindowLoginSearchMatch matches name, username and uri", () => {
   expect(extensionFullWindowLoginSearchMatch(login, "example mail")).toBe(true)
   expect(extensionFullWindowLoginSearchMatch(login, "ADA@")).toBe(true)
   expect(extensionFullWindowLoginSearchMatch(login, "mail.example.com")).toBe(true)
-  expect(extensionFullWindowLoginSearchMatch(login, "api key")).toBe(true)
   expect(extensionFullWindowLoginSearchMatch(login, "unrelated")).toBe(false)
+})
+
+test("extensionFullWindowLoginSearchMatch keeps custom field label matching local", () => {
+  expect(extensionLoginSearchMatch(login, "api key")).toBe(false)
+  expect(extensionFullWindowLoginSearchMatch(login, "api key")).toBe(true)
 })
 
 test("extensionFullWindowLoginUriMatch keeps every login when no site is active", () => {
