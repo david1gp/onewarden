@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from "@playwright/test"
+import { expect, type Page, type Route, test } from "@playwright/test"
 import { organizationDemoData } from "../../src/web/organizations/demo/organizationDemoData.js"
 
 const organizationId = "org-acme-corp-001"
@@ -335,7 +335,8 @@ test.describe("task 36 organization management UI", () => {
   })
 
   test("supports deep links, responsive layout, and keyboard dismissal", async ({ page }) => {
-    await page.goto("/organizations?tab=domains&orgId=org-acme-corp-001")
+    const domainsResponse = await page.goto("/organizations?tab=domains&orgId=org-acme-corp-001")
+    expect(domainsResponse?.status(), "the organization frontend route should serve the SPA").not.toBe(404)
     await expect(page.getByRole("heading", { name: "Domain Verification" })).toBeVisible()
     await page.goto("/organizations?tab=collections&dialog=create-collection&orgId=org-acme-corp-001")
     await expect(page.getByRole("heading", { name: "Create Collection" })).toBeVisible()
