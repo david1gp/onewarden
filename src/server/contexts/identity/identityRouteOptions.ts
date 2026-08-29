@@ -8,12 +8,14 @@ import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
 import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 import type { TwoFactorAdapters } from "../twoFactor/twoFactorAdapters.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
 
 export type IdentityRouteOptions = {
   clock: Clock
   config: IdentityConfig
   database: DatabaseConnection | undefined
   groupsEnabled?: boolean
+  event?: EventAdapter
   identifier: Identifier
   mail: IdentityMailAdapter
   privateKey: KeyInput | undefined

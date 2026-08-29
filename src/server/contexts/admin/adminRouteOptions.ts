@@ -9,12 +9,14 @@ import type { AdminBackupAdapter } from "./adminBackupAdapter.js"
 import type { AdminConfig } from "./adminConfigSchema.js"
 import type { AdminConfigurationAdapter } from "./adminConfigurationAdapter.js"
 import type { AdminDiagnosticsAdapter } from "./adminDiagnosticsAdapter.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
 
 export type AdminRouteOptions = {
   clock: Clock
   config: AdminConfig
   database: DatabaseConnection | undefined
   databasePath?: string
+  event?: EventAdapter
   identityConfig: IdentityConfig
   identifier: Identifier
   mail: IdentityMailAdapter

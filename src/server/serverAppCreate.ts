@@ -18,6 +18,11 @@ import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotific
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { EmergencyAccessNotificationAdapter } from "./contexts/emergencyAccess/emergencyAccessNotificationAdapter.js"
 import { emergencyAccessRoutesRegister } from "./contexts/emergencyAccess/emergencyAccessRoutesRegister.js"
+import type { EventAdapter } from "./contexts/events/eventAdapter.js"
+import { eventAdapterCreate } from "./contexts/events/eventAdapterCreate.js"
+import { eventAdapterSafeCreate } from "./contexts/events/eventAdapterSafeCreate.js"
+import type { EventNotificationAdapter } from "./contexts/events/eventNotificationAdapter.js"
+import { eventRoutesRegister } from "./contexts/events/eventRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
 import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
@@ -57,6 +62,7 @@ type ServerAppOptions = {
   database?: DatabaseConnection
   ciphers?: { maxNoteSize?: number; notification?: CipherNotificationAdapter }
   emergencyAccess?: { notification?: EmergencyAccessNotificationAdapter }
+  events?: { adapter?: EventAdapter; notification?: EventNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
   icons?: Partial<IconRouteOptions>
   identity?: Partial<IdentityRouteOptions>
@@ -141,6 +147,18 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   const webVaultEnabled = options?.web?.webVaultEnabled ?? true
   const identityDatabase = identityOptions?.database ?? database
   const identityIdentifier = identityOptions?.identifier ?? options?.identifier ?? identifierCreate()
+  const eventAdapterSource =
+    options?.events?.adapter ??
+    (identityDatabase === undefined
+      ? undefined
+      : eventAdapterCreate({
+          clock: identityClock,
+          database: identityDatabase,
+          enabled: identityConfig.ORG_EVENTS_ENABLED,
+          identifier: identityIdentifier,
+          notification: options?.events?.notification,
+        }))
+  const eventAdapter = eventAdapterSource === undefined ? undefined : eventAdapterSafeCreate(eventAdapterSource)
   const identityMail = identityOptions?.mail ?? identityMailAdapterCreate(identityClock)
   const push =
     options?.push?.adapter ??
@@ -158,6 +176,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     config: adminConfig,
     database: adminOptions?.database ?? database,
     databasePath: adminOptions?.databasePath,
+    event: eventAdapter,
     diagnostics: adminOptions?.diagnostics,
     identityConfig,
     identifier: adminOptions?.identifier ?? identityIdentifier,
@@ -186,6 +205,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     config: identityConfig,
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    event: eventAdapter,
     identifier: identityIdentifier,
     mail: identityMail,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
@@ -195,6 +215,14 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
     twoFactor: identityOptions?.twoFactor,
+  })
+  eventRoutesRegister(app, {
+    clock: identityClock,
+    database: identityDatabase,
+    enabled: identityConfig.ORG_EVENTS_ENABLED,
+    event: eventAdapter,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
   })
   organizationPublicRoutesRegister(app, {
     clock: identityClock,
@@ -212,6 +240,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     config: identityConfig,
     database: identityDatabase,
+    event: eventAdapter,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     identifier: identityIdentifier,
     mail: identityMail,
@@ -246,6 +275,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    event: eventAdapter,
     identifier: identityIdentifier,
     maxNoteSize: options?.ciphers?.maxNoteSize,
     notification: options?.ciphers?.notification ?? notificationHub.adapter,
@@ -257,6 +287,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    event: eventAdapter,
     identifier: identityIdentifier,
     maxFileSizeBytes: options?.attachments?.maxFileSizeBytes,
     notification: options?.attachments?.notification ?? notificationHub.adapter,

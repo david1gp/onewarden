@@ -4,6 +4,7 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
 
 export type IdentityApiKeyLoginOptions = {
   clock: Clock
@@ -14,4 +15,5 @@ export type IdentityApiKeyLoginOptions = {
   privateKey: KeyInput | undefined
   rateLimiter: { check: (key: string) => Result<void> }
   clientIp: string
+  event?: EventAdapter
 }
