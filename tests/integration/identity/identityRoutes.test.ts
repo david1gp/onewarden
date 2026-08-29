@@ -425,6 +425,27 @@ test("verification capability returns a JSON token without mail and finish prese
   })
 })
 
+test("resending an existing account verification returns a token accepted by the account verification endpoint", async () => {
+  const context = identityTestContext({ config: { MAIL_ENABLED: false, PASSWORD_ITERATIONS: 100_000 } })
+  const email = "resend-existing@example.com"
+  const registration = await requestJson(context.app, "/identity/accounts/register", legacyPayload({ email }))
+  expect(registration.status).toBe(200)
+  const user = context.database.query<{ uuid: string }, [string]>("SELECT uuid FROM users WHERE email = ?").get(email)
+  expect(user).not.toBeNull()
+
+  const resend = await requestJson(context.app, "/identity/accounts/register/send-verification-email", { email })
+  expect(resend.status).toBe(200)
+  const resendData = await resend.json()
+  expect(resendData).toMatchObject({ userId: user?.uuid })
+  expect(typeof resendData.token).toBe("string")
+
+  const verification = await requestJson(context.app, "/api/accounts/verify-email-token", {
+    userId: user?.uuid,
+    token: resendData.token,
+  })
+  expect(verification.status).toBe(200)
+})
+
 test("verification email capability only permits disabled-signup invitations when mail is disabled", async () => {
   const denied = identityTestContext({ config: { SIGNUPS_ALLOWED: false } })
   const deniedResponse = await requestJson(denied.app, "/identity/accounts/register/send-verification-email", {

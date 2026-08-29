@@ -38,6 +38,12 @@ test("web routes serve the vault, static files, aliases, health, and protocol me
   expect(indexResponse.headers.get("cache-control")).toBe("public, max-age=600")
   expect(await indexResponse.text()).toContain("Test vault")
 
+  for (const path of ["/login", "/unlock", "/demo"]) {
+    const spaResponse = await app.request(`http://localhost${path}`)
+    expect(spaResponse.status).toBe(200)
+    expect(await spaResponse.text()).toContain("Test vault")
+  }
+
   const indexAliasResponse = await app.request("http://localhost/index.html", { redirect: "manual" })
   expect(indexAliasResponse.status).toBe(303)
   expect(indexAliasResponse.headers.get("location")).toBe("/")
