@@ -83,3 +83,7 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
 
   return "root"
 }
+  | "admin"
+  if (normalized === "/demo/admin") {
+    return "admin"
+  }

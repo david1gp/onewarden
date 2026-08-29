@@ -170,3 +170,7 @@ export function WebApp(): JSX.Element {
     </Switch>
   )
 }
+import { DemoAdmin } from "../demo/DemoAdmin.jsx"
+      <Match when={state.currentRoute() === "admin"}>
+        <DemoAdmin />
+      </Match>

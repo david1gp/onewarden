@@ -305,3 +305,4 @@ function webAppleAppSiteAssociationResponse(): Response {
     },
   )
 }
+    "/demo/admin",
