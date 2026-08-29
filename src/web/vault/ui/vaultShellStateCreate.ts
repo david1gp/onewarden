@@ -16,6 +16,7 @@ export interface VaultShellProps {
   baseUrl?: string
   enableUrlSync?: boolean
   autoSync?: boolean
+  onOpenOrganizations?: () => void
 }
 
 export function vaultShellStateCreate(props: VaultShellProps = {}) {

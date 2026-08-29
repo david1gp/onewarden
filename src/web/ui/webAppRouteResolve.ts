@@ -20,6 +20,7 @@ export type WebAppRouteName =
   | "empty-state"
   | "trash"
   | "locked"
+  | "organizations"
 
 export function webAppRouteResolve(pathname: string): WebAppRouteName {
   const normalized = pathname.replace(/\/+$/, "")
@@ -98,6 +99,16 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   }
   if (routePath === "/demo/locked" || routePath === "/demo/lock") {
     return "locked"
+  }
+  if (
+    routePath === "/organizations" ||
+    routePath === "/organization" ||
+    routePath === "/org" ||
+    routePath === "/demo/organizations" ||
+    routePath === "/demo/organization" ||
+    routePath === "/demo/org"
+  ) {
+    return "organizations"
   }
 
   return "root"

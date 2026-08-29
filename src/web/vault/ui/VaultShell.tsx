@@ -38,6 +38,18 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               {state.errorMessage()}
             </span>
           </Show>
+          <Show when={props.onOpenOrganizations}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.workVault}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onOpenOrganizations?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Organizations
+            </ButtonIcon>
+          </Show>
           <ButtonIcon
             variant="ghost"
             size="sm"

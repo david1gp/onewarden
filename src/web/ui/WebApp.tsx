@@ -18,6 +18,7 @@ import { DemoSelectedSecureNote } from "../demo/DemoSelectedSecureNote.jsx"
 import { DemoSelectedSshKey } from "../demo/DemoSelectedSshKey.jsx"
 import { DemoTrash } from "../demo/DemoTrash.jsx"
 import { vaultDemoData } from "../demo/vaultDemoData.js"
+import { OrganizationWorkspace } from "../organizations/ui/OrganizationWorkspace.jsx"
 import { VaultShell } from "../vault/ui/VaultShell.jsx"
 import { WebAppShell } from "./WebAppShell.jsx"
 import { webAppStateCreate } from "./webAppStateCreate.js"
@@ -27,6 +28,12 @@ export function WebApp(): JSX.Element {
 
   return (
     <Switch>
+      <Match when={state.currentRoute() === "organizations"}>
+        <OrganizationWorkspace
+          apiClientOptions={{ token: () => state.session.session()?.accessToken ?? null }}
+          useDemoFallback={false}
+        />
+      </Match>
       <Match when={state.currentRoute() === "directory"}>
         <DemoDirectory />
       </Match>
@@ -221,7 +228,7 @@ export function WebApp(): JSX.Element {
             </WebAppShell>
           </Match>
           <Match when={state.session.isUnlocked()}>
-            <VaultShell initialItems={vaultDemoData} />
+            <VaultShell initialItems={vaultDemoData} onOpenOrganizations={() => state.navigate("/organizations")} />
           </Match>
         </Switch>
       </Match>
