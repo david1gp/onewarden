@@ -1,5 +1,7 @@
 import type { VaultFilter } from "./vaultFilterSchema.js"
+import { vaultItemOwnershipResolve } from "./vaultItemOwnershipResolve.js"
 import type { VaultItem } from "./vaultItemSchema.js"
+import { vaultOwnershipScopeResolve } from "./vaultOwnershipScopeResolve.js"
 
 export function vaultFilterApply(items: readonly VaultItem[], filter: Partial<VaultFilter>): readonly VaultItem[] {
   const vault = filter.vault ?? "all"
@@ -19,11 +21,16 @@ export function vaultFilterApply(items: readonly VaultItem[], filter: Partial<Va
       }
     }
 
-    if (vault !== "all" && item.vault !== vault) {
-      return false
+    if (vault !== "all") {
+      const ownershipScope = vaultOwnershipScopeResolve(vault)
+      if (ownershipScope !== null) {
+        if (vaultItemOwnershipResolve(item) !== ownershipScope) return false
+      } else if (item.vault !== vault) {
+        return false
+      }
     }
 
-    if (category === "favorites" && ((item.ownership ?? "personal") !== "personal" || !item.favorite)) {
+    if (category === "favorites" && (vaultItemOwnershipResolve(item) !== "personal" || !item.favorite)) {
       return false
     }
 

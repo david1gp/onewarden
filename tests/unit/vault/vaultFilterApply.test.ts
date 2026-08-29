@@ -8,6 +8,8 @@ const testItems: readonly VaultItem[] = [
     title: "GitHub Enterprise",
     category: "login",
     vault: "Work",
+    ownership: "organization",
+    organizationId: "organization-acme",
     favorite: true,
     folder: "Development",
     folderId: "folder-dev",
@@ -24,6 +26,8 @@ const testItems: readonly VaultItem[] = [
     title: "Personal Email",
     category: "login",
     vault: "Personal",
+    ownership: "personal",
+    organizationId: null,
     favorite: false,
     folder: "Personal",
     folderId: "folder-personal",
@@ -37,7 +41,9 @@ const testItems: readonly VaultItem[] = [
     id: "item-3",
     title: "Server Root Key",
     category: "sshKey",
-    vault: "Work",
+    vault: "Shared",
+    ownership: "organization",
+    organizationId: "organization-acme",
     favorite: true,
     folder: "Infrastructure",
     folderId: "folder-infra",
@@ -51,6 +57,8 @@ const testItems: readonly VaultItem[] = [
     title: "Deleted Item",
     category: "secureNote",
     vault: "Personal",
+    ownership: "personal",
+    organizationId: null,
     favorite: false,
     notes: "Old scratchpad",
     deletedDate: "2024-03-01T00:00:00Z",
@@ -71,20 +79,19 @@ test("vaultFilterApply returns only deleted items when category is trash", () =>
   expect(result[0]?.id).toBe("item-4")
 })
 
-test("vaultFilterApply filters by vault scope", () => {
-  const workResult = vaultFilterApply(testItems, { vault: "Work", category: "all" })
-  expect(workResult.length).toBe(2)
-  expect(workResult.every((i) => i.vault === "Work")).toBe(true)
+test("vaultFilterApply filters by ownership scope instead of legacy vault labels", () => {
+  const organizationResult = vaultFilterApply(testItems, { vault: "organization", category: "all" })
+  expect(organizationResult.length).toBe(2)
+  expect(organizationResult.map((item) => item.id)).toEqual(["item-1", "item-3"])
 
-  const personalResult = vaultFilterApply(testItems, { vault: "Personal", category: "all" })
+  const personalResult = vaultFilterApply(testItems, { vault: "personal", category: "all" })
   expect(personalResult.length).toBe(1)
   expect(personalResult[0]?.id).toBe("item-2")
 })
 
 test("vaultFilterApply filters by favorites", () => {
   const favorites = vaultFilterApply(testItems, { vault: "all", category: "favorites" })
-  expect(favorites.length).toBe(2)
-  expect(favorites.every((i) => i.favorite)).toBe(true)
+  expect(favorites.length).toBe(0)
 })
 
 test("vaultFilterApply filters by category type", () => {

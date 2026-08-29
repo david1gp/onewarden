@@ -81,7 +81,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           }`}
         >
           <VaultNav
-            items={state.items}
+            items={state.navigationItems}
             collections={state.collections}
             selectedVault={state.selectedVault}
             selectedCategory={state.selectedCategory}
@@ -134,7 +134,8 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
                     onToggleFavorite={state.toggleFavorite}
                     onEdit={() => state.startEdit()}
                     onClone={state.cloneItem}
-                    onDelete={(id) => state.moveToTrash(id)}
+                    onDelete={(id, hard) => (hard ? state.permanentlyDeleteItem(id) : state.moveToTrash(id))}
+                    onRestore={state.restoreItem}
                   />
                 }
               >

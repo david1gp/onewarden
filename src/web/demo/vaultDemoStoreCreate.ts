@@ -60,14 +60,18 @@ function vaultDemoStoreItemsHaveUniqueIds(items: readonly VaultItem[]): boolean 
   return true
 }
 
+function vaultDemoStoreItemDeletedAtResolve(item: VaultItem): string | null {
+  return item.deletedDate ?? item.deletedAt ?? null
+}
+
 function vaultDemoStoreSnapshotIsValid(snapshot: VaultDemoStoreSnapshot): boolean {
   if (!vaultDemoStoreItemsHaveUniqueIds(snapshot.activeItems)) return false
   if (!vaultDemoStoreItemsHaveUniqueIds(snapshot.deletedItems)) return false
 
   const activeIds = new Set(snapshot.activeItems.map((item) => item.id))
   if (snapshot.deletedItems.some((item) => activeIds.has(item.id))) return false
-  if (snapshot.activeItems.some((item) => item.deletedAt !== null)) return false
-  if (snapshot.deletedItems.some((item) => item.deletedAt === null)) return false
+  if (snapshot.activeItems.some((item) => vaultDemoStoreItemDeletedAtResolve(item) !== null)) return false
+  if (snapshot.deletedItems.some((item) => vaultDemoStoreItemDeletedAtResolve(item) === null)) return false
   return true
 }
 
@@ -206,7 +210,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       if (!item) return
 
       deletedItems.set(deletedItems.get().filter((candidate) => candidate.id !== id))
-      activeItems.set([...activeItems.get(), { ...item, deletedAt: null }])
+      activeItems.set([...activeItems.get(), { ...item, deletedAt: null, deletedDate: null }])
       persist()
     }
 
@@ -358,10 +362,12 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       }
 
       const now = new Date()
+      const deletedAt = now.toISOString()
       const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
       const trashedItem: VaultItem = {
         ...item,
-        deletedAt: now.toISOString(),
+        deletedAt,
+        deletedDate: deletedAt,
         favorite: false,
         updatedAt: formattedDate,
       }

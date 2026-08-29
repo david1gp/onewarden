@@ -10,7 +10,9 @@ import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 import { vaultFilterApply } from "../vault/model/vaultFilterApply.js"
 import type { VaultFolder } from "../vault/model/vaultFolderSchema.js"
 import type { VaultItemCategory } from "../vault/model/vaultItemCategorySchema.js"
+import { vaultItemOwnershipResolve } from "../vault/model/vaultItemOwnershipResolve.js"
 import { vaultKeyboardWorkflowHandle } from "../vault/model/vaultKeyboardWorkflowHandle.js"
+import { vaultOwnershipScopeResolve } from "../vault/model/vaultOwnershipScopeResolve.js"
 import { vaultUrlStateParse } from "../vault/model/vaultUrlStateParse.js"
 import { vaultUrlStateSync } from "../vault/model/vaultUrlStateSync.js"
 import { vaultDemoStore } from "./vaultDemoStore.js"
@@ -44,7 +46,7 @@ function vaultItemFromCipher(cipher: CipherItem): VaultItem {
     id: cipher.id,
     title: cipher.name,
     category: cipherTypeToCategory(cipher.type),
-    vault: cipher.organizationId ? "Shared" : "Personal",
+    vault: cipher.organizationId ? "Acme Corporation" : "My Vault",
     ownership: cipher.organizationId ? "organization" : "personal",
     organizationId: cipher.organizationId,
     folderId: cipher.folderId,
@@ -99,7 +101,8 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   const folders = props.folders ?? localFolders.get
   const collections = props.collections ?? localCollections.get
 
-  const selectedVault = createSignalObject(urlState.vault ?? props.defaultVault ?? "all")
+  const initialVault = urlState.vault ?? props.defaultVault ?? "all"
+  const selectedVault = createSignalObject(vaultOwnershipScopeResolve(initialVault) ?? initialVault)
   const selectedCategory = createSignalObject<VaultItemCategory>(
     (urlState.category as VaultItemCategory) ?? (props.defaultCategory as VaultItemCategory) ?? "all",
   )
@@ -145,7 +148,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   }
 
   const selectVault = (vault: string) => {
-    selectedVault.set(vault)
+    selectedVault.set(vaultOwnershipScopeResolve(vault) ?? vault)
     selectedCategory.set("all")
     selectedFolder.set(null)
     selectedCollection.set(null)
@@ -258,7 +261,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     if (!isApiBacked) {
       if (localItems) {
         const item = localItems.get().find((candidate) => candidate.id === id)
-        if (!item || (item.ownership ?? "personal") !== "personal") return
+        if (!item || vaultItemOwnershipResolve(item) !== "personal") return
         localItems.set(
           localItems
             .get()
@@ -417,7 +420,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       if (!source) return
       const now = new Date()
       const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
-      const isPersonal = (source.ownership ?? "personal") === "personal"
+      const isPersonal = vaultItemOwnershipResolve(source) === "personal"
       const cloned: VaultItem = {
         ...source,
         id: `item-${Date.now()}`,

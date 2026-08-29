@@ -5,6 +5,9 @@ export function demoTrashStateCreate() {
     get items() {
       return vaultDemoStore.deletedItems()
     },
+    get allItems() {
+      return vaultDemoStore.items()
+    },
     defaultSelectedId: "item-trash-legacy-db",
     restoreItem: vaultDemoStore.restoreItem,
     permanentlyDeleteItem: vaultDemoStore.permanentlyDeleteItem,

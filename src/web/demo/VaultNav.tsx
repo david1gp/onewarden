@@ -95,7 +95,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
           </ul>
         </div>
 
-        {/* Vaults */}
+        {/* Vault ownership */}
         <div>
           <p class="px-2 pb-1 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
             Vaults
@@ -107,9 +107,9 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 size="none"
                 icon={vaultSvgIcons.personalVault}
                 iconClass="size-4 text-emerald-500 dark:text-emerald-400 fill-current dark:fill-current"
-                onClick={() => state.selectVault("Personal")}
+                onClick={() => state.selectVault("personal")}
                 class={`flex w-full items-center justify-between rounded-md px-2 py-1.5 font-medium transition-colors ${
-                  state.selectedVault() === "Personal" &&
+                  state.selectedVault() === "personal" &&
                   state.selectedCategory() === "all" &&
                   !state.selectedFolder() &&
                   !state.selectedCollection()
@@ -117,8 +117,8 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
                 }`}
               >
-                <span class="flex-1 text-left">Personal</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().Personal ?? 0}</span>
+                <span class="flex-1 text-left">My Vault</span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().personal}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -127,9 +127,9 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 size="none"
                 icon={vaultSvgIcons.workVault}
                 iconClass="size-4 text-indigo-500 dark:text-indigo-400 fill-current dark:fill-current"
-                onClick={() => state.selectVault("Work")}
+                onClick={() => state.selectVault("organization")}
                 class={`flex w-full items-center justify-between rounded-md px-2 py-1.5 font-medium transition-colors ${
-                  state.selectedVault() === "Work" &&
+                  state.selectedVault() === "organization" &&
                   state.selectedCategory() === "all" &&
                   !state.selectedFolder() &&
                   !state.selectedCollection()
@@ -137,28 +137,8 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
                 }`}
               >
-                <span class="flex-1 text-left">Work</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().Work ?? 0}</span>
-              </ButtonIcon>
-            </li>
-            <li>
-              <ButtonIcon
-                variant="ghost"
-                size="none"
-                icon={vaultSvgIcons.sharedVault}
-                iconClass="size-4 text-sky-700 dark:text-sky-300 fill-current dark:fill-current"
-                onClick={() => state.selectVault("Shared")}
-                class={`flex w-full items-center justify-between rounded-md px-2 py-1.5 font-medium transition-colors ${
-                  state.selectedVault() === "Shared" &&
-                  state.selectedCategory() === "all" &&
-                  !state.selectedFolder() &&
-                  !state.selectedCollection()
-                    ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-white"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
-                }`}
-              >
-                <span class="flex-1 text-left">Shared</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().Shared ?? 0}</span>
+                <span class="flex-1 text-left">Acme Corporation</span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().organization}</span>
               </ButtonIcon>
             </li>
           </ul>

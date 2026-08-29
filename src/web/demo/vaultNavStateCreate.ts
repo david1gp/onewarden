@@ -1,14 +1,11 @@
 import { createMemo } from "solid-js"
 import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
+import { vaultItemOwnershipResolve } from "../vault/model/vaultItemOwnershipResolve.js"
 import type { VaultItem } from "../vault/model/vaultItemSchema.js"
 
 interface VaultCounts {
-  [vault: string]: number
-  Personal: number
-  Shared: number
-  Work: number
-  organization: number
   personal: number
+  organization: number
 }
 
 export interface VaultNavStateProps {
@@ -32,7 +29,7 @@ export function vaultNavStateCreate(props: VaultNavStateProps) {
 
   const totalCount = createMemo(() => activeItems().length)
   const favoritesCount = createMemo(
-    () => activeItems().filter((i) => (i.ownership ?? "personal") === "personal" && i.favorite).length,
+    () => activeItems().filter((i) => vaultItemOwnershipResolve(i) === "personal" && i.favorite).length,
   )
   const trashCount = createMemo(() => trashItems().length)
 
@@ -55,30 +52,13 @@ export function vaultNavStateCreate(props: VaultNavStateProps) {
   })
 
   const vaultCounts = createMemo<VaultCounts>(() => {
-    const counts: Record<string, number> = {
-      Personal: 0,
-      Work: 0,
-      Shared: 0,
-    }
     let personal = 0
     let organization = 0
     for (const item of activeItems()) {
-      const vault = item.vault ?? (item.ownership === "organization" ? "Work" : "Personal")
-      const current = counts[vault]
-      if (current !== undefined) {
-        counts[vault] = current + 1
-      } else {
-        counts[vault] = 1
-      }
-
-      if (item.ownership === "organization") organization++
-      else personal++
+      if (vaultItemOwnershipResolve(item) === "organization") organization += 1
+      else personal += 1
     }
-    return {
-      ...counts,
-      personal,
-      organization,
-    } as VaultCounts
+    return { personal, organization }
   })
 
   const folders = createMemo(() => {

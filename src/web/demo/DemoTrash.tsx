@@ -23,7 +23,13 @@ export function DemoTrash(): JSX.Element {
       </section>
       <main id="main-content" tabindex="-1" class="flex flex-1 flex-col overflow-hidden focus:outline-none">
         <div class="flex-1 overflow-hidden">
-          <VaultWorkspace items={() => state.items} includeDeleted defaultSelectedId={state.defaultSelectedId} />
+          <VaultWorkspace
+            items={() => state.allItems}
+            defaultCategory="trash"
+            defaultSelectedId={state.defaultSelectedId}
+            onRestoreItem={state.restoreItem}
+            onPermanentlyDeleteItem={state.permanentlyDeleteItem}
+          />
         </div>
       </main>
     </div>

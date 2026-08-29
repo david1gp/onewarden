@@ -6,7 +6,7 @@ const selectedItemId = "item-github-enterprise"
 
 test("vault workspace hides detail when vault, category, folder, or search filters exclude the selection", () => {
   const filterSelections = [
-    (state: ReturnType<typeof vaultWorkspaceStateCreate>) => state.selectVault("Personal"),
+    (state: ReturnType<typeof vaultWorkspaceStateCreate>) => state.selectVault("personal"),
     (state: ReturnType<typeof vaultWorkspaceStateCreate>) => state.selectCategory("secureNote"),
     (state: ReturnType<typeof vaultWorkspaceStateCreate>) => state.selectFolder("Personal"),
     (state: ReturnType<typeof vaultWorkspaceStateCreate>) => state.setSearchQuery("AWS"),
@@ -25,7 +25,7 @@ test("vault workspace hides detail when vault, category, folder, or search filte
 test("vault workspace keeps detail when the selection remains in the filtered list", () => {
   const state = vaultWorkspaceStateCreate({ defaultSelectedId: selectedItemId })
 
-  state.selectVault("Work")
+  state.selectVault("organization")
 
   expect(state.filteredItems().some((item) => item.id === selectedItemId)).toBe(true)
   expect(state.selectedItem()?.id).toBe(selectedItemId)
@@ -88,9 +88,9 @@ test("vault workspace excludes soft-deleted items from active lists", () => {
 test("vault workspace resetFilter resets all active filters", () => {
   const state = vaultWorkspaceStateCreate({ defaultSelectedId: selectedItemId })
 
-  state.selectVault("Personal")
+  state.selectVault("personal")
   state.setSearchQuery("test")
-  expect(state.selectedVault()).toBe("Personal")
+  expect(state.selectedVault()).toBe("personal")
   expect(state.searchQuery()).toBe("test")
 
   state.resetFilter()
