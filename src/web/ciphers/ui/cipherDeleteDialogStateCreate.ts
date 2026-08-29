@@ -1,3 +1,4 @@
+import { createEffect, onCleanup } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
 import type { CipherItem } from "../schemas/cipherItemSchema.js"
 
@@ -15,10 +16,35 @@ export function cipherDeleteDialogStateCreate(props: CipherDeleteDialogStateProp
 
   const isDeleting = createSignalObject(false)
   const errorMessage = createSignalObject<string | null>(null)
+  let requestId = 0
+  let previousItemId = props.item()?.id ?? null
+  let previousOpen = openSignal.get()
+
+  const requestInvalidate = () => {
+    requestId += 1
+    isDeleting.set(false)
+    errorMessage.set(null)
+  }
+
+  createEffect(() => {
+    const itemId = props.item()?.id ?? null
+    const isOpen = openSignal.get()
+    const itemChanged = itemId !== previousItemId
+    const closed = previousOpen && !isOpen
+    previousItemId = itemId
+    previousOpen = isOpen
+
+    if (!itemChanged && !closed) return
+    requestInvalidate()
+    if (itemChanged && isOpen) openSignal.set(false)
+  })
+
+  onCleanup(requestInvalidate)
 
   const handleOpenChange = (open: boolean) => {
     openSignal.set(open)
     if (!open) {
+      requestInvalidate()
       errorMessage.set(null)
       if (props.onClose) props.onClose()
     }
@@ -33,13 +59,16 @@ export function cipherDeleteDialogStateCreate(props: CipherDeleteDialogStateProp
 
     isDeleting.set(true)
     errorMessage.set(null)
+    const currentRequestId = ++requestId
     try {
       await props.onConfirm()
+      if (currentRequestId !== requestId) return
       handleClose()
     } catch (err: any) {
+      if (currentRequestId !== requestId) return
       errorMessage.set(err?.message ?? "Failed to delete cipher.")
     } finally {
-      isDeleting.set(false)
+      if (currentRequestId === requestId) isDeleting.set(false)
     }
   }
 

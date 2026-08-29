@@ -1,5 +1,7 @@
-import { render } from "@solidjs/testing-library"
 import { describe, expect, test } from "bun:test"
+import { render } from "@solidjs/testing-library"
+import { within } from "@testing-library/dom"
+import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { CipherItem } from "../../../src/web/ciphers/schemas/cipherItemSchema.js"
 import { CipherDetailView } from "../../../src/web/ciphers/ui/CipherDetailView.jsx"
 
@@ -302,6 +304,56 @@ describe("CipherDetailView component", () => {
     const shareBtn = screen.getByText("Share")
     expect(shareBtn).toBeDefined()
 
+    screen.unmount()
+  })
+
+  test("closes a delete confirmation before the next selected item can inherit it", async () => {
+    const firstItem: CipherItem = {
+      id: "cipher-delete-source",
+      type: 1,
+      name: "Delete Source",
+      favorite: false,
+      fields: [],
+      reprompt: 0,
+    }
+    const nextItem: CipherItem = {
+      id: "cipher-delete-next",
+      type: 1,
+      name: "Next Cipher",
+      favorite: false,
+      fields: [],
+      reprompt: 0,
+    }
+    const selectedItem = createSignalObject<CipherItem | null>(firstItem)
+    let resolveDelete!: () => void
+    const deletePending = new Promise<void>((resolve) => {
+      resolveDelete = resolve
+    })
+
+    const screen = render(() => (
+      <CipherDetailView
+        item={selectedItem.get}
+        onDelete={() => {
+          selectedItem.set(nextItem)
+          return deletePending
+        }}
+      />
+    ))
+
+    const body = within(document.body)
+    screen.getByTitle("Move cipher to trash").click()
+    await Promise.resolve()
+    const dialog = body.getByRole("dialog", { name: "Move to Trash" })
+    expect(dialog).toBeDefined()
+    within(dialog).getByRole("button", { name: "Move to Trash" }).click()
+    await Promise.resolve()
+
+    expect(screen.getByText("Next Cipher")).toBeDefined()
+    expect(screen.getByTitle("Clone cipher item").hasAttribute("disabled")).toBe(false)
+    expect(dialog.hasAttribute("data-closed")).toBe(true)
+
+    resolveDelete()
+    await Promise.resolve()
     screen.unmount()
   })
 })

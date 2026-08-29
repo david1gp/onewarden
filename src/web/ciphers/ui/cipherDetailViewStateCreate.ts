@@ -52,6 +52,13 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     return requestId === actionRequestId && displayedItem.get()?.id === cipherId
   }
 
+  const actionRequestInvalidate = () => {
+    actionRequestBegin()
+    isActionLoading.set(false)
+    actionErrorMessage.set(null)
+    isDeleteDialogOpen.set(false)
+  }
+
   const resetTransientState = () => {
     isPasswordRevealed.set(false)
     isCardNumberRevealed.set(false)
@@ -66,6 +73,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   }
 
   onCleanup(() => {
+    actionRequestInvalidate()
     if (copyTimer) clearTimeout(copyTimer)
   })
 
@@ -77,7 +85,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     const itemId = externalItem?.id ?? null
     if (itemId === previousItemId) return
     previousItemId = itemId
-    actionRequestBegin()
+    actionRequestInvalidate()
     resetTransientState()
   })
 
