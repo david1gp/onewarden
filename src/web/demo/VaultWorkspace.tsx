@@ -22,6 +22,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
               size="sm"
               icon={vaultSvgIcons.arrowLeft}
               onClick={() => state.setMobileTab(state.activeMobileTab() === "detail" ? "list" : "nav")}
+              aria-label={state.activeMobileTab() === "detail" ? "Back to items" : "Back to vaults"}
               class="h-7 gap-1 px-2 text-xs text-blue-600 dark:text-blue-400"
               iconClass="size-3.5 mr-1 text-blue-600 dark:text-blue-400"
             >
@@ -33,8 +34,8 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           </Show>
         </div>
 
-        {/* Mobile Tab Pills */}
-        <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs dark:bg-slate-800">
+        {/* Mobile Tab Switcher */}
+        <nav aria-label="Vault sections" class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs dark:bg-slate-800">
           <Button
             variant={state.activeMobileTab() === "nav" ? "filled" : "ghost"}
             size="sm"
@@ -71,7 +72,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           >
             Details
           </Button>
-        </div>
+        </nav>
       </div>
 
       {/* Main 3-Column Layout */}
@@ -84,12 +85,16 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
         >
           <VaultNav
             items={state.items}
+            collections={state.collections}
             selectedVault={state.selectedVault}
             selectedCategory={state.selectedCategory}
             selectedFolder={state.selectedFolder}
+            selectedCollection={state.selectedCollection}
+            profile={props.profile}
             onSelectVault={state.selectVault}
             onSelectCategory={state.selectCategory}
             onSelectFolder={state.selectFolder}
+            onSelectCollection={state.selectCollection}
           />
         </div>
 
@@ -101,11 +106,14 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
         >
           <VaultEntryList
             items={state.filteredItems}
+            collections={state.collections}
             selectedItemId={state.selectedItemId}
             searchQuery={state.searchQuery}
             selectedCategory={state.selectedCategory}
             selectedVault={state.selectedVault}
             selectedFolder={state.selectedFolder}
+            selectedCollection={state.selectedCollection}
+            searchInputElement={state.setSearchInputElement}
             onSelectItem={state.selectItem}
             onSearchChange={state.setSearchQuery}
             onResetFilter={state.resetFilter}

@@ -186,7 +186,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                           <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             One-Time Password (2FA)
                           </p>
-                          <span class="size-1.5 animate-pulse rounded-full bg-blue-500" />
+                          <span class="size-1.5 animate-pulse rounded-full bg-blue-600 dark:bg-blue-400" />
                         </div>
                         <p class="truncate font-mono font-bold text-blue-600 text-lg tracking-wider select-all dark:text-blue-400">
                           {item().totp}
@@ -324,13 +324,13 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                       {item().ownership === "organization" ? "Acme Corporation" : "Personal (Alex Rivera)"}
                     </p>
                   </div>
-                  <Show when={item().ownership === "organization" && item().collectionIds.length > 0}>
+                  <Show when={item().ownership === "organization" && (item().collectionIds?.length ?? 0) > 0}>
                     <div>
                       <span class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                         Collections
                       </span>
                       <div class="mt-1 flex flex-wrap gap-1">
-                        <For each={item().collectionIds}>
+                        <For each={item().collectionIds ?? []}>
                           {(colId) => (
                             <Badge variant="subtle" class="text-[10px] px-1.5 py-0">
                               {vaultCollectionNameResolve(colId)}

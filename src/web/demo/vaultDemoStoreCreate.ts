@@ -242,7 +242,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
 
       const isPersonal = itemInput.ownership === "personal"
       const organizationId = isPersonal ? null : (itemInput.organizationId ?? "organization-acme")
-      const collectionIds = isPersonal ? [] : [...itemInput.collectionIds]
+      const collectionIds = isPersonal ? [] : [...(itemInput.collectionIds ?? [])]
       const favorite = isPersonal ? Boolean(itemInput.favorite) : false
       const vault = isPersonal ? "Personal" : (itemInput.vault ?? "Work")
 
@@ -315,8 +315,8 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       const organizationId = isPersonal ? null : (source.organizationId ?? "organization-acme")
       const collectionIds = isPersonal
         ? []
-        : source.collectionIds.length > 0
-          ? [...source.collectionIds]
+        : (source.collectionIds ?? []).length > 0
+          ? [...(source.collectionIds ?? [])]
           : ["collection-engineering"]
       const vault = isPersonal ? "Personal" : (source.vault ?? "Work")
       const cloneId = `item-${Date.now()}`

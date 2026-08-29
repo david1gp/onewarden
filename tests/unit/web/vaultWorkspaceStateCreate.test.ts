@@ -40,8 +40,10 @@ function alignedItemCreate(overrides: Record<string, unknown>): VaultItem {
     organizationId: null,
     collectionIds: [],
     folderId: null,
+    vault: "Personal",
     favorite: false,
     deletedAt: null,
+    deletedDate: null,
     createdAt: "2026-08-29T00:00:00.000Z",
     updatedAt: "2026-08-29T00:00:00.000Z",
     ...overrides,
@@ -81,4 +83,30 @@ test("vault workspace excludes soft-deleted items from active lists", () => {
   })
 
   expect(state.filteredItems().map((item) => item.id)).toEqual(["active-item"])
+})
+
+test("vault workspace resetFilter resets all active filters", () => {
+  const state = vaultWorkspaceStateCreate({ defaultSelectedId: selectedItemId })
+
+  state.selectVault("Personal")
+  state.setSearchQuery("test")
+  expect(state.selectedVault()).toBe("Personal")
+  expect(state.searchQuery()).toBe("test")
+
+  state.resetFilter()
+  expect(state.selectedVault()).toBe("all")
+  expect(state.selectedCategory()).toBe("all")
+  expect(state.selectedFolder()).toBeNull()
+  expect(state.selectedCollection()).toBeNull()
+  expect(state.searchQuery()).toBe("")
+})
+
+test("vault workspace toggles favorite on items", () => {
+  const favoriteId = "item-proton-mail"
+  const state = vaultWorkspaceStateCreate({ defaultSelectedId: favoriteId })
+  const initialFav = state.items().find((item) => item.id === favoriteId)?.favorite
+
+  state.toggleFavorite(favoriteId)
+  const updatedFav = state.items().find((item) => item.id === favoriteId)?.favorite
+  expect(updatedFav).toBe(!initialFav)
 })

@@ -4,6 +4,7 @@ import { vaultCategoryIconResolve } from "./vaultCategoryIconResolve.js"
 import { vaultCategoryThemeResolve } from "./vaultCategoryThemeResolve.js"
 import { vaultCategoryTitleResolve } from "./vaultCategoryTitleResolve.js"
 import type { VaultItem } from "./vaultItemSchema.js"
+import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 
 export interface VaultEntryListStateProps {
   items: () => readonly VaultItem[]
@@ -12,6 +13,9 @@ export interface VaultEntryListStateProps {
   selectedCategory: () => string
   selectedVault: () => string
   selectedFolder: () => string | null
+  selectedCollection?: () => string | null
+  collections?: () => readonly VaultCollection[]
+  searchInputElement?: (element: HTMLInputElement) => void
   onSelectItem: (id: string) => void
   onSearchChange: (query: string) => void
   onResetFilter: () => void
@@ -23,6 +27,14 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     if (props.selectedFolder()) {
       return props.selectedFolder() ?? "Folders"
     }
+
+    const colId = props.selectedCollection ? props.selectedCollection() : null
+    if (colId) {
+      const colList = props.collections ? props.collections() : []
+      const found = colList.find((c) => c.id === colId)
+      return found ? found.name : "Collection"
+    }
+
     if (props.selectedCategory() === "favorites") {
       return "Favorites"
     }
@@ -36,6 +48,10 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
       props.selectedVault() === "Acme Corporation"
     ) {
       return "Acme Corporation"
+    }
+
+    if (props.selectedCategory() === "trash") {
+      return "Trash"
     }
     if (props.selectedVault() !== "all") {
       return `${props.selectedVault()} Vault`

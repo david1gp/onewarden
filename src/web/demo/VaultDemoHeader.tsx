@@ -18,6 +18,7 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
         Skip to main content
       </a>
       <div class="flex items-center gap-3">
+        <span class="sr-only">OneWarden</span>
         <LinkButtonExternal
           href="/demo"
           variant="subtle"
