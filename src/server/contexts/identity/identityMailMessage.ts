@@ -1,6 +1,9 @@
 export type IdentityMailMessage = {
   recipient: string
   kind:
+    | "invite"
+    | "inviteAccepted"
+    | "inviteConfirmed"
     | "registerVerify"
     | "welcome"
     | "welcomeMustVerify"

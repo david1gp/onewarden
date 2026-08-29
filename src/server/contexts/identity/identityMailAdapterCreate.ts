@@ -85,7 +85,18 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
       })
       return resultCreate(undefined)
     },
-    sendInvite: async () => resultCreate(undefined),
+    sendInvite: async (email, _organizationName, memberId, token) => {
+      record("invite", email, token ?? null, null, memberId)
+      return resultCreate(undefined)
+    },
+    sendInviteAccepted: async (newUserEmail, address, _organizationName) => {
+      record("inviteAccepted", address, null, null, newUserEmail)
+      return resultCreate(undefined)
+    },
+    sendInviteConfirmed: async (address, _organizationName) => {
+      record("inviteConfirmed", address)
+      return resultCreate(undefined)
+    },
     sendTest: async () => resultCreate(undefined),
     sendEmergencyAccessInvite: async (email, userId, emergencyAccessId, _grantorName, grantorEmail, token) => {
       record("emergencyAccessInvite", email, token, userId, emergencyAccessId, grantorEmail)
