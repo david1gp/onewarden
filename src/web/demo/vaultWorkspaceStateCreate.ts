@@ -1,4 +1,4 @@
-import { createMemo, onCleanup, onMount } from "solid-js"
+import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { webAuthSessionDefault } from "../auth/model/webAuthSessionDefault.js"
 import { cipherApiClientCreate } from "../ciphers/actions/cipherApiClientCreate.js"
@@ -35,6 +35,8 @@ export interface VaultWorkspaceProps {
   apiBacked?: boolean
   onSelectItem?: (id: string | null) => void
   onToggleFavorite?: (id: string) => Promise<void> | void
+  onRestoreItem?: (id: string) => void
+  onPermanentlyDeleteItem?: (id: string) => void
 }
 
 function vaultItemFromCipher(cipher: CipherItem): VaultItem {
@@ -70,7 +72,9 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   const apiClient = cipherApiClientCreate()
   const session = webAuthSessionDefault()
   const cipherItems = createSignalObject<readonly CipherItem[]>([])
+  const apiItems = createSignalObject<readonly VaultItem[] | null>(null)
   const isApiBacked = props.apiBacked ?? false
+  let apiListRequested = false
   const urlState =
     props.enableUrlSync && typeof window !== "undefined" ? vaultUrlStateParse(window.location.search) : {}
 
@@ -78,12 +82,17 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     props.items === undefined && props.initialItems !== undefined
       ? createSignalObject<readonly VaultItem[]>(props.initialItems)
       : null
-  const sourceItems = props.items ?? localItems?.get ?? vaultDemoStore.activeItems
+  const sourceItems = () => {
+    const fetchedItems = apiItems.get()
+    if (fetchedItems !== null) return fetchedItems
+    return props.items?.() ?? localItems?.get() ?? vaultDemoStore.activeItems()
+  }
   const items = () => {
     const list = sourceItems()
-    if (props.includeDeleted) return list
+    if (props.includeDeleted || selectedCategory.get() === "trash") return list
     return list.filter((item) => !(item.deletedAt ?? item.deletedDate))
   }
+  const navigationItems = () => sourceItems()
 
   const localFolders = createSignalObject<readonly VaultFolder[]>(props.initialFolders ?? [])
   const localCollections = createSignalObject<readonly VaultCollection[]>(props.initialCollections ?? [])
@@ -268,6 +277,9 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     if (localItems) {
       localItems.set(localItems.get().map((item) => (item.id === id ? { ...item, favorite } : item)))
     }
+    if (apiItems.get() !== null) {
+      apiItems.set(apiItems.get()?.map((item) => (item.id === id ? { ...item, favorite } : item)) ?? [])
+    }
     const result = await apiClient.favorite(id, favorite)
     if (!result.success) {
       localItems?.set(localItems.get().map((item) => (item.id === id ? { ...item, favorite: !favorite } : item)))
@@ -303,6 +315,17 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
         localItems.set([vaultItem, ...existing])
       }
     }
+    if (apiItems.get() !== null) {
+      const existing = apiItems.get() ?? []
+      const index = existing.findIndex((item) => item.id === saved.id)
+      if (index >= 0) {
+        const updated = [...existing]
+        updated[index] = vaultItem
+        apiItems.set(updated)
+      } else {
+        apiItems.set([vaultItem, ...existing])
+      }
+    }
     const existingCiphers = cipherItems.get()
     const cipherIndex = existingCiphers.findIndex((cipher) => cipher.id === saved.id)
     if (cipherIndex >= 0) {
@@ -318,6 +341,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   const handleCipherDeleted = async (id: string, hard: boolean): Promise<void> => {
     if (hard) {
       localItems?.set(localItems.get().filter((item) => item.id !== id))
+      if (apiItems.get() !== null) apiItems.set(apiItems.get()?.filter((item) => item.id !== id) ?? [])
       cipherItems.set(cipherItems.get().filter((cipher) => cipher.id !== id))
       if (selectedItemId.get() === id) selectedItemId.set(items().find((item) => item.id !== id)?.id ?? null)
       return
@@ -446,6 +470,38 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
   }
 
+  const restoreItem = (id: string) => {
+    if (props.onRestoreItem) {
+      props.onRestoreItem(id)
+    } else if (localItems) {
+      localItems.set(
+        localItems.get().map((item) => (item.id === id ? { ...item, deletedAt: null, deletedDate: null } : item)),
+      )
+    } else {
+      vaultDemoStore.restoreItem(id)
+    }
+
+    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
+    selectedItemId.set(remaining[0]?.id ?? null)
+    formMode.set("none")
+    if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+  }
+
+  const permanentlyDeleteItem = (id: string) => {
+    if (props.onPermanentlyDeleteItem) {
+      props.onPermanentlyDeleteItem(id)
+    } else if (localItems) {
+      localItems.set(localItems.get().filter((item) => item.id !== id))
+    } else {
+      vaultDemoStore.permanentlyDeleteItem(id)
+    }
+
+    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
+    selectedItemId.set(remaining[0]?.id ?? null)
+    formMode.set("none")
+    if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+  }
+
   const handleKeyDown = (event: KeyboardEvent) => {
     if (props.enableKeyboardWorkflows === false) return
     vaultKeyboardWorkflowHandle(event, {
@@ -461,18 +517,22 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     })
   }
 
+  createEffect(() => {
+    if (!isApiBacked || apiListRequested || !session.isUnlocked()) return
+    apiListRequested = true
+    void apiClient.list().then((result) => {
+      if (!result.success) return
+      cipherItems.set(result.data)
+      apiItems.set(result.data.map(vaultItemFromCipher))
+      localItems?.set(result.data.map(vaultItemFromCipher))
+      const selectedId = selectedItemId.get()
+      if (selectedId === null || !result.data.some((cipher) => cipher.id === selectedId)) {
+        selectedItemId.set(result.data[0]?.id ?? null)
+      }
+    })
+  })
+
   onMount(() => {
-    if (isApiBacked && session.isUnlocked()) {
-      void apiClient.list().then((result) => {
-        if (!result.success || result.data.length === 0) return
-        cipherItems.set(result.data)
-        localItems?.set(result.data.map(vaultItemFromCipher))
-        const selectedId = selectedItemId.get()
-        if (selectedId === null || !result.data.some((cipher) => cipher.id === selectedId)) {
-          selectedItemId.set(result.data[0]?.id ?? null)
-        }
-      })
-    }
     if (typeof document !== "undefined" && props.enableKeyboardWorkflows !== false) {
       document.addEventListener("keydown", handleKeyDown)
     }
@@ -488,6 +548,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
 
   return {
     items,
+    navigationItems,
     folders,
     collections,
     filteredItems,
@@ -519,6 +580,8 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     saveItem,
     cloneItem,
     moveToTrash,
+    restoreItem,
+    permanentlyDeleteItem,
     toggleFavorite,
     isApiBacked,
     isCipherDialogOpen,

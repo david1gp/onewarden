@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test"
-import { authBrowserFixtureCreate } from "./helpers/authBrowserFixtureCreate.js"
+import {
+  browserAuthenticatedSessionSetup,
+  browserAuthenticatedSessionUnlock,
+} from "./helpers/browserAuthenticatedSessionSetup.js"
 import { vaultBrowserMockDataCreate } from "./helpers/vaultBrowserMockDataCreate.js"
 
 test.describe("task 34 vault shell and navigation UI", () => {
@@ -78,7 +81,7 @@ test.describe("task 34 vault shell and navigation UI", () => {
     await page.goto("/demo/empty")
 
     await expect(page.getByText("No matching items")).toBeVisible()
-    await expect(page.getByText("No Item Selected")).toBeVisible()
+    await expect(page.getByText("No Cipher Selected")).toBeVisible()
     await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible()
   })
 
@@ -135,7 +138,7 @@ test.describe("task 34 vault shell and navigation UI", () => {
   test("syncs live vault data from mocked API on root vault shell", async ({ page }) => {
     const mockSyncData = vaultBrowserMockDataCreate()
 
-    await authBrowserFixtureCreate(page)
+    await browserAuthenticatedSessionSetup(page)
 
     await page.route("**/api/sync", async (route) => {
       await route.fulfill({
@@ -146,6 +149,7 @@ test.describe("task 34 vault shell and navigation UI", () => {
     })
 
     await page.goto("/")
+    await browserAuthenticatedSessionUnlock(page)
     await expect(page.getByRole("heading", { level: 1, name: "OneWarden" })).toBeVisible()
 
     // Trigger sync

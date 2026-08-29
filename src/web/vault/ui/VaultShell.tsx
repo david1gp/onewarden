@@ -59,7 +59,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
           fallback={<VaultEmptyState onAction={() => void state.syncVault()} actionLabel="Sync Now" />}
         >
           <VaultWorkspace
-            initialItems={state.items()}
+            items={state.items}
             folders={state.folders}
             collections={state.collections}
             profile={state.profile}

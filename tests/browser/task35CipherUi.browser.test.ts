@@ -23,7 +23,7 @@ test.describe("task 35 cipher UI", () => {
   test("renders cipher detail views for logins, secure notes, credit cards, and identities", async ({ page }) => {
     await page.goto("/")
     await browserAuthenticatedSessionUnlock(page)
-    await expect(page.getByText("Vault Unlocked & Decrypted")).toBeVisible()
+    await expect(page.getByText("Vault Decrypted")).toBeVisible()
 
     // 1. Login view
     await expect(page.getByRole("heading", { name: "GitHub Work Account" })).toBeVisible()
@@ -110,7 +110,7 @@ test.describe("task 35 cipher UI", () => {
     await expect(page.getByText("Archived")).not.toBeVisible()
 
     // Soft delete / Move to Trash
-    await page.getByRole("button", { name: "Trash" }).click()
+    await page.getByTitle("Move cipher to trash").click()
     const deleteDialog = page.getByRole("dialog")
     await expect(deleteDialog.getByRole("heading", { name: "Move to Trash" })).toBeVisible()
     await deleteDialog.getByRole("button", { name: "Move to Trash" }).click()
@@ -124,7 +124,7 @@ test.describe("task 35 cipher UI", () => {
     await expect(page.getByText("This cipher is in your Trash")).not.toBeVisible()
 
     // Delete permanently
-    await page.getByRole("button", { name: "Trash" }).click()
+    await page.getByTitle("Move cipher to trash").click()
     await page.getByRole("dialog").getByRole("button", { name: "Move to Trash" }).click()
     await page.getByRole("button", { name: "Delete Permanently" }).click()
     const permanentDeleteDialog = page.getByRole("dialog")
@@ -177,7 +177,7 @@ test.describe("task 35 cipher UI", () => {
     await page.goto("/")
     await browserAuthenticatedSessionUnlock(page)
 
-    await expect(page.getByText("Vault Unlocked & Decrypted")).toBeVisible()
+    await expect(page.getByRole("contentinfo").getByText("End-to-End Encrypted", { exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: /Items/i })).toBeVisible()
 
     const viewportState = await page.locator("body").evaluate((body) => ({
