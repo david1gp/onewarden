@@ -110,6 +110,57 @@ test("organization import creates deterministic invited members and synchronizes
   expect(database.query("SELECT COUNT(*) AS count FROM groups_users").get()).toEqual({ count: 1 })
 })
 
+test("organization import preserves directory group identity and revises changed group members", async () => {
+  const database = databaseCreate()
+  userInsert(database, "existing-user", "existing@example.com", new Uint8Array([1]))
+  database.run(
+    `INSERT INTO users_organizations (uuid, user_uuid, org_uuid, akey, status, atype, external_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      "existing-member",
+      "existing-user",
+      organizationUuid,
+      "",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.user,
+      "member-1",
+    ],
+  )
+  database.run(
+    `INSERT INTO groups (uuid, organizations_uuid, name, external_id, creation_date, revision_date)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      "existing-group",
+      organizationUuid,
+      "Directory Group",
+      "group-1",
+      "2026-08-27T00:00:00.000Z",
+      "2026-08-27T00:00:00.000Z",
+    ],
+  )
+  database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", ["2026-08-27T00:00:00.000Z", "existing-user"])
+
+  const result = await organizationPublicImport(
+    {
+      groups: [{ name: "Renamed By Directory", externalId: "group-1", memberExternalIds: ["member-1"] }],
+      members: [{ email: "existing@example.com", externalId: "member-1", deleted: false }],
+      overwriteExisting: false,
+    },
+    optionsCreate(database, { groupsEnabled: true }),
+  )
+
+  expect(result).toEqual({ success: true, data: undefined })
+  expect(database.query("SELECT name, external_id FROM groups").all()).toEqual([
+    { name: "Directory Group", external_id: "group-1" },
+  ])
+  expect(database.query("SELECT groups_uuid, users_organizations_uuid FROM groups_users").all()).toEqual([
+    { groups_uuid: "existing-group", users_organizations_uuid: "existing-member" },
+  ])
+  expect(database.query("SELECT updated_at FROM users WHERE uuid = ?").get("existing-user")).toEqual({
+    updated_at: "2026-08-28T00:00:00.000Z",
+  })
+})
+
 test("organization import restores and revokes memberships, protects the last owner, and overwrites omissions", async () => {
   const database = databaseCreate()
   userInsert(database, "existing-user", "existing@example.com", new Uint8Array([1]))
