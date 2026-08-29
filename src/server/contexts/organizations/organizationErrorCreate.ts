@@ -9,6 +9,8 @@ export function organizationErrorCreate(op: string, message: string, statusCode 
         ? "platform.forbidden"
         : statusCode === 401
           ? "platform.unauthorized"
-          : "platform.invalid-request"
+          : statusCode === 409
+            ? "platform.conflict"
+            : "platform.invalid-request"
   return resultErrorCreate(op, message, { code, statusCode })
 }

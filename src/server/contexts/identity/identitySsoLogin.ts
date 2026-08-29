@@ -6,6 +6,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { organizationDomainEmailVerified } from "../organizations/organizationDomainEmailVerified.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityPasswordTokenResponse } from "./identityPasswordTokenResponseSchema.js"
 import { identityDeviceResolve } from "./identityDeviceResolve.js"
@@ -21,6 +22,7 @@ import { identitySsoUserFindByEmail } from "./identitySsoUserFindByEmail.js"
 import { identitySsoUserFindByIdentifier } from "./identitySsoUserFindByIdentifier.js"
 import { identitySsoUserSave } from "./identitySsoUserSave.js"
 import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
+import { identitySsoOrganizationConfigResolve } from "./identitySsoOrganizationConfigResolve.js"
 import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
@@ -117,6 +119,14 @@ export async function identitySsoLogin(
   if (!authResult.success) return authResult
   if (authResult.data === null) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
   const auth = authResult.data
+  const organizationUuid = auth.organizationUuid ?? null
+  let organizationConfig: IdentityConfig | undefined
+  if (organizationUuid !== null) {
+    const configResult = await identitySsoOrganizationConfigResolve(database, organizationUuid, options.config)
+    if (!configResult.success) return configResult
+    organizationConfig = configResult.data
+  }
+  const ssoConfig = organizationConfig ?? options.config
   let authenticatedUser = auth.authResponse
   if (authenticatedUser === null) {
     if (auth.codeResponseError !== null) {
@@ -134,6 +144,7 @@ export async function identitySsoLogin(
       auth,
       code: auth.codeResponse,
       codeVerifier: data.codeVerifier,
+      ...(organizationConfig === undefined ? {} : { configuration: organizationConfig }),
     })
     if (!exchangeResult.success) return exchangeResult
     authenticatedUser = exchangeResult.data
@@ -141,6 +152,12 @@ export async function identitySsoLogin(
     auth.updatedAt = options.clock.now().toISOString()
     const saveResult = identitySsoAuthSave(database, auth)
     if (!saveResult.success) return saveResult
+  }
+
+  if (organizationUuid !== null) {
+    const domainResult = organizationDomainEmailVerified(database, organizationUuid, authenticatedUser.email)
+    if (!domainResult.success) return domainResult
+    if (!domainResult.data) return identityDomainErrorCreate(op, "Email domain not allowed")
   }
 
   const linkedResult = identitySsoUserFindByIdentifier(database, authenticatedUser.identifier)
@@ -153,9 +170,9 @@ export async function identitySsoLogin(
     const emailResult = identitySsoUserFindByEmail(database, authenticatedUser.email)
     if (!emailResult.success) return emailResult
     if (emailResult.data === null) {
-      if (!identityEmailDomainAllowed(options.config, authenticatedUser.email))
+      if (organizationUuid === null && !identityEmailDomainAllowed(options.config, authenticatedUser.email))
         return identityDomainErrorCreate(op, "Email domain not allowed")
-      const verificationError = identitySsoEmailVerificationError(authenticatedUser, options.config, false)
+      const verificationError = identitySsoEmailVerificationError(authenticatedUser, ssoConfig, false)
       if (verificationError !== null) return identityDomainErrorCreate(op, verificationError)
       const saltResult = secureRandomBytes(64)
       if (!saltResult.success) return saltResult
@@ -163,7 +180,7 @@ export async function identitySsoLogin(
         authenticatedUser,
         options.clock,
         options.identifier,
-        options.config.PASSWORD_ITERATIONS,
+        ssoConfig.PASSWORD_ITERATIONS,
         saltResult.data,
       )
       const userSaveResult = identityUserSave(database, user)
@@ -173,9 +190,9 @@ export async function identitySsoLogin(
       if (emailResult.data.identifier !== null)
         return identityDomainErrorCreate(op, "Existing SSO user with same email")
       user = emailResult.data.user
-      if (user.privateKey !== null && !options.config.SSO_SIGNUPS_MATCH_EMAIL)
+      if (user.privateKey !== null && !ssoConfig.SSO_SIGNUPS_MATCH_EMAIL)
         return identityDomainErrorCreate(op, "Existing non SSO user with same email")
-      const verificationError = identitySsoEmailVerificationError(authenticatedUser, options.config, true)
+      const verificationError = identitySsoEmailVerificationError(authenticatedUser, ssoConfig, true)
       if (verificationError !== null) return identityDomainErrorCreate(op, verificationError)
       if (user.passwordHash.byteLength === 0) {
         user.verifiedAt = options.clock.now().toISOString()
@@ -203,7 +220,8 @@ export async function identitySsoLogin(
     options.issuer,
     options.privateKey,
     options.clock,
-    options.config,
+    ssoConfig,
+    organizationUuid,
   )
   if (!bundleResult.success) return bundleResult
   const deviceSaveResult = identityDeviceSave(database, deviceResult.data, options.clock, true)

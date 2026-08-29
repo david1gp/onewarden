@@ -11,6 +11,7 @@ export function organizationToJson(
 ): Record<string, unknown> {
   return {
     id: organization.uuid,
+    identifier: organization.identifier,
     name: organization.name,
     seats: null,
     maxCollections: null,
@@ -23,7 +24,7 @@ export function organizationToJson(
     useTotp: true,
     usePolicies: true,
     useScim: false,
-    useSso: false,
+    useSso: true,
     useKeyConnector: false,
     usePasswordManager: true,
     useSecretsManager: false,
@@ -32,7 +33,7 @@ export function organizationToJson(
     useDisableSMAdsForUsers: true,
     useInviteLinks: false,
     useMyItems: false,
-    useOrganizationDomains: false,
+    useOrganizationDomains: true,
     usePam: false,
     usePhishingBlocker: false,
     hasPublicAndPrivateKeys: organization.privateKey !== null && organization.publicKey !== null,

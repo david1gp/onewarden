@@ -4,6 +4,8 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
+import { organizationPolicyIsApplicableToUser } from "../organizations/organizationPolicyIsApplicableToUser.js"
+import { organizationPolicyType } from "../organizations/organizationPolicyType.js"
 import type { Cipher } from "./cipher.js"
 import { cipherArchiveSet } from "./cipherArchiveSet.js"
 import { cipherDataPrepare } from "./cipherDataPrepare.js"
@@ -38,6 +40,19 @@ export function cipherApplyData(
   const preparedResult = cipherDataPrepare(data)
   if (!preparedResult.success) return preparedResult
   const prepared = preparedResult.data
+  if (prepared.organizationUuid === null) {
+    const personalOwnershipResult = organizationPolicyIsApplicableToUser(
+      database,
+      userUuid,
+      organizationPolicyType.personalOwnership,
+    )
+    if (!personalOwnershipResult.success) return personalOwnershipResult
+    if (personalOwnershipResult.data)
+      return cipherErrorCreate(
+        "cipherApplyData",
+        "Due to an Enterprise Policy, you are restricted from saving items to your personal vault.",
+      )
+  }
   if (prepared.folderUuid !== null) {
     const folderResult = folderFindByUuidAndUser(database, prepared.folderUuid, userUuid)
     if (!folderResult.success) return folderResult

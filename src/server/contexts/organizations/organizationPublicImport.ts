@@ -10,6 +10,7 @@ import { organizationMembershipFromRow } from "./organizationMembershipFromRow.j
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
 import { organizationMembershipType } from "./organizationMembershipType.js"
+import { organizationPolicyCheckUserAllowed } from "./organizationPolicyCheckUserAllowed.js"
 import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
 import type { Organization } from "./organization.js"
 import type { OrganizationPublicImportData } from "./organizationPublicImportDataSchema.js"
@@ -83,8 +84,12 @@ async function organizationPublicImportMember(
   }
 
   if (existingMember !== null) {
-    const status = organizationPublicMembershipRestore(existingMember.status)
+    let status = organizationPublicMembershipRestore(existingMember.status)
     const externalId = organizationPublicExternalIdNormalize(memberData.externalId)
+    if (status !== existingMember.status) {
+      const policyResult = organizationPolicyCheckUserAllowed(database, { ...existingMember, status }, "restore")
+      if (!policyResult.success) status = organizationMembershipStatus.revoked
+    }
     if (status === existingMember.status && externalId === existingMember.externalId) return resultCreate(undefined)
     return organizationPublicMembershipSave(
       database,

@@ -243,6 +243,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     const issuer = identityOriginResolve(options.publicOrigin, context.req.url)
     const result = await identitySsoAuthorize(parsed.output, {
       clock: options.clock,
+      config: options.config,
       database: options.database,
       issuer,
       sso,

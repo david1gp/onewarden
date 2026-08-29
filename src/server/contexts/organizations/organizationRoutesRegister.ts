@@ -18,6 +18,7 @@ import { organizationGroupRoutesRegister } from "./organizationGroupRoutesRegist
 import { organizationCreate } from "./organizationCreate.js"
 import { organizationCreateDataSchema } from "./organizationCreateDataSchema.js"
 import { organizationDelete } from "./organizationDelete.js"
+import { organizationDomainRoutesRegister } from "./organizationDomainRoutesRegister.js"
 import type { OrganizationDeleteData } from "./organizationDeleteDataSchema.js"
 import { organizationDeleteDataSchema } from "./organizationDeleteDataSchema.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
@@ -37,8 +38,12 @@ import { organizationMembershipPathSchema } from "./organizationMembershipPathSc
 import { organizationMembershipResend } from "./organizationMembershipResend.js"
 import { organizationMembershipRoutesRegister } from "./organizationMembershipRoutesRegister.js"
 import { organizationOwnerMiddleware } from "./organizationOwnerMiddleware.js"
+import { organizationPolicyRoutesRegister } from "./organizationPolicyRoutesRegister.js"
+import { organizationPolicyIsApplicableToUser } from "./organizationPolicyIsApplicableToUser.js"
+import { organizationPolicyType } from "./organizationPolicyType.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 import { organizationSave } from "./organizationSave.js"
+import { organizationSsoRoutesRegister } from "./organizationSsoRoutesRegister.js"
 import { organizationToJson } from "./organizationToJson.js"
 import { organizationUpdateDataSchema } from "./organizationUpdateDataSchema.js"
 import type { IdentityAccountPasswordOrOtpData } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
@@ -48,6 +53,9 @@ export function organizationRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
   options: OrganizationRouteOptions,
 ): void {
+  organizationPolicyRoutesRegister(app, options)
+  organizationDomainRoutesRegister(app, options)
+  organizationSsoRoutesRegister(app, options)
   organizationBillingRoutesRegister(app, options)
   organizationCollectionRoutesRegister(app, options)
   organizationGroupRoutesRegister(app, options)
@@ -78,6 +86,19 @@ export function organizationRoutesRegister(
     if (!organizationCreationAllowed(options.config, authentication.user.email))
       return apiErrorResponseCreate(
         organizationErrorCreate("organizationRoutesCreate", "User not allowed to create organizations"),
+      )
+    const singleOrganizationResult = organizationPolicyIsApplicableToUser(
+      database,
+      authentication.user.uuid,
+      organizationPolicyType.singleOrganization,
+    )
+    if (!singleOrganizationResult.success) return apiErrorResponseCreate(singleOrganizationResult)
+    if (singleOrganizationResult.data)
+      return apiErrorResponseCreate(
+        organizationErrorCreate(
+          "organizationRoutesCreate",
+          "You may not create an organization. You belong to an organization which has a policy that prohibits you from being a member of any other organization.",
+        ),
       )
     const bodyResult = await requestBodyParse(context, organizationCreateDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)

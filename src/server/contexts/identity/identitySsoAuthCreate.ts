@@ -7,6 +7,7 @@ export function identitySsoAuthCreate(
   redirectUri: string,
   now: string,
   bindingHash: string | null,
+  organizationUuid: string | null = null,
 ): IdentitySsoAuth {
   return {
     state,
@@ -19,5 +20,6 @@ export function identitySsoAuthCreate(
     createdAt: now,
     updatedAt: now,
     bindingHash,
+    ...(organizationUuid === null ? {} : { organizationUuid }),
   }
 }

@@ -5,6 +5,7 @@ import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import { organizationFindByUuid } from "./organizationFindByUuid.js"
+import { organizationPolicyDeleteAllByOrganization } from "./organizationPolicyDeleteAllByOrganization.js"
 
 export function organizationDelete(
   database: DatabaseConnection,
@@ -24,6 +25,11 @@ export function organizationDelete(
          WHERE uuid IN (SELECT user_uuid FROM users_organizations WHERE org_uuid = ?)`,
         [revisionDate, organizationUuid],
       )
+      const policyDeleteResult = organizationPolicyDeleteAllByOrganization(database, organizationUuid)
+      if (!policyDeleteResult.success) return policyDeleteResult
+      database.run("DELETE FROM sso_auth WHERE organization_uuid = ?", [organizationUuid])
+      database.run("DELETE FROM organization_domains WHERE org_uuid = ?", [organizationUuid])
+      database.run("DELETE FROM organization_sso_configs WHERE org_uuid = ?", [organizationUuid])
       database.run(
         "DELETE FROM groups_users WHERE groups_uuid IN (SELECT uuid FROM groups WHERE organizations_uuid = ?)",
         [organizationUuid],

@@ -36,5 +36,8 @@ export function identitySsoAuthFromRow(row: IdentitySsoAuthRow): Result<Identity
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     bindingHash: row.binding_hash,
+    ...(row.organization_uuid === undefined || row.organization_uuid === null
+      ? {}
+      : { organizationUuid: row.organization_uuid }),
   })
 }

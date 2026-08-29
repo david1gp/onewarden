@@ -12,4 +12,5 @@ export type IdentitySsoAuth = {
   createdAt: string
   updatedAt: string
   bindingHash: string | null
+  organizationUuid?: string | null
 }
