@@ -1,6 +1,7 @@
 import type { Result } from "#result"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
+import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
 import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
@@ -36,29 +37,16 @@ export function extensionFullWindowCommandsCreate(
   const onModelUpdate = options.onModelUpdate ?? (() => {})
   const onRefresh = options.onRefresh ?? (async () => {})
 
-  let copyTimeoutId: ReturnType<typeof setTimeout> | null = null
-
-  const loginFill = (login: ExtensionFullWindowLogin) => {
-    void sender({ type: "loginFill", request: { loginId: login.id } }).then((res) => {
-      if (!res.success && res.errorMessage) {
-        onModelUpdate((prev) => ({ ...prev, errorMessage: res.errorMessage ?? "Fill failed." }))
-      }
-    })
-  }
-
-  const fieldCopy = (_login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => {
-    void clipboard.copyText(field.value).then((res) => {
-      if (!res.success) {
-        onModelUpdate((prev) => ({ ...prev, errorMessage: res.errorMessage }))
-        return
-      }
-      onModelUpdate((prev) => ({ ...prev, copiedFieldKey: field.key }))
-      if (copyTimeoutId !== null) clearTimeout(copyTimeoutId)
-      copyTimeoutId = setTimeout(() => {
-        onModelUpdate((prev) => (prev.copiedFieldKey === field.key ? { ...prev, copiedFieldKey: null } : prev))
-      }, 2000)
-    })
-  }
+  const commonCommands = extensionCommonCommandsCreate<
+    ExtensionFullWindowLogin,
+    ExtensionFullWindowCopyableField,
+    ExtensionFullWindowViewModel
+  >({
+    messageSend: sender,
+    clipboard,
+    onModelUpdate,
+    onRefresh,
+  })
 
   const loginAdd = () => {}
 
@@ -89,38 +77,6 @@ export function extensionFullWindowCommandsCreate(
 
   const loginDraftDiscard = (draftId: string) => {
     void sender({ type: "draftDiscard", request: draftId })
-  }
-
-  const vaultSync = () => {
-    onModelUpdate((prev) => ({ ...prev, busy: true }))
-    void sender({ type: "manualSync" }).then(async () => {
-      await onRefresh()
-    })
-  }
-
-  const vaultLock = () => {
-    onModelUpdate((prev) => ({ ...prev, busy: true }))
-    void sender({ type: "lock" }).then(async () => {
-      await onRefresh()
-    })
-  }
-
-  const vaultLogout = () => {
-    onModelUpdate((prev) => ({ ...prev, busy: true }))
-    void sender({ type: "logout" }).then(async () => {
-      await onRefresh()
-    })
-  }
-
-  const vaultUnlock = (masterPassword: string) => {
-    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null }))
-    void sender({ type: "unlock", request: { password: masterPassword } }).then(async (res) => {
-      if (!res.success) {
-        onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: res.errorMessage ?? "Unlock failed." }))
-        return
-      }
-      await onRefresh()
-    })
   }
 
   const accountLogin = (
@@ -185,16 +141,16 @@ export function extensionFullWindowCommandsCreate(
   }
 
   return {
-    loginFill,
-    fieldCopy,
+    loginFill: commonCommands.loginFill,
+    fieldCopy: commonCommands.fieldCopy,
     loginAdd,
     loginCreate,
     loginDraftSave,
     loginDraftDiscard,
-    vaultSync,
-    vaultLock,
-    vaultLogout,
-    vaultUnlock,
+    vaultSync: commonCommands.vaultSync,
+    vaultLock: commonCommands.vaultLock,
+    vaultLogout: commonCommands.vaultLogout,
+    vaultUnlock: commonCommands.vaultUnlock,
     accountLogin,
     environmentSave,
     ...overrides,
