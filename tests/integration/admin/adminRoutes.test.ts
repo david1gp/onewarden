@@ -14,6 +14,8 @@ import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
+import type { RsaKeyPair } from "../../../src/shared/crypto/rsaKeyPair.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const databases: DatabaseConnection[] = []
@@ -78,6 +80,7 @@ function appCreate(
   database: DatabaseConnection,
   options: {
     identityConfig?: Parameters<typeof identityConfigCreate>[0]
+    identityKeyPair?: Pick<RsaKeyPair, "privateKey" | "publicKey">
     mail?: IdentityMailAdapter
     push?: PushRelayAdapter
   } = {},
@@ -92,7 +95,11 @@ function appCreate(
       mail: options.mail,
       push: options.push,
     },
-    identity: { config: identityConfigCreate(options.identityConfig) },
+    identity: {
+      config: identityConfigCreate(options.identityConfig),
+      privateKey: options.identityKeyPair?.privateKey,
+      publicKey: options.identityKeyPair?.publicKey,
+    },
   })
 }
 
@@ -157,6 +164,19 @@ test("admin disabled and enabled authentication preserve the upstream boundary",
   const expired = await request(app, "/admin/users", "GET", "VW_ADMIN=expired-token")
   expect(expired.status).toBe(401)
   expect(expired.headers.get("set-cookie")).toContain("VW_ADMIN=;")
+})
+
+test("admin sessions use configured identity signing keys when admin keys are omitted", async () => {
+  const database = databaseCreate()
+  const keyPairResult = rsaKeyPairGenerate()
+  if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
+  const app = appCreate(database, { identityKeyPair: keyPairResult.data })
+
+  const cookie = await adminLogin(app)
+  const users = await request(app, "/admin/users", "GET", cookie)
+
+  expect(users.status).toBe(200)
+  expect(await users.json()).toEqual([])
 })
 
 test("admin invite, user listing, diagnostics, configuration, SMTP test, and backup use deterministic adapters", async () => {

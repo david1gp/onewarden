@@ -422,6 +422,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
           event_count: adminOrganizationEventCount(databaseResult.data, organization.uuid),
           ...adminOrganizationAttachmentMetricsFind(databaseResult.data, organization.uuid),
         }))
+      if ((context.req.header("accept") ?? "").includes("application/json")) return context.json(organizations)
       return adminHtmlResponse("admin/organizations", organizations)
     } catch {
       return apiErrorResponseCreate(
@@ -458,7 +459,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
         dbVersion = null
       }
     }
-    return adminHtmlResponse("admin/diagnostics", {
+    const data = {
       ...collected,
       admin_url: `${new URL(context.req.url).origin}/admin/diagnostics`,
       current_release: options.version ?? "0.0.0",
@@ -466,7 +467,9 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
       db_version: dbVersion,
       server_time: options.clock.now().toISOString(),
       web_vault_enabled: options.webVaultEnabled ?? true,
-    })
+    }
+    if ((context.req.header("accept") ?? "").includes("application/json")) return context.json(data)
+    return adminHtmlResponse("admin/diagnostics", data)
   }
 
   const diagnosticsConfig = (context: Context<any>): Response => context.json(options.configuration.getSupportJson())
