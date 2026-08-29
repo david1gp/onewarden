@@ -193,6 +193,8 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id" },
+  { basePath: "/", method: "GET", path: "/api/organizations/:identifier/auto-enroll-status" },
+  { basePath: "/", method: "GET", path: "/api/organizations/:identifier/auto-enroll-status" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/export" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/export" },
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/export" },

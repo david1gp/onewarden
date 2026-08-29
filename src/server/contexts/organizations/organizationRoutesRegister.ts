@@ -7,27 +7,31 @@ import { requestPathParse } from "../../../shared/validation/requestPathParse.js
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
+import type { IdentityAccountPasswordOrOtpData } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
+import { identityAccountPasswordOrOtpDataSchema } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
 import { identityOriginResolve } from "../identity/identityOriginResolve.js"
 import { notificationUpdateType } from "../notifications/notificationUpdateType.js"
 import { organizationAdminMiddleware } from "./organizationAdminMiddleware.js"
 import { organizationApiKeyCreateOrRotate } from "./organizationApiKeyCreateOrRotate.js"
 import { organizationApiKeyToJson } from "./organizationApiKeyToJson.js"
+import { organizationAutoEnrollStatusFind } from "./organizationAutoEnrollStatusFind.js"
 import { organizationBillingRoutesRegister } from "./organizationBillingRoutesRegister.js"
 import { organizationCollectionRoutesRegister } from "./organizationCollectionRoutesRegister.js"
-import { organizationGroupRoutesRegister } from "./organizationGroupRoutesRegister.js"
 import { organizationCreate } from "./organizationCreate.js"
 import { organizationCreateDataSchema } from "./organizationCreateDataSchema.js"
 import { organizationDelete } from "./organizationDelete.js"
-import { organizationDomainRoutesRegister } from "./organizationDomainRoutesRegister.js"
 import type { OrganizationDeleteData } from "./organizationDeleteDataSchema.js"
 import { organizationDeleteDataSchema } from "./organizationDeleteDataSchema.js"
+import { organizationDomainRoutesRegister } from "./organizationDomainRoutesRegister.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import { organizationExport } from "./organizationExport.js"
 import { organizationFindByUuid } from "./organizationFindByUuid.js"
+import { organizationGroupRoutesRegister } from "./organizationGroupRoutesRegister.js"
 import { organizationKeysDataSchema } from "./organizationKeysDataSchema.js"
 import { organizationLeave } from "./organizationLeave.js"
 import { organizationMemberMiddleware } from "./organizationMemberMiddleware.js"
-import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
 import { organizationMembershipAccept } from "./organizationMembershipAccept.js"
 import { organizationMembershipAcceptDataSchema } from "./organizationMembershipAcceptDataSchema.js"
 import { organizationMembershipConfirm } from "./organizationMembershipConfirm.js"
@@ -37,19 +41,16 @@ import { organizationMembershipInviteDataSchema } from "./organizationMembership
 import { organizationMembershipPathSchema } from "./organizationMembershipPathSchema.js"
 import { organizationMembershipResend } from "./organizationMembershipResend.js"
 import { organizationMembershipRoutesRegister } from "./organizationMembershipRoutesRegister.js"
+import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
 import { organizationOwnerMiddleware } from "./organizationOwnerMiddleware.js"
-import { organizationPolicyRoutesRegister } from "./organizationPolicyRoutesRegister.js"
 import { organizationPolicyIsApplicableToUser } from "./organizationPolicyIsApplicableToUser.js"
+import { organizationPolicyRoutesRegister } from "./organizationPolicyRoutesRegister.js"
 import { organizationPolicyType } from "./organizationPolicyType.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 import { organizationSave } from "./organizationSave.js"
 import { organizationSsoRoutesRegister } from "./organizationSsoRoutesRegister.js"
 import { organizationToJson } from "./organizationToJson.js"
 import { organizationUpdateDataSchema } from "./organizationUpdateDataSchema.js"
-import type { IdentityAccountPasswordOrOtpData } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
-import { identityAccountPasswordOrOtpDataSchema } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
-import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
-import { eventType } from "../events/eventType.js"
 
 export function organizationRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -331,6 +332,23 @@ export function organizationRoutesRegister(
     return context.json(organizationApiKeyToJson(apiKeyResult.data))
   }
 
+  const getAutoEnrollStatus = (context: Context<AuthenticationEnvironment>) => {
+    const authentication = authenticationContextGet(context)
+    if (authentication === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesGetAutoEnrollStatus", "Authentication is required.", 401),
+      )
+    const database = databaseResolve(context)
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesGetAutoEnrollStatus", "Database unavailable."),
+      )
+    const identifier = context.req.param("identifier") ?? ""
+    const result = organizationAutoEnrollStatusFind(database, authentication.user.uuid, identifier)
+    if (!result.success) return apiErrorResponseCreate(result)
+    return context.json(result.data)
+  }
+
   const inviteMember = async (context: Context<AuthenticationEnvironment>) => {
     const authentication = authenticationContextGet(context)
     if (authentication === undefined)
@@ -470,6 +488,11 @@ export function organizationRoutesRegister(
   const member = organizationMemberMiddleware(organizationAuthentication)
 
   app.post("/api/organizations", authenticate("create_organization"), create)
+  app.get(
+    "/api/organizations/:identifier/auto-enroll-status",
+    authenticate("get_auto_enroll_status"),
+    getAutoEnrollStatus,
+  )
   app.get("/api/organizations/:org_id", authenticate("get_organization"), owner, get)
   app.put("/api/organizations/:org_id", authenticate("put_organization"), owner, update)
   app.post("/api/organizations/:org_id", authenticate("post_organization"), owner, update)
