@@ -5,6 +5,7 @@ import { databaseTransaction } from "../../database/databaseTransaction.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
+import { twoFactorRecordDeleteAllByUser } from "../twoFactor/twoFactorRecordDeleteAllByUser.js"
 
 export function identityUserDelete(database: DatabaseConnection, user: IdentityUser): Result<void> {
   let owner: { uuid: string } | null
@@ -58,6 +59,8 @@ export function identityUserDelete(database: DatabaseConnection, user: IdentityU
          WHERE grantor_uuid = ? OR grantee_uuid = ? OR email = ?`,
         [user.uuid, user.uuid, user.email],
       )
+      const twoFactorDeleteResult = twoFactorRecordDeleteAllByUser(database, user.uuid)
+      if (!twoFactorDeleteResult.success) return twoFactorDeleteResult
       database.run("DELETE FROM devices WHERE user_uuid = ?", [user.uuid])
       database.run("DELETE FROM users WHERE uuid = ?", [user.uuid])
       return resultCreate(undefined)

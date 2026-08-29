@@ -191,6 +191,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     push,
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
+    twoFactor: identityOptions?.twoFactor,
   })
   organizationRoutesRegister(app, {
     clock: identityClock,

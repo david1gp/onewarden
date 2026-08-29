@@ -25,6 +25,7 @@ import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
 import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
+import { twoFactorRoutesRegister } from "../twoFactor/twoFactorRoutesRegister.js"
 
 export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
   const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
@@ -159,7 +160,15 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
         push: options.push,
+        publicKey: options.publicKey,
+        publicOrigin: options.publicOrigin,
+        clientVersion: context.req.header("Bitwarden-Client-Version"),
+        twoFactor: options.twoFactor,
       })
+      if (!result.success) {
+        const twoFactorResponse = identityTwoFactorLoginResponse(result)
+        if (twoFactorResponse !== undefined) return twoFactorResponse
+      }
       if (!result.success) return apiErrorResponseCreate(result)
       return context.json(result.data)
     }
@@ -303,7 +312,30 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json(result.data.token)
   })
   identityAccountRoutesRegister(app, options)
+  twoFactorRoutesRegister(app, options)
   identityDevicePushRoutesRegister(app, options)
+}
+
+function identityTwoFactorLoginResponse(error: ResultErr): Response | undefined {
+  if (error.errorData === undefined || error.errorData === null) return undefined
+  try {
+    const data = JSON.parse(error.errorData) as {
+      twoFactorLogin?: { providers: number[]; providers2: Record<string, unknown> }
+    }
+    if (data.twoFactorLogin === undefined) return undefined
+    return new Response(
+      JSON.stringify({
+        error: "invalid_grant",
+        error_description: "Two factor required.",
+        TwoFactorProviders: data.twoFactorLogin.providers.map(String),
+        TwoFactorProviders2: data.twoFactorLogin.providers2,
+        MasterPasswordPolicy: { Object: "masterPasswordPolicy" },
+      }),
+      { headers: { "content-type": "application/json" }, status: 400 },
+    )
+  } catch {
+    return undefined
+  }
 }
 
 function identityInvalidGrantResponse(): Response {

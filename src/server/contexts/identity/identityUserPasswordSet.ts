@@ -7,6 +7,7 @@ import type { DatabaseConnection } from "../../database/database.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
 import type { IdentityUser } from "./identityUser.js"
 import { authenticationSecurityStampExceptionSet } from "../authentication/authenticationSecurityStampExceptionSet.js"
+import { authenticationTrustedDeviceClearAllByUser } from "../authentication/authenticationTrustedDeviceClearAllByUser.js"
 
 type IdentityUserPasswordSetOptions = {
   clock: Clock
@@ -32,6 +33,8 @@ export async function identityUserPasswordSet(
     user.securityStamp = options.identifier.uuid()
     const rotateResult = identityDeviceRefreshTokensRotateByUser(options.database, user.uuid, options.clock)
     if (!rotateResult.success) return rotateResult
+    const clearResult = authenticationTrustedDeviceClearAllByUser(options.database, user.uuid)
+    if (!clearResult.success) return clearResult
   }
   return resultCreate(undefined)
 }

@@ -21,6 +21,7 @@ export function identityUserFromRow(row: IdentityUserRow): IdentityUser {
     akey: row.akey,
     privateKey: row.private_key,
     publicKey: row.public_key,
+    ...(row.totp_recover === null ? {} : { totpRecover: row.totp_recover }),
     securityStamp: row.security_stamp,
     stampException: row.stamp_exception,
     equivalentDomains: row.equivalent_domains,

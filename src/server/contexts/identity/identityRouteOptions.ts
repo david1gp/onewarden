@@ -7,6 +7,7 @@ import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
 import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
+import type { TwoFactorAdapters } from "../twoFactor/twoFactorAdapters.js"
 
 export type IdentityRouteOptions = {
   clock: Clock
@@ -20,4 +21,5 @@ export type IdentityRouteOptions = {
   push?: PushRelayAdapter
   rateLimiter: { check: (key: string) => Result<void> }
   sso?: IdentitySsoAdapter
+  twoFactor?: TwoFactorAdapters
 }

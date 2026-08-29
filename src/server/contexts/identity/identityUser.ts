@@ -17,6 +17,7 @@ export type IdentityUser = {
   akey: string
   privateKey: string | null
   publicKey: string | null
+  totpRecover?: string | null
   securityStamp: string
   stampException: string | null
   equivalentDomains: string

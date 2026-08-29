@@ -12,6 +12,7 @@ import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
 import { identityUserSave } from "./identityUserSave.js"
+import { authenticationTrustedDeviceClearAllByUser } from "../authentication/authenticationTrustedDeviceClearAllByUser.js"
 
 type IdentityEmailChangeCompleteOptions = {
   clock: Clock
@@ -64,6 +65,8 @@ export async function identityEmailChangeComplete(
   return databaseTransaction(options.database, () => {
     const rotateResult = identityDeviceRefreshTokensRotateByUser(options.database, user.uuid, options.clock)
     if (!rotateResult.success) return rotateResult
+    const rememberResult = authenticationTrustedDeviceClearAllByUser(options.database, user.uuid)
+    if (!rememberResult.success) return rememberResult
     return identityUserSave(options.database, user)
   })
 }

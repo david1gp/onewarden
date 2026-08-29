@@ -54,6 +54,7 @@ import { identityUserPasswordSet } from "./identityUserPasswordSet.js"
 import { identityUserProfileToJson } from "./identityUserProfileToJson.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityVerifyEmailTokenDecode } from "./identityVerifyEmailTokenDecode.js"
+import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
 
 export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -460,6 +461,8 @@ export function identityAccountRoutesRegister(
     const validationResult = await identityAccountPasswordOrOtpValidate(
       requestContext.data.authentication.user,
       bodyResult.data,
+      requestContext.data.database,
+      options,
     )
     if (!validationResult.success) return apiErrorResponseCreate(validationResult)
     const user = requestContext.data.authentication.user
@@ -481,6 +484,8 @@ export function identityAccountRoutesRegister(
     const validationResult = await identityAccountPasswordOrOtpValidate(
       requestContext.data.authentication.user,
       bodyResult.data,
+      requestContext.data.database,
+      options,
     )
     if (!validationResult.success) return apiErrorResponseCreate(validationResult)
     const deleteResult = identityUserDelete(requestContext.data.database, requestContext.data.authentication.user)
@@ -671,6 +676,8 @@ export function identityAccountRoutesRegister(
     const validationResult = await identityAccountPasswordOrOtpValidate(
       requestContext.data.authentication.user,
       bodyResult.data,
+      requestContext.data.database,
+      options,
     )
     if (!validationResult.success) return apiErrorResponseCreate(validationResult)
     const user = requestContext.data.authentication.user
@@ -794,16 +801,10 @@ async function identityAccountPasswordVerify(
 async function identityAccountPasswordOrOtpValidate(
   user: AuthenticationContext["user"],
   data: IdentityAccountPasswordOrOtpData,
+  database: DatabaseConnection,
+  options: IdentityRouteOptions,
 ): Promise<Result<void>> {
-  const password = data.masterPasswordHash ?? data.MasterPasswordHash
-  if (password !== undefined && password !== null && (data.otp === undefined || data.otp === null)) {
-    const passwordResult = await identityAccountPasswordVerify(user, password)
-    if (!passwordResult.success) return passwordResult
-    if (!passwordResult.data)
-      return identityDomainErrorCreate("identityAccountPasswordOrOtpValidate", "Invalid password")
-    return { success: true, data: undefined }
-  }
-  return identityDomainErrorCreate("identityAccountPasswordOrOtpValidate", "No validation provided")
+  return twoFactorPasswordOrOtpValidate(database, user, data, options.clock, options.config, true)
 }
 
 function identityAccountPasswordHintNormalize(

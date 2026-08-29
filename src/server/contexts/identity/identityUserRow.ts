@@ -17,6 +17,7 @@ export type IdentityUserRow = {
   akey: string
   private_key: string | null
   public_key: string | null
+  totp_recover: string | null
   security_stamp: string
   stamp_exception: string | null
   equivalent_domains: string

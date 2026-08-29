@@ -11,6 +11,8 @@ import { sendPurge } from "./contexts/sends/sendPurge.js"
 import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
 import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
+import { twoFactorIncompleteNotificationRun } from "./contexts/twoFactor/twoFactorIncompleteNotificationRun.js"
+import { twoFactorWebAuthnU2fMigrate } from "./contexts/twoFactor/twoFactorWebAuthnU2fMigrate.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
@@ -45,6 +47,13 @@ const database = databaseResult.data
 const migrationResult = databaseMigrate(database)
 if (!migrationResult.success) {
   logger.error("database.migration-failed", { errorMessage: migrationResult.errorMessage })
+  const closeResult = databaseClose(database)
+  if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
+  process.exit(1)
+}
+const u2fMigrationResult = twoFactorWebAuthnU2fMigrate(database)
+if (!u2fMigrationResult.success) {
+  logger.error("two-factor.webauthn-u2f-migration-failed", { errorMessage: u2fMigrationResult.errorMessage })
   const closeResult = databaseClose(database)
   if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
   process.exit(1)
@@ -153,12 +162,27 @@ try {
     })
     if (!result.success) logger.error("emergency-access.reminder-failed", { errorMessage: result.errorMessage })
   }
+  const runTwoFactorIncompleteNotification = async (): Promise<void> => {
+    const result = await twoFactorIncompleteNotificationRun({
+      clock: serverClock,
+      config: identityConfigResult.data,
+      database,
+      mail,
+    })
+    if (!result.success)
+      logger.error("two-factor.incomplete-notification-failed", { errorMessage: result.errorMessage })
+  }
   const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
   const emergencyAccessTimeoutInterval = setInterval(() => void runEmergencyAccessTimeout(), 60 * 60 * 1_000)
   const emergencyAccessReminderInterval = setInterval(() => void runEmergencyAccessReminder(), 60 * 60 * 1_000)
+  const twoFactorIncompleteNotificationInterval = setInterval(
+    () => void runTwoFactorIncompleteNotification(),
+    60 * 1_000,
+  )
   void purgeSends()
   void runEmergencyAccessTimeout()
   void runEmergencyAccessReminder()
+  void runTwoFactorIncompleteNotification()
 
   let shutdownPromise: Promise<void> | undefined
   const shutdown = (): Promise<void> => {
@@ -172,6 +196,7 @@ try {
       clearInterval(purgeInterval)
       clearInterval(emergencyAccessTimeoutInterval)
       clearInterval(emergencyAccessReminderInterval)
+      clearInterval(twoFactorIncompleteNotificationInterval)
       const closeResult = databaseClose(database)
       if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
     })()

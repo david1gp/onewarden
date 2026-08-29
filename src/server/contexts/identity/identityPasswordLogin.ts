@@ -21,6 +21,8 @@ import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
 import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 import { identityVerifyEmailTokenCreate } from "./identityVerifyEmailTokenCreate.js"
+import { twoFactorLogin } from "../twoFactor/twoFactorLogin.js"
+import type { TwoFactorAdapters } from "../twoFactor/twoFactorAdapters.js"
 
 type IdentityPasswordLoginOptions = {
   clock: Clock
@@ -33,6 +35,10 @@ type IdentityPasswordLoginOptions = {
   rateLimiter: { check: (key: string) => Result<void> }
   clientIp: string
   push?: PushRelayAdapter
+  publicKey: KeyInput | undefined
+  publicOrigin: string | undefined
+  clientVersion?: string
+  twoFactor?: TwoFactorAdapters
 }
 
 async function identityPasswordVerificationRequire(
@@ -112,6 +118,22 @@ export async function identityPasswordLogin(
   const device = deviceResult.data
   const deviceIsNew = device.createdAt === device.updatedAt
 
+  const twoFactorResult = await twoFactorLogin(user, data, {
+    clientIp: options.clientIp,
+    clientVersion: options.clientVersion,
+    clock: options.clock,
+    config: options.config,
+    database,
+    device,
+    issuer: options.issuer,
+    privateKey: options.privateKey,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+    identifier: options.identifier,
+    twoFactor: options.twoFactor,
+  })
+  if (!twoFactorResult.success) return twoFactorResult
+
   const bundleResult = await identityTokenBundleCreate(
     user,
     device,
@@ -130,5 +152,7 @@ export async function identityPasswordLogin(
     const pushUuidSaveResult = identityDeviceSave(database, device, options.clock, false)
     if (!pushUuidSaveResult.success) return pushUuidSaveResult
   }
-  return resultCreate(identityUserTokenResponseCreate(user, bundleResult.data))
+  const response = identityUserTokenResponseCreate(user, bundleResult.data)
+  if (twoFactorResult.data !== null) response.TwoFactorToken = twoFactorResult.data
+  return resultCreate(response)
 }

@@ -15,6 +15,8 @@ import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserFromRow } from "../identity/identityUserFromRow.js"
 import type { IdentityUserRow } from "../identity/identityUserRow.js"
 import { identityUserSave } from "../identity/identityUserSave.js"
+import { twoFactorRecordDeleteAllByUser } from "../twoFactor/twoFactorRecordDeleteAllByUser.js"
+import { twoFactorRecoveryCodeClear } from "../twoFactor/twoFactorRecoveryCodeClear.js"
 import type { AdminBackupAdapter } from "./adminBackupAdapter.js"
 import { adminBackupAdapterCreate } from "./adminBackupAdapterCreate.js"
 import type { AdminConfigurationAdapter } from "./adminConfigurationAdapter.js"
@@ -298,12 +300,13 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     const userResult = adminUserFindByUuid(databaseResult.data, userId)
     if (!userResult.success) return apiErrorResponseCreate(userResult)
     if (userResult.data === null) return apiErrorResponseCreate(adminNotFoundError("adminRemoveTwoFactor"))
-    try {
-      databaseResult.data.run("DELETE FROM twofactor WHERE user_uuid = ?", [userId])
-    } catch {
-      // The current schema may not have the optional two-factor table yet.
-      // Keep the admin boundary idempotent until that context is available.
-    }
+    const user = userResult.data
+    const result = databaseTransaction(databaseResult.data, () => {
+      const deleteResult = twoFactorRecordDeleteAllByUser(databaseResult.data, userId)
+      if (!deleteResult.success) return deleteResult
+      return twoFactorRecoveryCodeClear(databaseResult.data, user)
+    })
+    if (!result.success) return apiErrorResponseCreate(result)
     return adminEmptyResponse()
   }
 
@@ -635,7 +638,7 @@ function adminUserRowSelect(): string {
   return `SELECT uuid, enabled, created_at, updated_at, verified_at, last_verifying_at,
     login_verify_count, email, email_new, email_new_token, name, password_hash,
     salt, password_iterations, password_hint, akey, private_key, public_key,
-    security_stamp, stamp_exception, equivalent_domains, excluded_globals,
+    security_stamp, stamp_exception, equivalent_domains, excluded_globals, totp_recover,
     client_kdf_type, client_kdf_iter, client_kdf_memory, client_kdf_parallelism,
     api_key, avatar_color, external_id FROM users`
 }

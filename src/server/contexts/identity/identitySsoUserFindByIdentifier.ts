@@ -18,7 +18,7 @@ export function identitySsoUserFindByIdentifier(
            u.last_verifying_at, u.login_verify_count, u.email, u.email_new,
            u.email_new_token, u.name, u.password_hash, u.salt, u.password_iterations,
            u.password_hint, u.akey, u.private_key, u.public_key, u.security_stamp,
-           u.stamp_exception, u.equivalent_domains, u.excluded_globals,
+           u.stamp_exception, u.equivalent_domains, u.excluded_globals, u.totp_recover,
            u.client_kdf_type, u.client_kdf_iter, u.client_kdf_memory,
            u.client_kdf_parallelism, u.api_key, u.avatar_color, u.external_id,
            s.identifier AS sso_identifier
