@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 12, 19, and 21 are committed, pushed, deployed, and healthy on main. Task 20 invite/accept/confirm/resend passes non-e2e checks and still awaits update/remove/restore/bulk completion. Task 23 policy/domain/SSO behavior passes non-e2e checks with migration 0014 and awaits custom permission and SSO-login completion review. Task 24 event persistence, retrieval, retention, and hooks pass non-e2e checks with migration 0015 and await completion review. Task 33's first auth UI increment passes browser/e2e and axe across all routes except one duplicate demo h1, which is being repaired and retested. Tasks 15 and 22 can now begin independently from the deployed collection core.
+- Current context: tasks 12 and 19-22 are committed, pushed, deployed, and healthy on main. Task 15 is complete and publishes next with migration 0014. Tasks 23 and 24 are complete and will be renumbered to migrations 0015 and 0016 before sequential publication. Task 33 authentication and two-factor UI is complete with passing browser/e2e and axe coverage and will publish after backend phases. Task 34's DRY production vault shell is implemented and awaits post-implementation browser testing.
 
 # Tasks
 
@@ -42,16 +42,16 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 12. Port authenticator, email, WebAuthn, Duo, YubiKey, recovery-code, and remembered-device two-factor behavior with tests.
 - [x] 13. Port folder CRUD, ordering, revisions, and notification hooks with tests.
 - [x] 14. Port cipher create/read/update/delete/restore, bulk operations, favorites, ownership, and revision behavior with tests.
-- [ ] 15. Port cipher sharing, collection assignment, organization ownership transfer, and access-control behavior with tests.
+- [x] 15. Port cipher sharing, collection assignment, organization ownership transfer, and access-control behavior with tests.
 - [x] 16. Port attachment metadata, upload, download-token, download, replacement, quota, and deletion behavior with tests.
 - [x] 17. Port sync responses, domains, equivalent domains, profile composition, revisions, and exclusion rules with tests.
 - [x] 18. Port personal import/export and cipher-password-history behavior with tests.
 - [x] 19. Port organization creation, update, deletion, keys, billing compatibility, limits, and seat behavior with tests.
-- [ ] 20. Port organization membership invite, accept, confirm, update, remove, restore, resend, and bulk behavior with tests.
+- [x] 20. Port organization membership invite, accept, confirm, update, remove, restore, resend, and bulk behavior with tests.
 - [x] 21. Port collection CRUD, user/group assignments, access details, and bulk behavior with tests.
-- [ ] 22. Port group CRUD, membership, collection access, directory-sync compatibility, and bulk behavior with tests.
-- [ ] 23. Port organization policies, organization domains, SSO configuration, and policy enforcement behavior with tests.
-- [ ] 24. Port organization event logging, event retrieval, retention rules, and event notification hooks with tests.
+- [x] 22. Port group CRUD, membership, collection access, directory-sync compatibility, and bulk behavior with tests.
+- [x] 23. Port organization policies, organization domains, SSO configuration, and policy enforcement behavior with tests.
+- [x] 24. Port organization event logging, event retrieval, retention rules, and event notification hooks with tests.
 - [x] 25. Port Send text/file CRUD, access, passwords, download tokens, quotas, expiration, and deletion behavior with tests.
 - [x] 26. Port emergency-access invite, accept, confirm, initiate, approve, reject, view, takeover, timeout, and reminder behavior with tests.
 - [x] 27. Port public organization import and remaining public compatibility endpoints with tests.
@@ -60,7 +60,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 30. Port icon retrieval, caching, fallback, SSRF protection, redirect, and content-type behavior with tests.
 - [x] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
 - [x] 32. Port static/web compatibility routes, health endpoints, configuration endpoints, legacy aliases, and fallback behavior with tests.
-- [ ] 33. Build accessible authentication, registration, verification, unlock, and two-factor UI flows with browser tests.
+- [x] 33. Build accessible authentication, registration, verification, unlock, and two-factor UI flows with browser tests.
 - [ ] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
 - [ ] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
 - [ ] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
