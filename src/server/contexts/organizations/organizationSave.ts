@@ -23,15 +23,17 @@ export function organizationSave(
       [revisionDate, organization.uuid],
     )
     database.run(
-      `INSERT INTO organizations (uuid, name, billing_email, private_key, public_key)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO organizations (uuid, identifier, name, billing_email, private_key, public_key)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(uuid) DO UPDATE SET
+         identifier = excluded.identifier,
          name = excluded.name,
          billing_email = excluded.billing_email,
          private_key = excluded.private_key,
          public_key = excluded.public_key`,
       [
         organization.uuid,
+        organization.identifier,
         organization.name,
         organization.billingEmail,
         organization.privateKey,

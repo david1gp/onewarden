@@ -205,10 +205,11 @@ export function identitySsoAdapterCreate(
 ): IdentitySsoAdapter {
   const redirectOrigin = publicOrigin?.replace(/\/+$/, "") ?? ""
   return {
-    authorize: async ({ clientId, rawRedirectUri, redirectUri, state, clientChallenge }) => {
+    authorize: async ({ clientId, rawRedirectUri, redirectUri, state, clientChallenge, configuration }) => {
+      const effectiveConfig = configuration ?? config
       const redirectResult = identitySsoRedirectUriResolve(clientId, rawRedirectUri, redirectOrigin)
       if (!redirectResult.success) return redirectResult
-      const providerResult = await identitySsoProviderConfigurationGet(config)
+      const providerResult = await identitySsoProviderConfigurationGet(effectiveConfig)
       if (!providerResult.success) return providerResult
       const randomResult = secureRandomBytes(32)
       if (!randomResult.success) return randomResult
@@ -220,24 +221,25 @@ export function identitySsoAdapterCreate(
       } catch {
         return identityDomainErrorCreate("identitySsoAdapterAuthorize", "Failed to discover OpenID provider")
       }
-      url.searchParams.set("client_id", config.SSO_CLIENT_ID)
+      url.searchParams.set("client_id", effectiveConfig.SSO_CLIENT_ID)
       url.searchParams.set("redirect_uri", redirectUri)
       url.searchParams.set("response_type", "code")
-      url.searchParams.set("scope", `openid ${config.SSO_SCOPES}`.trim())
+      url.searchParams.set("scope", `openid ${effectiveConfig.SSO_SCOPES}`.trim())
       url.searchParams.set("state", stateValue)
       url.searchParams.set("nonce", nonce)
-      for (const [key, value] of identitySsoExtraParametersParse(config.SSO_AUTHORIZE_EXTRA_PARAMS))
+      for (const [key, value] of identitySsoExtraParametersParse(effectiveConfig.SSO_AUTHORIZE_EXTRA_PARAMS))
         url.searchParams.set(key, value)
-      if (config.SSO_PKCE) {
+      if (effectiveConfig.SSO_PKCE) {
         url.searchParams.set("code_challenge", clientChallenge)
         url.searchParams.set("code_challenge_method", "S256")
       }
       return resultCreate({ authorizationUrl: url.toString(), nonce })
     },
-    exchange: async ({ auth, code, codeVerifier }) => {
-      const providerResult = await identitySsoProviderConfigurationGet(config)
+    exchange: async ({ auth, code, codeVerifier, configuration }) => {
+      const effectiveConfig = configuration ?? config
+      const providerResult = await identitySsoProviderConfigurationGet(effectiveConfig)
       if (!providerResult.success) return providerResult
-      if (!config.SSO_PKCE) {
+      if (!effectiveConfig.SSO_PKCE) {
         const digestResult = await sha256Digest(new TextEncoder().encode(codeVerifier))
         if (!digestResult.success)
           return identityDomainErrorCreate("identitySsoAdapterExchange", "PKCE client challenge failed")
@@ -245,7 +247,7 @@ export function identitySsoAdapterCreate(
           return identityDomainErrorCreate("identitySsoAdapterExchange", "PKCE client challenge failed")
       }
       const tokenResult = await identitySsoProviderTokenExchange(
-        config,
+        effectiveConfig,
         providerResult.data.token_endpoint,
         providerResult.data.token_endpoint_auth_methods_supported,
         auth,
@@ -262,7 +264,13 @@ export function identitySsoAdapterCreate(
           return identityDomainErrorCreate("identitySsoAdapterExchange", "Could not read id_token claims")
         }
       }
-      const claimsResult = await identitySsoIdClaimsRead(tokenResult.data.id_token, provider, config, clock, jwks)
+      const claimsResult = await identitySsoIdClaimsRead(
+        tokenResult.data.id_token,
+        provider,
+        effectiveConfig,
+        clock,
+        jwks,
+      )
       if (!claimsResult.success) return claimsResult
       if (claimsResult.data.nonce !== auth.nonce)
         return identityDomainErrorCreate("identitySsoAdapterExchange", "Could not read id_token claims")
@@ -288,18 +296,20 @@ export function identitySsoAdapterCreate(
         user_name: claimsResult.data.preferred_username ?? userInfo?.preferred_username ?? null,
       })
     },
-    refresh: async (refreshToken) => {
-      const providerResult = await identitySsoProviderConfigurationGet(config)
+    refresh: async (refreshToken, configuration) => {
+      const effectiveConfig = configuration ?? config
+      const providerResult = await identitySsoProviderConfigurationGet(effectiveConfig)
       if (!providerResult.success) return providerResult
       return identitySsoProviderRefreshExchange(
-        config,
+        effectiveConfig,
         providerResult.data.token_endpoint,
         providerResult.data.token_endpoint_auth_methods_supported,
         refreshToken,
       )
     },
-    validateAccessToken: async (accessToken) => {
-      const providerResult = await identitySsoProviderConfigurationGet(config)
+    validateAccessToken: async (accessToken, configuration) => {
+      const effectiveConfig = configuration ?? config
+      const providerResult = await identitySsoProviderConfigurationGet(effectiveConfig)
       if (!providerResult.success) return providerResult
       if (providerResult.data.userinfo_endpoint === undefined)
         return identityDomainErrorCreate(

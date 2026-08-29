@@ -52,6 +52,7 @@ type IdentityUserProfileOrganizationRow = {
   access_all: number
   akey: string
   membership_uuid: string
+  organization_identifier: string | null
   organization_name: string
   organization_private_key: string | null
   organization_public_key: string | null
@@ -71,7 +72,8 @@ function identityUserProfileOrganizations(
     const memberships = database
       .query<IdentityUserProfileOrganizationRow, [string]>(
         `SELECT member.uuid AS membership_uuid, member.org_uuid AS organization_uuid,
-                organization.name AS organization_name, organization.private_key AS organization_private_key,
+                organization.name AS organization_name, organization.identifier AS organization_identifier,
+                organization.private_key AS organization_private_key,
                 organization.public_key AS organization_public_key, member.access_all, member.status,
                 member.atype, member.reset_password_key, member.akey
          FROM users_organizations AS member
@@ -98,7 +100,7 @@ function identityUserProfileOrganizationToJson(
   const customWithAllAccess = type === 4 && membership.access_all === 1
   return {
     id: membership.organization_uuid,
-    identifier: null,
+    identifier: membership.organization_identifier,
     name: membership.organization_name,
     seats: 20,
     maxCollections: null,
@@ -117,7 +119,7 @@ function identityUserProfileOrganizationToJson(
     resetPasswordEnrolled: membership.reset_password_key !== null,
     useResetPassword: config.MAIL_ENABLED,
     ssoBound: false,
-    useSso: false,
+    useSso: true,
     useKeyConnector: false,
     useSecretsManager: false,
     usePasswordManager: true,
@@ -128,7 +130,7 @@ function identityUserProfileOrganizationToJson(
     useDisableSMAdsForUsers: true,
     useInviteLinks: false,
     useMyItems: false,
-    useOrganizationDomains: false,
+    useOrganizationDomains: true,
     usePam: false,
     usePhishingBlocker: false,
     organizationUserId: membership.membership_uuid,

@@ -44,6 +44,7 @@ export async function identitySsoTokenBundleCreate(
   privateKey: KeyInput | undefined,
   clock: Clock,
   config: IdentityConfig,
+  organizationUuid?: string | null,
 ): Promise<Result<IdentityTokenBundle>> {
   const op = "identitySsoTokenBundleCreate"
   if (privateKey === undefined) return resultErrorCreate(op, "Identity token signing is unavailable.")
@@ -94,6 +95,7 @@ export async function identitySsoTokenBundleCreate(
     sub: "sso" as const,
     device_token: device.refreshToken,
     token: refreshToken,
+    ...(organizationUuid === undefined || organizationUuid === null ? {} : { organization_uuid: organizationUuid }),
   }
   const refreshTokenResult = await jwtSign(refreshClaims, privateKey)
   if (!refreshTokenResult.success) return resultErrorCreate(op, "Identity refresh token signing failed.")

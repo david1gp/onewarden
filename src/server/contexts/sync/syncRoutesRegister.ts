@@ -19,6 +19,8 @@ import { identityUserProfileToJson } from "../identity/identityUserProfileToJson
 import { identityUserSave } from "../identity/identityUserSave.js"
 import { organizationCollectionFindByUser } from "../organizations/organizationCollectionFindByUser.js"
 import { organizationCollectionToJson } from "../organizations/organizationCollectionToJson.js"
+import { organizationPolicyFindConfirmedByUser } from "../organizations/organizationPolicyFindConfirmedByUser.js"
+import { organizationPolicyToJson } from "../organizations/organizationPolicyToJson.js"
 import { sendFindByUser } from "../sends/sendFindByUser.js"
 import { sendToJson } from "../sends/sendToJson.js"
 import { syncDomainsDataSchema } from "./syncDomainsDataSchema.js"
@@ -48,6 +50,8 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     if (!ciphersResult.success) return apiErrorResponseCreate(ciphersResult)
     const sendsResult = sendFindByUser(database, authentication.user.uuid)
     if (!sendsResult.success) return apiErrorResponseCreate(sendsResult)
+    const policiesResult = organizationPolicyFindConfirmedByUser(database, authentication.user.uuid)
+    if (!policiesResult.success) return apiErrorResponseCreate(policiesResult)
 
     const ciphers: Record<string, unknown>[] = []
     for (const cipher of ciphersResult.data) {
@@ -81,7 +85,7 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
       profile: identityUserProfileToJson(authentication.user, options.config, database),
       folders: foldersResult.data.map(folderToJson),
       collections: collectionsResult.data.map(organizationCollectionToJson),
-      policies: [],
+      policies: policiesResult.data.map(organizationPolicyToJson),
       ciphers,
       domains: syncExcludeDomains(context) ? null : syncDomainsToJson(authentication.user, false),
       sends,

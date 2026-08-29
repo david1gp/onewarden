@@ -13,6 +13,7 @@ export const identitySsoAuthSchema = v.object({
   created_at: v.string(),
   updated_at: v.string(),
   binding_hash: v.nullable(v.string()),
+  organization_uuid: v.optional(v.nullable(v.string())),
 })
 
 export type IdentitySsoAuthSchemaValue = v.InferOutput<typeof identitySsoAuthSchema>

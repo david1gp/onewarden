@@ -35,6 +35,9 @@ import { sendPasswordVerify } from "./sendPasswordVerify.js"
 import { sendSave } from "./sendSave.js"
 import { sendToAccessJson } from "./sendToAccessJson.js"
 import { sendToJson } from "./sendToJson.js"
+import { organizationPolicyIsApplicableToUser } from "../organizations/organizationPolicyIsApplicableToUser.js"
+import { organizationPolicyIsHideEmailDisabled } from "../organizations/organizationPolicyIsHideEmailDisabled.js"
+import { organizationPolicyType } from "../organizations/organizationPolicyType.js"
 import { sendDownloadTokenCreate } from "./sendDownloadTokenCreate.js"
 import { sendDownloadTokenVerify } from "./sendDownloadTokenVerify.js"
 import { sendUpdate } from "./sendUpdate.js"
@@ -105,13 +108,22 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const create = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesCreate")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesCreate",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const bodyResult = await requestBodyParse(context, sendDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
     if (bodyResult.data.type === 1)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesCreate", "File sends should use /api/sends/file"))
-    const policyResult = sendDataPolicyValidate(bodyResult.data)
+    const policyResult = await sendDataPolicyValidate(
+      bodyResult.data,
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!policyResult.success) return apiErrorResponseCreate(policyResult)
     return sendCreateResponse(context, requestContext.data, bodyResult.data, options, notification)
   }
@@ -119,14 +131,19 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const createFile = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesCreateFile")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesCreateFile",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const multipartResult = await sendMultipartParse(context, true)
     if (!multipartResult.success) return apiErrorResponseCreate(multipartResult)
     const { data, file } = multipartResult.data
     if (data.type !== 1)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesCreateFile", "Send content is not a file"))
-    const policyResult = sendDataPolicyValidate(data)
+    const policyResult = await sendDataPolicyValidate(data, requestContext.data.database, requestContext.data.userUuid)
     if (!policyResult.success) return apiErrorResponseCreate(policyResult)
     const bytesResult = await sendFileBytesRead(file)
     if (!bytesResult.success) return apiErrorResponseCreate(bytesResult)
@@ -176,14 +193,19 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const createFileV2 = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesCreateFileV2")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesCreateFileV2",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const bodyResult = await requestBodyParse(context, sendDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
     const data = bodyResult.data
     if (data.type !== 1)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesCreateFileV2", "Send content is not a file"))
-    const policyResult = sendDataPolicyValidate(data)
+    const policyResult = await sendDataPolicyValidate(data, requestContext.data.database, requestContext.data.userUuid)
     if (!policyResult.success) return apiErrorResponseCreate(policyResult)
     const fileLengthResult = sendDataNumberResolve(data.fileLength)
     if (!fileLengthResult.success) return apiErrorResponseCreate(fileLengthResult)
@@ -219,7 +241,12 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const createFileV2Data = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesCreateFileV2Data")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesCreateFileV2Data",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const pathResult = requestPathParse(context, sendFilePathSchema)
     if (!pathResult.success) return apiErrorResponseCreate(pathResult)
@@ -264,13 +291,22 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const update = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesUpdate")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesUpdate",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const pathResult = requestPathParse(context, sendPathSchema)
     if (!pathResult.success) return apiErrorResponseCreate(pathResult)
     const bodyResult = await requestBodyParse(context, sendDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
-    const policyResult = sendDataPolicyValidate(bodyResult.data)
+    const policyResult = await sendDataPolicyValidate(
+      bodyResult.data,
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!policyResult.success) return apiErrorResponseCreate(policyResult)
     const updateResult = await sendUpdate(
       requestContext.data.database,
@@ -294,7 +330,12 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
   const removePassword = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = sendRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const enabledResult = sendEnabledValidate(options, "sendRoutesRemovePassword")
+    const enabledResult = await sendEnabledValidate(
+      options,
+      "sendRoutesRemovePassword",
+      requestContext.data.database,
+      requestContext.data.userUuid,
+    )
     if (!enabledResult.success) return apiErrorResponseCreate(enabledResult)
     const pathResult = requestPathParse(context, sendPathSchema)
     if (!pathResult.success) return apiErrorResponseCreate(pathResult)
@@ -566,14 +607,35 @@ type SendRequestContext = {
   userUuid: string
 }
 
-function sendDataPolicyValidate(data: SendData): Result<void> {
+async function sendDataPolicyValidate(
+  data: SendData,
+  database: SendRequestContext["database"],
+  userUuid: string,
+): Promise<Result<void>> {
   if (data.emails !== undefined && data.emails !== null)
     return sendErrorCreate("sendPolicy", "Sends with email verification is not supported")
+  if (data.hideEmail !== true) return resultCreate(undefined)
+  const result = organizationPolicyIsHideEmailDisabled(database, userUuid)
+  if (!result.success) return result
+  if (result.data)
+    return sendErrorCreate(
+      "sendPolicy",
+      "Due to an Enterprise Policy, you are not allowed to hide your email address from recipients when creating or editing a Send.",
+    )
   return resultCreate(undefined)
 }
 
-function sendEnabledValidate(options: SendRouteOptions, op: string): Result<void> {
+async function sendEnabledValidate(
+  options: SendRouteOptions,
+  op: string,
+  database: SendRequestContext["database"],
+  userUuid: string,
+): Promise<Result<void>> {
   if (options.sendsAllowed === false)
+    return sendErrorCreate(op, "Due to an Enterprise Policy, you are only able to delete an existing Send.")
+  const result = organizationPolicyIsApplicableToUser(database, userUuid, organizationPolicyType.disableSend)
+  if (!result.success) return result
+  if (result.data)
     return sendErrorCreate(op, "Due to an Enterprise Policy, you are only able to delete an existing Send.")
   return resultCreate(undefined)
 }

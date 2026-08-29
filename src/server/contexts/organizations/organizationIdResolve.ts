@@ -10,9 +10,10 @@ export function organizationIdResolve(context: Context<AuthenticationEnvironment
     parameters.organizationId,
     parameters.organization_id,
     parameters.orgId,
+    parameters.org_id,
+    path[2],
     parameters.id,
     path[1],
-    path[2],
   ]
   for (const candidate of candidates) {
     const parsed = v.safeParse(organizationIdSchema, candidate)

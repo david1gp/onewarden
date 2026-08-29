@@ -18,7 +18,7 @@ export function identitySsoAuthFindByState(
     const row = database
       .query<IdentitySsoAuthRow, [string, string]>(
         `SELECT state, client_challenge, nonce, redirect_uri, code_response,
-           code_response_error, auth_response, created_at, updated_at, binding_hash
+           code_response_error, auth_response, created_at, updated_at, binding_hash, organization_uuid
          FROM sso_auth WHERE state = ? AND created_at >= ? LIMIT 1`,
       )
       .get(state, oldest)

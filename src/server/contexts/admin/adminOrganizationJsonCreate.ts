@@ -3,6 +3,7 @@ import type { Organization } from "../organizations/organization.js"
 export function adminOrganizationJsonCreate(organization: Organization, mailEnabled = false) {
   return {
     id: organization.uuid,
+    identifier: organization.identifier,
     name: organization.name,
     seats: null,
     maxCollections: null,
@@ -15,7 +16,7 @@ export function adminOrganizationJsonCreate(organization: Organization, mailEnab
     useTotp: true,
     usePolicies: true,
     useScim: false,
-    useSso: false,
+    useSso: true,
     useKeyConnector: false,
     usePasswordManager: true,
     useSecretsManager: false,
@@ -24,7 +25,7 @@ export function adminOrganizationJsonCreate(organization: Organization, mailEnab
     useDisableSMAdsForUsers: true,
     useInviteLinks: false,
     useMyItems: false,
-    useOrganizationDomains: false,
+    useOrganizationDomains: true,
     usePam: false,
     usePhishingBlocker: false,
     hasPublicAndPrivateKeys: organization.privateKey !== null && organization.publicKey !== null,

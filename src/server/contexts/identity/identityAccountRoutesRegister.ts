@@ -55,6 +55,9 @@ import { identityUserProfileToJson } from "./identityUserProfileToJson.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityVerifyEmailTokenDecode } from "./identityVerifyEmailTokenDecode.js"
 import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
+import { organizationMembershipFromRow } from "../organizations/organizationMembershipFromRow.js"
+import type { OrganizationMembershipRow } from "../organizations/organizationMembershipRow.js"
+import { organizationPolicyCheckUserAllowed } from "../organizations/organizationPolicyCheckUserAllowed.js"
 
 export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -900,14 +903,22 @@ function identityAccountOrganizationInviteAccept(
     if (organization === null)
       return identityDomainErrorCreate("identityAccountSetPassword", "Failed to retrieve the associated organization")
     const membership = database
-      .query<{ status: number }, [string, string]>(
-        "SELECT status FROM users_organizations WHERE user_uuid = ? AND org_uuid = ? LIMIT 1",
+      .query<OrganizationMembershipRow, [string, string]>(
+        `SELECT uuid, user_uuid, org_uuid, invited_by_email, access_all, akey,
+                status, atype, reset_password_key, external_id
+         FROM users_organizations WHERE user_uuid = ? AND org_uuid = ? LIMIT 1`,
       )
       .get(userUuid, organizationIdentifier)
     if (membership === null)
       return identityDomainErrorCreate("identityAccountSetPassword", "Failed to retrieve the invitation")
     if (membership.status !== 0)
       return identityDomainErrorCreate("identityAccountSetPassword", "User already accepted the invitation")
+    const policyResult = organizationPolicyCheckUserAllowed(
+      database,
+      { ...organizationMembershipFromRow(membership), status: 1 },
+      "accept",
+    )
+    if (!policyResult.success) return policyResult
     database.run(
       "UPDATE users_organizations SET status = 1, reset_password_key = NULL WHERE user_uuid = ? AND org_uuid = ?",
       [userUuid, organizationIdentifier],

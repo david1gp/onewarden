@@ -21,6 +21,7 @@ const secondMembershipUuid = "00000000-0000-4000-8000-000000000206"
 const groupUuid = "00000000-0000-4000-8000-000000000207"
 const cipherUuid = "00000000-0000-4000-8000-000000000208"
 const apiKeyUuid = "00000000-0000-4000-8000-000000000209"
+const policyUuid = "00000000-0000-4000-8000-00000000020c"
 const databases: DatabaseConnection[] = []
 
 function databaseCreate(): DatabaseConnection {
@@ -76,6 +77,7 @@ test("organization creation persists the owner and initial collection atomically
     success: true,
     data: {
       uuid: organizationUuid,
+      identifier: null,
       name: "Organization",
       billingEmail: "billing@example.com",
       privateKey: "private-key",
@@ -175,11 +177,16 @@ test("organization persistence revises members and deletion removes organization
     "INSERT INTO organization_api_key (uuid, org_uuid, atype, api_key, revision_date) VALUES (?, ?, ?, ?, ?)",
     [apiKeyUuid, organizationUuid, 0, "api-key", "2026-08-28T00:00:00.000Z"],
   )
+  database.run(
+    "INSERT INTO org_policies (uuid, org_uuid, atype, enabled, data, revision_date) VALUES (?, ?, ?, ?, ?, ?)",
+    [policyUuid, organizationUuid, 8, 1, "null", "2026-08-28T00:00:00.000Z"],
+  )
 
   const saveResult = organizationSave(
     database,
     {
       uuid: organizationUuid,
+      identifier: null,
       name: "Renamed",
       billingEmail: "renamed@example.com",
       privateKey: null,
@@ -209,6 +216,7 @@ test("organization persistence revises members and deletion removes organization
     "favorites",
     "archives",
     "organization_api_key",
+    "org_policies",
   ]) {
     expect(database.query(`SELECT COUNT(*) AS count FROM ${table}`).get()).toEqual({ count: 0 })
   }

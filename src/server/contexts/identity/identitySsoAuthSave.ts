@@ -10,8 +10,8 @@ export function identitySsoAuthSave(database: DatabaseConnection, auth: Identity
     database.run(
       `INSERT INTO sso_auth (
          state, client_challenge, nonce, redirect_uri, code_response,
-         code_response_error, auth_response, created_at, updated_at, binding_hash
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         code_response_error, auth_response, created_at, updated_at, binding_hash, organization_uuid
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(state) DO UPDATE SET
          client_challenge = excluded.client_challenge,
          nonce = excluded.nonce,
@@ -19,9 +19,10 @@ export function identitySsoAuthSave(database: DatabaseConnection, auth: Identity
          code_response = excluded.code_response,
          code_response_error = excluded.code_response_error,
          auth_response = excluded.auth_response,
-         created_at = excluded.created_at,
-         updated_at = excluded.updated_at,
-         binding_hash = excluded.binding_hash`,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          binding_hash = excluded.binding_hash,
+          organization_uuid = excluded.organization_uuid`,
       [
         auth.state,
         auth.clientChallenge,
@@ -33,6 +34,7 @@ export function identitySsoAuthSave(database: DatabaseConnection, auth: Identity
         auth.createdAt,
         auth.updatedAt,
         auth.bindingHash,
+        auth.organizationUuid ?? null,
       ],
     )
     return resultCreate(undefined)

@@ -1,4 +1,5 @@
 import type { KeyInput } from "jose"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
@@ -17,4 +18,5 @@ export type OrganizationRouteOptions = {
   privateKey: KeyInput | undefined
   publicKey: KeyInput | undefined
   publicOrigin: string | undefined
+  domainDnsResolve?: (domainName: string, txt: string) => Promise<Result<boolean>>
 }

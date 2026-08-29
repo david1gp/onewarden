@@ -9,6 +9,7 @@ export const identityRefreshTokenClaimsSchema = v.object({
   sub: v.union([v.literal("password"), v.literal("sso")]),
   device_token: v.string(),
   token: v.nullish(identityTokenWrapperSchema),
+  organization_uuid: v.optional(v.nullable(v.string())),
 })
 
 export type IdentityRefreshTokenClaims = v.InferOutput<typeof identityRefreshTokenClaimsSchema>

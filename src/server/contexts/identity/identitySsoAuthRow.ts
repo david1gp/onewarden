@@ -9,4 +9,5 @@ export type IdentitySsoAuthRow = {
   created_at: string
   updated_at: string
   binding_hash: string | null
+  organization_uuid?: string | null
 }

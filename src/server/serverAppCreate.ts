@@ -34,6 +34,7 @@ import type { NotificationHub } from "./contexts/notifications/notificationHub.j
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
 import { organizationPublicRoutesRegister } from "./contexts/organizations/organizationPublicRoutesRegister.js"
+import type { OrganizationRouteOptions } from "./contexts/organizations/organizationRouteOptions.js"
 import { organizationRoutesRegister } from "./contexts/organizations/organizationRoutesRegister.js"
 import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
@@ -63,6 +64,7 @@ type ServerAppOptions = {
   logger?: Logger
   notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
   organizations?: {
+    domainDnsResolve?: OrganizationRouteOptions["domainDnsResolve"]
     groupsEnabled?: boolean
     notification?: NotificationAdapter
   }
@@ -217,6 +219,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
+    domainDnsResolve: options?.organizations?.domainDnsResolve,
   })
   emergencyAccessRoutesRegister(app, {
     clock: identityClock,

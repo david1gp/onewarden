@@ -20,6 +20,7 @@ export function organizationCreate(
   const now = clock.now().toISOString()
   const organization: Organization = {
     billingEmail: data.billingEmail.toLowerCase(),
+    identifier: null,
     name: data.name,
     privateKey: data.keys?.encryptedPrivateKey ?? null,
     publicKey: data.keys?.publicKey ?? null,
