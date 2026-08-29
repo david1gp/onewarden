@@ -8,7 +8,8 @@ export interface CipherAttachmentsSectionStateProps {
   item: () => CipherItem | null
   onUploadAttachment?: (file: File) => Promise<void> | void
   onDeleteAttachment?: (attachmentId: string) => Promise<void> | void
-  readOnly?: boolean
+  readOnly?: () => boolean
+  canDelete?: () => boolean
 }
 
 export function cipherAttachmentsSectionStateCreate(props: CipherAttachmentsSectionStateProps) {
@@ -70,7 +71,8 @@ export function cipherAttachmentsSectionStateCreate(props: CipherAttachmentsSect
     isUploading: isUploading.get,
     deletingId: deletingId.get,
     errorMessage: errorMessage.get,
-    readOnly: props.readOnly ?? false,
+    readOnly: props.readOnly ?? (() => false),
+    canDelete: props.canDelete ?? (() => !props.readOnly?.()),
     triggerFileInput,
     handleFileChange,
     handleDelete,

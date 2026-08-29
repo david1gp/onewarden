@@ -25,11 +25,14 @@ export function cipherItemToWire(item: CipherFormData | CipherItem): Record<stri
 
   if (item.type === 1) {
     if ("username" in item) {
+      const uris = "uris" in item && Array.isArray(item.uris) ? item.uris : undefined
       base.login = {
         username: item.username || null,
         password: item.password || null,
         totp: item.totp || null,
-        uris: item.uri ? [{ uri: item.uri, match: null }] : [],
+        uris:
+          uris?.map((entry) => ({ uri: entry.uri, match: entry.match ?? null })) ??
+          (item.uri ? [{ uri: item.uri, match: null }] : []),
       }
     } else if ("login" in item && item.login) {
       base.login = item.login
@@ -65,7 +68,7 @@ export function cipherItemToWire(item: CipherFormData | CipherItem): Record<stri
         phone: item.phone || null,
         address1: item.address1 || null,
         address2: item.address2 || null,
-        address3: null,
+        address3: item.address3 || null,
         city: item.city || null,
         state: item.state || null,
         postalCode: item.postalCode || null,

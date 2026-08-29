@@ -13,6 +13,14 @@ export const cipherFormDataSchema = v.object({
   password: v.optional(v.string()),
   totp: v.optional(v.string()),
   uri: v.optional(v.string()),
+  uris: v.optional(
+    v.array(
+      v.object({
+        uri: v.string(),
+        match: v.optional(v.nullable(v.number())),
+      }),
+    ),
+  ),
   // Card fields
   cardholderName: v.optional(v.string()),
   brand: v.optional(v.string()),
@@ -30,6 +38,7 @@ export const cipherFormDataSchema = v.object({
   phone: v.optional(v.string()),
   address1: v.optional(v.string()),
   address2: v.optional(v.string()),
+  address3: v.optional(v.string()),
   city: v.optional(v.string()),
   state: v.optional(v.string()),
   postalCode: v.optional(v.string()),

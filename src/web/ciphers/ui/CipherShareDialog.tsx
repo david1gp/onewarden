@@ -63,7 +63,7 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
 
             <div class="space-y-1">
               <Label for="cipher-share-collections" class="text-xs font-medium">
-                Collection IDs (comma-separated) <LabelAsterix />
+                Collection IDs (comma-separated)
               </Label>
               <InputS
                 id="cipher-share-collections"
@@ -71,7 +71,6 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
                 placeholder="e.g. col-dev, col-general"
                 valueSignal={state.collectionIdsText}
                 class="h-9 w-full text-xs"
-                required
               />
               <p class="text-[11px] text-slate-600 dark:text-slate-400">
                 Specify one or more collection IDs that members of your organization can access.

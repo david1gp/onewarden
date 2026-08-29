@@ -23,7 +23,7 @@ export function CipherAttachmentsSection(props: CipherAttachmentsSectionStatePro
           </p>
         </div>
 
-        <Show when={!state.readOnly}>
+        <Show when={!state.readOnly()}>
           <div>
             <input
               type="file"
@@ -81,7 +81,7 @@ export function CipherAttachmentsSection(props: CipherAttachmentsSectionStatePro
                     </LinkTextExternal>
                   </Show>
 
-                  <Show when={!state.readOnly}>
+                  <Show when={state.canDelete()}>
                     <ButtonIcon
                       variant="ghost"
                       size="sm"

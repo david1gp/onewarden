@@ -98,6 +98,14 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     ? wire.collectionIds.filter((c: any) => typeof c === "string")
     : null
 
+  const rawPermissions = wire.permissions as Record<string, unknown> | null | undefined
+  const permissions = rawPermissions
+    ? {
+        delete: typeof rawPermissions.delete === "boolean" ? rawPermissions.delete : null,
+        restore: typeof rawPermissions.restore === "boolean" ? rawPermissions.restore : null,
+      }
+    : null
+
   const password = login?.password
   const strength = password ? cipherPasswordStrengthCalculate(password) : null
 
@@ -125,6 +133,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     archivedDate: typeof wire.archivedDate === "string" ? wire.archivedDate : null,
     viewPassword: wire.viewPassword !== false,
     edit: wire.edit !== false,
+    permissions,
     passwordStrength: strength,
   })
 
@@ -154,8 +163,9 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     revisionDate: null,
     deletedDate: null,
     archivedDate: null,
-    viewPassword: true,
-    edit: true,
+    viewPassword: false,
+    edit: false,
+    permissions: { delete: false, restore: false },
     passwordStrength: null,
   }
 }

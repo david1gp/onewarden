@@ -41,6 +41,16 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   const actionErrorMessage = createSignalObject<string | null>(null)
 
   let copyTimer: ReturnType<typeof setTimeout> | null = null
+  let actionRequestId = 0
+
+  const actionRequestBegin = () => {
+    actionRequestId += 1
+    return actionRequestId
+  }
+
+  const actionRequestIsCurrent = (requestId: number, cipherId: string) => {
+    return requestId === actionRequestId && displayedItem.get()?.id === cipherId
+  }
 
   const resetTransientState = () => {
     isPasswordRevealed.set(false)
@@ -67,6 +77,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     const itemId = externalItem?.id ?? null
     if (itemId === previousItemId) return
     previousItemId = itemId
+    actionRequestBegin()
     resetTransientState()
   })
 
@@ -134,6 +145,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
 
   const isDeleted = createMemo(() => !!displayedItem.get()?.deletedDate)
   const isArchived = createMemo(() => !!displayedItem.get()?.archivedDate)
+  const canViewPassword = createMemo(() => displayedItem.get()?.viewPassword !== false)
   const passwordHistoryCount = createMemo(() => displayedItem.get()?.passwordHistory?.length ?? 0)
 
   const openHistoryDialog = () => isHistoryDialogOpen.set(true)
@@ -147,6 +159,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   const handleConfirmDelete = async () => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -155,10 +168,12 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = deleteHardMode.get() ? await apiClient.hardDelete(it.id) : await apiClient.softDelete(it.id)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         if (deleteHardMode.get()) {
           displayedItem.set(null)
         } else {
           const refreshed = await apiClient.get(it.id)
+          if (!actionRequestIsCurrent(requestId, it.id)) return
           if (refreshed.success) {
             displayedItem.set(refreshed.data)
           } else {
@@ -166,17 +181,20 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
           }
         }
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       isDeleteDialogOpen.set(false)
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to delete cipher.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleRestore = async () => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -185,18 +203,22 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = await apiClient.restore(it.id)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         displayedItem.set(res.data)
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to restore cipher.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleToggleArchive = async () => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -205,18 +227,22 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = await apiClient.archive(it.id, !isArchived())
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         displayedItem.set(res.data)
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to update archive status.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleClone = async () => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -225,18 +251,22 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = await apiClient.clone(it.id)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         displayedItem.set(res.data)
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to clone cipher.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleShareSubmit = async (organizationId: string, collectionIds: string[]) => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -247,19 +277,23 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
           ? await apiClient.updateCollections(it.id, collectionIds)
           : await apiClient.share(it.id, organizationId, collectionIds, it)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         displayedItem.set(res.data)
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       isShareDialogOpen.set(false)
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to share cipher.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleUploadAttachment = async (file: File) => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -268,18 +302,22 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = await apiClient.uploadAttachment(it.id, file, file.name)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         displayedItem.set(res.data)
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to upload attachment.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
   const handleDeleteAttachment = async (attachmentId: string) => {
     const it = displayedItem.get()
     if (!it) return
+    const requestId = actionRequestBegin()
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
@@ -288,16 +326,45 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       } else {
         const res = await apiClient.deleteAttachment(it.id, attachmentId)
         if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
         const updatedAttachments = (it.attachments ?? []).filter((attachment) => attachment.id !== attachmentId)
         displayedItem.set({
           ...it,
           attachments: updatedAttachments.length > 0 ? updatedAttachments : null,
         })
       }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
       actionErrorMessage.set(err?.message ?? "Failed to delete attachment.")
     } finally {
-      isActionLoading.set(false)
+      if (requestId === actionRequestId) isActionLoading.set(false)
+    }
+  }
+
+  const toggleFavorite = async () => {
+    const it = displayedItem.get()
+    if (!it) return
+    const requestId = actionRequestBegin()
+    isActionLoading.set(true)
+    actionErrorMessage.set(null)
+    try {
+      if (props.onToggleFavorite) {
+        await props.onToggleFavorite(it.id)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
+        displayedItem.set({ ...it, favorite: !it.favorite })
+      } else {
+        const res = await apiClient.favorite(it.id, !it.favorite)
+        if (!res.success) throw new Error(res.errorMessage)
+        if (!actionRequestIsCurrent(requestId, it.id)) return
+        displayedItem.set({ ...it, favorite: !it.favorite })
+      }
+      if (!actionRequestIsCurrent(requestId, it.id)) return
+    } catch (err: any) {
+      if (!actionRequestIsCurrent(requestId, it.id)) return
+      actionErrorMessage.set(err?.message ?? "Failed to update favorite status.")
+    } finally {
+      if (requestId === actionRequestId) isActionLoading.set(false)
     }
   }
 
@@ -320,6 +387,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     customFields,
     isDeleted,
     isArchived,
+    canViewPassword,
     passwordHistoryCount,
     isHistoryDialogOpen,
     isShareDialogOpen,
@@ -343,17 +411,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     handleShareSubmit,
     handleUploadAttachment,
     handleDeleteAttachment,
-    toggleFavorite: async () => {
-      const it = displayedItem.get()
-      if (!it) return
-      if (props.onToggleFavorite) {
-        await props.onToggleFavorite(it.id)
-      } else {
-        const res = await apiClient.favorite(it.id, !it.favorite)
-        if (!res.success) throw new Error(res.errorMessage)
-        displayedItem.set({ ...it, favorite: !it.favorite })
-      }
-    },
+    toggleFavorite,
     editItem: () => {
       const it = displayedItem.get()
       if (it && props.onEdit) props.onEdit(it.id)

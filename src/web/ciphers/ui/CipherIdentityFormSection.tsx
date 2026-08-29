@@ -69,7 +69,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
       </div>
 
       {/* Contact & Company */}
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div class="space-y-1">
           <Label for="cipher-identity-company" class="text-xs">
             Company / Organization
@@ -106,6 +106,18 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             class="h-9 w-full text-xs"
           />
         </div>
+        <div class="space-y-1">
+          <Label for="cipher-identity-username" class="text-xs">
+            Username
+          </Label>
+          <InputS
+            id="cipher-identity-username"
+            type="text"
+            placeholder="arivera"
+            valueSignal={state.usernameSignal}
+            class="h-9 w-full text-xs"
+          />
+        </div>
       </div>
 
       {/* Address */}
@@ -127,6 +139,14 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             valueSignal={state.address2Signal}
             class="h-9 w-full text-xs"
             aria-label="Street Address Line 2"
+          />
+          <InputS
+            id="cipher-identity-address3"
+            type="text"
+            placeholder="Street Address Line 3"
+            valueSignal={state.address3Signal}
+            class="h-9 w-full text-xs"
+            aria-label="Street Address Line 3"
           />
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <InputS

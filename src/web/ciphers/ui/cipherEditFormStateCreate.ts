@@ -29,6 +29,9 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
   const password = createSignalObject(initial?.login?.password ?? "")
   const totp = createSignalObject(initial?.login?.totp ?? "")
   const uri = createSignalObject(initial?.login?.uris?.[0]?.uri ?? "")
+  const loginUris = createSignalObject<NonNullable<CipherFormData["uris"]>>(
+    initial?.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [],
+  )
 
   // Card signals
   const cardholderName = createSignalObject(initial?.card?.cardholderName ?? "")
@@ -48,6 +51,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
   const phone = createSignalObject(initial?.identity?.phone ?? "")
   const address1 = createSignalObject(initial?.identity?.address1 ?? "")
   const address2 = createSignalObject(initial?.identity?.address2 ?? "")
+  const address3 = createSignalObject(initial?.identity?.address3 ?? "")
   const city = createSignalObject(initial?.identity?.city ?? "")
   const state = createSignalObject(initial?.identity?.state ?? "")
   const postalCode = createSignalObject(initial?.identity?.postalCode ?? "")
@@ -76,6 +80,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       password.set(item.login?.password ?? "")
       totp.set(item.login?.totp ?? "")
       uri.set(item.login?.uris?.[0]?.uri ?? "")
+      loginUris.set(item.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [])
       cardholderName.set(item.card?.cardholderName ?? "")
       brand.set(item.card?.brand ?? "Visa")
       number.set(item.card?.number ?? "")
@@ -91,6 +96,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       phone.set(item.identity?.phone ?? "")
       address1.set(item.identity?.address1 ?? "")
       address2.set(item.identity?.address2 ?? "")
+      address3.set(item.identity?.address3 ?? "")
       city.set(item.identity?.city ?? "")
       state.set(item.identity?.state ?? "")
       postalCode.set(item.identity?.postalCode ?? "")
@@ -128,16 +134,33 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
     localError.set(null)
 
     const typeNum = numericType()
+    const loginUrisForSubmit =
+      typeNum === 1
+        ? [
+            { uri: uri.get().trim(), match: loginUris.get()[0]?.match ?? null },
+            ...loginUris
+              .get()
+              .slice(1)
+              .map((entry) => ({ ...entry, uri: entry.uri.trim() })),
+          ].filter((entry) => entry.uri.length > 0)
+        : []
+    const firstLoginUri = loginUrisForSubmit[0]?.uri
     const formInput: CipherFormData = {
       type: typeNum,
       name: name.get().trim(),
       notes: notes.get().trim() || undefined,
       favorite: favorite.get(),
       folderId: folderId.get().trim() || null,
-      username: typeNum === 1 ? username.get().trim() || undefined : undefined,
+      username:
+        typeNum === 1
+          ? username.get().trim() || undefined
+          : typeNum === 4
+            ? identityUsername.get().trim() || undefined
+            : undefined,
       password: typeNum === 1 ? password.get() || undefined : undefined,
       totp: typeNum === 1 ? totp.get().trim() || undefined : undefined,
-      uri: typeNum === 1 ? uri.get().trim() || undefined : undefined,
+      uri: typeNum === 1 ? firstLoginUri : undefined,
+      uris: typeNum === 1 ? loginUrisForSubmit : undefined,
       cardholderName: typeNum === 3 ? cardholderName.get().trim() || undefined : undefined,
       brand: typeNum === 3 ? brand.get() || undefined : undefined,
       number: typeNum === 3 ? number.get().trim() || undefined : undefined,
@@ -153,6 +176,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       phone: typeNum === 4 ? phone.get().trim() || undefined : undefined,
       address1: typeNum === 4 ? address1.get().trim() || undefined : undefined,
       address2: typeNum === 4 ? address2.get().trim() || undefined : undefined,
+      address3: typeNum === 4 ? address3.get().trim() || undefined : undefined,
       city: typeNum === 4 ? city.get().trim() || undefined : undefined,
       state: typeNum === 4 ? state.get().trim() || undefined : undefined,
       postalCode: typeNum === 4 ? postalCode.get().trim() || undefined : undefined,
@@ -187,6 +211,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
     password,
     totp,
     uri,
+    loginUris,
     cardholderName,
     brand,
     number,
@@ -202,6 +227,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
     phone,
     address1,
     address2,
+    address3,
     city,
     state,
     postalCode,

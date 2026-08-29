@@ -112,12 +112,12 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="space-y-1">
               <Label for="cipher-form-folder" class="text-xs">
-                Folder
+                Folder ID
               </Label>
               <InputS
                 id="cipher-form-folder"
                 type="text"
-                placeholder="e.g. Personal, Work, Finance"
+                placeholder="e.g. folder-work"
                 valueSignal={state.folderId}
                 class="h-9 w-full text-xs"
               />
@@ -141,6 +141,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               passwordSignal={state.password}
               totpSignal={state.totp}
               uriSignal={state.uri}
+              urisSignal={state.loginUris}
             />
           </Match>
           <Match when={state.numericType() === 2}>
@@ -167,6 +168,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               phoneSignal={state.phone}
               address1Signal={state.address1}
               address2Signal={state.address2}
+              address3Signal={state.address3}
               citySignal={state.city}
               stateSignal={state.state}
               postalCodeSignal={state.postalCode}

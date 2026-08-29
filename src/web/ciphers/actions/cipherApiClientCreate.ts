@@ -1,6 +1,8 @@
 import { type Result, resultTryParsingFetchErr } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import { base64Encode } from "../../../shared/crypto/base64Encode.js"
+import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { webAuthSessionDefault } from "../../auth/model/webAuthSessionDefault.js"
 import { cipherItemFromWire } from "../model/cipherItemFromWire.js"
 import { cipherItemToWire } from "../model/cipherItemToWire.js"
@@ -272,7 +274,13 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
       try {
         const formData = new FormData()
         formData.append("data", file, fileName)
-        formData.append("key", key ?? "attachment-symmetric-key")
+        const attachmentKey = key ?? secureRandomBytes(32)
+        if (typeof attachmentKey !== "string") {
+          if (!attachmentKey.success) return resultErrorCreate(op, attachmentKey.errorMessage)
+          formData.append("key", base64Encode(attachmentKey.data))
+        } else {
+          formData.append("key", attachmentKey)
+        }
 
         const headers: Record<string, string> = {
           accept: "application/json",
@@ -340,10 +348,16 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           notes: item.notes ?? undefined,
           favorite: false,
           folderId: item.folderId ?? null,
-          username: item.login?.username ?? undefined,
+          username:
+            item.type === 1
+              ? (item.login?.username ?? undefined)
+              : item.type === 4
+                ? (item.identity?.username ?? undefined)
+                : undefined,
           password: item.login?.password ?? undefined,
           totp: item.login?.totp ?? undefined,
           uri: item.login?.uris?.[0]?.uri ?? undefined,
+          uris: item.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [],
           cardholderName: item.card?.cardholderName ?? undefined,
           brand: item.card?.brand ?? undefined,
           number: item.card?.number ?? undefined,
@@ -359,6 +373,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           phone: item.identity?.phone ?? undefined,
           address1: item.identity?.address1 ?? undefined,
           address2: item.identity?.address2 ?? undefined,
+          address3: item.identity?.address3 ?? undefined,
           city: item.identity?.city ?? undefined,
           state: item.identity?.state ?? undefined,
           postalCode: item.identity?.postalCode ?? undefined,

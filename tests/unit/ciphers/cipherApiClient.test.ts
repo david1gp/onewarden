@@ -236,6 +236,8 @@ describe("cipherApiClientCreate", () => {
       if (url.includes("/attachment") && init?.method === "POST") {
         uploadCalled = true
         expect(init.body).toBeInstanceOf(FormData)
+        expect((init.body as FormData).get("key")).toBeString()
+        expect((init.body as FormData).get("key")).not.toBe("attachment-symmetric-key")
         return new Response(
           JSON.stringify({
             id: "cipher-att-1",

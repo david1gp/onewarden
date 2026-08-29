@@ -271,7 +271,9 @@ export async function browserCipherApiMockSetup(
       }
       const body = requestJson(request)
       if (typeof body.favorite === "boolean") item.favorite = body.favorite
-      await responseJson(route, {})
+      if (typeof body.folderId === "string" || body.folderId === null) item.folderId = body.folderId
+      item.revisionDate = mutationDate
+      await responseJson(route, item)
       return
     }
 
@@ -314,7 +316,7 @@ export async function browserCipherApiMockSetup(
       const sharedCipher = recordValue(body.cipher) ?? recordValue(body.Cipher)
       const organizationId = nullableStringValue(sharedCipher?.organizationId)
       const collectionIds = stringArrayValue(body.collectionIds ?? body.CollectionIds)
-      if (!sharedCipher || !organizationId || collectionIds.length === 0) {
+      if (!sharedCipher || !organizationId) {
         await responseJson(route, notFound("Cipher share payload is invalid."), 400)
         return
       }

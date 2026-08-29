@@ -43,24 +43,28 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <span>This cipher is in your Trash (deleted on {item().deletedDate}).</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    class="h-7 text-xs"
-                    onClick={state.handleRestore}
-                    disabled={state.isActionLoading()}
-                  >
-                    Restore Cipher
-                  </Button>
-                  <Button
-                    variant="filledRed"
-                    size="sm"
-                    class="h-7 text-xs font-semibold"
-                    onClick={() => state.openDeleteDialog(true)}
-                    disabled={state.isActionLoading()}
-                  >
-                    Delete Permanently
-                  </Button>
+                  <Show when={item().permissions?.restore !== false}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="h-7 text-xs"
+                      onClick={state.handleRestore}
+                      disabled={state.isActionLoading()}
+                    >
+                      Restore Cipher
+                    </Button>
+                  </Show>
+                  <Show when={item().permissions?.delete !== false}>
+                    <Button
+                      variant="filledRed"
+                      size="sm"
+                      class="h-7 text-xs font-semibold"
+                      onClick={() => state.openDeleteDialog(true)}
+                      disabled={state.isActionLoading()}
+                    >
+                      Delete Permanently
+                    </Button>
+                  </Show>
                 </div>
               </div>
             </Show>
@@ -114,7 +118,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
               {/* Action Toolbar */}
               <div class="flex shrink-0 flex-wrap items-center gap-1.5">
-                <Show when={!item().organizationId}>
+                <Show when={!item().organizationId && item().edit !== false}>
                   <ButtonIcon
                     variant="outline"
                     size="sm"
@@ -130,7 +134,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   </ButtonIcon>
                 </Show>
 
-                <Show when={!state.isDeleted()}>
+                <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
                   <Button variant="ghost" size="sm" class="text-xs" onClick={() => state.editItem()}>
                     Edit
                   </Button>
@@ -241,49 +245,53 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           </Show>
                         </div>
                         <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
-                          {state.isPasswordRevealed() ? item().login?.password : "••••••••••••••••••••"}
+                          {state.canViewPassword() && state.isPasswordRevealed()
+                            ? item().login?.password
+                            : "••••••••••••••••••••"}
                         </p>
                       </div>
                       <div class="flex shrink-0 items-center gap-1.5">
                         {/* History Button */}
-                        <ButtonIcon
-                          variant="ghost"
-                          size="sm"
-                          class="text-xs"
-                          icon={vaultSvgIcons.history}
-                          iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                          onClick={() => state.openHistoryDialog()}
-                          aria-label="View password history"
-                        >
-                          {state.passwordHistoryCount() > 0 ? `History (${state.passwordHistoryCount()})` : "History"}
-                        </ButtonIcon>
+                        <Show when={state.canViewPassword()}>
+                          <ButtonIcon
+                            variant="ghost"
+                            size="sm"
+                            class="text-xs"
+                            icon={vaultSvgIcons.history}
+                            iconClass="size-3.5 text-slate-600 dark:text-slate-400"
+                            onClick={() => state.openHistoryDialog()}
+                            aria-label="View password history"
+                          >
+                            {state.passwordHistoryCount() > 0 ? `History (${state.passwordHistoryCount()})` : "History"}
+                          </ButtonIcon>
 
-                        <ButtonIcon
-                          variant="ghost"
-                          size="sm"
-                          class="text-xs"
-                          icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                          iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
-                          onClick={() => state.togglePasswordReveal()}
-                          aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
-                        >
-                          {state.isPasswordRevealed() ? "Hide" : "Show"}
-                        </ButtonIcon>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="text-xs"
-                          icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass={`size-3.5 fill-current dark:fill-current ${
-                            state.copiedField() === "password"
-                              ? "text-emerald-700 dark:text-emerald-300"
-                              : "text-slate-600 dark:text-slate-400"
-                          }`}
-                          onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
-                          aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
-                        >
-                          {state.copiedField() === "password" ? "Copied" : "Copy"}
-                        </ButtonIcon>
+                          <ButtonIcon
+                            variant="ghost"
+                            size="sm"
+                            class="text-xs"
+                            icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                            iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
+                            onClick={() => state.togglePasswordReveal()}
+                            aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
+                          >
+                            {state.isPasswordRevealed() ? "Hide" : "Show"}
+                          </ButtonIcon>
+                          <ButtonIcon
+                            variant="subtle"
+                            size="sm"
+                            class="text-xs"
+                            icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                            iconClass={`size-3.5 fill-current dark:fill-current ${
+                              state.copiedField() === "password"
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : "text-slate-600 dark:text-slate-400"
+                            }`}
+                            onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
+                            aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
+                          >
+                            {state.copiedField() === "password" ? "Copied" : "Copy"}
+                          </ButtonIcon>
+                        </Show>
                       </div>
                     </div>
                   </Show>
@@ -516,6 +524,30 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   </Show>
 
                   {/* Email & Phone */}
+                  <Show when={item().identity?.username}>
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
+                      <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Username
+                        </p>
+                        <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
+                          {item().identity?.username}
+                        </p>
+                      </div>
+                      <ButtonIcon
+                        variant="subtle"
+                        size="sm"
+                        class="shrink-0 text-xs"
+                        icon={state.copiedField() === "identity-username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                        iconClass="size-3.5"
+                        onClick={() => state.copyToClipboard("identity-username", item().identity?.username ?? "")}
+                        aria-label="Copy Identity Username"
+                      >
+                        {state.copiedField() === "identity-username" ? "Copied" : "Copy"}
+                      </ButtonIcon>
+                    </div>
+                  </Show>
+
                   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Show when={item().identity?.email}>
                       <div class="flex items-center justify-between gap-2">
@@ -706,7 +738,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 item={state.item}
                 onUploadAttachment={state.handleUploadAttachment}
                 onDeleteAttachment={state.handleDeleteAttachment}
-                readOnly={!item().edit}
+                readOnly={() => item().edit === false}
+                canDelete={() => item().permissions?.delete !== false}
               />
 
               {/* Secure Notes Section */}

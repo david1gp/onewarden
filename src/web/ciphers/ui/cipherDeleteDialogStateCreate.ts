@@ -29,7 +29,7 @@ export function cipherDeleteDialogStateCreate(props: CipherDeleteDialogStateProp
   }
 
   const handleConfirm = async () => {
-    if (!props.onConfirm) return
+    if (!props.onConfirm || isDeleting.get()) return
 
     isDeleting.set(true)
     errorMessage.set(null)

@@ -77,6 +77,39 @@ test.describe("task 35 cipher UI", () => {
     await expect(page.getByRole("button", { name: /AWS Production Console/i })).toBeVisible()
   })
 
+  test("exercises create flows for secure notes, cards, identities, and custom fields", async ({ page }) => {
+    const createItem = async (type: string, name: string, fillFields: () => Promise<void>) => {
+      await page.goto("/ciphers/new")
+      await browserAuthenticatedSessionUnlock(page)
+      await page.locator("#cipher-form-type").selectOption(type)
+      await page.locator("#cipher-form-name").fill(name)
+      await fillFields()
+      await page.locator("form").getByRole("button", { name: "Save Item" }).last().click()
+      await expect(page.getByRole("heading", { name })).toBeVisible()
+    }
+
+    await createItem("2", "Incident Recovery Notes", async () => {
+      await page.locator("#cipher-secure-note-content").fill("Recovery seed and emergency access instructions")
+      await page.getByPlaceholder("New field label...").fill("Classification")
+      await page.getByRole("button", { name: "Add Field" }).click()
+      await page.getByLabel("Field value 1").fill("Confidential")
+    })
+
+    await createItem("3", "Cloud Billing Card", async () => {
+      await page.locator("#cipher-cardholder-name").fill("Alex Rivera")
+      await page.locator("#cipher-card-number").fill("4000123456789010")
+      await page.locator("#cipher-card-exp-year").fill("2029")
+      await page.locator("#cipher-card-cvv").fill("789")
+    })
+
+    await createItem("4", "Emergency Contact Identity", async () => {
+      await page.locator("#cipher-identity-first-name").fill("Alex")
+      await page.locator("#cipher-identity-last-name").fill("Rivera")
+      await page.locator("#cipher-identity-address3").fill("Building B")
+      await page.locator("#cipher-identity-username").fill("arivera")
+    })
+  })
+
   test("exercises edit cipher flow and updates item reactively", async ({ page }) => {
     await page.goto("/ciphers/cipher-login-1/edit")
     await browserAuthenticatedSessionUnlock(page)
@@ -167,8 +200,17 @@ test.describe("task 35 cipher UI", () => {
     await browserAuthenticatedSessionUnlock(page)
     await expect(page.getByText("github-recovery-keys.txt")).toBeVisible()
 
-    // Delete existing attachment
+    await page.getByLabel("Upload attachment file").setInputFiles({
+      name: "new-recovery-notes.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("new recovery notes"),
+    })
+    await expect(page.getByText("new-recovery-notes.txt")).toBeVisible()
+
+    // Delete existing attachments
     await page.getByRole("button", { name: "Delete attachment github-recovery-keys.txt" }).click()
+    await expect(page.getByText("github-recovery-keys.txt")).not.toBeVisible()
+    await page.getByRole("button", { name: "Delete attachment new-recovery-notes.txt" }).click()
     await expect(page.getByText("No attachments uploaded for this cipher item.")).toBeVisible()
   })
 

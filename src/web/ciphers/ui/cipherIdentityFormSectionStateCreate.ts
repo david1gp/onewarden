@@ -10,6 +10,7 @@ export interface CipherIdentityFormSectionStateProps {
   phoneSignal: SignalObject<string>
   address1Signal: SignalObject<string>
   address2Signal: SignalObject<string>
+  address3Signal: SignalObject<string>
   citySignal: SignalObject<string>
   stateSignal: SignalObject<string>
   postalCodeSignal: SignalObject<string>
@@ -39,6 +40,7 @@ export function cipherIdentityFormSectionStateCreate(props: CipherIdentityFormSe
     phoneSignal: props.phoneSignal,
     address1Signal: props.address1Signal,
     address2Signal: props.address2Signal,
+    address3Signal: props.address3Signal,
     citySignal: props.citySignal,
     stateSignal: props.stateSignal,
     postalCodeSignal: props.postalCodeSignal,

@@ -1,4 +1,5 @@
-import { type JSX, Show } from "solid-js"
+import { For, type JSX, Show } from "solid-js"
+import { Input } from "#ui/input/input/Input.jsx"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
@@ -103,18 +104,54 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
         />
       </div>
 
-      {/* Website URI */}
-      <div class="space-y-1">
-        <Label for="cipher-uri" class="text-xs">
-          Website URL
-        </Label>
-        <InputS
-          id="cipher-uri"
-          type="url"
-          placeholder="https://example.com/login"
-          valueSignal={state.uriSignal}
-          class="h-9 w-full text-xs"
-        />
+      {/* Website URIs */}
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <Label class="text-xs">Website URLs</Label>
+          <Button variant="ghost" size="sm" class="h-7 px-2 text-[11px]" onClick={() => state.addUri()}>
+            Add URL
+          </Button>
+        </div>
+        <Show
+          when={state.urisSignal && state.urisSignal().length > 0}
+          fallback={
+            <InputS
+              id="cipher-uri"
+              type="url"
+              placeholder="https://example.com/login"
+              valueSignal={state.uriSignal}
+              class="h-9 w-full text-xs"
+            />
+          }
+        >
+          <div class="space-y-2">
+            <For each={state.urisSignal?.()}>
+              {(entry, index) => (
+                <div class="flex items-center gap-2">
+                  <Input
+                    id={`cipher-uri-${index()}`}
+                    type="url"
+                    placeholder="https://example.com/login"
+                    value={entry.uri}
+                    onInput={(e) => state.updateUri(index(), e.currentTarget.value)}
+                    class="h-9 w-full text-xs"
+                    aria-label={`Website URL ${index() + 1}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="h-9 shrink-0 px-2 text-xs text-rose-700 dark:text-rose-300"
+                    onClick={() => state.removeUri(index())}
+                    aria-label={`Remove website URL ${index() + 1}`}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
       </div>
     </CardWrapper>
   )

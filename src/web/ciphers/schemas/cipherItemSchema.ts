@@ -32,6 +32,14 @@ export const cipherItemSchema = v.object({
   archivedDate: v.optional(v.nullable(v.string())),
   viewPassword: v.optional(v.nullable(v.boolean())),
   edit: v.optional(v.nullable(v.boolean())),
+  permissions: v.optional(
+    v.nullable(
+      v.object({
+        delete: v.optional(v.nullable(v.boolean())),
+        restore: v.optional(v.nullable(v.boolean())),
+      }),
+    ),
+  ),
   passwordStrength: v.optional(v.nullable(v.string())),
 })
 

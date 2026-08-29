@@ -45,3 +45,27 @@ test("cipher detail resets reveal and copy state when the selected item changes"
   expect(state.copiedField()).toBeNull()
   dispose?.()
 })
+
+test("cipher detail surfaces favorite callback failures", async () => {
+  const selectedItem = createSignalObject<CipherItem | null>(loginItemCreate("favorite-item"))
+  let dispose: (() => void) | undefined
+  let state: ReturnType<typeof cipherDetailViewStateCreate> | undefined
+
+  createRoot((rootDispose) => {
+    dispose = rootDispose
+    state = cipherDetailViewStateCreate({
+      item: selectedItem.get,
+      onToggleFavorite: async () => {
+        throw new Error("Favorite update failed")
+      },
+    })
+  })
+
+  if (!state) return
+
+  await state.toggleFavorite()
+
+  expect(state.actionErrorMessage()).toBe("Favorite update failed")
+  expect(state.isActionLoading()).toBe(false)
+  dispose?.()
+})

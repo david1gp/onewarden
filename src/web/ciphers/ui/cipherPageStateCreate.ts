@@ -21,6 +21,25 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const isLoading = createSignalObject(false)
   const isSaving = createSignalObject(false)
   const errorMessage = createSignalObject<string | null>(null)
+  let loadRequestId = 0
+  let mutationRequestId = 0
+
+  const mutationRequestBegin = () => {
+    mutationRequestId += 1
+    return mutationRequestId
+  }
+
+  const mutationRequestIsCurrent = (requestId: number, cipherId?: string) => {
+    if (requestId !== mutationRequestId) return false
+    return cipherId === undefined || currentItem.get()?.id === cipherId
+  }
+
+  const mutationErrorThrow = (requestId: number, error: unknown, fallbackMessage: string) => {
+    if (!mutationRequestIsCurrent(requestId)) return
+    const message = error instanceof Error ? error.message : fallbackMessage
+    errorMessage.set(message)
+    throw new Error(message)
+  }
 
   createEffect(() => {
     if (props.initialMode) {
@@ -29,10 +48,13 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   })
 
   const loadCipher = async (id: string) => {
+    const requestId = ++loadRequestId
+    mutationRequestBegin()
     currentItem.set(null)
     isLoading.set(true)
     errorMessage.set(null)
     const result = await apiClient.get(id)
+    if (requestId !== loadRequestId) return
     isLoading.set(false)
     if (result.success) {
       currentItem.set(result.data)
@@ -48,6 +70,8 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
       return
     }
     currentItem.set(null)
+    loadRequestId += 1
+    mutationRequestBegin()
     isLoading.set(false)
   })
 
@@ -56,129 +80,178 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   }
 
   const handleSave = async (formData: CipherFormData) => {
+    const requestId = mutationRequestBegin()
     isSaving.set(true)
     errorMessage.set(null)
-
-    const item = currentItem.get()
-    const isEdit = mode.get() === "edit" && item !== null
-
-    const result = isEdit ? await apiClient.update(item.id, formData) : await apiClient.create(formData)
-
-    isSaving.set(false)
-    if (result.success) {
+    try {
+      const item = currentItem.get()
+      const isEdit = mode.get() === "edit" && item !== null
+      const result = isEdit ? await apiClient.update(item.id, formData) : await apiClient.create(formData)
+      if (!mutationRequestIsCurrent(requestId, isEdit ? item.id : undefined)) return
+      if (!result.success) {
+        errorMessage.set(result.errorMessage)
+        return
+      }
       currentItem.set(result.data)
       mode.set("view")
-    } else {
-      errorMessage.set(result.errorMessage)
+    } catch (error) {
+      if (!mutationRequestIsCurrent(requestId)) return
+      errorMessage.set(error instanceof Error ? error.message : "Failed to save cipher.")
+    } finally {
+      if (requestId === mutationRequestId) isSaving.set(false)
     }
   }
 
   const handleToggleFavorite = async (id: string): Promise<void> => {
     const item = currentItem.get()
-    if (!item) return
+    if (!item || item.id !== id) return
+    const requestId = mutationRequestBegin()
     const newFav = !item.favorite
     currentItem.set({ ...item, favorite: newFav })
-    const result = await apiClient.favorite(id, newFav)
-    if (!result.success) {
+    try {
+      const result = await apiClient.favorite(id, newFav)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (!result.success) {
+        currentItem.set(item)
+        mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+      }
+    } catch (error) {
+      if (!mutationRequestIsCurrent(requestId, id)) return
       currentItem.set(item)
-      errorMessage.set(result.errorMessage)
-      throw new Error(result.errorMessage)
+      mutationErrorThrow(requestId, error, "Failed to update favorite status.")
     }
   }
 
   const handleDelete = async (id: string, hard: boolean): Promise<void> => {
-    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
-    if (!result.success) {
-      errorMessage.set(result.errorMessage)
-      throw new Error(result.errorMessage)
+    const requestId = mutationRequestBegin()
+    try {
+      const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (!result.success) {
+        mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+      }
+      if (hard) {
+        currentItem.set(null)
+        props.onNavigateBack?.()
+        return
+      }
+      const refreshRequestId = ++loadRequestId
+      const refreshed = await apiClient.get(id)
+      if (refreshRequestId !== loadRequestId || !mutationRequestIsCurrent(requestId, id)) return
+      if (refreshed.success) {
+        currentItem.set(refreshed.data)
+        return
+      }
+      mutationErrorThrow(requestId, new Error(refreshed.errorMessage), refreshed.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to delete cipher.")
     }
-    if (hard) {
-      currentItem.set(null)
-      props.onNavigateBack?.()
-      return
-    }
-    const refreshed = await apiClient.get(id)
-    if (refreshed.success) {
-      currentItem.set(refreshed.data)
-      return
-    }
-    errorMessage.set(refreshed.errorMessage)
-    throw new Error(refreshed.errorMessage)
   }
 
   const handleRestore = async (id: string): Promise<void> => {
-    const result = await apiClient.restore(id)
-    if (result.success) {
-      currentItem.set(result.data)
-      return
+    const requestId = mutationRequestBegin()
+    try {
+      const result = await apiClient.restore(id)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        currentItem.set(result.data)
+        return
+      }
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to restore cipher.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleArchive = async (id: string, archived: boolean): Promise<void> => {
-    const result = await apiClient.archive(id, archived)
-    if (result.success) {
-      currentItem.set(result.data)
-      return
+    const requestId = mutationRequestBegin()
+    try {
+      const result = await apiClient.archive(id, archived)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        currentItem.set(result.data)
+        return
+      }
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to update archive status.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleClone = async (id: string): Promise<void> => {
-    const result = await apiClient.clone(id)
-    if (result.success) {
-      currentItem.set(result.data)
-      mode.set("view")
-      return
+    const requestId = mutationRequestBegin()
+    try {
+      const result = await apiClient.clone(id)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        currentItem.set(result.data)
+        mode.set("view")
+        return
+      }
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to clone cipher.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleShare = async (id: string, organizationId: string, collectionIds: string[]): Promise<void> => {
     const item = currentItem.get()
-    if (!item) return
-    const result = item.organizationId
-      ? await apiClient.updateCollections(id, collectionIds)
-      : await apiClient.share(id, organizationId, collectionIds, item)
-    if (result.success) {
-      currentItem.set(result.data)
-      return
+    if (!item || item.id !== id) return
+    const requestId = mutationRequestBegin()
+    try {
+      const result = item.organizationId
+        ? await apiClient.updateCollections(id, collectionIds)
+        : await apiClient.share(id, organizationId, collectionIds, item)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        currentItem.set(result.data)
+        return
+      }
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to share cipher.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleUploadAttachment = async (id: string, file: File): Promise<void> => {
-    const result = await apiClient.uploadAttachment(id, file, file.name)
-    if (result.success) {
-      currentItem.set(result.data)
-      return
+    const requestId = mutationRequestBegin()
+    try {
+      const result = await apiClient.uploadAttachment(id, file, file.name)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        currentItem.set(result.data)
+        return
+      }
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to upload attachment.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
-    const result = await apiClient.deleteAttachment(id, attachmentId)
-    if (result.success) {
-      const current = currentItem.get()
-      if (current) {
-        const updatedAttachments = (current.attachments ?? []).filter((a) => a.id !== attachmentId)
-        currentItem.set({
-          ...current,
-          attachments: updatedAttachments.length > 0 ? updatedAttachments : null,
-        })
+    const requestId = mutationRequestBegin()
+    try {
+      const result = await apiClient.deleteAttachment(id, attachmentId)
+      if (!mutationRequestIsCurrent(requestId, id)) return
+      if (result.success) {
+        const current = currentItem.get()
+        if (current) {
+          const updatedAttachments = (current.attachments ?? []).filter((a) => a.id !== attachmentId)
+          currentItem.set({
+            ...current,
+            attachments: updatedAttachments.length > 0 ? updatedAttachments : null,
+          })
+        }
+        return
       }
-      return
+      mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
+    } catch (error) {
+      mutationErrorThrow(requestId, error, "Failed to delete attachment.")
     }
-    errorMessage.set(result.errorMessage)
-    throw new Error(result.errorMessage)
   }
 
   const handleCancel = () => {
+    mutationRequestBegin()
     if (mode.get() === "edit") {
       mode.set("view")
     } else if (props.onNavigateBack) {
