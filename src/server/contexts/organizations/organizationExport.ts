@@ -4,9 +4,11 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
-import { cipherFromRow } from "../ciphers/cipherFromRow.js"
-import type { CipherRow } from "../ciphers/cipherRow.js"
+import type { Cipher } from "../ciphers/cipher.js"
+import { cipherSelect } from "../ciphers/cipherSelect.js"
 import { cipherToJson } from "../ciphers/cipherToJson.js"
+import type { OrganizationCollection } from "./organizationCollection.js"
+import { organizationCollectionSelect } from "./organizationCollectionSelect.js"
 
 type OrganizationExportOptions = {
   clock: Clock
@@ -23,26 +25,25 @@ export async function organizationExport(
   const op = "organizationExport"
   try {
     const collections = database
-      .query<OrganizationCollectionRow, [string]>(
-        `SELECT uuid, org_uuid, name, external_id
-         FROM collections
+      .query<OrganizationCollection, [string]>(
+        `SELECT ${organizationCollectionSelect}
+         FROM collections AS c
          WHERE org_uuid = ?
          ORDER BY uuid`,
       )
       .all(organizationUuid)
       .map(organizationExportCollectionToJson)
     const cipherRows = database
-      .query<CipherRow, [string]>(
-        `SELECT uuid, created_at, updated_at, user_uuid, organization_uuid, key, atype,
-           name, notes, fields, data, password_history, deleted_at, reprompt
+      .query<Cipher, [string]>(
+        `SELECT ${cipherSelect}
          FROM ciphers
          WHERE organization_uuid = ?
          ORDER BY created_at, uuid`,
       )
       .all(organizationUuid)
     const ciphers: Record<string, unknown>[] = []
-    for (const row of cipherRows) {
-      const cipherResult = await cipherToJson(database, cipherFromRow(row), options.userUuid, {
+    for (const cipher of cipherRows) {
+      const cipherResult = await cipherToJson(database, cipher, options.userUuid, {
         clock: options.clock,
         origin: options.origin,
         privateKey: options.privateKey,
@@ -56,21 +57,14 @@ export async function organizationExport(
   }
 }
 
-type OrganizationCollectionRow = {
-  external_id: string | null
-  name: string
-  org_uuid: string
-  uuid: string
-}
-
-function organizationExportCollectionToJson(row: OrganizationCollectionRow): Record<string, unknown> {
+function organizationExportCollectionToJson(collection: OrganizationCollection): Record<string, unknown> {
   return organizationExportValueToJson({
     defaultUserCollectionEmail: null,
-    externalId: row.external_id,
-    id: row.uuid,
-    name: row.name,
+    externalId: collection.externalId,
+    id: collection.uuid,
+    name: collection.name,
     object: "collection",
-    organizationId: row.org_uuid,
+    organizationId: collection.organizationUuid,
     type: 0,
   }) as Record<string, unknown>
 }
