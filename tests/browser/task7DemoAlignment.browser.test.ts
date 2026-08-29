@@ -58,12 +58,14 @@ test.describe("task 7 demo alignment", () => {
     }
 
     await nav.getByRole("button", { name: /^My Vault\s+\d+$/ }).click()
-    await expect(page.getByText("My Vault", { exact: true })).toBeVisible()
+    await expect(page.getByRole("region", { name: "Vault Items" }).getByText("My Vault", { exact: true })).toBeVisible()
     await expect(item(/^ProtonMail Secure Mailbox/)).toBeVisible()
     await expect(item(/^GitHub Enterprise/)).not.toBeVisible()
 
     await nav.getByRole("button", { name: /^Acme Corporation\s+\d+$/ }).click()
-    await expect(page.getByText("Acme Corporation", { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole("region", { name: "Vault Items" }).getByText("Acme Corporation", { exact: true }),
+    ).toBeVisible()
     await expect(item(/^GitHub Enterprise/)).toBeVisible()
     await expect(item(/^ProtonMail Secure Mailbox/)).not.toBeVisible()
 
