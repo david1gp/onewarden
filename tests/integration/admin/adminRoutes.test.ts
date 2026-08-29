@@ -239,14 +239,13 @@ test("admin deauthorization, membership compatibility, and organization deletion
       organizationMembershipType.owner,
     ],
   )
-  database.exec(
-    "CREATE TABLE twofactor (uuid TEXT NOT NULL PRIMARY KEY, user_uuid TEXT NOT NULL, enabled INTEGER NOT NULL, data TEXT NOT NULL)",
-  )
-  database.run("INSERT INTO twofactor (uuid, user_uuid, enabled, data) VALUES (?, ?, ?, ?)", [
+  database.run("INSERT INTO twofactor (uuid, user_uuid, atype, enabled, data, last_used) VALUES (?, ?, ?, ?, ?, ?)", [
     "admin-twofactor",
     user.uuid,
+    0,
     1,
     "encrypted-secret",
+    0,
   ])
   const secondOwner = userCreate("second-admin-user", "second-admin-user@example.com")
   expect(identityUserSave(database, secondOwner).success).toBe(true)

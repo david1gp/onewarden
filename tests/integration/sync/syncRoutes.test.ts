@@ -302,13 +302,12 @@ function databaseProfileCompositionSeed(database: DatabaseConnection): void {
       organizationMembershipType.manager,
     ],
   )
-  database.exec(
-    "CREATE TABLE twofactor (uuid TEXT NOT NULL PRIMARY KEY, user_uuid TEXT NOT NULL, enabled INTEGER NOT NULL, data TEXT NOT NULL)",
-  )
-  database.run("INSERT INTO twofactor (uuid, user_uuid, enabled, data) VALUES (?, ?, ?, ?)", [
+  database.run("INSERT INTO twofactor (uuid, user_uuid, atype, enabled, data, last_used) VALUES (?, ?, ?, ?, ?, ?)", [
     "sync-twofactor",
     "sync-user",
+    0,
     1,
     "encrypted-secret",
+    0,
   ])
 }

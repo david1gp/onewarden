@@ -79,6 +79,34 @@ const duplicatedEmergencyAccessRouteRegistrations = [
   { basePath: "/", method: "PUT", path: "/api/emergency-access/:emer_id" },
 ].flatMap((registration) => [registration, registration])
 
+const duplicatedTwoFactorRouteRegistrations = [
+  { basePath: "/", method: "DELETE", path: "/api/two-factor/authenticator" },
+  { basePath: "/", method: "DELETE", path: "/api/two-factor/webauthn" },
+  { basePath: "/", method: "GET", path: "/api/two-factor" },
+  { basePath: "/", method: "GET", path: "/api/two-factor/get-device-verification-settings" },
+  { basePath: "/", method: "POST", path: "/api/accounts/request-otp" },
+  { basePath: "/", method: "POST", path: "/api/accounts/verify-otp" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/authenticator" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/disable" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/duo" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-authenticator" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-duo" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-email" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-recover" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-webauthn" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-webauthn-challenge" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/get-yubikey" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/send-email" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/webauthn" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/yubikey" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/authenticator" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/disable" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/duo" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/email" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/webauthn" },
+  { basePath: "/", method: "PUT", path: "/api/two-factor/yubikey" },
+].flatMap((registration) => [registration, registration])
+
 const currentRouteRegistrations = [
   ...[
     { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
@@ -128,6 +156,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/export" },
   ...duplicatedRouteRegistrations,
   ...duplicatedEmergencyAccessRouteRegistrations,
+  ...duplicatedTwoFactorRouteRegistrations,
   { basePath: "/", method: "GET", path: "/" },
   { basePath: "/", method: "GET", path: "/*" },
   { basePath: "/", method: "GET", path: "/.well-known/apple-app-site-association" },
@@ -203,6 +232,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "POST", path: "/api/public/organization/import" },
   { basePath: "/", method: "POST", path: "/api/organizations/:org_id/users/public-keys" },
   { basePath: "/", method: "POST", path: "/api/organizations/:org_id/users/public-keys" },
+  { basePath: "/", method: "POST", path: "/api/two-factor/send-email-login" },
   { basePath: "/", method: "POST", path: "/api/organizations/:org_id/users/public-keys" },
   { basePath: "/", method: "POST", path: "/api/organizations" },
   { basePath: "/", method: "POST", path: "/api/organizations" },
