@@ -23,11 +23,11 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
         when={state.item()}
         fallback={
           <div class="flex h-full flex-col items-center justify-center p-6 text-center sm:p-8">
-            <div class="flex size-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+            <div class="flex size-14 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               <Icon path={vaultSvgIcons.lock} class="size-7" />
             </div>
             <p class="mt-4 font-semibold text-sm text-slate-800 dark:text-slate-200">No Cipher Selected</p>
-            <p class="mt-1 max-w-xs text-xs text-slate-500">
+            <p class="mt-1 max-w-xs text-xs text-slate-600 dark:text-slate-400">
               Select a cipher item from your vault to view stored credentials, secure notes, and metadata.
             </p>
           </div>
@@ -39,7 +39,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
             <Show when={state.isDeleted()}>
               <div class="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200">
                 <div class="flex items-center gap-2">
-                  <Icon path={vaultSvgIcons.trash} class="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <Icon path={vaultSvgIcons.trash} class="size-4 shrink-0 text-amber-700 dark:text-amber-300" />
                   <span>This cipher is in your Trash (deleted on {item().deletedDate}).</span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -96,17 +96,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       </Badge>
                     </Show>
                     <Show when={state.isArchived()}>
-                      <Badge variant="outline" class="text-xs text-amber-600 border-amber-300">
+                      <Badge variant="outline" class="text-xs text-amber-700 border-amber-300">
                         Archived
                       </Badge>
                     </Show>
                     <Show when={item().organizationId}>
-                      <Badge variant="outline" class="text-xs text-blue-600 border-blue-300">
+                      <Badge variant="outline" class="text-xs text-blue-700 border-blue-300">
                         Organization
                       </Badge>
                     </Show>
                     <Show when={item().revisionDate}>
-                      <span class="text-xs text-slate-400">Updated {item().revisionDate}</span>
+                      <span class="text-xs text-slate-600 dark:text-slate-400">Updated {item().revisionDate}</span>
                     </Show>
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   class="text-xs"
                   icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
                   iconClass={`size-4 fill-current dark:fill-current ${
-                    item().favorite ? "text-amber-500 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"
+                    item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
                   }`}
                   onClick={() => state.toggleFavorite()}
                   aria-label={item().favorite ? "Remove from Favorites" : "Add to Favorites"}
@@ -171,7 +171,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                    class="text-xs text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
                     onClick={() => state.openDeleteDialog(false)}
                     title="Move cipher to trash"
                   >
@@ -199,7 +199,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().login?.username}>
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Username</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Username
+                        </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().login?.username}
                         </p>
@@ -211,8 +213,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         icon={state.copiedField() === "username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "username"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("username", item().login?.username ?? "")}
                         aria-label={state.copiedField() === "username" ? "Copied username" : "Copy username"}
@@ -227,7 +229,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Password</p>
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Password
+                          </p>
                           <Show when={item().passwordStrength}>
                             <Badge variant="filledGreen" class="px-1.5 py-0 text-[10px]">
                               {item().passwordStrength}
@@ -245,7 +249,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           size="sm"
                           class="text-xs"
                           icon={vaultSvgIcons.history}
-                          iconClass="size-3.5 text-slate-500 dark:text-slate-400"
+                          iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                           onClick={() => state.openHistoryDialog()}
                           aria-label="View password history"
                         >
@@ -257,7 +261,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           size="sm"
                           class="text-xs"
                           icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                          iconClass="size-3.5 fill-current dark:fill-current text-slate-500 dark:text-slate-400"
+                          iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                           onClick={() => state.togglePasswordReveal()}
                           aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
                         >
@@ -270,8 +274,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                           iconClass={`size-3.5 fill-current dark:fill-current ${
                             state.copiedField() === "password"
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-slate-500 dark:text-slate-400"
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-slate-600 dark:text-slate-400"
                           }`}
                           onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
                           aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
@@ -287,12 +291,12 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             One-Time Password (2FA)
                           </p>
-                          <span class="size-1.5 animate-pulse rounded-full bg-blue-500" />
+                          <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
                         </div>
-                        <p class="truncate font-mono font-bold text-blue-600 text-lg tracking-wider select-all dark:text-blue-400">
+                        <p class="truncate font-mono font-bold text-blue-700 text-lg tracking-wider select-all dark:text-blue-300">
                           {item().login?.totp}
                         </p>
                       </div>
@@ -303,8 +307,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         icon={state.copiedField() === "totp" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "totp"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("totp", item().login?.totp?.replace(/\s+/g, "") ?? "")}
                         aria-label={state.copiedField() === "totp" ? "Copied OTP" : "Copy OTP"}
@@ -318,12 +322,14 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().login?.uris && item().login!.uris!.length > 0}>
                     <div class="group flex items-center justify-between gap-2">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Website</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Website
+                        </p>
                         <LinkTextExternal
                           href={item().login?.uris?.[0]?.uri ?? "#"}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="inline-flex max-w-full items-center gap-1 font-medium text-blue-600 text-xs dark:text-blue-400"
+                          class="inline-flex max-w-full items-center gap-1 font-medium text-blue-700 text-xs dark:text-blue-300"
                         >
                           <span class="truncate">{item().login?.uris?.[0]?.uri}</span>
                           <Icon path={vaultSvgIcons.externalLink} class="size-3 shrink-0" />
@@ -336,8 +342,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         icon={state.copiedField() === "uri" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "uri"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("uri", item().login?.uris?.[0]?.uri ?? "")}
                         aria-label={state.copiedField() === "uri" ? "Copied URL" : "Copy URL"}
@@ -363,7 +369,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().card?.cardholderName}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Cardholder Name</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Cardholder Name
+                        </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().card?.cardholderName}
                         </p>
@@ -386,7 +394,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().card?.number}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Card Number</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Card Number
+                        </p>
                         <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
                           {state.formattedCardNumber()}
                         </p>
@@ -397,7 +407,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           size="sm"
                           class="text-xs"
                           icon={state.isCardNumberRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                          iconClass="size-3.5 text-slate-500 dark:text-slate-400"
+                          iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                           onClick={() => state.toggleCardNumberReveal()}
                           aria-label={state.isCardNumberRevealed() ? "Hide card number" : "Show card number"}
                         >
@@ -424,7 +434,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <div class="grid grid-cols-2 gap-4">
                     <Show when={item().card?.expMonth || item().card?.expYear}>
                       <div>
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Expiration</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Expiration
+                        </p>
                         <p class="font-medium text-sm text-slate-900 dark:text-slate-100">
                           {item().card?.expMonth ?? "--"}/{item().card?.expYear ?? "--"}
                         </p>
@@ -434,7 +446,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().card?.code}>
                       <div class="flex items-center justify-between gap-2">
                         <div>
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Security Code (CVV)
                           </p>
                           <p class="font-mono text-sm text-slate-900 select-all dark:text-slate-100">
@@ -447,7 +459,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             size="sm"
                             class="text-xs"
                             icon={state.isCvvRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                            iconClass="size-3.5 text-slate-500"
+                            iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                             onClick={() => state.toggleCvvReveal()}
                             aria-label={state.isCvvRevealed() ? "Hide CVV" : "Show CVV"}
                           >
@@ -480,7 +492,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={state.formattedIdentityFullName()}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Full Name</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Full Name
+                        </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {state.formattedIdentityFullName()}
                         </p>
@@ -504,7 +518,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().identity?.email}>
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Email</p>
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Email
+                          </p>
                           <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.email}
                           </p>
@@ -526,7 +542,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().identity?.phone}>
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Phone</p>
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Phone
+                          </p>
                           <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.phone}
                           </p>
@@ -550,7 +568,9 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={state.formattedIdentityAddress()}>
                     <div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Address</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Address
+                        </p>
                         <p class="whitespace-pre-line text-xs text-slate-900 select-all dark:text-slate-100">
                           {state.formattedIdentityAddress()}
                         </p>
@@ -577,7 +597,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.ssn}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               SSN / National ID
                             </p>
                             <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
@@ -590,7 +610,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                               size="sm"
                               class="text-xs"
                               icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                              iconClass="size-3.5 text-slate-500"
+                              iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                               onClick={() => state.toggleSsnReveal()}
                               aria-label={state.isSsnRevealed() ? "Hide SSN" : "Show SSN"}
                             >
@@ -614,7 +634,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.passportNumber}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               Passport Number
                             </p>
                             <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
@@ -627,7 +647,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                               size="sm"
                               class="text-xs"
                               icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                              iconClass="size-3.5 text-slate-500"
+                              iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                               onClick={() => state.togglePassportReveal()}
                               aria-label={state.isPassportRevealed() ? "Hide Passport" : "Show Passport"}
                             >
@@ -651,7 +671,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.licenseNumber}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               Driver's License Number
                             </p>
                             <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
@@ -732,7 +752,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     </For>
                   </Show>
                 </div>
-                <div class="pt-2 text-[11px] text-slate-400">
+                <div class="pt-2 text-[11px] text-slate-600 dark:text-slate-400">
                   <Show when={item().creationDate}>
                     <span>Created {item().creationDate} · </span>
                   </Show>
@@ -740,7 +760,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <span>Last modified {item().revisionDate}</span>
                   </Show>
                   <Show when={item().deletedDate}>
-                    <span class="text-amber-600 dark:text-amber-400"> · In Trash since {item().deletedDate}</span>
+                    <span class="text-amber-700 dark:text-amber-300"> · In Trash since {item().deletedDate}</span>
                   </Show>
                 </div>
               </CardWrapper>

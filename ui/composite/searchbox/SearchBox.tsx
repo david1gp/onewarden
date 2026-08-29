@@ -124,7 +124,7 @@ function SearchInput(p: { searchQuerySignal: SignalObject<string>; placeholder?:
       <div class="relative group">
         <Icon
           path={mdiMagnify}
-          class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors"
+          class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-700 transition-colors"
         />
         <input
           type="text"
@@ -167,8 +167,10 @@ function FilterDropdown(p: { filter: SearchFilterEntry; isActive: boolean; onSel
         </div>
       </Show>
 
-      <div
-        class="touch-pan-y"
+        <div
+          role="listbox"
+          aria-label={p.filter.label}
+          class="touch-pan-y"
         style={{
           height: "18rem",
           "overflow-y": "scroll",
@@ -192,7 +194,7 @@ function FilterDropdown(p: { filter: SearchFilterEntry; isActive: boolean; onSel
             >
               <span>{getOptionText(p.filter, option)}</span>
               <Show when={isSelected(option)}>
-                <span class="text-emerald-600 dark:text-emerald-400">
+                <span class="text-emerald-700 dark:text-emerald-300">
                   <Icon path={mdiCheck} class="h-4 w-4" />
                 </span>
               </Show>

@@ -32,7 +32,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
             <h2 class="font-bold text-lg text-slate-900 dark:text-slate-50">
               {state.isEditMode() ? "Edit Cipher" : "Add New Item"}
             </h2>
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-slate-600 dark:text-slate-400">
               {state.isEditMode()
                 ? "Modify credentials and security metadata."
                 : "Create a new encrypted entry in your vault."}
@@ -66,7 +66,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
         <Show when={state.effectiveError()}>
           {(error) => (
             <div class="flex items-center gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
-              <Icon path={vaultSvgIcons.shieldAlert} class="size-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <Icon path={vaultSvgIcons.shieldAlert} class="size-4 shrink-0 text-rose-700 dark:text-rose-300" />
               <span>{error()}</span>
             </div>
           )}

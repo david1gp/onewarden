@@ -1,8 +1,8 @@
 import { For, type JSX, Show } from "solid-js"
-import { Input } from "#ui/input/input/Input.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
+import { Input } from "#ui/input/input/Input.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
@@ -15,8 +15,10 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
   const state = vaultEntryListStateCreate(props)
 
   return (
-    <section class="flex h-full flex-col bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-200">
-      {/* Top Filter and Search Bar */}
+    <section
+      aria-label="Vault Items"
+      class="flex h-full w-full flex-col bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+    >
       <div class="border-b border-slate-200 p-3 dark:border-slate-800">
         <div class="relative flex items-center">
           <Icon
@@ -25,9 +27,10 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
           />
           <Input
             type="search"
-            placeholder="Search items, folders, usernames..."
+            placeholder="Search items, folders, usernames... (Press / to focus)"
+            ref={props.searchInputElement}
             value={state.searchQuery()}
-            onInput={(e) => state.setSearchQuery(e.currentTarget.value)}
+            onInput={(event) => state.setSearchQuery(event.currentTarget.value)}
             class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-8 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
           <Show when={state.searchQuery().length > 0}>
@@ -43,17 +46,24 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
           </Show>
         </div>
 
-        {/* Section Heading & Count */}
         <div class="mt-2.5 flex items-center justify-between px-0.5 text-xs">
-          <span class="font-semibold text-slate-900 dark:text-slate-100">{state.filterTitle()}</span>
-          <span class="text-[11px] text-slate-600 dark:text-slate-400">
-            {state.items().length} {state.items().length === 1 ? "item" : "items"}
-          </span>
+          <div class="flex items-center gap-1.5">
+            <span class="font-semibold text-slate-900 dark:text-slate-100">{state.filterTitle()}</span>
+            <span class="text-[11px] text-slate-600 dark:text-slate-400">({state.items().length})</span>
+          </div>
+          <Button
+            variant="filled"
+            size="sm"
+            class="h-6 bg-blue-600 px-2 text-[11px] text-white hover:bg-blue-700"
+            onClick={state.addNewItem}
+          >
+            <Icon path={vaultSvgIcons.plus} class="mr-1 size-3" />
+            New Item
+          </Button>
         </div>
       </div>
 
-      {/* Item List */}
-      <div class={`flex-1 overflow-y-auto ${classesScrollbar} divide-y divide-slate-100 dark:divide-slate-800/60`}>
+      <div class={`flex-1 overflow-y-auto ${classesScrollbar}`}>
         <Show
           when={state.items().length > 0}
           fallback={
@@ -71,51 +81,63 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
             </div>
           }
         >
-          <For each={state.items()}>
-            {(item) => {
-              const theme = state.getCategoryTheme(item.category)
-              const isSelected = () => state.selectedItemId() === item.id
+          <ul aria-label="Vault Credentials" class="divide-y divide-slate-100 dark:divide-slate-800/60">
+            <For each={state.items()}>
+              {(item) => {
+                const theme = state.getCategoryTheme(item.category)
+                const isSelected = () => state.selectedItemId() === item.id
 
-              return (
-                <ButtonIcon
-                  variant="none"
-                  size="none"
-                  icon={state.getCategoryIcon(item.category)}
-                  iconClass={`mt-0.5 size-7 shrink-0 rounded-md p-1.5 mr-0 ${theme.bg} ${theme.text} fill-current dark:fill-current`}
-                  onClick={() => state.selectItem(item.id)}
-                  class={`flex w-full items-start justify-start gap-2.5 rounded-none px-3 py-2.5 text-left font-normal transition-colors ${
-                    isSelected()
-                      ? "border-l-4 border-blue-600 bg-blue-50/70 dark:border-blue-500 dark:bg-blue-950/40"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  }`}
-                >
-                  {/* Content Info */}
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-1">
-                      <p class="truncate font-semibold text-xs text-slate-900 dark:text-slate-100">{item.title}</p>
-                      <Show when={item.favorite}>
-                        <Icon path={vaultSvgIcons.star} class="size-3.5 shrink-0 text-amber-500 dark:text-amber-400" />
-                      </Show>
-                    </div>
-
-                    <p class="truncate text-[11px] text-slate-600 dark:text-slate-400">{state.getItemSubtitle(item)}</p>
-
-                    <div class="mt-1 flex items-center gap-1.5">
-                      <Badge variant="subtle" class="px-1.5 py-0 text-[10px] font-medium">
-                        {item.vault}
-                      </Badge>
-                      <Show when={item.totp}>
-                        <span class="inline-flex items-center gap-0.5 text-[10px] text-blue-600 font-medium dark:text-blue-400">
-                          <Icon path={vaultSvgIcons.timer} class="size-3" />
-                          2FA
-                        </span>
-                      </Show>
-                    </div>
-                  </div>
-                </ButtonIcon>
-              )
-            }}
-          </For>
+                return (
+                  <li>
+                    <ButtonIcon
+                      variant="none"
+                      size="none"
+                      aria-current={isSelected() ? "true" : undefined}
+                      icon={state.getCategoryIcon(item.category)}
+                      iconClass={`mt-0.5 size-7 shrink-0 rounded-md p-1.5 mr-0 ${theme.bg} ${theme.text} fill-current dark:fill-current`}
+                      onClick={() => state.selectItem(item.id)}
+                      class={`flex w-full items-start justify-start gap-2.5 rounded-none px-3 py-2.5 text-left font-normal transition-colors ${
+                        isSelected()
+                          ? "border-l-4 border-blue-600 bg-blue-50/70 dark:border-blue-500 dark:bg-blue-950/40"
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-1">
+                          <p class="truncate font-semibold text-xs text-slate-900 dark:text-slate-100">{item.title}</p>
+                          <Show when={item.favorite}>
+                            <Icon
+                              path={vaultSvgIcons.star}
+                              class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                            />
+                          </Show>
+                        </div>
+                        <p class="truncate text-[11px] text-slate-600 dark:text-slate-400">
+                          {state.getItemSubtitle(item)}
+                        </p>
+                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge variant="subtle" class="px-1.5 py-0 text-[10px] font-medium">
+                            {item.vault}
+                          </Badge>
+                          <Show when={item.folder}>
+                            <span class="inline-flex items-center text-[10px] text-slate-600 dark:text-slate-400">
+                              {item.folder}
+                            </span>
+                          </Show>
+                          <Show when={item.totp}>
+                            <span class="inline-flex items-center gap-0.5 text-[10px] text-blue-600 font-medium dark:text-blue-400">
+                              <Icon path={vaultSvgIcons.timer} class="size-3" />
+                              2FA
+                            </span>
+                          </Show>
+                        </div>
+                      </div>
+                    </ButtonIcon>
+                  </li>
+                )
+              }}
+            </For>
+          </ul>
         </Show>
       </div>
     </section>

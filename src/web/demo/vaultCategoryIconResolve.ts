@@ -6,7 +6,6 @@ const categoryIcons: Record<string, string> = {
   creditCard: vaultSvgIcons.creditCard,
   identity: vaultSvgIcons.identity,
   password: vaultSvgIcons.password,
-  server: vaultSvgIcons.server,
   sshKey: vaultSvgIcons.sshKey,
 }
 

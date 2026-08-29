@@ -108,7 +108,7 @@ export function CipherCardFormSection(props: CipherCardFormSectionStateProps): J
                 icon={state.isCodeRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                 iconClass="size-3.5"
                 onClick={() => state.toggleCodeReveal()}
-                class="h-7 px-1.5 text-xs text-slate-500"
+                class="h-7 px-1.5 text-xs text-slate-600 dark:text-slate-400"
                 aria-label={state.isCodeRevealed() ? "Hide code" : "Show code"}
               >
                 {state.isCodeRevealed() ? "Hide" : "Show"}

@@ -35,7 +35,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
     <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <div class="flex items-center justify-between">
         <Label class="font-semibold text-slate-900 text-xs dark:text-slate-100">Custom Fields</Label>
-        <span class="text-[11px] text-slate-400">Additional metadata fields</span>
+        <span class="text-[11px] text-slate-600 dark:text-slate-400">Additional metadata fields</span>
       </div>
 
       <div class="space-y-3">
@@ -96,9 +96,9 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
                 <ButtonIconOnly
                   variant="ghost"
                   icon={vaultSvgIcons.trash}
-                  iconClass="size-3.5 text-rose-500 hover:text-rose-700 dark:text-rose-400"
-                  title="Remove field"
-                  aria-label="Remove field"
+                  iconClass="size-3.5 text-rose-700 hover:text-rose-800 dark:text-rose-300"
+                  title={`Remove field ${field.name || idx() + 1}`}
+                  aria-label={`Remove field ${field.name || idx() + 1}`}
                   onClick={() => state.removeField(idx())}
                   class="size-8 p-0"
                 />
@@ -126,7 +126,11 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
           />
         </div>
         <div class="w-full sm:w-32">
+          <Label for="cipher-form-new-field-type" class="sr-only">
+            New custom field type
+          </Label>
           <SelectSingleNative
+            id="cipher-form-new-field-type"
             valueSignal={state.newFieldType}
             getOptions={fieldTypeOptions}
             valueText={fieldTypeLabel}

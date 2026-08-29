@@ -1,1 +1,1 @@
-export const classesDisabledModifier = "disabled:cursor-not-allowed disabled:opacity-70"
+export const classesDisabledModifier = "disabled:cursor-not-allowed disabled:opacity-60"

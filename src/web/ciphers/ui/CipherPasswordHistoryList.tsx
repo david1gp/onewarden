@@ -14,7 +14,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
       <Show
         when={state.entries().length > 0}
         fallback={
-          <div class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 dark:border-slate-800">
+          <div class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
             No previous passwords recorded for this cipher item.
           </div>
         }
@@ -27,7 +27,9 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
                   <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
                     {state.isRevealed(index()) ? entry.password : "••••••••••••••••••••"}
                   </p>
-                  <p class="mt-0.5 text-[11px] text-slate-400">Last used: {state.formatDate(entry.lastUsedDate)}</p>
+                  <p class="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                    Last used: {state.formatDate(entry.lastUsedDate)}
+                  </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-1.5">
                   <ButtonIcon
@@ -35,7 +37,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
                     size="sm"
                     class="text-xs"
                     icon={state.isRevealed(index()) ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                    iconClass="size-3.5 text-slate-500 dark:text-slate-400"
+                    iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                     onClick={() => state.toggleReveal(index())}
                     aria-label={state.isRevealed(index()) ? "Hide password" : "Show password"}
                   >
@@ -46,7 +48,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
                     size="sm"
                     class="text-xs"
                     icon={state.isCopied(index()) ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                    iconClass={`size-3.5 ${state.isCopied(index()) ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}
+                    iconClass={`size-3.5 ${state.isCopied(index()) ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"}`}
                     onClick={() => state.copyPassword(index(), entry.password)}
                     aria-label={state.isCopied(index()) ? "Copied past password" : "Copy past password"}
                   >

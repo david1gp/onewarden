@@ -12,8 +12,8 @@ export interface CipherDialogStateProps {
   cipherId?: () => string | null
   initialItem?: () => CipherItem | null
   defaultType?: () => CipherType | undefined
-  onSaved?: (item: CipherItem) => void
-  onDeleted?: (id: string, hard: boolean) => void
+  onSaved?: (item: CipherItem) => Promise<void> | void
+  onDeleted?: (id: string, hard: boolean) => Promise<void> | void
   onClosed?: () => void
   syncUrl?: boolean
 }
@@ -113,63 +113,71 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     isSaving.set(false)
     if (result.success) {
       currentItem.set(result.data)
-      if (props.onSaved) props.onSaved(result.data)
+      if (props.onSaved) await props.onSaved(result.data)
       handleClose()
     } else {
       errorMessage.set(result.errorMessage)
     }
   }
 
-  const handleToggleFavorite = async (id: string) => {
+  const handleToggleFavorite = async (id: string): Promise<void> => {
     const item = currentItem.get()
     if (!item) return
     const newFav = !item.favorite
     currentItem.set({ ...item, favorite: newFav })
-    await apiClient.favorite(id, newFav)
-  }
-
-  const handleDelete = async (id: string, hard: boolean) => {
-    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
-    if (result.success) {
-      if (props.onDeleted) props.onDeleted(id, hard)
-      handleClose()
-    } else {
+    const result = await apiClient.favorite(id, newFav)
+    if (!result.success) {
+      currentItem.set(item)
       errorMessage.set(result.errorMessage)
+      throw new Error(result.errorMessage)
     }
   }
 
-  const handleRestore = async (id: string) => {
+  const handleDelete = async (id: string, hard: boolean): Promise<void> => {
+    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+    if (!result.success) {
+      errorMessage.set(result.errorMessage)
+      throw new Error(result.errorMessage)
+    }
+    if (props.onDeleted) await props.onDeleted(id, hard)
+    handleClose()
+  }
+
+  const handleRestore = async (id: string): Promise<void> => {
     const result = await apiClient.restore(id)
     if (result.success) {
       currentItem.set(result.data)
       if (props.onSaved) props.onSaved(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleArchive = async (id: string, archived: boolean) => {
+  const handleArchive = async (id: string, archived: boolean): Promise<void> => {
     const result = await apiClient.archive(id, archived)
     if (result.success) {
       currentItem.set(result.data)
       if (props.onSaved) props.onSaved(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleClone = async (id: string) => {
+  const handleClone = async (id: string): Promise<void> => {
     const result = await apiClient.clone(id)
     if (result.success) {
       currentItem.set(result.data)
       if (props.onSaved) props.onSaved(result.data)
       mode.set("view")
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleShare = async (id: string, organizationId: string, collectionIds: string[]) => {
+  const handleShare = async (id: string, organizationId: string, collectionIds: string[]): Promise<void> => {
     const item = currentItem.get()
     if (!item) return
     const result = item.organizationId
@@ -178,22 +186,24 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     if (result.success) {
       currentItem.set(result.data)
       if (props.onSaved) props.onSaved(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleUploadAttachment = async (id: string, file: File) => {
+  const handleUploadAttachment = async (id: string, file: File): Promise<void> => {
     const result = await apiClient.uploadAttachment(id, file, file.name)
     if (result.success) {
       currentItem.set(result.data)
       if (props.onSaved) props.onSaved(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleDeleteAttachment = async (id: string, attachmentId: string) => {
+  const handleDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
     const result = await apiClient.deleteAttachment(id, attachmentId)
     if (result.success) {
       const current = currentItem.get()
@@ -206,9 +216,10 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
         currentItem.set(updatedItem)
         if (props.onSaved) props.onSaved(updatedItem)
       }
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
   const dialogTitle = createMemo(() => {

@@ -19,12 +19,12 @@ export function CipherDialog(props: CipherDialogStateProps): JSX.Element {
         <Dialog.Content
           class={classesDialogContentMerge("max-w-4xl h-[90vh] max-h-[850px] p-0 flex flex-col overflow-hidden")}
         >
-          <header class="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
+          <div class="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
             <div>
               <Dialog.Label class="text-base font-bold text-slate-900 dark:text-slate-50">
                 {state.dialogTitle()}
               </Dialog.Label>
-              <Dialog.Description class="text-xs text-slate-500">
+              <Dialog.Description class="sr-only">
                 {state.mode() === "view"
                   ? "Encrypted vault item credentials and details."
                   : "Fill out the fields to save to your encrypted vault."}
@@ -33,7 +33,7 @@ export function CipherDialog(props: CipherDialogStateProps): JSX.Element {
             <Dialog.Close class={buttonCvaIconOnly(buttonVariant.outline, false, false)} title="Close dialog">
               <Icon path={mdiClose} class={buttonIconCva(buttonVariant.outline, "")} />
             </Dialog.Close>
-          </header>
+          </div>
 
           <div class="flex-1 overflow-hidden">
             <Show
@@ -42,7 +42,7 @@ export function CipherDialog(props: CipherDialogStateProps): JSX.Element {
                 <div class="flex h-full items-center justify-center p-8">
                   <div class="flex flex-col items-center gap-2">
                     <div class="size-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                    <p class="text-xs text-slate-500">Loading cipher details...</p>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">Loading cipher details...</p>
                   </div>
                 </div>
               }

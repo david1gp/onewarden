@@ -1,1 +1,1 @@
-export const classesDisabledDirectly = "cursor-not-allowed opacity-70"
+export const classesDisabledDirectly = "cursor-not-allowed opacity-60"

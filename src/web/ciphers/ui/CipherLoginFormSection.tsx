@@ -58,7 +58,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
             <Button
               variant="ghost"
               size="sm"
-              class="h-5 px-1.5 text-[11px] text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              class="h-5 px-1.5 text-[11px] text-blue-700 hover:text-blue-800 dark:text-blue-300"
               onClick={() => state.generatePassword()}
             >
               Generate
@@ -80,7 +80,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
               icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
               iconClass="size-3.5"
               onClick={() => state.togglePasswordReveal()}
-              class="h-7 px-2 text-xs text-slate-500"
+              class="h-7 px-2 text-xs text-slate-600 dark:text-slate-400"
               aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
             >
               {state.isPasswordRevealed() ? "Hide" : "Show"}

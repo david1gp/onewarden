@@ -21,12 +21,12 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
         <Dialog.Content
           class={classesDialogContentMerge("max-w-lg w-full p-0 flex flex-col overflow-hidden max-h-[85vh]")}
         >
-          <header class="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
+          <div class="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
             <div>
               <Dialog.Label class="text-base font-bold text-slate-900 dark:text-slate-50">
                 {state.isAlreadyShared() ? "Manage Collections" : "Share to Organization"}
               </Dialog.Label>
-              <Dialog.Description class="text-xs text-slate-500">
+              <Dialog.Description class="sr-only">
                 {state.isAlreadyShared()
                   ? `Update organization collection assignments for "${state.itemName()}".`
                   : `Transfer or share "${state.itemName()}" with an organization.`}
@@ -35,7 +35,7 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
             <Dialog.Close class={buttonCvaIconOnly(buttonVariant.outline, false, false)} title="Close dialog">
               <Icon path={mdiClose} class={buttonIconCva(buttonVariant.outline, "")} />
             </Dialog.Close>
-          </header>
+          </div>
 
           <form onSubmit={state.handleShare} class="space-y-4 p-5">
             <Show when={state.errorMessage()}>
@@ -73,7 +73,7 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
                 class="h-9 w-full text-xs"
                 required
               />
-              <p class="text-[11px] text-slate-400">
+              <p class="text-[11px] text-slate-600 dark:text-slate-400">
                 Specify one or more collection IDs that members of your organization can access.
               </p>
             </div>

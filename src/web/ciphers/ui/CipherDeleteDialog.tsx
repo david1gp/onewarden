@@ -16,12 +16,12 @@ export function CipherDeleteDialog(props: CipherDeleteDialogStateProps): JSX.Ele
       <Dialog.Portal>
         <Dialog.Overlay class={classesDialogOverlayMerge()} />
         <Dialog.Content class={classesDialogContentMerge("max-w-md w-full p-0 flex flex-col overflow-hidden")}>
-          <header class="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
+          <div class="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
             <div>
               <Dialog.Label class="text-base font-bold text-slate-900 dark:text-slate-50">
                 {state.isHard() ? "Delete Permanently" : "Move to Trash"}
               </Dialog.Label>
-              <Dialog.Description class="text-xs text-slate-500">
+              <Dialog.Description class="sr-only">
                 {state.isHard()
                   ? "This action cannot be undone."
                   : "Items in Trash can be restored or permanently removed."}
@@ -30,7 +30,7 @@ export function CipherDeleteDialog(props: CipherDeleteDialogStateProps): JSX.Ele
             <Dialog.Close class={buttonCvaIconOnly(buttonVariant.outline, false, false)} title="Close dialog">
               <Icon path={mdiClose} class={buttonIconCva(buttonVariant.outline, "")} />
             </Dialog.Close>
-          </header>
+          </div>
 
           <div class="space-y-4 p-5">
             <Show when={state.errorMessage()}>

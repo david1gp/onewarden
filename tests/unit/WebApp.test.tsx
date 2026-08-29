@@ -79,4 +79,23 @@ test("Badge variant filledGreen uses accessible green-700 contrast classes", () 
   const classes = badgeCva1("filledGreen")
   expect(classes).toContain("bg-green-700")
   expect(classes).toContain("text-white")
+  expect(classes).toContain("border-green-700")
+  expect(classes).toContain("dark:bg-green-700")
+})
+
+test("Badge variant filledRed uses accessible red-700 contrast classes", () => {
+  const classes = badgeCva1("filledRed")
+  expect(classes).toContain("bg-red-700")
+  expect(classes).toContain("text-white")
+  expect(classes).toContain("border-red-700")
+  expect(classes).toContain("dark:bg-red-700")
+})
+
+test("Badge variant subtle uses explicit border and text contrast classes", () => {
+  const classes = badgeCva1("subtle")
+  expect(classes).toContain("bg-slate-100")
+  expect(classes).toContain("text-slate-900")
+  expect(classes).toContain("border-slate-200")
+  expect(classes).toContain("dark:bg-slate-700")
+  expect(classes).toContain("dark:text-slate-100")
 })

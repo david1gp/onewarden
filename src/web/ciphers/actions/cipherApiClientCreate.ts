@@ -1,6 +1,7 @@
 import { type Result, resultTryParsingFetchErr } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import { webAuthSessionDefault } from "../../auth/model/webAuthSessionDefault.js"
 import { cipherItemFromWire } from "../model/cipherItemFromWire.js"
 import { cipherItemToWire } from "../model/cipherItemToWire.js"
 import type { CipherFormData } from "../schemas/cipherFormDataSchema.js"
@@ -21,7 +22,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
       accept: "application/json",
       "content-type": "application/json",
     }
-    const token = options.accessToken?.()
+    const token = options.accessToken ? options.accessToken() : (webAuthSessionDefault().session()?.accessToken ?? null)
     if (token) {
       headers.authorization = `Bearer ${token}`
     }
@@ -222,6 +223,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
       const op = "cipherApiClient.share"
       try {
         const wireCipher = cipherItemToWire(cipherData)
+        wireCipher.organizationId = _organizationId
         const res = await fetchImpl(`${baseUrl}/api/ciphers/${encodeURIComponent(id)}/share`, {
           method: "POST",
           headers: getHeaders(),
@@ -275,7 +277,9 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
         const headers: Record<string, string> = {
           accept: "application/json",
         }
-        const token = options.accessToken?.()
+        const token = options.accessToken
+          ? options.accessToken()
+          : (webAuthSessionDefault().session()?.accessToken ?? null)
         if (token) {
           headers.authorization = `Bearer ${token}`
         }

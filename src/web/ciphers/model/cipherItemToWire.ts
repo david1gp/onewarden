@@ -19,6 +19,10 @@ export function cipherItemToWire(item: CipherFormData | CipherItem): Record<stri
     reprompt: "reprompt" in item && typeof item.reprompt === "number" ? item.reprompt : 0,
   }
 
+  if ("organizationId" in item) {
+    base.organizationId = item.organizationId ?? null
+  }
+
   if (item.type === 1) {
     if ("username" in item) {
       base.login = {

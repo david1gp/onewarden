@@ -208,6 +208,7 @@ function webPathIsSpaRoute(path: string): boolean {
     "/two-factor-challenge",
     "/2fa-challenge",
     "/demo",
+    "/demo/admin",
     "/demo/all",
     "/demo/all-items",
     "/demo/vault",
@@ -221,6 +222,8 @@ function webPathIsSpaRoute(path: string): boolean {
     "/demo/card",
     "/demo/identity",
     "/demo/selected-identity",
+    "/demo/ssh-key",
+    "/demo/selected-ssh-key",
     "/demo/empty",
     "/demo/empty-state",
     "/demo/trash",
@@ -228,7 +231,8 @@ function webPathIsSpaRoute(path: string): boolean {
     "/demo/locked",
     "/demo/lock",
   ]
-  return routes.includes(normalized)
+  if (routes.includes(normalized)) return true
+  return normalized === "/ciphers" || normalized.startsWith("/ciphers/")
 }
 
 function webDatabaseHealthy(database: WebRouteOptions["database"]): boolean {

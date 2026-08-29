@@ -111,7 +111,7 @@ function TabOption(p: TabOptionProps): JSXElement {
         "cursor-pointer select-none",
         "rounded-sm",
         "px-3 py-2 text-center",
-        isSelected(p) ? "bg-blue-500 text-white" : "hover:bg-slate-50 dark:hover:bg-slate-900", // bg hover
+        isSelected(p) ? "bg-blue-600 text-white dark:bg-blue-600" : "hover:bg-slate-50 dark:hover:bg-slate-900", // bg hover
         "flex gap-2",
         p.class,
       )}

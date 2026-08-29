@@ -3,7 +3,6 @@ const categoryTitles: Record<string, string> = {
   secureNote: "Secure Notes",
   creditCard: "Credit Cards",
   identity: "Identities",
-  server: "Servers",
   sshKey: "SSH Keys",
 }
 

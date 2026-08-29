@@ -28,14 +28,8 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     }
   })
 
-  createEffect(() => {
-    const id = props.cipherId?.()
-    if (id) {
-      loadCipher(id)
-    }
-  })
-
   const loadCipher = async (id: string) => {
+    currentItem.set(null)
     isLoading.set(true)
     errorMessage.set(null)
     const result = await apiClient.get(id)
@@ -46,6 +40,16 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
       errorMessage.set(result.errorMessage)
     }
   }
+
+  createEffect(() => {
+    const id = props.cipherId?.()
+    if (id) {
+      void loadCipher(id)
+      return
+    }
+    currentItem.set(null)
+    isLoading.set(false)
+  })
 
   const handleSwitchToEdit = () => {
     mode.set("edit")
@@ -69,54 +73,71 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     }
   }
 
-  const handleToggleFavorite = async (id: string) => {
+  const handleToggleFavorite = async (id: string): Promise<void> => {
     const item = currentItem.get()
     if (!item) return
     const newFav = !item.favorite
     currentItem.set({ ...item, favorite: newFav })
-    await apiClient.favorite(id, newFav)
-  }
-
-  const handleDelete = async (id: string, hard: boolean) => {
-    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
-    if (result.success) {
-      if (props.onNavigateBack) {
-        props.onNavigateBack()
-      }
-    } else {
+    const result = await apiClient.favorite(id, newFav)
+    if (!result.success) {
+      currentItem.set(item)
       errorMessage.set(result.errorMessage)
+      throw new Error(result.errorMessage)
     }
   }
 
-  const handleRestore = async (id: string) => {
+  const handleDelete = async (id: string, hard: boolean): Promise<void> => {
+    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+    if (!result.success) {
+      errorMessage.set(result.errorMessage)
+      throw new Error(result.errorMessage)
+    }
+    if (hard) {
+      currentItem.set(null)
+      props.onNavigateBack?.()
+      return
+    }
+    const refreshed = await apiClient.get(id)
+    if (refreshed.success) {
+      currentItem.set(refreshed.data)
+      return
+    }
+    errorMessage.set(refreshed.errorMessage)
+    throw new Error(refreshed.errorMessage)
+  }
+
+  const handleRestore = async (id: string): Promise<void> => {
     const result = await apiClient.restore(id)
     if (result.success) {
       currentItem.set(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleArchive = async (id: string, archived: boolean) => {
+  const handleArchive = async (id: string, archived: boolean): Promise<void> => {
     const result = await apiClient.archive(id, archived)
     if (result.success) {
       currentItem.set(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleClone = async (id: string) => {
+  const handleClone = async (id: string): Promise<void> => {
     const result = await apiClient.clone(id)
     if (result.success) {
       currentItem.set(result.data)
       mode.set("view")
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleShare = async (id: string, organizationId: string, collectionIds: string[]) => {
+  const handleShare = async (id: string, organizationId: string, collectionIds: string[]): Promise<void> => {
     const item = currentItem.get()
     if (!item) return
     const result = item.organizationId
@@ -124,21 +145,23 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
       : await apiClient.share(id, organizationId, collectionIds, item)
     if (result.success) {
       currentItem.set(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleUploadAttachment = async (id: string, file: File) => {
+  const handleUploadAttachment = async (id: string, file: File): Promise<void> => {
     const result = await apiClient.uploadAttachment(id, file, file.name)
     if (result.success) {
       currentItem.set(result.data)
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
-  const handleDeleteAttachment = async (id: string, attachmentId: string) => {
+  const handleDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
     const result = await apiClient.deleteAttachment(id, attachmentId)
     if (result.success) {
       const current = currentItem.get()
@@ -149,9 +172,10 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
           attachments: updatedAttachments.length > 0 ? updatedAttachments : null,
         })
       }
-    } else {
-      errorMessage.set(result.errorMessage)
+      return
     }
+    errorMessage.set(result.errorMessage)
+    throw new Error(result.errorMessage)
   }
 
   const handleCancel = () => {

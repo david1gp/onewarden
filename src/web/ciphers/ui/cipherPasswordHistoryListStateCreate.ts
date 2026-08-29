@@ -22,7 +22,7 @@ export function cipherPasswordHistoryListStateCreate(props: CipherPasswordHistor
 
   const copyPassword = async (index: number, password: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText(password)
+      await navigator.clipboard.writeText(password).catch(() => {})
     }
     copiedIndex.set(index)
     setTimeout(() => {

@@ -19,7 +19,7 @@ export function DemoSelectedVaultItem(props: DemoSelectedVaultItemProps): JSX.El
       <VaultDemoHeader currentDemo={props.currentDemo} title={props.title} />
       <main id="main-content" tabindex="-1" class="flex-1 overflow-hidden focus:outline-none">
         <VaultWorkspace
-          initialItems={props.selected.items}
+          items={() => props.selected.items}
           defaultCategory={props.selected.defaultCategory}
           defaultSelectedId={props.selected.defaultSelectedId}
         />

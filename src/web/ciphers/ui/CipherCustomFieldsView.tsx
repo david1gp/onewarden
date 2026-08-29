@@ -24,7 +24,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
               return (
                 <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80">
                   <div class="min-w-0 flex-1">
-                    <p class="truncate font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                    <p class="truncate font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                       {field.name}
                     </p>
                     <Show
@@ -50,7 +50,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                         size="sm"
                         class="text-xs"
                         icon={isRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                        iconClass="size-3.5 fill-current dark:fill-current text-slate-500 dark:text-slate-400"
+                        iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                         onClick={() => state.toggleConcealedField(idx())}
                         aria-label={isRevealed() ? "Hide field value" : "Show field value"}
                       >
@@ -64,7 +64,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                         class="text-xs"
                         icon={isCopied() ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
-                          isCopied() ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"
+                          isCopied() ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyField(idx(), field.value)}
                         aria-label={isCopied() ? "Copied" : "Copy field value"}

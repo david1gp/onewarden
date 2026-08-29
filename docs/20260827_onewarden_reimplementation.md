@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 12 and 19-22 are committed, pushed, deployed, and healthy on main. Task 15 is complete and publishes next with migration 0014. Tasks 23 and 24 are complete and will be renumbered to migrations 0015 and 0016 before sequential publication. Task 33 authentication and two-factor UI is complete with passing browser/e2e and axe coverage and will publish after backend phases. Task 34's DRY production vault shell is implemented and awaits post-implementation browser testing.
+- Current context: tasks 12, 15, 19-24, and 33 are committed, pushed, deployed, and healthy on main with migrations through 0016. Task 34 passes browser/e2e and axe and enters publication. Tasks 35-37 pass browser/e2e and axe and publish sequentially afterward. Task 38 increments A-C are integrated with migration 0017; D-E integration remains, followed by six parallel compatibility-only coverage groups and a final manifest audit.
 
 # Tasks
 

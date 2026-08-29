@@ -52,8 +52,21 @@ export function webAppStateCreate() {
 
   const currentRoute = () => webAppRouteResolve(pathname.get())
 
+  const routeCipherId = () => {
+    const p = pathname.get().replace(/\/+$/, "")
+    const match = p.match(/^\/(?:ciphers|vault)\/([^/]+?)(?:\/edit)?$/i)
+    if (!match) return null
+    const id = match[1] ? decodeURIComponent(match[1]) : null
+    if (id === "new" || id === "create") return null
+    return id
+  }
+
   const handleAuthSuccess = () => {
     navigate("/")
+  }
+
+  const handleVaultUnlocked = () => {
+    pathname.set(pathname.get())
   }
 
   const handleLockVault = () => {
@@ -70,8 +83,10 @@ export function webAppStateCreate() {
     pathname: pathname.get,
     navigate,
     currentRoute,
+    routeCipherId,
     session,
     handleAuthSuccess,
+    handleVaultUnlocked,
     handleLockVault,
     handleLogout,
   }

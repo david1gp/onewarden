@@ -23,7 +23,7 @@ export function DemoLocked(): JSX.Element {
               <div class="flex items-center justify-between border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-xs text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                 <div class="flex items-center gap-2">
                   <Icon path={vaultSvgIcons.shieldCheck} class="size-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Vault Decrypted & Unlocked (Presentation Preview)</span>
+                  <span>Vault Decrypted &amp; Unlocked (Presentation Preview)</span>
                 </div>
                 <Button variant="outline" size="sm" class="text-xs" onClick={() => state.lock()}>
                   Re-lock Vault

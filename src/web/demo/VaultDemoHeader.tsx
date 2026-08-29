@@ -1,4 +1,4 @@
-import { For, type JSX } from "solid-js"
+import { For, Show, type JSX } from "solid-js"
 import { LinkButtonExternal } from "#ui/interactive/link/LinkButton.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
@@ -18,6 +18,7 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
         Skip to main content
       </a>
       <div class="flex items-center gap-3">
+        <span class="sr-only">OneWarden</span>
         <LinkButtonExternal
           href="/demo"
           variant="subtle"
@@ -28,11 +29,13 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
         >
           Demo Index
         </LinkButtonExternal>
-        <div class="hidden h-4 w-px bg-slate-200 sm:block dark:bg-slate-700" />
-        <h1 class="font-semibold text-slate-900 dark:text-slate-100 text-xs">{state.title()}</h1>
-        <Badge variant="subtle" class="hidden sm:inline-flex text-[10px] px-1.5 py-0">
-          Presentation Mode
-        </Badge>
+        <Show when={state.showTitle()}>
+          <div class="hidden h-4 w-px bg-slate-200 sm:block dark:bg-slate-700" />
+          <h1 class="font-semibold text-slate-900 dark:text-slate-100 text-xs">{state.title()}</h1>
+          <Badge variant="subtle" class="hidden sm:inline-flex text-[10px] px-1.5 py-0">
+            Presentation Mode
+          </Badge>
+        </Show>
       </div>
 
       <nav aria-label="Demo Views" class="flex flex-wrap items-center gap-1">

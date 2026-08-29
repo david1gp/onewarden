@@ -21,7 +21,7 @@ export function ConsentSwitch(p: ConsentSwitchProps) {
         "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2",
         p.checked ? "bg-green-600" : "bg-slate-300 dark:bg-slate-600",
-        p.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer",
+        p.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
       )}
     >
       <span

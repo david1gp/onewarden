@@ -110,7 +110,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
 
       {/* Address */}
       <div class="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Address</p>
+        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">Address</p>
         <div class="space-y-2">
           <InputS
             id="cipher-identity-address1"
@@ -167,7 +167,9 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
 
       {/* Official Identification */}
       <div class="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Identification Numbers</p>
+        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+          Identification Numbers
+        </p>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div class="space-y-1">
             <Label for="cipher-identity-ssn" class="text-xs">
@@ -188,7 +190,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                   icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                   iconClass="size-3.5"
                   onClick={() => state.toggleSsnReveal()}
-                  class="h-7 px-1.5 text-xs text-slate-500"
+                  class="h-7 px-1.5 text-xs text-slate-600 dark:text-slate-400"
                   aria-label={state.isSsnRevealed() ? "Hide SSN" : "Show SSN"}
                 >
                   {state.isSsnRevealed() ? "Hide" : "Show"}
@@ -216,7 +218,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                   icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                   iconClass="size-3.5"
                   onClick={() => state.togglePassportReveal()}
-                  class="h-7 px-1.5 text-xs text-slate-500"
+                  class="h-7 px-1.5 text-xs text-slate-600 dark:text-slate-400"
                   aria-label={state.isPassportRevealed() ? "Hide Passport" : "Show Passport"}
                 >
                   {state.isPassportRevealed() ? "Hide" : "Show"}

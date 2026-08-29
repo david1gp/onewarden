@@ -8,6 +8,7 @@ import { LinkTextExternal } from "#ui/interactive/link/LinkText.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
+import { AuthErrorFeedback } from "./AuthErrorFeedback.jsx"
 import { AuthTwoFactorChallengeCard } from "./AuthTwoFactorChallengeCard.jsx"
 import { type AuthLoginViewProps, authLoginViewStateCreate } from "./authLoginViewStateCreate.js"
 
@@ -39,16 +40,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
             </p>
           </div>
 
-          <Show when={state.errorMessage()}>
-            {(msg) => (
-              <div
-                role="alert"
-                class="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-              >
-                {msg()}
-              </div>
-            )}
-          </Show>
+          <Show when={state.errorMessage()}>{(msg) => <AuthErrorFeedback message={msg} />}</Show>
 
           <form onSubmit={state.handleSubmit} class="space-y-4">
             <div>

@@ -6,78 +6,97 @@ export type WebAppRouteName =
   | "auth-unlock"
   | "auth-two-factor-setup"
   | "auth-two-factor-challenge"
+  | "cipher-create"
+  | "cipher-edit"
+  | "cipher-view"
   | "directory"
+  | "admin"
   | "all-items"
   | "login"
   | "secure-note"
   | "credit-card"
   | "identity"
+  | "ssh-key"
   | "empty-state"
   | "trash"
   | "locked"
 
 export function webAppRouteResolve(pathname: string): WebAppRouteName {
-  const normalized = pathname.replace(/\/+$/, "").toLowerCase()
+  const normalized = pathname.replace(/\/+$/, "")
+  const routePath = normalized.toLowerCase()
 
-  if (normalized === "" || normalized === "/") {
+  if (routePath === "" || routePath === "/") {
     return "root"
   }
-  if (normalized === "/login") {
+  if (routePath === "/login") {
     return "auth-login"
   }
-  if (normalized === "/register" || normalized === "/signup") {
+  if (routePath === "/register" || routePath === "/signup") {
     return "auth-register"
   }
-  if (normalized === "/verify" || normalized === "/verify-email" || normalized === "/verify-token") {
+  if (routePath === "/verify" || routePath === "/verify-email" || routePath === "/verify-token") {
     return "auth-verify"
   }
-  if (normalized === "/lock" || normalized === "/unlock") {
+  if (routePath === "/lock" || routePath === "/unlock") {
     return "auth-unlock"
   }
   if (
-    normalized === "/two-factor" ||
-    normalized === "/settings/two-factor" ||
-    normalized === "/2fa" ||
-    normalized === "/two-factor-setup"
+    routePath === "/two-factor" ||
+    routePath === "/settings/two-factor" ||
+    routePath === "/2fa" ||
+    routePath === "/two-factor-setup"
   ) {
     return "auth-two-factor-setup"
   }
-  if (normalized === "/two-factor-challenge" || normalized === "/2fa-challenge") {
+  if (routePath === "/two-factor-challenge" || routePath === "/2fa-challenge") {
     return "auth-two-factor-challenge"
   }
-  if (normalized === "/demo") {
+  if (routePath === "/ciphers/new" || routePath === "/ciphers/create" || routePath === "/vault/new") {
+    return "cipher-create"
+  }
+  if ((routePath.startsWith("/ciphers/") || routePath.startsWith("/vault/")) && routePath.endsWith("/edit")) {
+    return "cipher-edit"
+  }
+  if (
+    (routePath.startsWith("/ciphers/") && routePath !== "/ciphers") ||
+    (routePath.startsWith("/vault/") && routePath !== "/vault")
+  ) {
+    return "cipher-view"
+  }
+  if (routePath === "/ciphers" || routePath === "/vault") {
+    return "root"
+  }
+  if (routePath === "/demo") {
     return "directory"
   }
-  if (normalized === "/demo/all" || normalized === "/demo/all-items" || normalized === "/demo/vault") {
+  if (routePath === "/demo/admin") {
+    return "admin"
+  }
+  if (routePath === "/demo/all" || routePath === "/demo/all-items" || routePath === "/demo/vault") {
     return "all-items"
   }
-  if (normalized === "/demo/login" || normalized === "/demo/selected-login") {
+  if (routePath === "/demo/login" || routePath === "/demo/selected-login") {
     return "login"
   }
-  if (
-    normalized === "/demo/secure-note" ||
-    normalized === "/demo/selected-secure-note" ||
-    normalized === "/demo/note"
-  ) {
+  if (routePath === "/demo/secure-note" || routePath === "/demo/selected-secure-note" || routePath === "/demo/note") {
     return "secure-note"
   }
-  if (
-    normalized === "/demo/credit-card" ||
-    normalized === "/demo/selected-credit-card" ||
-    normalized === "/demo/card"
-  ) {
+  if (routePath === "/demo/credit-card" || routePath === "/demo/selected-credit-card" || routePath === "/demo/card") {
     return "credit-card"
   }
-  if (normalized === "/demo/identity" || normalized === "/demo/selected-identity") {
+  if (routePath === "/demo/identity" || routePath === "/demo/selected-identity") {
     return "identity"
   }
-  if (normalized === "/demo/empty" || normalized === "/demo/empty-state") {
+  if (routePath === "/demo/ssh-key" || routePath === "/demo/selected-ssh-key") {
+    return "ssh-key"
+  }
+  if (routePath === "/demo/empty" || routePath === "/demo/empty-state") {
     return "empty-state"
   }
-  if (normalized === "/demo/trash" || normalized === "/demo/deleted") {
+  if (routePath === "/demo/trash" || routePath === "/demo/deleted") {
     return "trash"
   }
-  if (normalized === "/demo/locked" || normalized === "/demo/lock") {
+  if (routePath === "/demo/locked" || routePath === "/demo/lock") {
     return "locked"
   }
 
