@@ -5,6 +5,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { organizationCollectionCreate } from "./organizationCollectionCreate.js"
 import type { Organization } from "./organization.js"
 import type { OrganizationCreateData } from "./organizationCreateDataSchema.js"
 import { organizationSave } from "./organizationSave.js"
@@ -25,7 +26,6 @@ export function organizationCreate(
     uuid: identifier.uuid(),
   }
   const membershipUuid = identifier.uuid()
-  const collectionUuid = identifier.uuid()
 
   return databaseTransaction(database, () => {
     const saveResult = organizationSave(database, organization, now)
@@ -37,11 +37,15 @@ export function organizationCreate(
          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [membershipUuid, userUuid, organization.uuid, 1, data.key, 2, 0],
       )
-      database.run("INSERT INTO collections (uuid, org_uuid, name) VALUES (?, ?, ?)", [
-        collectionUuid,
+      const collectionResult = organizationCollectionCreate(
+        database,
         organization.uuid,
         data.collectionName,
-      ])
+        null,
+        now,
+        identifier,
+      )
+      if (!collectionResult.success) return collectionResult
       return resultCreate(organization)
     } catch {
       return resultErrorCreate("organizationCreate", "Organization creation failed.")

@@ -11,6 +11,7 @@ import { organizationAdminMiddleware } from "./organizationAdminMiddleware.js"
 import { organizationApiKeyCreateOrRotate } from "./organizationApiKeyCreateOrRotate.js"
 import { organizationApiKeyToJson } from "./organizationApiKeyToJson.js"
 import { organizationBillingRoutesRegister } from "./organizationBillingRoutesRegister.js"
+import { organizationCollectionRoutesRegister } from "./organizationCollectionRoutesRegister.js"
 import { organizationCreate } from "./organizationCreate.js"
 import { organizationCreateDataSchema } from "./organizationCreateDataSchema.js"
 import { organizationDelete } from "./organizationDelete.js"
@@ -36,6 +37,7 @@ export function organizationRoutesRegister(
   options: OrganizationRouteOptions,
 ): void {
   organizationBillingRoutesRegister(app, options)
+  organizationCollectionRoutesRegister(app, options)
   const authenticate = (routeName: string) =>
     authenticationMiddleware({
       clock: options.clock,
