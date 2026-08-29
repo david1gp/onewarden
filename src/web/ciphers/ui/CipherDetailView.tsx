@@ -114,19 +114,21 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
               {/* Action Toolbar */}
               <div class="flex shrink-0 flex-wrap items-center gap-1.5">
-                <ButtonIcon
-                  variant="outline"
-                  size="sm"
-                  class="text-xs"
-                  icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
-                  iconClass={`size-4 fill-current dark:fill-current ${
-                    item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
-                  }`}
-                  onClick={() => state.toggleFavorite()}
-                  aria-label={item().favorite ? "Remove from Favorites" : "Add to Favorites"}
-                >
-                  {item().favorite ? "Favorited" : "Favorite"}
-                </ButtonIcon>
+                <Show when={!item().organizationId}>
+                  <ButtonIcon
+                    variant="outline"
+                    size="sm"
+                    class="text-xs"
+                    icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
+                    iconClass={`size-4 fill-current dark:fill-current ${
+                      item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
+                    }`}
+                    onClick={() => state.toggleFavorite()}
+                    aria-label={item().favorite ? "Remove from Favorites" : "Add to Favorites"}
+                  >
+                    {item().favorite ? "Favorited" : "Favorite"}
+                  </ButtonIcon>
+                </Show>
 
                 <Show when={!state.isDeleted()}>
                   <Button variant="ghost" size="sm" class="text-xs" onClick={() => state.editItem()}>
@@ -697,7 +699,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               </Show>
 
               {/* Custom Fields Section */}
-              <CipherCustomFieldsView fields={state.customFields} />
+              <CipherCustomFieldsView fields={state.customFields} itemId={state.itemId} />
 
               {/* Attachments Section */}
               <CipherAttachmentsSection

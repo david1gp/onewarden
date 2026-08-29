@@ -1,9 +1,10 @@
-import { onCleanup } from "solid-js"
+import { createEffect, onCleanup } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { CipherCustomField } from "../schemas/cipherCustomFieldSchema.js"
 
 export interface CipherCustomFieldsViewStateProps {
   fields: () => readonly CipherCustomField[]
+  itemId?: () => string | null
 }
 
 export function cipherCustomFieldsViewStateCreate(props: CipherCustomFieldsViewStateProps) {
@@ -11,6 +12,23 @@ export function cipherCustomFieldsViewStateCreate(props: CipherCustomFieldsViewS
   const copiedFieldIndex = createSignalObject<number | null>(null)
 
   let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+  const resetTransientState = () => {
+    revealedConcealedFields.set({})
+    copiedFieldIndex.set(null)
+    if (copyTimer) {
+      clearTimeout(copyTimer)
+      copyTimer = null
+    }
+  }
+
+  let previousItemId = props.itemId?.() ?? null
+  createEffect(() => {
+    const itemId = props.itemId?.() ?? null
+    if (itemId === previousItemId) return
+    previousItemId = itemId
+    resetTransientState()
+  })
 
   onCleanup(() => {
     if (copyTimer) clearTimeout(copyTimer)
@@ -34,6 +52,7 @@ export function cipherCustomFieldsViewStateCreate(props: CipherCustomFieldsViewS
     if (copyTimer) clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {
       copiedFieldIndex.set(null)
+      copyTimer = null
     }, 2000)
   }
 

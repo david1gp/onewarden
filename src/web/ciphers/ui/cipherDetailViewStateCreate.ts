@@ -42,14 +42,32 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
 
   let copyTimer: ReturnType<typeof setTimeout> | null = null
 
+  const resetTransientState = () => {
+    isPasswordRevealed.set(false)
+    isCardNumberRevealed.set(false)
+    isCvvRevealed.set(false)
+    isSsnRevealed.set(false)
+    isPassportRevealed.set(false)
+    copiedField.set(null)
+    if (copyTimer) {
+      clearTimeout(copyTimer)
+      copyTimer = null
+    }
+  }
+
   onCleanup(() => {
     if (copyTimer) clearTimeout(copyTimer)
   })
 
+  let previousItemId = displayedItem.get()?.id ?? null
   createEffect(() => {
     const externalItem = props.item()
     const currentItem = displayedItem.get()
     if (externalItem !== currentItem) displayedItem.set(externalItem)
+    const itemId = externalItem?.id ?? null
+    if (itemId === previousItemId) return
+    previousItemId = itemId
+    resetTransientState()
   })
 
   const copyToClipboard = (fieldName: string, value: string) => {
@@ -60,6 +78,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     if (copyTimer) clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {
       copiedField.set(null)
+      copyTimer = null
     }, 2000)
   }
 
@@ -284,6 +303,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
 
   return {
     item: displayedItem.get,
+    itemId: () => displayedItem.get()?.id ?? null,
     isPasswordRevealed: isPasswordRevealed.get,
     isCardNumberRevealed: isCardNumberRevealed.get,
     isCvvRevealed: isCvvRevealed.get,
