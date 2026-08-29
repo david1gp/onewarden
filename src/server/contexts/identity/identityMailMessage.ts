@@ -10,6 +10,9 @@ export type IdentityMailMessage = {
     | "verifyEmail"
     | "deleteAccount"
     | "passwordHint"
+    | "twoFactorToken"
+    | "protectedActionToken"
+    | "incompleteTwoFactor"
     | "emergencyAccessInvite"
     | "emergencyAccessInviteAccepted"
     | "emergencyAccessInviteConfirmed"
@@ -22,5 +25,9 @@ export type IdentityMailMessage = {
   userId: string | null
   targetEmail: string | null
   timestamp: string
+  ipAddress?: string
+  loginTime?: string
+  deviceName?: string
+  deviceType?: number
   actingEmail?: string
 }

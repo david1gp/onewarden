@@ -1,0 +1,15 @@
+export const twoFactorProviderType = {
+  authenticator: 0,
+  email: 1,
+  duo: 2,
+  yubikey: 3,
+  u2f: 4,
+  remember: 5,
+  organizationDuo: 6,
+  webauthn: 7,
+  recoveryCode: 8,
+  emailVerificationChallenge: 1002,
+  webauthnRegisterChallenge: 1003,
+  webauthnLoginChallenge: 1004,
+  protectedActions: 2000,
+} as const

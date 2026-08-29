@@ -62,6 +62,29 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
       record("passwordHint", email)
       return resultCreate(undefined)
     },
+    sendTwoFactorToken: async (email, token) => {
+      record("twoFactorToken", email, token)
+      return resultCreate(undefined)
+    },
+    sendProtectedActionToken: async (email, token) => {
+      record("protectedActionToken", email, token)
+      return resultCreate(undefined)
+    },
+    sendIncompleteTwoFactorLogin: async (email, ipAddress, loginTime, deviceName, deviceType) => {
+      messages.push({
+        recipient: email,
+        kind: "incompleteTwoFactor",
+        token: null,
+        userId: null,
+        targetEmail: null,
+        timestamp: timestamp(),
+        ipAddress,
+        loginTime,
+        deviceName,
+        deviceType,
+      })
+      return resultCreate(undefined)
+    },
     sendInvite: async () => resultCreate(undefined),
     sendTest: async () => resultCreate(undefined),
     sendEmergencyAccessInvite: async (email, userId, emergencyAccessId, _grantorName, grantorEmail, token) => {
