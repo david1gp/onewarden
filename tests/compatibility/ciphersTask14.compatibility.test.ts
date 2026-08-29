@@ -74,6 +74,7 @@ const expectedRegisteredCipherRoutes = expectedCipherRoutes.toSorted(
 test("cipher routes and aliases match the task 14 upstream route subset", () => {
   const registrations = serverRouteRegistrationIntrospect(serverAppCreate())
     .filter((route) => route.path.startsWith("/api/ciphers"))
+    .filter((route) => route.path !== "/api/ciphers/organization-details")
     .filter((route) => !route.path.endsWith("/events"))
     .map(({ method, path }) => [method, path])
   expect(registrations).toEqual(expectedRegisteredCipherRoutes.flatMap((route) => [route, route]))

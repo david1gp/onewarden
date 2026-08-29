@@ -5,6 +5,7 @@ import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
+import { requestQueryParse } from "../../../shared/validation/requestQueryParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
@@ -21,6 +22,7 @@ import { cipherDataSchema } from "./cipherDataSchema.js"
 import { cipherDelete } from "./cipherDelete.js"
 import { cipherIdsDataSchema } from "./cipherIdsDataSchema.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
+import { cipherFindByOrganization } from "./cipherFindByOrganization.js"
 import { cipherFindByUser } from "./cipherFindByUser.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
 import { cipherImport } from "./cipherImport.js"
@@ -39,6 +41,8 @@ import { cipherShareDataSchema } from "./cipherShareDataSchema.js"
 import { cipherShareSelected } from "./cipherShareSelected.js"
 import { cipherShareSelectedDataSchema } from "./cipherShareSelectedDataSchema.js"
 import { cipherToJson } from "./cipherToJson.js"
+import { cipherOrganizationDetailsQuerySchema } from "./cipherOrganizationDetailsQuerySchema.js"
+import { cipherOrganizationToJson } from "./cipherOrganizationToJson.js"
 import { cipherUpdate } from "./cipherUpdate.js"
 import { cipherUpdateType } from "./cipherUpdateType.js"
 import { cipherUserNotificationSend } from "./cipherUserNotificationSend.js"
@@ -47,12 +51,21 @@ import { cipherMoveSelected } from "./cipherMoveSelected.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
 import { eventType } from "../events/eventType.js"
+import { organizationManagerLooseMiddleware } from "../organizations/organizationManagerLooseMiddleware.js"
+import { organizationMembershipHasFullAccess } from "../organizations/organizationMembershipHasFullAccess.js"
+import { organizationErrorCreate } from "../organizations/organizationErrorCreate.js"
 
 const cipherPathSchema = v.object({ cipher_id: v.string() })
 
 export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, options: CipherRouteOptions): void {
   const notification = options.notification ?? cipherNotificationAdapterCreate()
   const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
+  const organizationManagerLoose = organizationManagerLooseMiddleware({
     clock: options.clock,
     database: options.database,
     publicKey: options.publicKey,
@@ -75,6 +88,45 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         cipher,
         requestContext.data.userUuid,
         cipherJsonOptions(context, options),
+      )
+      if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
+      data.push(jsonResult.data)
+    }
+    return context.json({ continuationToken: null, data, object: "list" })
+  }
+
+  const organizationDetails = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = cipherRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const queryResult = requestQueryParse(context, cipherOrganizationDetailsQuerySchema)
+    if (!queryResult.success) return apiErrorResponseCreate(queryResult)
+    const organizationUuid = context.get("organizationId")
+    const membership = context.get("organizationMembership")
+    if (organizationUuid === undefined || membership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("cipherRoutesOrganizationDetails", "Organization not found", 404),
+      )
+    if (organizationUuid !== queryResult.data.organizationId)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("cipherRoutesOrganizationDetails", "Resource not found.", 404),
+      )
+    if (!organizationMembershipHasFullAccess(membership))
+      return apiErrorResponseCreate(
+        organizationErrorCreate("cipherRoutesOrganizationDetails", "Resource not found.", 404),
+      )
+    const ciphersResult = cipherFindByOrganization(requestContext.data.database, queryResult.data.organizationId)
+    if (!ciphersResult.success) return apiErrorResponseCreate(ciphersResult)
+    const data: Record<string, unknown>[] = []
+    for (const cipher of ciphersResult.data) {
+      const jsonResult = await cipherOrganizationToJson(
+        requestContext.data.database,
+        cipher,
+        queryResult.data.organizationId,
+        {
+          clock: options.clock,
+          origin: new URL(options.publicOrigin ?? context.req.url).origin,
+          privateKey: options.privateKey,
+        },
       )
       if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
       data.push(jsonResult.data)
@@ -367,6 +419,12 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     cipherShareSelectedResponse(context, options, notification)
 
   app.get("/api/ciphers", authenticate("get_ciphers"), list)
+  app.get(
+    "/api/ciphers/organization-details",
+    authenticate("get_org_details"),
+    organizationManagerLoose,
+    organizationDetails,
+  )
   app.get("/api/ciphers/:cipher_id", authenticate("get_cipher"), get)
   app.get("/api/ciphers/:cipher_id/admin", authenticate("get_cipher_admin"), get)
   app.get("/api/ciphers/:cipher_id/details", authenticate("get_cipher_details"), get)
