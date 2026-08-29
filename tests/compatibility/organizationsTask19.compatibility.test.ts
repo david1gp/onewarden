@@ -39,6 +39,7 @@ test("task 19 exposes the upstream organization core routes and method aliases",
     ...new Set(serverRouteRegistrationIntrospect(serverAppCreate()).map((route) => routeKey(route.method, route.path))),
   ]
     .filter((route) => route.includes("/api/organizations") || route === "GET /api/plans")
+    .filter((route) => !route.includes("/collections"))
     .filter((route) => !route.includes("/public-key") && !route.includes("/users/public-keys"))
     .sort()
 

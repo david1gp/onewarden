@@ -108,6 +108,23 @@ const duplicatedTwoFactorRouteRegistrations = [
 ].flatMap((registration) => [registration, registration])
 
 const currentRouteRegistrations = [
+  ...[{ basePath: "/", method: "GET", path: "/api/collections" }].flatMap((registration) => [
+    registration,
+    registration,
+  ]),
+  ...[
+    { basePath: "/", method: "DELETE", path: "/api/organizations/:org_id/collections" },
+    { basePath: "/", method: "DELETE", path: "/api/organizations/:org_id/collections/:col_id" },
+    { basePath: "/", method: "GET", path: "/api/organizations/:org_id/collections" },
+    { basePath: "/", method: "GET", path: "/api/organizations/:org_id/collections/:col_id/details" },
+    { basePath: "/", method: "GET", path: "/api/organizations/:org_id/collections/:col_id/users" },
+    { basePath: "/", method: "GET", path: "/api/organizations/:org_id/collections/details" },
+    { basePath: "/", method: "POST", path: "/api/organizations/:org_id/collections" },
+    { basePath: "/", method: "POST", path: "/api/organizations/:org_id/collections/:col_id" },
+    { basePath: "/", method: "POST", path: "/api/organizations/:org_id/collections/:col_id/delete" },
+    { basePath: "/", method: "POST", path: "/api/organizations/:org_id/collections/bulk-access" },
+    { basePath: "/", method: "PUT", path: "/api/organizations/:org_id/collections/:col_id" },
+  ].flatMap((registration) => [registration, registration, registration]),
   ...[
     { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
     { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/v2" },
