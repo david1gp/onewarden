@@ -48,6 +48,8 @@ import { organizationToJson } from "./organizationToJson.js"
 import { organizationUpdateDataSchema } from "./organizationUpdateDataSchema.js"
 import type { IdentityAccountPasswordOrOtpData } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
 import { identityAccountPasswordOrOtpDataSchema } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
 
 export function organizationRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -113,6 +115,7 @@ export function organizationRoutesRegister(
     organizationMembersNotify(database, result.data.uuid, authentication.device.uuid, options, "syncSettings")
     return context.json(
       organizationToJson(result.data, {
+        eventsEnabled: options.config.ORG_EVENTS_ENABLED,
         groupsEnabled: options.groupsEnabled,
         mailEnabled: options.config.MAIL_ENABLED,
       }),
@@ -134,6 +137,7 @@ export function organizationRoutesRegister(
       )
     return context.json(
       organizationToJson(result.data, {
+        eventsEnabled: options.config.ORG_EVENTS_ENABLED,
         groupsEnabled: options.groupsEnabled,
         mailEnabled: options.config.MAIL_ENABLED,
       }),
@@ -161,10 +165,19 @@ export function organizationRoutesRegister(
     const saveResult = organizationSave(database, organization, options.clock.now().toISOString())
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
     const authentication = authenticationContextGet(context)
-    if (authentication !== undefined)
+    if (authentication !== undefined) {
+      options.event?.organizationEventCreate(
+        eventType.organizationUpdated,
+        organization.uuid,
+        organization.uuid,
+        authentication.user.uuid,
+        eventLogContextCreate(authentication),
+      )
       organizationMembersNotify(database, organization.uuid, authentication.device.uuid, options, "syncSettings")
+    }
     return context.json(
       organizationToJson(organization, {
+        eventsEnabled: options.config.ORG_EVENTS_ENABLED,
         groupsEnabled: options.groupsEnabled,
         mailEnabled: options.config.MAIL_ENABLED,
       }),
@@ -250,7 +263,14 @@ export function organizationRoutesRegister(
     const result = organizationLeave(database, membership, options.clock.now().toISOString())
     if (!result.success) return apiErrorResponseCreate(result)
     const authentication = authenticationContextGet(context)
-    if (authentication !== undefined)
+    if (authentication !== undefined) {
+      options.event?.organizationEventCreate(
+        eventType.organizationUserLeft,
+        membership.uuid,
+        membership.organizationUuid,
+        authentication.user.uuid,
+        eventLogContextCreate(authentication),
+      )
       organizationUsersNotify(
         [membership.userUuid],
         authentication.device.uuid,
@@ -258,6 +278,7 @@ export function organizationRoutesRegister(
         "syncSettings",
         options.clock.now(),
       )
+    }
     return new Response(null, { status: 200 })
   }
 

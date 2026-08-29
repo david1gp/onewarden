@@ -45,6 +45,8 @@ import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
 import { twoFactorBase32Decode } from "./twoFactorBase32Decode.js"
 import { twoFactorBase32Encode } from "./twoFactorBase32Encode.js"
 import type { TwoFactorRecord } from "./twoFactorRecord.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
 
 const passwordOrOtpSchema = v.object({
   masterPasswordHash: v.nullish(v.string()),
@@ -231,6 +233,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       return resultCreate(undefined)
     })
     if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
+    options.event?.userEventCreate(
+      eventType.userDisabledTwoFactor,
+      request.data.authentication.user.uuid,
+      eventLogContextCreate(request.data.authentication),
+    )
     return context.json({ enabled: false, type, object: "twoFactorProvider" as const })
   }
 
@@ -290,6 +297,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       request.data.authenticationDatabase.authentication.user,
     )
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userUpdatedTwoFactor,
+      request.data.authenticationDatabase.authentication.user.uuid,
+      eventLogContextCreate(request.data.authenticationDatabase.authentication),
+    )
     return context.json({ enabled: true, key, object: "twoFactorAuthenticator" as const })
   }
 
@@ -334,6 +346,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       })
       if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
     }
+    options.event?.userEventCreate(
+      eventType.userDisabledTwoFactor,
+      request.data.authentication.user.uuid,
+      eventLogContextCreate(request.data.authentication),
+    )
     return context.json({ enabled: false, keys: type, object: "twoFactorProvider" as const })
   }
 
@@ -462,6 +479,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       request.data.authenticationDatabase.authentication.user,
     )
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userUpdatedTwoFactor,
+      request.data.authenticationDatabase.authentication.user.uuid,
+      eventLogContextCreate(request.data.authenticationDatabase.authentication),
+    )
     return context.json({ email: emailDataResult.data.email, enabled: "true", object: "twoFactorEmail" as const })
   }
 
@@ -562,6 +584,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       request.data.authenticationDatabase.authentication.user,
     )
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userUpdatedTwoFactor,
+      request.data.authenticationDatabase.authentication.user.uuid,
+      eventLogContextCreate(request.data.authenticationDatabase.authentication),
+    )
     return context.json({ enabled: true, ...response, object: "twoFactorDuo" as const })
   }
 
@@ -627,6 +654,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       request.data.authenticationDatabase.authentication.user,
     )
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userUpdatedTwoFactor,
+      request.data.authenticationDatabase.authentication.user.uuid,
+      eventLogContextCreate(request.data.authenticationDatabase.authentication),
+    )
     return context.json({
       ...yubikeyResponseKeys(publicIds),
       enabled: true,
@@ -732,6 +764,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       request.data.authenticationDatabase.authentication.user,
     )
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userUpdatedTwoFactor,
+      request.data.authenticationDatabase.authentication.user.uuid,
+      eventLogContextCreate(request.data.authenticationDatabase.authentication),
+    )
     return context.json({
       enabled: true,
       keys: registrations.map(webauthnRegistrationToJson),
@@ -806,6 +843,11 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       return resultCreate(undefined)
     })
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userDisabledTwoFactor,
+      request.data.authentication.user.uuid,
+      eventLogContextCreate(request.data.authentication),
+    )
     return context.json({
       enabled: registrations.length > 0,
       keys: registrations.map(webauthnRegistrationToJson),

@@ -1,5 +1,11 @@
-export type DemoRouteName =
+export type WebAppRouteName =
   | "root"
+  | "auth-login"
+  | "auth-register"
+  | "auth-verify"
+  | "auth-unlock"
+  | "auth-two-factor-setup"
+  | "auth-two-factor-challenge"
   | "directory"
   | "all-items"
   | "login"
@@ -10,11 +16,34 @@ export type DemoRouteName =
   | "trash"
   | "locked"
 
-export function webAppRouteResolve(pathname: string): DemoRouteName {
+export function webAppRouteResolve(pathname: string): WebAppRouteName {
   const normalized = pathname.replace(/\/+$/, "").toLowerCase()
 
   if (normalized === "" || normalized === "/") {
     return "root"
+  }
+  if (normalized === "/login") {
+    return "auth-login"
+  }
+  if (normalized === "/register" || normalized === "/signup") {
+    return "auth-register"
+  }
+  if (normalized === "/verify" || normalized === "/verify-email" || normalized === "/verify-token") {
+    return "auth-verify"
+  }
+  if (normalized === "/lock" || normalized === "/unlock") {
+    return "auth-unlock"
+  }
+  if (
+    normalized === "/two-factor" ||
+    normalized === "/settings/two-factor" ||
+    normalized === "/2fa" ||
+    normalized === "/two-factor-setup"
+  ) {
+    return "auth-two-factor-setup"
+  }
+  if (normalized === "/two-factor-challenge" || normalized === "/2fa-challenge") {
+    return "auth-two-factor-challenge"
   }
   if (normalized === "/demo") {
     return "directory"

@@ -60,7 +60,14 @@ export function webRoutesRegister(app: Hono<AuthenticationEnvironment>, options:
       const response = await webFileResponseCreate(webVaultFolders, context.req.path.replace(/^\/+/, ""), {
         cacheControl: webCacheLong,
       })
-      return response ?? webNotFoundResponseCreate()
+      if (response !== undefined) return response
+      if (webPathIsSpaRoute(context.req.path)) {
+        const indexResponse = await webFileResponseCreate(webVaultFolders, "index.html", {
+          cacheControl: webCacheShort,
+        })
+        if (indexResponse !== undefined) return indexResponse
+      }
+      return webNotFoundResponseCreate()
     })
   }
 
@@ -180,6 +187,48 @@ function webPathDecode(path: string): string | undefined {
 function webPathIsApi(path: string): boolean {
   const prefixes = ["/admin", "/api", "/attachments", "/events", "/icons", "/identity", "/notifications"]
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+}
+
+function webPathIsSpaRoute(path: string): boolean {
+  const normalized = path.replace(/\/+$/, "").toLowerCase()
+  const routes = [
+    "/",
+    "/login",
+    "/register",
+    "/signup",
+    "/verify",
+    "/verify-email",
+    "/verify-token",
+    "/lock",
+    "/unlock",
+    "/two-factor",
+    "/settings/two-factor",
+    "/2fa",
+    "/two-factor-setup",
+    "/two-factor-challenge",
+    "/2fa-challenge",
+    "/demo",
+    "/demo/all",
+    "/demo/all-items",
+    "/demo/vault",
+    "/demo/login",
+    "/demo/selected-login",
+    "/demo/secure-note",
+    "/demo/selected-secure-note",
+    "/demo/note",
+    "/demo/credit-card",
+    "/demo/selected-credit-card",
+    "/demo/card",
+    "/demo/identity",
+    "/demo/selected-identity",
+    "/demo/empty",
+    "/demo/empty-state",
+    "/demo/trash",
+    "/demo/deleted",
+    "/demo/locked",
+    "/demo/lock",
+  ]
+  return routes.includes(normalized)
 }
 
 function webDatabaseHealthy(database: WebRouteOptions["database"]): boolean {

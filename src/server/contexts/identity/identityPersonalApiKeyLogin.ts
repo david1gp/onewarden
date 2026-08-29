@@ -16,6 +16,9 @@ import { identityAccessTokenClaimsCreate } from "./identityAccessTokenClaimsCrea
 import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
 import { identityUserFindByUuid } from "./identityUserFindByUuid.js"
 import type { IdentityUser } from "./identityUser.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
+import { identityDeviceTypeParse } from "./identityDeviceTypeParse.js"
 
 type IdentityPersonalApiKeyLoginOptions = {
   clock: Clock
@@ -25,6 +28,7 @@ type IdentityPersonalApiKeyLoginOptions = {
   issuer: string
   privateKey: KeyInput | undefined
   clientIp: string
+  event?: EventAdapter
 }
 
 function identityPersonalApiKeyTokenResponseCreate(
@@ -99,9 +103,15 @@ export async function identityPersonalApiKeyLogin(
   if (!userResult.success) return userResult
   if (userResult.data === null) return identityDomainErrorCreate(op, "Invalid client_id")
   const user = userResult.data
-  if (!user.enabled) return identityDomainErrorCreate(op, "This user has been disabled (API key login)")
-  if (user.apiKey === null || !constantTimeStringsEqual(user.apiKey, clientSecret))
+  const eventContext = { deviceType: identityDeviceTypeParse(data.deviceType), ipAddress: options.clientIp }
+  if (!user.enabled) {
+    options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+    return identityDomainErrorCreate(op, "This user has been disabled (API key login)")
+  }
+  if (user.apiKey === null || !constantTimeStringsEqual(user.apiKey, clientSecret)) {
+    options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
     return identityDomainErrorCreate(op, "Incorrect client_secret")
+  }
 
   const deviceResult = identityDeviceResolve(database, data, user.uuid, options.clock, options.identifier)
   if (!deviceResult.success) return deviceResult
@@ -122,5 +132,6 @@ export async function identityPersonalApiKeyLogin(
   if (!accessTokenResult.success) return resultErrorCreate(op, "Identity access token signing failed.")
   const saveResult = identityDeviceSave(database, device, options.clock, true)
   if (!saveResult.success) return saveResult
+  options.event?.userEventCreate(eventType.userLoggedIn, user.uuid, { ...eventContext, deviceType: device.type })
   return resultCreate(identityPersonalApiKeyTokenResponseCreate(user, accessTokenResult.data, accessClaims.exp - now))
 }

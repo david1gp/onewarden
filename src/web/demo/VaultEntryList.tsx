@@ -46,7 +46,7 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
         {/* Section Heading & Count */}
         <div class="mt-2.5 flex items-center justify-between px-0.5 text-xs">
           <span class="font-semibold text-slate-900 dark:text-slate-100">{state.filterTitle()}</span>
-          <span class="text-[11px] text-slate-500 dark:text-slate-400">
+          <span class="text-[11px] text-slate-600 dark:text-slate-400">
             {state.items().length} {state.items().length === 1 ? "item" : "items"}
           </span>
         </div>
@@ -62,7 +62,9 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
                 <Icon path={vaultSvgIcons.search} class="size-5" />
               </div>
               <p class="mt-3 font-medium text-xs text-slate-800 dark:text-slate-200">No matching items</p>
-              <p class="mt-1 text-[11px] text-slate-500">Try changing your search keywords or filter selection.</p>
+              <p class="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                Try changing your search keywords or filter selection.
+              </p>
               <Button variant="ghost" size="sm" class="mt-3 text-xs" onClick={() => state.resetFilter()}>
                 Clear filters
               </Button>
@@ -96,7 +98,7 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
                       </Show>
                     </div>
 
-                    <p class="truncate text-[11px] text-slate-500 dark:text-slate-400">{state.getItemSubtitle(item)}</p>
+                    <p class="truncate text-[11px] text-slate-600 dark:text-slate-400">{state.getItemSubtitle(item)}</p>
 
                     <div class="mt-1 flex items-center gap-1.5">
                       <Badge variant="subtle" class="px-1.5 py-0 text-[10px] font-medium">

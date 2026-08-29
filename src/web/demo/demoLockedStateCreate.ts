@@ -5,13 +5,11 @@ export function demoLockedStateCreate() {
   const isUnlocked = createSignalObject(false)
   const isSubmitting = createSignalObject(false)
 
-  const unlock = (e?: Event) => {
-    if (e) e.preventDefault()
+  const unlock = async (_password?: string) => {
     isSubmitting.set(true)
-    setTimeout(() => {
-      isSubmitting.set(false)
-      isUnlocked.set(true)
-    }, 200)
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    isSubmitting.set(false)
+    isUnlocked.set(true)
   }
 
   const lock = () => {

@@ -2,6 +2,8 @@ import type { IdentityConfig } from "./identityConfigSchema.js"
 
 export function identityConfigCreate(overrides?: Partial<IdentityConfig>): IdentityConfig {
   return {
+    ORG_EVENTS_ENABLED: overrides?.ORG_EVENTS_ENABLED ?? false,
+    EVENTS_DAYS_RETAIN: overrides?.EVENTS_DAYS_RETAIN,
     ORG_CREATION_USERS: overrides?.ORG_CREATION_USERS ?? "",
     SIGNUPS_ALLOWED: overrides?.SIGNUPS_ALLOWED ?? true,
     SIGNUPS_VERIFY: overrides?.SIGNUPS_VERIFY ?? false,

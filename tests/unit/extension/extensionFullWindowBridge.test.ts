@@ -151,6 +151,84 @@ test("full-window commands copy fields using clipboard adapter and manage timeou
   expect(currentModel.copiedFieldKey).toBe("custom:PIN")
 })
 
+test("full-window shared commands send typed messages, update busy state, and refresh", async () => {
+  const sentMessages: ExtensionRuntimeMessage[] = []
+  let currentModel: ExtensionFullWindowViewModel = {
+    ...extensionFullWindowViewModelCreate(),
+    errorMessage: "stale error",
+  }
+  let refreshCalls = 0
+
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async (message) => {
+        sentMessages.push(message)
+        return resultCreate(undefined)
+      },
+      onModelUpdate: (updater) => {
+        currentModel = updater(currentModel)
+      },
+      onRefresh: async () => {
+        refreshCalls += 1
+      },
+    },
+  )
+
+  commands.loginFill(testLogin)
+  commands.vaultSync()
+  commands.vaultLock()
+  commands.vaultLogout()
+  commands.vaultUnlock("master-password")
+
+  expect(sentMessages).toEqual([
+    { type: "loginFill", request: { loginId: "cipher-2" } },
+    { type: "manualSync" },
+    { type: "lock" },
+    { type: "logout" },
+    { type: "unlock", request: { password: "master-password" } },
+  ])
+  expect(currentModel.busy).toBe(true)
+  expect(currentModel.errorMessage).toBeNull()
+
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  expect(refreshCalls).toBe(4)
+})
+
+test("full-window shared unlock failure propagates the error and clears busy", async () => {
+  let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
+
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async () => resultErrorCreate("extensionBackgroundRouter.unlock", "Invalid master password."),
+      onModelUpdate: (updater) => {
+        currentModel = updater(currentModel)
+      },
+    },
+  )
+
+  commands.vaultUnlock("wrong-password")
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  expect(currentModel.busy).toBe(false)
+  expect(currentModel.errorMessage).toBe("Invalid master password.")
+})
+
+test("full-window command overrides take precedence over shared commands", () => {
+  let overrideCalls = 0
+  const commands = extensionFullWindowCommandsCreate({
+    vaultSync: () => {
+      overrideCalls += 1
+    },
+  })
+
+  commands.vaultSync()
+
+  expect(overrideCalls).toBe(1)
+})
+
 test("full-window commands handle create failure gracefully", async () => {
   let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
 

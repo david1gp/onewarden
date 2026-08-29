@@ -29,6 +29,7 @@ import { adminDiagnosticsAdapterCreate } from "./adminDiagnosticsAdapterCreate.j
 import { adminIssuerResolve } from "./adminIssuerResolve.js"
 import { adminOrganizationJsonCreate } from "./adminOrganizationJsonCreate.js"
 import type { AdminRouteOptions } from "./adminRouteOptions.js"
+import { eventType } from "../events/eventType.js"
 import { adminSessionTokenCreate } from "./adminSessionTokenCreate.js"
 import { adminSessionTokenVerify } from "./adminSessionTokenVerify.js"
 import { adminTokenValidate } from "./adminTokenValidate.js"
@@ -47,6 +48,7 @@ const adminMembershipTypeDataSchema = v.object({
 const adminConfigurationDataSchema = v.record(v.string(), v.unknown())
 
 type AdminHandler = (context: Context<any>) => Response | Promise<Response>
+const adminActingUserUuid = "vaultwarden-admin-00000-000000000000"
 
 const adminFakeUuid = "00000000-0000-0000-0000-000000000000"
 const adminFakeSsoIdentifier = "00000000-01DC-01DC-01DC-000000000000"
@@ -224,8 +226,17 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     const userResult = adminUserFindByUuid(databaseResult.data, userId)
     if (!userResult.success) return apiErrorResponseCreate(userResult)
     if (userResult.data === null) return apiErrorResponseCreate(adminNotFoundError("adminDeleteUser"))
+    const memberships = adminMembershipsFind(databaseResult.data, userResult.data.uuid)
     const deleteResult = adminUserDelete(databaseResult.data, userResult.data)
     if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
+    for (const membership of memberships)
+      options.event?.organizationEventCreate(
+        eventType.organizationUserDeleted,
+        membership.uuid,
+        membership.orgUuid,
+        adminActingUserUuid,
+        { deviceType: 14, ipAddress: adminIpResolve(context) },
+      )
     return adminEmptyResponse()
   }
 
@@ -234,8 +245,17 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     if (!databaseResult.success) return apiErrorResponseCreate(databaseResult)
     const userId = context.req.param("user_id")
     if (userId === undefined) return apiErrorResponseCreate(adminNotFoundError("adminDeleteSsoUser"))
+    const memberships = adminMembershipsFind(databaseResult.data, userId)
     try {
       databaseResult.data.run("DELETE FROM sso_users WHERE user_uuid = ?", [userId])
+      for (const membership of memberships)
+        options.event?.organizationEventCreate(
+          eventType.organizationUserUnlinkedSso,
+          membership.uuid,
+          membership.orgUuid,
+          adminActingUserUuid,
+          { deviceType: 14, ipAddress: adminIpResolve(context) },
+        )
       return adminEmptyResponse()
     } catch {
       return apiErrorResponseCreate(adminError("adminDeleteSsoUser", "SSO user deletion failed", "platform.internal"))
@@ -358,6 +378,13 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
         membershipType,
         membership.uuid,
       ])
+      options.event?.organizationEventCreate(
+        eventType.organizationUserUpdated,
+        membership.uuid,
+        bodyResult.data.org_uuid,
+        adminActingUserUuid,
+        { deviceType: 14, ipAddress: adminIpResolve(context) },
+      )
       return adminEmptyResponse()
     } catch {
       return apiErrorResponseCreate(
@@ -903,6 +930,26 @@ function adminDisplaySize(size: number): string {
     unit += 1
   }
   return `${value.toFixed(2)} ${units[unit]}`
+}
+
+function adminMembershipsFind(
+  database: DatabaseConnection,
+  userUuid: string,
+): Array<{ orgUuid: string; uuid: string }> {
+  try {
+    return database
+      .query<{ org_uuid: string; uuid: string }, [string]>(
+        "SELECT org_uuid, uuid FROM users_organizations WHERE user_uuid = ?",
+      )
+      .all(userUuid)
+      .map((membership) => ({ orgUuid: membership.org_uuid, uuid: membership.uuid }))
+  } catch {
+    return []
+  }
+}
+
+function adminIpResolve(context: Context<any>): string {
+  return context.req.header("x-real-ip") ?? context.req.header("x-forwarded-for")?.split(",", 1)[0]?.trim() ?? "unknown"
 }
 
 function adminIpHeaderResolve(context: Context<any>): string {

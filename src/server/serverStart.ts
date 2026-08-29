@@ -13,6 +13,7 @@ import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyA
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { twoFactorIncompleteNotificationRun } from "./contexts/twoFactor/twoFactorIncompleteNotificationRun.js"
 import { twoFactorWebAuthnU2fMigrate } from "./contexts/twoFactor/twoFactorWebAuthnU2fMigrate.js"
+import { eventPurge } from "./contexts/events/eventPurge.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
@@ -144,6 +145,10 @@ try {
     const result = await sendPurge(database, serverClock, sendStorage)
     if (!result.success) logger.error("send.purge-failed", { errorMessage: result.errorMessage })
   }
+  const purgeEvents = async (): Promise<void> => {
+    const result = eventPurge(database, serverClock, identityConfigResult.data.EVENTS_DAYS_RETAIN)
+    if (!result.success) logger.error("event.purge-failed", { errorMessage: result.errorMessage })
+  }
   const runEmergencyAccessTimeout = async (): Promise<void> => {
     const result = await emergencyAccessTimeoutRun({
       clock: serverClock,
@@ -173,6 +178,10 @@ try {
       logger.error("two-factor.incomplete-notification-failed", { errorMessage: result.errorMessage })
   }
   const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
+  const eventPurgeInterval =
+    identityConfigResult.data.ORG_EVENTS_ENABLED && identityConfigResult.data.EVENTS_DAYS_RETAIN !== undefined
+      ? setInterval(() => void purgeEvents(), 60 * 60 * 1_000)
+      : undefined
   const emergencyAccessTimeoutInterval = setInterval(() => void runEmergencyAccessTimeout(), 60 * 60 * 1_000)
   const emergencyAccessReminderInterval = setInterval(() => void runEmergencyAccessReminder(), 60 * 60 * 1_000)
   const twoFactorIncompleteNotificationInterval = setInterval(
@@ -180,6 +189,7 @@ try {
     60 * 1_000,
   )
   void purgeSends()
+  if (eventPurgeInterval !== undefined) void purgeEvents()
   void runEmergencyAccessTimeout()
   void runEmergencyAccessReminder()
   void runTwoFactorIncompleteNotification()
@@ -194,6 +204,7 @@ try {
         logger.error("server.stop-failed", { error: "stop-failed" })
       }
       clearInterval(purgeInterval)
+      if (eventPurgeInterval !== undefined) clearInterval(eventPurgeInterval)
       clearInterval(emergencyAccessTimeoutInterval)
       clearInterval(emergencyAccessReminderInterval)
       clearInterval(twoFactorIncompleteNotificationInterval)

@@ -49,6 +49,13 @@ function identityConfigEmailIsValid(email: string): boolean {
 }
 
 export const identityConfigSchema = v.object({
+  ORG_EVENTS_ENABLED: v.optional(identityConfigBooleanSchema, "false"),
+  EVENTS_DAYS_RETAIN: v.optional(
+    v.pipe(
+      identityConfigNonNegativeIntegerSchema,
+      v.check((value: number) => Number.isSafeInteger(value), "The value must be a safe non-negative integer."),
+    ),
+  ),
   ORG_CREATION_USERS: v.optional(identityConfigOrganizationCreationUsersSchema, ""),
   SIGNUPS_ALLOWED: v.optional(identityConfigBooleanSchema, "true"),
   SIGNUPS_VERIFY: v.optional(identityConfigBooleanSchema, "false"),

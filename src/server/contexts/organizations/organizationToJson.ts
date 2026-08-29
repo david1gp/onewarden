@@ -1,6 +1,7 @@
 import type { Organization } from "./organization.js"
 
 type OrganizationJsonOptions = {
+  eventsEnabled?: boolean
   groupsEnabled?: boolean
   mailEnabled?: boolean
 }
@@ -19,7 +20,7 @@ export function organizationToJson(
     use2fa: true,
     useCustomPermissions: true,
     useDirectory: false,
-    useEvents: false,
+    useEvents: options.eventsEnabled ?? false,
     useGroups: options.groupsEnabled ?? false,
     useTotp: true,
     usePolicies: true,

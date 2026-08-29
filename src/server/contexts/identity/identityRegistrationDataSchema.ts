@@ -1,18 +1,9 @@
 import * as v from "valibot"
+import { identityAccountKeysDataSchema } from "./identityAccountKeysDataSchema.js"
+import { identityKdfFieldsSchema } from "./identityKdfFieldsSchema.js"
 import { identityKdfSchema } from "./identityKdfSchema.js"
 
 const identityOptionalStringSchema = v.nullish(v.string())
-const identityRegistrationIntegerSchema = v.pipe(
-  v.number(),
-  v.integer(),
-  v.minValue(-2_147_483_648),
-  v.maxValue(2_147_483_647),
-)
-
-const identityKeysSchema = v.object({
-  encryptedPrivateKey: v.string(),
-  publicKey: v.string(),
-})
 
 const identityMasterPasswordAuthenticationSchema = v.object({
   kdf: identityKdfSchema,
@@ -30,14 +21,7 @@ const identityMasterPasswordUnlockSchema = v.object({
 
 export const identityRegistrationDataSchema = v.object({
   email: v.string(),
-  kdf: v.optional(identityRegistrationIntegerSchema),
-  kdfType: v.optional(identityRegistrationIntegerSchema),
-  kdfIterations: v.optional(identityRegistrationIntegerSchema),
-  iterations: v.optional(identityRegistrationIntegerSchema),
-  kdfMemory: v.nullish(identityRegistrationIntegerSchema),
-  memory: v.nullish(identityRegistrationIntegerSchema),
-  kdfParallelism: v.nullish(identityRegistrationIntegerSchema),
-  parallelism: v.nullish(identityRegistrationIntegerSchema),
+  ...identityKdfFieldsSchema,
   key: identityOptionalStringSchema,
   userSymmetricKey: identityOptionalStringSchema,
   masterPasswordHash: identityOptionalStringSchema,
@@ -50,8 +34,8 @@ export const identityRegistrationDataSchema = v.object({
   acceptEmergencyAccessInviteToken: identityOptionalStringSchema,
   orgInviteToken: identityOptionalStringSchema,
   token: identityOptionalStringSchema,
-  keys: v.nullish(identityKeysSchema),
-  userAsymmetricKeys: v.nullish(identityKeysSchema),
+  keys: v.nullish(identityAccountKeysDataSchema),
+  userAsymmetricKeys: v.nullish(identityAccountKeysDataSchema),
   masterPasswordAuthentication: v.nullish(identityMasterPasswordAuthenticationSchema),
   masterPasswordUnlock: v.nullish(identityMasterPasswordUnlockSchema),
 })

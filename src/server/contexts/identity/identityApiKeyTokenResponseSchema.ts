@@ -1,29 +1,10 @@
 import * as v from "valibot"
-
-const identityApiKeyAccountKeysSchema = v.object({
-  publicKeyEncryptionKeyPair: v.object({
-    wrappedPrivateKey: v.nullable(v.string()),
-    publicKey: v.nullable(v.string()),
-    Object: v.literal("publicKeyEncryptionKeyPair"),
-  }),
-  Object: v.literal("privateKeys"),
-})
+import { identityAccountKeysSchema } from "./identityAccountKeysSchema.js"
+import { identityMasterPasswordUnlockSchema } from "./identityMasterPasswordUnlockSchema.js"
 
 const identityApiKeyUserDecryptionOptionsSchema = v.object({
   HasMasterPassword: v.boolean(),
-  MasterPasswordUnlock: v.nullable(
-    v.object({
-      Kdf: v.object({
-        KdfType: v.number(),
-        Iterations: v.number(),
-        Memory: v.nullable(v.number()),
-        Parallelism: v.nullable(v.number()),
-      }),
-      MasterKeyEncryptedUserKey: v.string(),
-      MasterKeyWrappedUserKey: v.string(),
-      Salt: v.string(),
-    }),
-  ),
+  MasterPasswordUnlock: v.nullable(identityMasterPasswordUnlockSchema),
   Object: v.literal("userDecryptionOptions"),
 })
 
@@ -40,7 +21,7 @@ export const identityApiKeyTokenResponseSchema = v.object({
   ResetMasterPassword: v.boolean(),
   ForcePasswordReset: v.boolean(),
   scope: v.literal("api"),
-  AccountKeys: v.nullable(identityApiKeyAccountKeysSchema),
+  AccountKeys: v.nullable(identityAccountKeysSchema),
   UserDecryptionOptions: identityApiKeyUserDecryptionOptionsSchema,
 })
 

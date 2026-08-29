@@ -99,6 +99,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
+        event: options.event,
       })
       if (!result.success) return apiErrorResponseCreate(result)
       return context.json(result.data)
@@ -128,6 +129,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
         sso,
+        event: options.event,
         push: options.push,
       })
       if (!result.success) return apiErrorResponseCreate(result)
@@ -164,6 +166,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         publicOrigin: options.publicOrigin,
         clientVersion: context.req.header("Bitwarden-Client-Version"),
         twoFactor: options.twoFactor,
+        event: options.event,
       })
       if (!result.success) {
         const twoFactorResponse = identityTwoFactorLoginResponse(result)
@@ -310,7 +313,8 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     })
     if (!result.success) return apiErrorResponseCreate(result)
     if (result.data.kind === "noContent") return new Response(null, { status: 204 })
-    return context.json(result.data.token)
+    if (result.data.userId === undefined) return context.json(result.data.token)
+    return context.json({ token: result.data.token, userId: result.data.userId })
   })
   identityAccountRoutesRegister(app, options)
   twoFactorRoutesRegister(app, options)

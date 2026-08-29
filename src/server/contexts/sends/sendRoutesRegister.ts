@@ -7,7 +7,7 @@ import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
+import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import type { IdentityDevice } from "../identity/identityDevice.js"
 import { pushRelaySendUpdate } from "../push/pushRelaySendUpdate.js"
@@ -594,10 +594,13 @@ function sendRequestContextResolve(
   context: Context<AuthenticationEnvironment>,
   options: SendRouteOptions,
 ): Result<SendRequestContext> {
-  const authentication = authenticationContextGet(context)
-  if (authentication === undefined) return sendErrorCreate("sendAuthentication", "Authentication is required.", 401)
-  const database = options.database ?? context.get("database")
-  if (database === undefined) return sendErrorCreate("sendDatabase", "Database unavailable.", 500)
+  const requestContext = authenticationDatabaseRequestContextResolve(context, {
+    authenticationErrorCreate: () => sendErrorCreate("sendAuthentication", "Authentication is required.", 401),
+    databaseErrorCreate: () => sendErrorCreate("sendDatabase", "Database unavailable.", 500),
+    databaseOverride: options.database,
+  })
+  if (!requestContext.success) return requestContext
+  const { authentication, database } = requestContext.data
   return resultCreate({ database, device: authentication.device, userUuid: authentication.user.uuid })
 }
 

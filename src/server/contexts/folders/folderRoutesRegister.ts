@@ -1,12 +1,12 @@
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
-import { type ResultErr } from "#result"
+import { type Result } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
-import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
+import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { folderCreate } from "./folderCreate.js"
@@ -142,22 +142,20 @@ export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
 function folderRequestContextResolve(
   context: Context<AuthenticationEnvironment>,
   options: FolderRouteOptions,
-): FolderRequestContextResult {
-  const authentication = authenticationContextGet(context)
-  if (authentication === undefined)
-    return apiErrorCreate("folderAuthentication", "platform.unauthorized", "Authentication is required.")
-  const database = options.database ?? context.get("database")
-  if (database === undefined) return apiErrorCreate("folderDatabase", "platform.internal", "Database unavailable.")
+): Result<FolderRequestContext> {
+  const requestContext = authenticationDatabaseRequestContextResolve(context, {
+    authenticationErrorCreate: () =>
+      apiErrorCreate("folderAuthentication", "platform.unauthorized", "Authentication is required."),
+    databaseErrorCreate: () => apiErrorCreate("folderDatabase", "platform.internal", "Database unavailable."),
+    databaseOverride: options.database,
+  })
+  if (!requestContext.success) return requestContext
+  const { authentication, database } = requestContext.data
   return { success: true, data: { database, device: authentication.device, userUuid: authentication.user.uuid } }
 }
 
-type FolderRequestContextResult =
-  | {
-      success: true
-      data: {
-        database: NonNullable<FolderRouteOptions["database"]>
-        device: NonNullable<AuthenticationContext>["device"]
-        userUuid: string
-      }
-    }
-  | ResultErr
+type FolderRequestContext = {
+  database: NonNullable<FolderRouteOptions["database"]>
+  device: AuthenticationContext["device"]
+  userUuid: string
+}

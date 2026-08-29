@@ -5,6 +5,7 @@ test("identityConfigLoad applies task 6 registration defaults", () => {
   expect(identityConfigLoad({})).toEqual({
     success: true,
     data: {
+      ORG_EVENTS_ENABLED: false,
       ORG_CREATION_USERS: "",
       SIGNUPS_ALLOWED: true,
       SIGNUPS_VERIFY: false,
@@ -80,6 +81,15 @@ test("identityConfigLoad rejects invalid resend and emergency values", () => {
   expect(identityConfigLoad({ EMERGENCY_ACCESS_ALLOWED: "yes" }).success).toBe(false)
   expect(identityConfigLoad({ SIGNUPS_VERIFY_RESEND_TIME: "-1" }).success).toBe(false)
   expect(identityConfigLoad({ SIGNUPS_VERIFY_RESEND_LIMIT: "0" }).success).toBe(true)
+})
+
+test("identityConfigLoad validates event retention as a safe non-negative integer", () => {
+  expect(identityConfigLoad({ EVENTS_DAYS_RETAIN: "0" })).toMatchObject({
+    success: true,
+    data: { EVENTS_DAYS_RETAIN: 0 },
+  })
+  expect(identityConfigLoad({ EVENTS_DAYS_RETAIN: "-1" }).success).toBe(false)
+  expect(identityConfigLoad({ EVENTS_DAYS_RETAIN: "9007199254740992" }).success).toBe(false)
 })
 
 test("identityConfigLoad validates and normalizes organization creation users", () => {

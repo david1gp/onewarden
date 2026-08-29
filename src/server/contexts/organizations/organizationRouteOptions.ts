@@ -6,11 +6,13 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import type { NotificationAdapter } from "../notifications/notificationAdapter.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
 
 export type OrganizationRouteOptions = {
   clock: Clock
   config: IdentityConfig
   database: DatabaseConnection | undefined
+  event?: EventAdapter
   groupsEnabled: boolean
   identifier: Identifier
   mail?: IdentityMailAdapter

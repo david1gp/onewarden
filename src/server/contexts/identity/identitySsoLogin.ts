@@ -28,6 +28,9 @@ import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityUserTokenResponseCreate } from "./identityUserTokenResponseCreate.js"
 import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
+import { identityDeviceTypeParse } from "./identityDeviceTypeParse.js"
 
 type IdentitySsoLoginOptions = {
   clock: Clock
@@ -40,6 +43,7 @@ type IdentitySsoLoginOptions = {
   clientIp: string
   push?: PushRelayAdapter
   sso: IdentitySsoAdapter
+  event?: EventAdapter
 }
 
 function identitySsoUserCreate(
@@ -127,6 +131,7 @@ export async function identitySsoLogin(
     organizationConfig = configResult.data
   }
   const ssoConfig = organizationConfig ?? options.config
+  const eventContext = { deviceType: identityDeviceTypeParse(data.deviceType), ipAddress: options.clientIp }
   let authenticatedUser = auth.authResponse
   if (authenticatedUser === null) {
     if (auth.codeResponseError !== null) {
@@ -165,7 +170,10 @@ export async function identitySsoLogin(
   let user: IdentityUser
   if (linkedResult.data !== null) {
     user = linkedResult.data.user
-    if (!user.enabled) return identityDomainErrorCreate(op, "This user has been disabled")
+    if (!user.enabled) {
+      options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+      return identityDomainErrorCreate(op, "This user has been disabled")
+    }
   } else {
     const emailResult = identitySsoUserFindByEmail(database, authenticatedUser.email)
     if (!emailResult.success) return emailResult
@@ -186,14 +194,24 @@ export async function identitySsoLogin(
       const userSaveResult = identityUserSave(database, user)
       if (!userSaveResult.success) return userSaveResult
     } else {
-      if (!emailResult.data.user.enabled) return identityDomainErrorCreate(op, "This user has been disabled")
-      if (emailResult.data.identifier !== null)
+      if (!emailResult.data.user.enabled) {
+        options.event?.userEventCreate(eventType.userFailedLogin, emailResult.data.user.uuid, eventContext)
+        return identityDomainErrorCreate(op, "This user has been disabled")
+      }
+      if (emailResult.data.identifier !== null) {
+        options.event?.userEventCreate(eventType.userFailedLogin, emailResult.data.user.uuid, eventContext)
         return identityDomainErrorCreate(op, "Existing SSO user with same email")
+      }
       user = emailResult.data.user
-      if (user.privateKey !== null && !ssoConfig.SSO_SIGNUPS_MATCH_EMAIL)
+      if (user.privateKey !== null && !ssoConfig.SSO_SIGNUPS_MATCH_EMAIL) {
+        options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
         return identityDomainErrorCreate(op, "Existing non SSO user with same email")
+      }
       const verificationError = identitySsoEmailVerificationError(authenticatedUser, ssoConfig, true)
-      if (verificationError !== null) return identityDomainErrorCreate(op, verificationError)
+      if (verificationError !== null) {
+        options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+        return identityDomainErrorCreate(op, verificationError)
+      }
       if (user.passwordHash.byteLength === 0) {
         user.verifiedAt = options.clock.now().toISOString()
         if (authenticatedUser.user_name !== null) user.name = authenticatedUser.user_name
@@ -234,5 +252,9 @@ export async function identitySsoLogin(
   }
   const deleteResult = identitySsoAuthDelete(database, auth.state)
   if (!deleteResult.success) return deleteResult
+  options.event?.userEventCreate(eventType.userLoggedIn, user.uuid, {
+    deviceType: deviceResult.data.type,
+    ipAddress: options.clientIp,
+  })
   return resultCreate(identityUserTokenResponseCreate(user, bundleResult.data))
 }

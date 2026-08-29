@@ -31,6 +31,8 @@ import type { TwoFactorWebAuthnAuthentication } from "./twoFactorWebAuthnAuthent
 import { twoFactorWebAuthnRegistrationCounterUpdate } from "./twoFactorWebAuthnRegistrationCounterUpdate.js"
 import { twoFactorWebAuthnStateRead } from "./twoFactorWebAuthnStateRead.js"
 import { twoFactorYubikeyLoginValidate } from "./twoFactorYubikeyLoginValidate.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
 
 type TwoFactorLoginOptions = {
   clock: Clock
@@ -45,6 +47,7 @@ type TwoFactorLoginOptions = {
   clientVersion?: string
   identifier: Identifier
   twoFactor?: TwoFactorAdapters
+  event?: EventAdapter
 }
 
 type TwoFactorLoginChallenge = {
@@ -111,6 +114,10 @@ export async function twoFactorLogin(
     if (validationResult.success) {
       const consumeResult = twoFactorRecoveryCodeConsume(options.database, user, token)
       if (!consumeResult.success) return consumeResult
+      options.event?.userEventCreate(eventType.userRecoveredTwoFactor, user.uuid, {
+        deviceType: options.device.type,
+        ipAddress: options.clientIp,
+      })
     }
   } else if (selected === twoFactorProviderType.remember) {
     const rememberResult = await authenticationTrustedDeviceValidate(options.device, token, {
@@ -136,11 +143,16 @@ export async function twoFactorLogin(
     validationResult = await twoFactorRecordLoginValidate(record, token, user, options, adapters)
   }
 
-  if (!validationResult.success)
+  if (!validationResult.success) {
+    options.event?.userEventCreate(eventType.userFailedLoginTwoFactor, user.uuid, {
+      deviceType: options.device.type,
+      ipAddress: options.clientIp,
+    })
     return twoFactorLoginRequired(
       await twoFactorLoginChallengeCreate(usableRecords, user, options),
       validationResult.errorMessage,
     )
+  }
 
   if (selected === twoFactorProviderType.webauthn && validationResult.data === undefined)
     return twoFactorLoginRequired(

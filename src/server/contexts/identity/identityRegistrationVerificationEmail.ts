@@ -8,6 +8,7 @@ import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import { identityInvitationExists } from "./identityInvitationExists.js"
 import { identityRegistrationVerifyTokenCreate } from "./identityRegistrationVerifyTokenCreate.js"
+import { identityVerifyEmailTokenCreate } from "./identityVerifyEmailTokenCreate.js"
 import { identityUserFindByEmail } from "./identityUserFindByEmail.js"
 
 type IdentityRegistrationVerificationEmailOptions = {
@@ -23,9 +24,34 @@ export async function identityRegistrationVerificationEmail(
   email: string,
   name: string | null,
   options: IdentityRegistrationVerificationEmailOptions,
-): Promise<Result<{ kind: "noContent" } | { kind: "token"; token: string }>> {
+): Promise<Result<{ kind: "noContent" } | { kind: "token"; token: string; userId?: string }>> {
   const op = "identityRegistrationVerificationEmail"
   const database = options.database
+  if (database !== undefined) {
+    const existingUserResult = identityUserFindByEmail(database, email)
+    if (!existingUserResult.success) return existingUserResult
+    const existingUser = existingUserResult.data
+    if (existingUser !== null) {
+      if (existingUser.verifiedAt !== null) return resultCreate({ kind: "noContent" })
+      const tokenResult = await identityVerifyEmailTokenCreate(
+        existingUser.uuid,
+        options.issuer,
+        options.privateKey,
+        options.clock,
+        options.config.INVITATION_EXPIRATION_HOURS,
+      )
+      if (!tokenResult.success) return tokenResult
+      if (!options.config.MAIL_ENABLED) {
+        return resultCreate({ kind: "token", token: tokenResult.data, userId: existingUser.uuid })
+      }
+      try {
+        await options.mail.sendVerifyEmail?.(existingUser.email, existingUser.uuid, tokenResult.data)
+      } catch {
+        void 0
+      }
+      return resultCreate({ kind: "noContent" })
+    }
+  }
   const signupAllowed = identityEmailDomainAllowed(options.config, email)
   if (!signupAllowed) {
     if (options.config.MAIL_ENABLED || database === undefined) {

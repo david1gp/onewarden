@@ -58,6 +58,8 @@ import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOr
 import { organizationMembershipFromRow } from "../organizations/organizationMembershipFromRow.js"
 import type { OrganizationMembershipRow } from "../organizations/organizationMembershipRow.js"
 import { organizationPolicyCheckUserAllowed } from "../organizations/organizationPolicyCheckUserAllowed.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
 
 export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -212,6 +214,11 @@ export function identityAccountRoutesRegister(
     }
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userChangedPassword,
+      user.uuid,
+      eventLogContextCreate(requestContext.data.authentication),
+    )
     return context.json({ object: "set-password" as const, captchaBypassToken: "" })
   }
 
@@ -287,6 +294,11 @@ export function identityAccountRoutesRegister(
     if (!passwordResult.success) return apiErrorResponseCreate(passwordResult)
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
+    options.event?.userEventCreate(
+      eventType.userChangedPassword,
+      user.uuid,
+      eventLogContextCreate(requestContext.data.authentication),
+    )
     return new Response(null, { status: 200 })
   }
 
