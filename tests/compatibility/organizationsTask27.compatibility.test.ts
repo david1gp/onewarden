@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteRegistrationIntrospect.js"
 import { serverAppCreate } from "../../src/server/serverAppCreate.js"
+import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteRegistrationIntrospect.js"
 import manifest from "../../tools/compatibility/upstream-route-manifest.json"
 
 test("task 27 registers every upstream public compatibility route and preserves its aliases", () => {
@@ -39,7 +39,7 @@ test("task 27 registers every upstream public compatibility route and preserves 
       route.path === "/api/users/:user_id/public-key" ||
       route.path === "/api/organizations/:org_id/users/public-keys" ||
       route.path === "/api/organizations/:org_id/public-key" ||
-      route.path === "/api/organizations/:org_id/keys" ||
+      (route.path === "/api/organizations/:org_id/keys" && route.method === "GET") ||
       route.path === "/api/public/organization/import",
   )
   expect(
