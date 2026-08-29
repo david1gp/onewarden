@@ -115,3 +115,16 @@ test("popup commands handle unlock failure by updating model error and clearing 
   expect(currentModel.busy).toBe(false)
   expect(currentModel.errorMessage).toBe("Invalid master password.")
 })
+
+test("popup command overrides take precedence over shared commands", () => {
+  let overrideCalls = 0
+  const commands = extensionPopupCommandsCreate({
+    vaultSync: () => {
+      overrideCalls += 1
+    },
+  })
+
+  commands.vaultSync()
+
+  expect(overrideCalls).toBe(1)
+})
