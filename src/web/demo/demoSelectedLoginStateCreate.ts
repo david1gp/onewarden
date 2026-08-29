@@ -1,9 +1,5 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { demoSelectedStateCreate } from "./demoSelectedStateCreate.js"
 
 export function demoSelectedLoginStateCreate() {
-  return {
-    items: vaultDemoData,
-    defaultCategory: "login",
-    defaultSelectedId: "item-github-enterprise",
-  }
+  return demoSelectedStateCreate("login", "item-github-enterprise")
 }

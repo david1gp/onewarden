@@ -1,9 +1,5 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { demoSelectedStateCreate } from "./demoSelectedStateCreate.js"
 
 export function demoSelectedCreditCardStateCreate() {
-  return {
-    items: vaultDemoData,
-    defaultCategory: "creditCard",
-    defaultSelectedId: "item-corporate-card",
-  }
+  return demoSelectedStateCreate("creditCard", "item-corporate-card")
 }

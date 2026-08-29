@@ -1,9 +1,5 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { demoSelectedStateCreate } from "./demoSelectedStateCreate.js"
 
 export function demoSelectedSecureNoteStateCreate() {
-  return {
-    items: vaultDemoData,
-    defaultCategory: "secureNote",
-    defaultSelectedId: "item-wifi-office",
-  }
+  return demoSelectedStateCreate("secureNote", "item-wifi-office")
 }

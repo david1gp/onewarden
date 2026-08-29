@@ -1,9 +1,5 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { demoSelectedStateCreate } from "./demoSelectedStateCreate.js"
 
 export function demoSelectedIdentityStateCreate() {
-  return {
-    items: vaultDemoData,
-    defaultCategory: "identity",
-    defaultSelectedId: "item-identity-work",
-  }
+  return demoSelectedStateCreate("identity", "item-identity-work")
 }
