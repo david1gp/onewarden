@@ -1,10 +1,13 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { vaultDemoStore } from "./vaultDemoStore.js"
 import type { VaultItem } from "./vaultItemSchema.js"
 
-type DemoSelectedCategory = Extract<VaultItem["category"], "login" | "secureNote" | "creditCard" | "identity">
+type DemoSelectedCategory = Extract<
+  VaultItem["category"],
+  "login" | "secureNote" | "creditCard" | "identity" | "sshKey"
+>
 
 type DemoSelectedState<Category extends DemoSelectedCategory> = {
-  items: typeof vaultDemoData
+  items: readonly VaultItem[]
   defaultCategory: Category
   defaultSelectedId: string
 }
@@ -14,7 +17,9 @@ export function demoSelectedStateCreate<Category extends DemoSelectedCategory>(
   defaultSelectedId: string,
 ): DemoSelectedState<Category> {
   return {
-    items: vaultDemoData,
+    get items() {
+      return vaultDemoStore.activeItems()
+    },
     defaultCategory,
     defaultSelectedId,
   }

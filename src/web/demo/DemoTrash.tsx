@@ -1,8 +1,8 @@
 import type { JSX } from "solid-js"
 import { Icon } from "#ui/static/icon/Icon.jsx"
+import { demoTrashStateCreate } from "./demoTrashStateCreate.js"
 import { VaultDemoHeader } from "./VaultDemoHeader.jsx"
 import { VaultWorkspace } from "./VaultWorkspace.jsx"
-import { demoTrashStateCreate } from "./demoTrashStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
 export function DemoTrash(): JSX.Element {
@@ -20,7 +20,7 @@ export function DemoTrash(): JSX.Element {
           </span>
         </div>
         <div class="flex-1 overflow-hidden">
-          <VaultWorkspace initialItems={state.items} defaultSelectedId={state.defaultSelectedId} />
+          <VaultWorkspace items={() => state.items} includeDeleted defaultSelectedId={state.defaultSelectedId} />
         </div>
       </main>
     </div>

@@ -14,7 +14,7 @@ export interface VaultNavStateProps {
 export function vaultNavStateCreate(props: VaultNavStateProps) {
   const totalCount = createMemo(() => props.items().length)
 
-  const favoritesCount = createMemo(() => props.items().filter((i) => i.favorite).length)
+  const favoritesCount = createMemo(() => props.items().filter((i) => i.ownership === "personal" && i.favorite).length)
 
   const categoryCounts = createMemo(() => {
     const counts: Record<string, number> = {
@@ -22,7 +22,6 @@ export function vaultNavStateCreate(props: VaultNavStateProps) {
       secureNote: 0,
       creditCard: 0,
       identity: 0,
-      server: 0,
       sshKey: 0,
     }
     for (const item of props.items()) {
@@ -35,18 +34,22 @@ export function vaultNavStateCreate(props: VaultNavStateProps) {
   })
 
   const vaultCounts = createMemo(() => {
-    const counts: Record<string, number> = {
-      Personal: 0,
-      Work: 0,
-      Shared: 0,
-    }
+    let personal = 0
+    let organization = 0
     for (const item of props.items()) {
-      const current = counts[item.vault]
-      if (current !== undefined) {
-        counts[item.vault] = current + 1
+      if (item.ownership === "organization") {
+        organization++
+      } else {
+        personal++
       }
     }
-    return counts
+    return {
+      Personal: personal,
+      Work: organization,
+      Shared: 0,
+      personal,
+      organization,
+    }
   })
 
   const folders = createMemo(() => {

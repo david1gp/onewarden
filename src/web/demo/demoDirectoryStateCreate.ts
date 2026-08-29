@@ -11,11 +11,21 @@ export interface DemoDirectoryItem {
 export function demoDirectoryStateCreate() {
   const demos: readonly DemoDirectoryItem[] = [
     {
+      id: "admin",
+      path: "/demo/admin",
+      title: "Administration Workspace",
+      category: "Administration",
+      description: "Backend-free server administration workspace for settings, users, organizations, and diagnostics.",
+      badgeText: "Admin Demo",
+      badgeVariant: "filledBlue",
+    },
+    {
       id: "all-items",
       path: "/demo/all-items",
       title: "All Items & Multi-Vault Workspace",
       category: "Full Vault",
-      description: "Wide 3-column layout displaying 17 fictional credentials across Personal, Work, and Shared vaults.",
+      description:
+        "Wide 3-column layout displaying 17 fictional credentials across Personal and Acme Corporation vaults with collections and folders.",
       badgeText: "17 Items",
       badgeVariant: "subtle",
     },
@@ -57,6 +67,15 @@ export function demoDirectoryStateCreate() {
       description:
         "Alex Rivera engineering profile with employee ID, title, work email, phone number, and department metadata.",
       badgeText: "Corporate ID",
+      badgeVariant: "subtle",
+    },
+    {
+      id: "ssh-key",
+      path: "/demo/ssh-key",
+      title: "Selected SSH Key",
+      category: "SSH Keys",
+      description: "Production Deploy Key (Ed25519) with public key, fingerprint, and concealed passphrase.",
+      badgeText: "SSH Key",
       badgeVariant: "subtle",
     },
     {

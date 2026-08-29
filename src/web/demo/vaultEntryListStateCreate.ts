@@ -1,4 +1,5 @@
 import { createMemo } from "solid-js"
+import { vaultCardPanMask } from "./vaultCardPanMask.js"
 import { vaultCategoryIconResolve } from "./vaultCategoryIconResolve.js"
 import { vaultCategoryThemeResolve } from "./vaultCategoryThemeResolve.js"
 import { vaultCategoryTitleResolve } from "./vaultCategoryTitleResolve.js"
@@ -14,6 +15,7 @@ export interface VaultEntryListStateProps {
   onSelectItem: (id: string) => void
   onSearchChange: (query: string) => void
   onResetFilter: () => void
+  onAddNewItem?: () => void
 }
 
 export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
@@ -24,6 +26,17 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     if (props.selectedCategory() === "favorites") {
       return "Favorites"
     }
+    if (props.selectedVault() === "Personal" || props.selectedVault() === "personal") {
+      return "My Vault"
+    }
+    if (
+      props.selectedVault() === "Work" ||
+      props.selectedVault() === "organization" ||
+      props.selectedVault() === "organization-acme" ||
+      props.selectedVault() === "Acme Corporation"
+    ) {
+      return "Acme Corporation"
+    }
     if (props.selectedVault() !== "all") {
       return `${props.selectedVault()} Vault`
     }
@@ -33,18 +46,27 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
   const getItemSubtitle = (item: VaultItem): string => {
     if (item.username) return item.username
     if (item.category === "creditCard") {
-      const cardNum = item.customFields?.find((f) => f.label.includes("Card Number"))?.value
-      return cardNum ?? "Credit Card"
+      const cardNum = item.customFields?.find((f) => f.label.toLowerCase().includes("card number"))?.value
+      if (cardNum?.trim()) {
+        const masked = vaultCardPanMask(cardNum)
+        return masked || "Credit Card"
+      }
+      return "Credit Card"
     }
     if (item.category === "identity") {
       const title = item.customFields?.find((f) => f.label === "Title" || f.label === "Full Name")?.value
       return title ?? "Identity Card"
     }
+    if (item.category === "sshKey") {
+      const fingerprint = item.customFields?.find((f) => f.label === "Fingerprint")?.value
+      const keyType = item.customFields?.find((f) => f.label === "Key Type")?.value
+      return fingerprint ?? keyType ?? "SSH Key"
+    }
     if (item.category === "secureNote") {
       return item.notes ? (item.notes.split("\n")[0] ?? "Secure Note") : "Secure Note"
     }
     if (item.url) return item.url.replace(/^https?:\/\//, "")
-    return item.vault
+    return item.ownership === "organization" ? "Acme Corporation" : "Personal"
   }
 
   return {
@@ -58,5 +80,6 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     selectItem: props.onSelectItem,
     setSearchQuery: props.onSearchChange,
     resetFilter: props.onResetFilter,
+    addNewItem: () => props.onAddNewItem?.(),
   }
 }

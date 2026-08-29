@@ -3,6 +3,7 @@ import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon1 } from "#ui/interactive/button/ButtonIcon1.jsx"
 import { VaultEntryDetail } from "./VaultEntryDetail.jsx"
 import { VaultEntryList } from "./VaultEntryList.jsx"
+import { VaultItemForm } from "./VaultItemForm.jsx"
 import { VaultNav } from "./VaultNav.jsx"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 import { type VaultWorkspaceProps, vaultWorkspaceStateCreate } from "./vaultWorkspaceStateCreate.js"
@@ -108,16 +109,36 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             onSelectItem={state.selectItem}
             onSearchChange={state.setSearchQuery}
             onResetFilter={state.resetFilter}
+            onAddNewItem={state.startAdd}
           />
         </div>
 
-        {/* Column 3: Right Entry Details */}
+        {/* Column 3: Right Entry Details or Item Form */}
         <div
           class={`h-full flex-1 min-w-0 bg-white dark:bg-slate-900 lg:flex ${
             state.activeMobileTab() === "detail" ? "flex w-full" : "hidden"
           }`}
         >
-          <VaultEntryDetail item={state.selectedItem} onToggleFavorite={state.toggleFavorite} />
+          <Show
+            when={state.formMode() !== "none"}
+            fallback={
+              <VaultEntryDetail
+                item={state.selectedItem}
+                onToggleFavorite={state.toggleFavorite}
+                onEdit={state.startEdit}
+                onClone={state.cloneItem}
+                onMoveToTrash={state.moveToTrash}
+              />
+            }
+          >
+            <VaultItemForm
+              mode={state.formMode() === "add" ? "add" : "edit"}
+              item={state.itemToEdit}
+              initialCategory={state.initialAddCategory()}
+              onSave={state.saveItem}
+              onCancel={state.cancelForm}
+            />
+          </Show>
         </div>
       </div>
     </div>

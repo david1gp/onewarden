@@ -7,6 +7,7 @@ import { AuthTwoFactorChallengeView } from "../auth/ui/AuthTwoFactorChallengeVie
 import { AuthTwoFactorSetupView } from "../auth/ui/AuthTwoFactorSetupView.jsx"
 import { AuthUnlockView } from "../auth/ui/AuthUnlockView.jsx"
 import { AuthVerifyEmailView } from "../auth/ui/AuthVerifyEmailView.jsx"
+import { DemoAdmin } from "../demo/DemoAdmin.jsx"
 import { DemoAllItems } from "../demo/DemoAllItems.jsx"
 import { DemoDirectory } from "../demo/DemoDirectory.jsx"
 import { DemoEmptyState } from "../demo/DemoEmptyState.jsx"
@@ -15,6 +16,7 @@ import { DemoSelectedCreditCard } from "../demo/DemoSelectedCreditCard.jsx"
 import { DemoSelectedIdentity } from "../demo/DemoSelectedIdentity.jsx"
 import { DemoSelectedLogin } from "../demo/DemoSelectedLogin.jsx"
 import { DemoSelectedSecureNote } from "../demo/DemoSelectedSecureNote.jsx"
+import { DemoSelectedSshKey } from "../demo/DemoSelectedSshKey.jsx"
 import { DemoTrash } from "../demo/DemoTrash.jsx"
 import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import { VaultWorkspace } from "../demo/VaultWorkspace.jsx"
@@ -28,6 +30,9 @@ export function WebApp(): JSX.Element {
     <Switch>
       <Match when={state.currentRoute() === "directory"}>
         <DemoDirectory />
+      </Match>
+      <Match when={state.currentRoute() === "admin"}>
+        <DemoAdmin />
       </Match>
       <Match when={state.currentRoute() === "all-items"}>
         <DemoAllItems />
@@ -43,6 +48,9 @@ export function WebApp(): JSX.Element {
       </Match>
       <Match when={state.currentRoute() === "identity"}>
         <DemoSelectedIdentity />
+      </Match>
+      <Match when={state.currentRoute() === "ssh-key"}>
+        <DemoSelectedSshKey />
       </Match>
       <Match when={state.currentRoute() === "empty-state"}>
         <DemoEmptyState />
@@ -170,7 +178,3 @@ export function WebApp(): JSX.Element {
     </Switch>
   )
 }
-import { DemoAdmin } from "../demo/DemoAdmin.jsx"
-      <Match when={state.currentRoute() === "admin"}>
-        <DemoAdmin />
-      </Match>

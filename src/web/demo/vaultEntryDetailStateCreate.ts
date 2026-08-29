@@ -8,12 +8,16 @@ import type { VaultItem } from "./vaultItemSchema.js"
 export interface VaultEntryDetailStateProps {
   item: () => VaultItem | null
   onToggleFavorite?: (id: string) => void
+  onEdit?: () => void
+  onClone?: (id: string) => void
+  onMoveToTrash?: (id: string) => void
 }
 
 export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
   const isPasswordRevealed = createSignalObject(false)
   const copiedField = createSignalObject<string | null>(null)
   const revealedConcealedFields = createSignalObject<Record<number, boolean>>({})
+  const isTrashDialogOpen = createSignalObject(false)
 
   let copyTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -48,6 +52,31 @@ export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
     return !!revealedConcealedFields.get()[index]
   }
 
+  const toggleFavorite = (): void => {
+    // Favorites are changed by the edit/save flow, not from read-only details.
+  }
+
+  const handleClone = () => {
+    const current = props.item()
+    if (!current) return
+    props.onClone?.(current.id)
+  }
+
+  const openTrashDialog = () => {
+    isTrashDialogOpen.set(true)
+  }
+
+  const closeTrashDialog = () => {
+    isTrashDialogOpen.set(false)
+  }
+
+  const confirmMoveToTrash = () => {
+    const current = props.item()
+    if (!current) return
+    isTrashDialogOpen.set(false)
+    props.onMoveToTrash?.(current.id)
+  }
+
   const categoryTheme = createMemo(() => {
     const cat = props.item()?.category
     return vaultCategoryThemeResolve(cat ?? "")
@@ -58,15 +87,19 @@ export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
     isPasswordRevealed: isPasswordRevealed.get,
     copiedField: copiedField.get,
     categoryTheme,
+    isTrashDialogOpen: isTrashDialogOpen.get,
+    setIsTrashDialogOpen: isTrashDialogOpen.set,
+    openTrashDialog,
+    closeTrashDialog,
+    confirmMoveToTrash,
     getCategoryIcon: vaultCategoryIconResolve,
     getCategoryLabel: vaultCategoryLabelResolve,
     isFieldRevealed,
     copyToClipboard,
     togglePasswordReveal,
     toggleConcealedField,
-    toggleFavorite: () => {
-      const it = props.item()
-      if (it && props.onToggleFavorite) props.onToggleFavorite(it.id)
-    },
+    toggleFavorite,
+    handleEdit: () => props.onEdit?.(),
+    handleClone,
   }
 }

@@ -6,6 +6,7 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
+import { vaultCollectionNameResolve } from "./vaultCollectionNameResolve.js"
 import { type VaultEntryDetailStateProps, vaultEntryDetailStateCreate } from "./vaultEntryDetailStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
@@ -13,7 +14,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
   const state = vaultEntryDetailStateCreate(props)
 
   return (
-    <article class="flex h-full min-w-0 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
+    <article class="relative flex h-full min-w-0 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
       <Show
         when={state.item()}
         fallback={
@@ -44,7 +45,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                   </h2>
                   <div class="mt-1 flex flex-wrap items-center gap-2">
                     <Badge variant="subtle" class="text-xs">
-                      {item().vault} Vault
+                      {item().ownership === "organization" ? "Acme Corporation" : "Personal Vault"}
                     </Badge>
                     <Badge variant="outline" class="text-xs">
                       {state.getCategoryLabel(item().category)}
@@ -56,22 +57,44 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
 
               {/* Action Toolbar */}
               <div class="flex shrink-0 items-center gap-2">
-                <ButtonIcon
-                  variant="outline"
-                  size="sm"
-                  class="text-xs"
-                  icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
-                  iconClass={`size-4 fill-current dark:fill-current ${
-                    item().favorite ? "text-amber-500 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"
-                  }`}
-                  onClick={() => state.toggleFavorite()}
-                  aria-label="Toggle Favorite"
-                >
-                  {item().favorite ? "Favorited" : "Favorite"}
-                </ButtonIcon>
-                <Button variant="ghost" size="sm" class="text-xs">
+                <Show when={item().ownership === "personal"}>
+                  <ButtonIcon
+                    variant="outline"
+                    size="sm"
+                    class="text-xs"
+                    icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
+                    iconClass={`size-4 fill-current dark:fill-current ${
+                      item().favorite ? "text-amber-500 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"
+                    }`}
+                    onClick={() => state.toggleFavorite()}
+                    aria-label="Toggle Favorite"
+                  >
+                    {item().favorite ? "Favorited" : "Favorite"}
+                  </ButtonIcon>
+                </Show>
+                <Button variant="ghost" size="sm" class="text-xs" onClick={state.handleEdit}>
                   Edit
                 </Button>
+                <ButtonIcon
+                  variant="ghost"
+                  size="sm"
+                  class="text-xs"
+                  icon={vaultSvgIcons.copy}
+                  iconClass="size-3.5 fill-current text-slate-600 dark:text-slate-400"
+                  onClick={state.handleClone}
+                >
+                  Clone
+                </ButtonIcon>
+                <ButtonIcon
+                  variant="ghost"
+                  size="sm"
+                  class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                  icon={vaultSvgIcons.trash}
+                  iconClass="size-3.5 fill-current text-red-600 dark:text-red-400"
+                  onClick={state.openTrashDialog}
+                >
+                  Move to Trash
+                </ButtonIcon>
               </div>
             </div>
 
@@ -289,21 +312,89 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                 </CardWrapper>
               </Show>
 
-              {/* Folder & Metadata Footer */}
-              <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Metadata & Folder</p>
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="subtle" class="text-xs">
-                    {item().folder ?? "No Folder"}
-                  </Badge>
-                </div>
-                <div class="pt-2 text-[11px] text-slate-600 dark:text-slate-400">
-                  <span>Created {item().createdAt}</span>
+              {/* Folder & Ownership Metadata Footer */}
+              <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Ownership & Organization</p>
+                <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-xs">
+                  <div>
+                    <span class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                      Ownership
+                    </span>
+                    <p class="mt-0.5 text-slate-800 dark:text-slate-200">
+                      {item().ownership === "organization" ? "Acme Corporation" : "Personal (Alex Rivera)"}
+                    </p>
+                  </div>
+                  <Show when={item().ownership === "organization" && item().collectionIds.length > 0}>
+                    <div>
+                      <span class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        Collections
+                      </span>
+                      <div class="mt-1 flex flex-wrap gap-1">
+                        <For each={item().collectionIds}>
+                          {(colId) => (
+                            <Badge variant="subtle" class="text-[10px] px-1.5 py-0">
+                              {vaultCollectionNameResolve(colId)}
+                            </Badge>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </Show>
+                  <div>
+                    <span class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                      Folder
+                    </span>
+                    <p class="mt-0.5 text-slate-800 dark:text-slate-200">{item().folder ?? "None"}</p>
+                  </div>
+                  <div>
+                    <span class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                      Created
+                    </span>
+                    <p class="mt-0.5 text-slate-800 dark:text-slate-200">{item().createdAt}</p>
+                  </div>
                 </div>
               </CardWrapper>
             </div>
           </div>
         )}
+      </Show>
+
+      {/* Move to Trash Confirmation Modal */}
+      <Show when={state.isTrashDialogOpen()}>
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs"
+          role="presentation"
+        >
+          <CardWrapper
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trash-dialog-title"
+            class="w-full max-w-md space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div class="flex items-start gap-3">
+              <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                <Icon path={vaultSvgIcons.trash} class="size-5" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 id="trash-dialog-title" class="font-semibold text-base text-slate-900 dark:text-slate-100">
+                  Move to Trash
+                </h3>
+                <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  Are you sure you want to move "{state.item()?.title}" to the trash?
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={state.closeTrashDialog}>
+                Cancel
+              </Button>
+              <Button variant="filledRed" size="sm" onClick={state.confirmMoveToTrash}>
+                Move to Trash
+              </Button>
+            </div>
+          </CardWrapper>
+        </div>
       </Show>
     </article>
   )

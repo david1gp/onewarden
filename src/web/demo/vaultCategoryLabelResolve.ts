@@ -4,7 +4,6 @@ const categoryLabels: Record<string, string> = {
   creditCard: "Credit Card",
   identity: "Identity",
   password: "Password",
-  server: "Server",
   sshKey: "SSH Key",
 }
 

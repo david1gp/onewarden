@@ -11,8 +11,8 @@ test("vault category icon mapping preserves known and fallback icons", () => {
   expect(vaultCategoryIconResolve("creditCard")).toBe(vaultSvgIcons.creditCard)
   expect(vaultCategoryIconResolve("identity")).toBe(vaultSvgIcons.identity)
   expect(vaultCategoryIconResolve("password")).toBe(vaultSvgIcons.password)
-  expect(vaultCategoryIconResolve("server")).toBe(vaultSvgIcons.server)
   expect(vaultCategoryIconResolve("sshKey")).toBe(vaultSvgIcons.sshKey)
+  expect(vaultCategoryIconResolve("server")).toBe(vaultSvgIcons.login)
   expect(vaultCategoryIconResolve("unknown")).toBe(vaultSvgIcons.login)
   expect(vaultCategoryIconResolve(undefined)).toBe(vaultSvgIcons.login)
 })
@@ -23,8 +23,8 @@ test("vault category label mapping preserves known and fallback labels", () => {
   expect(vaultCategoryLabelResolve("creditCard")).toBe("Credit Card")
   expect(vaultCategoryLabelResolve("identity")).toBe("Identity")
   expect(vaultCategoryLabelResolve("password")).toBe("Password")
-  expect(vaultCategoryLabelResolve("server")).toBe("Server")
   expect(vaultCategoryLabelResolve("sshKey")).toBe("SSH Key")
+  expect(vaultCategoryLabelResolve("server")).toBe("Item")
   expect(vaultCategoryLabelResolve("unknown")).toBe("Item")
   expect(vaultCategoryLabelResolve(undefined)).toBe("Item")
 })
@@ -46,13 +46,13 @@ test("vault category theme mapping preserves known and fallback themes", () => {
     bg: "bg-purple-100 dark:bg-purple-950/60",
     text: "text-purple-600 dark:text-purple-400",
   })
-  expect(vaultCategoryThemeResolve("server")).toEqual({
-    bg: "bg-slate-200 dark:bg-slate-800",
-    text: "text-slate-700 dark:text-slate-300",
-  })
   expect(vaultCategoryThemeResolve("sshKey")).toEqual({
     bg: "bg-teal-100 dark:bg-teal-950/60",
     text: "text-teal-600 dark:text-teal-400",
+  })
+  expect(vaultCategoryThemeResolve("server")).toEqual({
+    bg: "bg-slate-100 dark:bg-slate-800",
+    text: "text-slate-600 dark:text-slate-300",
   })
   expect(vaultCategoryThemeResolve("password")).toEqual({
     bg: "bg-slate-100 dark:bg-slate-800",
@@ -69,8 +69,8 @@ test("vault category title mapping preserves list titles and all fallback behavi
   expect(vaultCategoryTitleResolve("secureNote")).toBe("Secure Notes")
   expect(vaultCategoryTitleResolve("creditCard")).toBe("Credit Cards")
   expect(vaultCategoryTitleResolve("identity")).toBe("Identities")
-  expect(vaultCategoryTitleResolve("server")).toBe("Servers")
   expect(vaultCategoryTitleResolve("sshKey")).toBe("SSH Keys")
+  expect(vaultCategoryTitleResolve("server")).toBe("All Items")
   expect(vaultCategoryTitleResolve("password")).toBe("All Items")
   expect(vaultCategoryTitleResolve("all")).toBe("All Items")
 })

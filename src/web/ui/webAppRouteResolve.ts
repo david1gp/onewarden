@@ -7,11 +7,13 @@ export type WebAppRouteName =
   | "auth-two-factor-setup"
   | "auth-two-factor-challenge"
   | "directory"
+  | "admin"
   | "all-items"
   | "login"
   | "secure-note"
   | "credit-card"
   | "identity"
+  | "ssh-key"
   | "empty-state"
   | "trash"
   | "locked"
@@ -48,6 +50,9 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   if (normalized === "/demo") {
     return "directory"
   }
+  if (normalized === "/demo/admin") {
+    return "admin"
+  }
   if (normalized === "/demo/all" || normalized === "/demo/all-items" || normalized === "/demo/vault") {
     return "all-items"
   }
@@ -71,6 +76,9 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   if (normalized === "/demo/identity" || normalized === "/demo/selected-identity") {
     return "identity"
   }
+  if (normalized === "/demo/ssh-key" || normalized === "/demo/selected-ssh-key") {
+    return "ssh-key"
+  }
   if (normalized === "/demo/empty" || normalized === "/demo/empty-state") {
     return "empty-state"
   }
@@ -83,7 +91,3 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
 
   return "root"
 }
-  | "admin"
-  if (normalized === "/demo/admin") {
-    return "admin"
-  }

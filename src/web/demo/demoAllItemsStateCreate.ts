@@ -1,8 +1,10 @@
-import { vaultDemoData } from "./vaultDemoData.js"
+import { vaultDemoStore } from "./vaultDemoStore.js"
 
 export function demoAllItemsStateCreate() {
   return {
-    items: vaultDemoData,
+    get items() {
+      return vaultDemoStore.activeItems()
+    },
     defaultSelectedId: "item-github-enterprise",
   }
 }
