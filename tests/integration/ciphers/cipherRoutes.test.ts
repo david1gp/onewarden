@@ -1,10 +1,8 @@
 import { afterEach, expect, test } from "bun:test"
 import { cipherFindByUuid } from "../../../src/server/contexts/ciphers/cipherFindByUuid.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
-import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
@@ -13,61 +11,14 @@ import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
+import { identityTestDeviceCreate } from "../../helpers/identityTestDeviceCreate.js"
+import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
 const keyPair = keyPairResult.data
 const databases: DatabaseConnection[] = []
 const date = "2026-08-28T00:00:00.000Z"
-
-function userCreate(uuid: string): IdentityUser {
-  return {
-    uuid,
-    enabled: true,
-    createdAt: date,
-    updatedAt: date,
-    verifiedAt: date,
-    lastVerifyingAt: null,
-    loginVerifyCount: 0,
-    email: `${uuid}@example.com`,
-    emailNew: null,
-    emailNewToken: null,
-    name: uuid,
-    passwordHash: new Uint8Array([1]),
-    salt: new Uint8Array([2]),
-    passwordIterations: 600_000,
-    passwordHint: null,
-    akey: "akey",
-    privateKey: null,
-    publicKey: null,
-    securityStamp: `${uuid}-stamp`,
-    stampException: null,
-    equivalentDomains: "[]",
-    excludedGlobals: "[]",
-    clientKdfType: 0,
-    clientKdfIter: 600_000,
-    clientKdfMemory: null,
-    clientKdfParallelism: null,
-    apiKey: null,
-    avatarColor: null,
-    externalId: null,
-  }
-}
-
-function deviceCreate(userUuid: string): IdentityDevice {
-  return {
-    uuid: "cipher-device",
-    createdAt: date,
-    updatedAt: date,
-    userUuid,
-    name: "Cipher Device",
-    type: 7,
-    pushUuid: null,
-    pushToken: null,
-    refreshToken: "refresh-token",
-    twoFactorRemember: null,
-  }
-}
 
 async function contextCreate(): Promise<{
   app: ReturnType<typeof serverAppCreate>
@@ -79,8 +30,13 @@ async function contextCreate(): Promise<{
   if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
   const database = databaseResult.data
   databases.push(database)
-  const user = userCreate("cipher-user")
-  const device = deviceCreate(user.uuid)
+  const user = identityTestUserCreate("cipher-user", { name: "cipher-user", passwordIterations: 600_000 })
+  const device = identityTestDeviceCreate(user.uuid, {
+    uuid: "cipher-device",
+    name: "Cipher Device",
+    pushUuid: null,
+    pushToken: null,
+  })
   expect(identityUserSave(database, user).success).toBe(true)
   expect(identityDeviceSave(database, device, clockTestCreate(date), false).success).toBe(true)
   const clock = clockTestCreate(date)

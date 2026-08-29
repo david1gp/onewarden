@@ -1,74 +1,25 @@
 import { afterEach, expect, test } from "bun:test"
-import { sendAccessIdCreate } from "../../../src/server/contexts/sends/sendAccessIdCreate.js"
-import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { sendAccessIdCreate } from "../../../src/server/contexts/sends/sendAccessIdCreate.js"
+import { sendFileStorageAdapterCreate } from "../../../src/server/contexts/sends/sendFileStorageAdapterCreate.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
-import { sendFileStorageAdapterCreate } from "../../../src/server/contexts/sends/sendFileStorageAdapterCreate.js"
+import { identityTestDeviceCreate } from "../../helpers/identityTestDeviceCreate.js"
+import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
 const keyPair = keyPairResult.data
 const date = "2026-08-28T00:00:00.000Z"
 const databases: DatabaseConnection[] = []
-
-function userCreate(uuid = "send-user"): IdentityUser {
-  return {
-    uuid,
-    enabled: true,
-    createdAt: date,
-    updatedAt: date,
-    verifiedAt: date,
-    lastVerifyingAt: null,
-    loginVerifyCount: 0,
-    email: `${uuid}@example.com`,
-    emailNew: null,
-    emailNewToken: null,
-    name: "Send User",
-    passwordHash: new Uint8Array([1]),
-    salt: new Uint8Array([2]),
-    passwordIterations: 100_000,
-    passwordHint: null,
-    akey: "akey",
-    privateKey: null,
-    publicKey: null,
-    securityStamp: `${uuid}-stamp`,
-    stampException: null,
-    equivalentDomains: "[]",
-    excludedGlobals: "[]",
-    clientKdfType: 0,
-    clientKdfIter: 600_000,
-    clientKdfMemory: null,
-    clientKdfParallelism: null,
-    apiKey: null,
-    avatarColor: null,
-    externalId: null,
-  }
-}
-
-function deviceCreate(userUuid: string): IdentityDevice {
-  return {
-    uuid: "send-device",
-    createdAt: date,
-    updatedAt: date,
-    userUuid,
-    name: "Send Device",
-    type: 7,
-    pushUuid: "push-device",
-    pushToken: "push-token",
-    refreshToken: "refresh-token",
-    twoFactorRemember: null,
-  }
-}
 
 async function contextCreate(options?: {
   identifiers?: string[]
@@ -85,8 +36,13 @@ async function contextCreate(options?: {
   if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
   const database = databaseResult.data
   databases.push(database)
-  const user = userCreate()
-  const device = deviceCreate(user.uuid)
+  const user = identityTestUserCreate("send-user", { name: "Send User", passwordIterations: 100_000 })
+  const device = identityTestDeviceCreate(user.uuid, {
+    uuid: "send-device",
+    name: "Send Device",
+    pushUuid: "push-device",
+    pushToken: "push-token",
+  })
   if (!identityUserSave(database, user).success) throw new Error("user save failed")
   if (!identityDeviceSave(database, device, clockTestCreate(date), false).success) throw new Error("device save failed")
   const clock = clockTestCreate(date)
