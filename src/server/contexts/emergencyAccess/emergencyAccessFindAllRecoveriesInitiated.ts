@@ -3,22 +3,20 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { EmergencyAccess } from "./emergencyAccess.js"
-import type { EmergencyAccessRow } from "./emergencyAccessRow.js"
-import { emergencyAccessFromRow } from "./emergencyAccessFromRow.js"
+import { emergencyAccessSelect } from "./emergencyAccessSelect.js"
 
 export function emergencyAccessFindAllRecoveriesInitiated(database: DatabaseConnection): Result<EmergencyAccess[]> {
   const op = "emergencyAccessFindAllRecoveriesInitiated"
   try {
     const rows = database
-      .query<EmergencyAccessRow, []>(
-        `SELECT uuid, grantor_uuid, grantee_uuid, email, key_encrypted, atype, status,
-                wait_time_days, recovery_initiated_at, last_notification_at, updated_at, created_at
+      .query<EmergencyAccess, []>(
+        `SELECT ${emergencyAccessSelect}
            FROM emergency_access
           WHERE status = 3 AND recovery_initiated_at IS NOT NULL
           ORDER BY recovery_initiated_at, uuid`,
       )
       .all()
-    return resultCreate(rows.map(emergencyAccessFromRow))
+    return resultCreate(rows)
   } catch {
     return resultErrorCreate(op, "Emergency access lookup failed.")
   }
