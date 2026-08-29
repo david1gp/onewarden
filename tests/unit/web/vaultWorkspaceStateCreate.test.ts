@@ -110,3 +110,40 @@ test("vault workspace toggles favorite on items", () => {
   const updatedFav = state.items().find((item) => item.id === favoriteId)?.favorite
   expect(updatedFav).toBe(!initialFav)
 })
+
+test("vault workspace moves selection to the current-list replacement after demo item actions", () => {
+  const activeItems = [
+    alignedItemCreate({ id: "action-source", title: "Action source" }),
+    alignedItemCreate({ id: "action-next", title: "Action next" }),
+  ]
+  const trashedItems = [
+    alignedItemCreate({ id: "trash-source", title: "Trash source", deletedAt: "2026-08-29T00:00:00.000Z" }),
+    alignedItemCreate({ id: "trash-next", title: "Trash next", deletedAt: "2026-08-29T00:00:00.000Z" }),
+  ]
+
+  const cloneState = vaultWorkspaceStateCreate({ initialItems: activeItems, defaultSelectedId: "action-source" })
+  cloneState.cloneItem("action-source")
+  expect(cloneState.selectedItem()?.title).toBe("Clone - Action source")
+  expect(cloneState.activeMobileTab()).toBe("detail")
+
+  const trashState = vaultWorkspaceStateCreate({ initialItems: activeItems, defaultSelectedId: "action-source" })
+  trashState.moveToTrash("action-source")
+  expect(trashState.selectedItem()?.id).toBe("action-next")
+  expect(trashState.activeMobileTab()).toBe("list")
+
+  const restoreState = vaultWorkspaceStateCreate({
+    initialItems: trashedItems,
+    defaultCategory: "trash",
+    defaultSelectedId: "trash-source",
+  })
+  restoreState.restoreItem("trash-source")
+  expect(restoreState.selectedItem()?.id).toBe("trash-next")
+
+  const deleteState = vaultWorkspaceStateCreate({
+    initialItems: trashedItems,
+    defaultCategory: "trash",
+    defaultSelectedId: "trash-source",
+  })
+  deleteState.permanentlyDeleteItem("trash-source")
+  expect(deleteState.selectedItem()?.id).toBe("trash-next")
+})

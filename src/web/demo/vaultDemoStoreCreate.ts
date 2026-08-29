@@ -17,6 +17,7 @@ interface VaultDemoStoreStorage {
 interface VaultDemoStoreOptions {
   storage?: VaultDemoStoreStorage
   userId?: string
+  now?: () => number
   activeItems?: readonly VaultItem[]
   deletedItems?: readonly VaultItem[]
 }
@@ -133,6 +134,20 @@ function vaultDemoStoreItemsFavoriteApply(items: readonly VaultItem[], favoriteI
   })
 }
 
+function vaultDemoStoreItemIdGenerate(items: readonly VaultItem[], now: () => number): string {
+  const existingIds = new Set(items.map((item) => item.id))
+  const timestamp = now()
+  let suffix = 0
+  let id = `item-${timestamp}`
+
+  while (existingIds.has(id)) {
+    suffix += 1
+    id = `item-${timestamp}-${suffix}`
+  }
+
+  return id
+}
+
 function vaultDemoStoreSnapshotCreate(
   activeItems: readonly VaultItem[],
   deletedItems: readonly VaultItem[],
@@ -152,6 +167,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
   return createRoot(() => {
     const storage = options.storage ?? vaultDemoStoreStorageResolve()
     const userId = options.userId ?? defaultUserId
+    const idTimestampNow = options.now ?? Date.now
     const defaultActiveItems = [...(options.activeItems ?? vaultDemoData)]
     const defaultDeletedItems = [...(options.deletedItems ?? vaultTrashDemoData)]
     const loadedSnapshotResult = vaultDemoStoreSnapshotLoad(storage)
@@ -173,7 +189,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       vaultDemoStoreItemsFavoriteApply(snapshot.activeItems, new Set(favoriteIds)),
     )
     const deletedItems = createSignalObject<readonly VaultItem[]>(
-      vaultDemoStoreItemsFavoriteApply(snapshot.deletedItems, new Set(favoriteIds)),
+      vaultDemoStoreItemsFavoriteApply(snapshot.deletedItems, new Set()),
     )
     const favoritesByUser = createSignalObject<Record<string, readonly string[]>>({
       ...normalizedFavoritesByUser,
@@ -181,7 +197,12 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
     })
 
     const items = createMemo(() => [...activeItems.get(), ...deletedItems.get()])
-    const favoriteItemIds = createMemo(() => favoritesByUser.get()[userId] ?? [])
+    const favoriteItemIds = createMemo(() =>
+      activeItems
+        .get()
+        .filter((item) => item.ownership === "personal" && item.favorite)
+        .map((item) => item.id),
+    )
 
     const persist = () => {
       vaultDemoStoreSnapshotSave(
@@ -191,16 +212,15 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
     }
 
     const toggleFavorite = (id: string): void => {
-      const item = items().find((candidate) => candidate.id === id)
+      const item = activeItems.get().find((candidate) => candidate.id === id)
       if (item?.ownership !== "personal") return
 
-      const currentFavoriteIds = favoriteItemIds()
+      const currentFavoriteIds = favoritesByUser.get()[userId] ?? []
       const nextFavoriteIds = currentFavoriteIds.includes(id)
         ? currentFavoriteIds.filter((favoriteId) => favoriteId !== id)
         : [...currentFavoriteIds, id]
       const nextFavoriteIdSet = new Set(nextFavoriteIds)
       activeItems.set(vaultDemoStoreItemsFavoriteApply(activeItems.get(), nextFavoriteIdSet))
-      deletedItems.set(vaultDemoStoreItemsFavoriteApply(deletedItems.get(), nextFavoriteIdSet))
       favoritesByUser.set({ ...favoritesByUser.get(), [userId]: nextFavoriteIds })
       persist()
     }
@@ -210,7 +230,16 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       if (!item) return
 
       deletedItems.set(deletedItems.get().filter((candidate) => candidate.id !== id))
-      activeItems.set([...activeItems.get(), { ...item, deletedAt: null, deletedDate: null }])
+      const favoriteIds = new Set(favoritesByUser.get()[userId] ?? [])
+      activeItems.set([
+        ...activeItems.get(),
+        {
+          ...item,
+          deletedAt: null,
+          deletedDate: null,
+          favorite: item.ownership === "personal" && favoriteIds.has(id),
+        },
+      ])
       persist()
     }
 
@@ -218,8 +247,9 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       if (!deletedItems.get().some((item) => item.id === id)) return
 
       deletedItems.set(deletedItems.get().filter((item) => item.id !== id))
-      const nextFavoriteIds = favoriteItemIds().filter((favoriteId) => favoriteId !== id)
-      if (nextFavoriteIds.length !== favoriteItemIds().length) {
+      const currentFavoriteIds = favoritesByUser.get()[userId] ?? []
+      const nextFavoriteIds = currentFavoriteIds.filter((favoriteId) => favoriteId !== id)
+      if (nextFavoriteIds.length !== currentFavoriteIds.length) {
         favoritesByUser.set({ ...favoritesByUser.get(), [userId]: nextFavoriteIds })
       }
       persist()
@@ -251,7 +281,9 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       const vault = isPersonal ? "Personal" : (itemInput.vault ?? "Work")
 
       const existingItem = activeItems.get().find((item) => item.id === itemInput.id)
-      const id = itemInput.id?.trim() ? itemInput.id : `item-${Date.now()}`
+      const id = itemInput.id?.trim()
+        ? itemInput.id
+        : vaultDemoStoreItemIdGenerate([...activeItems.get(), ...deletedItems.get()], idTimestampNow)
       const createdAt = existingItem?.createdAt ?? itemInput.createdAt ?? formattedDate
       const updatedAt = formattedDate
 
@@ -282,7 +314,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
         activeItems.set([...activeItems.get(), validatedItem])
       }
 
-      const currentFavoriteIds = favoriteItemIds()
+      const currentFavoriteIds = favoritesByUser.get()[userId] ?? []
       let nextFavoriteIds = currentFavoriteIds
       if (validatedItem.ownership === "personal" && validatedItem.favorite) {
         if (!currentFavoriteIds.includes(validatedItem.id)) {
@@ -300,7 +332,6 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
 
       const nextFavoriteIdSet = new Set(nextFavoriteIds)
       activeItems.set(vaultDemoStoreItemsFavoriteApply(activeItems.get(), nextFavoriteIdSet))
-      deletedItems.set(vaultDemoStoreItemsFavoriteApply(deletedItems.get(), nextFavoriteIdSet))
 
       persist()
       return resultCreate(validatedItem)
@@ -323,7 +354,7 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
           ? [...(source.collectionIds ?? [])]
           : ["collection-engineering"]
       const vault = isPersonal ? "Personal" : (source.vault ?? "Work")
-      const cloneId = `item-${Date.now()}`
+      const cloneId = vaultDemoStoreItemIdGenerate([...activeItems.get(), ...deletedItems.get()], idTimestampNow)
       const cloneTitle = `Clone - ${source.title}`
 
       const candidate: VaultItem = {
@@ -383,12 +414,6 @@ export function vaultDemoStoreCreate(options: VaultDemoStoreOptions = {}) {
       const validatedItem = parsed.output
       activeItems.set(activeItems.get().filter((candidate) => candidate.id !== id))
       deletedItems.set([...deletedItems.get(), validatedItem])
-
-      const currentFavoriteIds = favoriteItemIds()
-      if (currentFavoriteIds.includes(id)) {
-        const nextFavoriteIds = currentFavoriteIds.filter((favId) => favId !== id)
-        favoritesByUser.set({ ...favoritesByUser.get(), [userId]: nextFavoriteIds })
-      }
 
       persist()
       return resultCreate(validatedItem)

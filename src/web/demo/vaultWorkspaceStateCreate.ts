@@ -215,6 +215,13 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
 
   const cancelForm = () => formMode.set("none")
 
+  const selectItemAfterMutation = (id: string | null, mobileTab: "nav" | "list" | "detail") => {
+    selectedItemId.set(id)
+    formMode.set("none")
+    activeMobileTab.set(mobileTab)
+    syncUrlIfEnabled()
+  }
+
   const saveItem = (itemToSave: VaultItem) => {
     if (localItems) {
       const now = new Date()
@@ -437,18 +444,22 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
         updatedAt: formattedDate,
       }
       localItems.set([...localItems.get(), cloned])
-      selectedItemId.set(cloned.id)
-      formMode.set("none")
-      activeMobileTab.set("detail")
+      selectItemAfterMutation(cloned.id, "detail")
       return
     }
 
     const cloneResult = vaultDemoStore.cloneItem(id)
     if (cloneResult.success) {
-      selectedItemId.set(cloneResult.data.id)
-      formMode.set("none")
-      activeMobileTab.set("detail")
+      selectItemAfterMutation(cloneResult.data.id, "detail")
     }
+  }
+
+  const selectItemAfterRemoval = (id: string) => {
+    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
+    selectItemAfterMutation(
+      remaining[0]?.id ?? null,
+      activeMobileTab.get() === "detail" ? "list" : activeMobileTab.get(),
+    )
   }
 
   const moveToTrash = (id: string) => {
@@ -458,19 +469,13 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       const now = new Date().toISOString()
       const trashed: VaultItem = { ...item, deletedAt: now, deletedDate: now, favorite: false }
       localItems.set(localItems.get().map((candidate) => (candidate.id === id ? trashed : candidate)))
-      const remaining = localItems.get().filter((candidate) => !(candidate.deletedAt ?? candidate.deletedDate))
-      selectedItemId.set(remaining.length > 0 ? (remaining[0]?.id ?? null) : null)
-      formMode.set("none")
-      if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+      selectItemAfterRemoval(id)
       return
     }
 
     const trashResult = vaultDemoStore.moveToTrash(id)
     if (!trashResult.success) return
-    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
-    selectedItemId.set(remaining.length > 0 ? (remaining[0]?.id ?? null) : null)
-    formMode.set("none")
-    if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+    selectItemAfterRemoval(id)
   }
 
   const restoreItem = (id: string) => {
@@ -484,10 +489,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       vaultDemoStore.restoreItem(id)
     }
 
-    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
-    selectedItemId.set(remaining[0]?.id ?? null)
-    formMode.set("none")
-    if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+    selectItemAfterRemoval(id)
   }
 
   const permanentlyDeleteItem = (id: string) => {
@@ -499,10 +501,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       vaultDemoStore.permanentlyDeleteItem(id)
     }
 
-    const remaining = filteredItems().filter((candidate) => candidate.id !== id)
-    selectedItemId.set(remaining[0]?.id ?? null)
-    formMode.set("none")
-    if (activeMobileTab.get() === "detail") activeMobileTab.set("list")
+    selectItemAfterRemoval(id)
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {
