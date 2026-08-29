@@ -25,6 +25,9 @@ import type { EventNotificationAdapter } from "./contexts/events/eventNotificati
 import { eventRoutesRegister } from "./contexts/events/eventRoutesRegister.js"
 import type { FolderNotificationAdapter } from "./contexts/folders/folderNotificationAdapter.js"
 import { folderRoutesRegister } from "./contexts/folders/folderRoutesRegister.js"
+import type { HibpHttpAdapter } from "./contexts/hibp/hibpHttpAdapter.js"
+import { hibpHttpAdapterCreate } from "./contexts/hibp/hibpHttpAdapterCreate.js"
+import { hibpRoutesRegister } from "./contexts/hibp/hibpRoutesRegister.js"
 import type { IconRouteOptions } from "./contexts/icons/iconRouteOptions.js"
 import { iconRoutesRegister } from "./contexts/icons/iconRoutesRegister.js"
 import { identityConfigCreate } from "./contexts/identity/identityConfigCreate.js"
@@ -64,6 +67,7 @@ type ServerAppOptions = {
   emergencyAccess?: { notification?: EmergencyAccessNotificationAdapter }
   events?: { adapter?: EventAdapter; notification?: EventNotificationAdapter }
   folders?: { notification?: FolderNotificationAdapter }
+  hibp?: { apiKey?: string | null; http?: HibpHttpAdapter }
   icons?: Partial<IconRouteOptions>
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
@@ -305,6 +309,14 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     config: identityConfig,
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+  })
+  hibpRoutesRegister(app, {
+    apiKey: options?.hibp?.apiKey,
+    clock: identityClock,
+    database: identityDatabase,
+    http: options?.hibp?.http ?? hibpHttpAdapterCreate(),
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
   })

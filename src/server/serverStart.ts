@@ -97,6 +97,9 @@ const app = serverAppCreate({
     cache: iconCacheAdapterCreate({ directory: iconConfigResult.data.ICON_CACHE_FOLDER }),
     config: iconConfigResult.data,
   },
+  hibp: {
+    apiKey: configResult.data.HIBP_API_KEY,
+  },
   identity: {
     config: identityConfigResult.data,
     privateKey: tokenKeyPair.privateKey,

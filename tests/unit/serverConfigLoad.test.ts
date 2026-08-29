@@ -117,6 +117,13 @@ test("serverConfigLoad parses web vault settings", () => {
   })
 })
 
+test("serverConfigLoad trims the optional HIBP API key", () => {
+  expect(serverConfigLoad({ HIBP_API_KEY: "  secret-key  " })).toMatchObject({
+    success: true,
+    data: { HIBP_API_KEY: "secret-key" },
+  })
+})
+
 test("serverConfigLoad parses the global sends policy", () => {
   const result = serverConfigLoad({ SENDS_ALLOWED: "false" })
 
