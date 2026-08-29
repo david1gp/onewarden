@@ -19,7 +19,7 @@ Align every `/demo/*` vault experience with the current Vaultwarden-compatible B
 - Introduce one shared demo store used by every demo route.
 - Align navigation, fixtures, labels, details, and responsive presentation with web-vault concepts.
 - Add complete local item actions and trash lifecycle behavior, then verify all routes in desktop and mobile browsers.
-- Current context: add, edit, save, clone, Favorite, PAN masking, and confirmed soft-delete flows are implemented and session-persistent; task 5 exposes the shared deleted-item lifecycle in Trash.
+- Current context: all aligned routes, ownership filters, item actions, Favorites, Trash lifecycle, lock/copy/reveal/filter interactions, responsive layouts, and browser coverage are complete and verified.
 
 # Tasks
 
@@ -27,9 +27,9 @@ Align every `/demo/*` vault experience with the current Vaultwarden-compatible B
 - [x] 2. Add a shared session-persistent demo store and correct ownership, collection, folder, item-type, and Favorites modeling.
 - [x] 3. Align vault navigation, lists, details, labels, and selected-item routes with the corrected model.
 - [x] 4. Implement add/edit/save/clone/move-to-trash item flows, including Favorites eligibility and persistence.
-- [ ] 5. Implement Trash restore and permanent-delete flows and align empty states/counts.
-- [ ] 6. Align lock/unlock behavior and complete copy/reveal/search/filter interactions across responsive layouts.
-- [ ] 7. Add browser coverage for all demo routes and interactions, then run the full project checks.
+- [x] 5. Implement Trash restore and permanent-delete flows and align empty states/counts.
+- [x] 6. Align lock/unlock behavior and complete copy/reveal/search/filter interactions across responsive layouts.
+- [x] 7. Add browser coverage for all demo routes and interactions, then run the full project checks.
 
 # Paths
 
