@@ -13,6 +13,7 @@ export type IdentityRouteOptions = {
   clock: Clock
   config: IdentityConfig
   database: DatabaseConnection | undefined
+  groupsEnabled?: boolean
   identifier: Identifier
   mail: IdentityMailAdapter
   privateKey: KeyInput | undefined

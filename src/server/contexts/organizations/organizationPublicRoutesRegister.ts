@@ -102,6 +102,7 @@ export function organizationPublicRoutesRegister(
       groupsEnabled: options.groupsEnabled,
       identifier: options.identifier,
       mail: options.mail,
+      notification: options.notification,
       organizationUuid: organizationResult.data,
     })
     if (!result.success) return apiErrorResponseCreate(result)

@@ -14,6 +14,12 @@ import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
 import type { Organization } from "./organization.js"
 import type { OrganizationPublicImportData } from "./organizationPublicImportDataSchema.js"
 import type { OrganizationPublicImportOptions } from "./organizationPublicImportOptions.js"
+import { notificationUpdateType } from "../notifications/notificationUpdateType.js"
+import { organizationGroupCreate } from "./organizationGroupCreate.js"
+import { organizationGroupFindByUuidAndOrganization } from "./organizationGroupFindByUuidAndOrganization.js"
+import { organizationGroupExternalIdNormalize } from "./organizationGroupExternalIdNormalize.js"
+import { organizationGroupMembersReplace } from "./organizationGroupMembersReplace.js"
+import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
 
 type OrganizationImportOrganization = Pick<Organization, "billingEmail" | "name">
 
@@ -42,6 +48,7 @@ export async function organizationPublicImport(
     if (!overwriteResult.success) return overwriteResult
   }
 
+  organizationPublicImportNotify(database, options)
   return resultCreate(undefined)
 }
 
@@ -188,41 +195,60 @@ function organizationPublicImportGroup(
 ): Result<void> {
   const groupResult = organizationPublicGroupFindByExternalId(database, groupData.externalId, options.organizationUuid)
   if (!groupResult.success) return groupResult
-  const groupUuid = groupResult.data?.uuid ?? options.identifier.uuid()
-  try {
-    if (groupResult.data === null) {
-      database.run(
-        `INSERT INTO groups (uuid, organizations_uuid, name, access_all, external_id, creation_date, revision_date)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          groupUuid,
-          options.organizationUuid,
-          groupData.name,
-          0,
-          groupData.externalId.trim().length === 0 ? null : groupData.externalId,
-          options.clock.now().toISOString(),
-          options.clock.now().toISOString(),
-        ],
-      )
-    }
-    database.run(
-      `DELETE FROM groups_users
-       WHERE groups_uuid = ?`,
-      [groupUuid],
+
+  let groupUuid = groupResult.data?.uuid
+  if (groupUuid === undefined) {
+    const createResult = organizationGroupCreate(
+      database,
+      options.organizationUuid,
+      groupData.name,
+      false,
+      organizationGroupExternalIdNormalize(groupData.externalId),
+      options.clock,
+      options.identifier,
     )
-    for (const externalId of groupData.memberExternalIds) {
-      const member = organizationPublicMembershipFindByExternalId(database, externalId, options.organizationUuid)
-      if (!member.success) return member
-      if (member.data === null) continue
-      database.run(
-        `INSERT INTO groups_users (groups_uuid, users_organizations_uuid)
-         VALUES (?, ?) ON CONFLICT(groups_uuid, users_organizations_uuid) DO NOTHING`,
-        [groupUuid, member.data.uuid],
-      )
-    }
-    return resultCreate(undefined)
-  } catch {
-    return resultErrorCreate("organizationPublicImportGroup", "Group import failed.")
+    if (!createResult.success) return createResult
+    groupUuid = createResult.data.uuid
+  } else {
+    const existingGroupResult = organizationGroupFindByUuidAndOrganization(
+      database,
+      groupUuid,
+      options.organizationUuid,
+    )
+    if (!existingGroupResult.success) return existingGroupResult
+    if (existingGroupResult.data === null)
+      return resultErrorCreate("organizationPublicImportGroup", "Group lookup failed.")
+  }
+
+  const membershipUuids: string[] = []
+  for (const externalId of groupData.memberExternalIds) {
+    const member = organizationPublicMembershipFindByExternalId(database, externalId, options.organizationUuid)
+    if (!member.success) return member
+    if (member.data !== null) membershipUuids.push(member.data.uuid)
+  }
+
+  return organizationGroupMembersReplace(
+    database,
+    options.organizationUuid,
+    groupUuid,
+    membershipUuids,
+    options.clock.now().toISOString(),
+  )
+}
+
+function organizationPublicImportNotify(database: DatabaseConnection, options: OrganizationPublicImportOptions): void {
+  if (options.notification === undefined) return
+  const memberUuidsResult = organizationMemberUserUuidsFind(database, options.organizationUuid)
+  if (!memberUuidsResult.success) return
+  const date = options.clock.now().toISOString()
+  for (const userUuid of memberUuidsResult.data) {
+    try {
+      options.notification.sendUserUpdate({
+        contextId: options.organizationUuid,
+        payload: { Date: date, UserId: userUuid },
+        type: notificationUpdateType.syncSettings,
+      })
+    } catch {}
   }
 }
 

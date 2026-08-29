@@ -2,7 +2,12 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityUser } from "./identityUser.js"
 
-export function identityUserProfileToJson(user: IdentityUser, config: IdentityConfig, database?: DatabaseConnection) {
+export function identityUserProfileToJson(
+  user: IdentityUser,
+  config: IdentityConfig,
+  database?: DatabaseConnection,
+  groupsEnabled = false,
+) {
   const accountKeys =
     user.privateKey === null
       ? null
@@ -31,7 +36,8 @@ export function identityUserProfileToJson(user: IdentityUser, config: IdentityCo
     key: user.akey,
     privateKey: user.privateKey,
     securityStamp: user.securityStamp,
-    organizations: database === undefined ? [] : identityUserProfileOrganizations(database, user.uuid, config),
+    organizations:
+      database === undefined ? [] : identityUserProfileOrganizations(database, user.uuid, config, groupsEnabled),
     providers: [],
     providerOrganizations: [],
     forcePasswordReset: false,
@@ -59,6 +65,7 @@ function identityUserProfileOrganizations(
   database: DatabaseConnection,
   userUuid: string,
   config: IdentityConfig,
+  groupsEnabled: boolean,
 ): Record<string, unknown>[] {
   try {
     const memberships = database
@@ -73,7 +80,9 @@ function identityUserProfileOrganizations(
          ORDER BY member.org_uuid`,
       )
       .all(userUuid)
-    return memberships.map((membership) => identityUserProfileOrganizationToJson(membership, userUuid, config))
+    return memberships.map((membership) =>
+      identityUserProfileOrganizationToJson(membership, userUuid, config, groupsEnabled),
+    )
   } catch {
     return []
   }
@@ -83,6 +92,7 @@ function identityUserProfileOrganizationToJson(
   membership: IdentityUserProfileOrganizationRow,
   userUuid: string,
   config: IdentityConfig,
+  groupsEnabled: boolean,
 ): Record<string, unknown> {
   const type = membership.atype === 3 ? 4 : membership.atype
   const customWithAllAccess = type === 4 && membership.access_all === 1
@@ -96,7 +106,7 @@ function identityUserProfileOrganizationToJson(
     use2fa: true,
     useDirectory: false,
     useEvents: false,
-    useGroups: false,
+    useGroups: groupsEnabled,
     useTotp: true,
     useScim: false,
     usePolicies: true,

@@ -73,7 +73,12 @@ export function identityAccountRoutesRegister(
     const requestContext = identityAccountRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
     return context.json(
-      identityUserProfileToJson(requestContext.data.authentication.user, options.config, requestContext.data.database),
+      identityUserProfileToJson(
+        requestContext.data.authentication.user,
+        options.config,
+        requestContext.data.database,
+        options.groupsEnabled,
+      ),
     )
   }
 
@@ -93,7 +98,9 @@ export function identityAccountRoutesRegister(
     user.name = bodyResult.data.name
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
-    return context.json(identityUserProfileToJson(user, options.config, requestContext.data.database))
+    return context.json(
+      identityUserProfileToJson(user, options.config, requestContext.data.database, options.groupsEnabled),
+    )
   }
 
   const updateAvatar = async (context: Context<AuthenticationEnvironment>) => {
@@ -113,7 +120,9 @@ export function identityAccountRoutesRegister(
     user.avatarColor = avatarColor
     const saveResult = identityAccountUserSave(requestContext.data.database, user, options)
     if (!saveResult.success) return apiErrorResponseCreate(saveResult)
-    return context.json(identityUserProfileToJson(user, options.config, requestContext.data.database))
+    return context.json(
+      identityUserProfileToJson(user, options.config, requestContext.data.database, options.groupsEnabled),
+    )
   }
 
   const publicKey = (context: Context<AuthenticationEnvironment>) => {
