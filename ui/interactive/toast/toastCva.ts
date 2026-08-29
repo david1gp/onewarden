@@ -29,7 +29,7 @@ const variantClasses = {
   // filled colors status
   success: "bg-green-500 text-white border-green-500",
   error: "bg-red-600 text-white border-red-600 dark:border-red-600",
-  info: "bg-sky-500 text-white border-sky-500",
+  info: "bg-sky-700 text-white border-sky-700 dark:bg-sky-700 dark:border-sky-700",
   warning: "bg-yellow-500 text-white border-yellow-500",
 } as const satisfies Record<ToastVariant, string>
 
