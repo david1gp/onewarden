@@ -12,6 +12,7 @@ import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { jwtSign } from "../../../src/shared/crypto/jwtSign.js"
 import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
@@ -27,6 +28,7 @@ const membershipUuid = "00000000-0000-4000-8000-000000000104"
 const collectionUuid = "00000000-0000-4000-8000-000000000105"
 const invitedUserUuid = "00000000-0000-4000-8000-000000000106"
 const invitedSecurityStamp = "00000000-0000-4000-8000-000000000107"
+const domainUuid = "00000000-0000-4000-8000-000000000108"
 const databases: DatabaseConnection[] = []
 
 async function userCreate(): Promise<IdentityUser> {
@@ -117,6 +119,7 @@ async function contextCreate(configOverrides: Parameters<typeof identityConfigCr
       collectionUuid,
       invitedUserUuid,
       invitedSecurityStamp,
+      domainUuid,
     ]),
     identity: {
       clock,
@@ -178,6 +181,7 @@ test("organization CRUD, keys, aliases, and persistence match upstream behavior"
     { cid: 2, dflt_value: null, name: "billing_email", notnull: 1, pk: 0, type: "TEXT" },
     { cid: 3, dflt_value: null, name: "private_key", notnull: 0, pk: 0, type: "TEXT" },
     { cid: 4, dflt_value: null, name: "public_key", notnull: 0, pk: 0, type: "TEXT" },
+    { cid: 5, dflt_value: null, name: "identifier", notnull: 0, pk: 0, type: "TEXT" },
   ])
   expect(
     context.database
@@ -513,6 +517,281 @@ test("the final organization owner cannot leave", async () => {
   expect(leaveResponse.status).toBe(400)
   expect((await leaveResponse.json()).message).toBe("The last owner can't leave")
   expect(context.database.query("SELECT COUNT(*) AS count FROM users_organizations").get()).toEqual({ count: 1 })
+})
+
+test("organization policy list, get, create-update, aliases, and authorization match upstream behavior", async () => {
+  const context = await contextCreate()
+  const organizationUrl = `https://vault.example/api/organizations/${organizationUuid}`
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const listUrl = `${organizationUrl}/policies`
+  const listResponse = await context.app.request(listUrl, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(listResponse.status).toBe(200)
+  expect(await listResponse.json()).toEqual({ data: [], object: "list", continuationToken: null })
+
+  const defaultResponse = await context.app.request(`${listUrl}/8`, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(defaultResponse.status).toBe(200)
+  expect(await defaultResponse.json()).toMatchObject({
+    organizationId: organizationUuid,
+    type: 8,
+    data: null,
+    enabled: false,
+    revisionDate: "2026-08-28T00:00:00.000Z",
+    object: "policy",
+    canToggleState: true,
+  })
+
+  const putResponse = await context.app.request(`${listUrl}/8`, {
+    body: JSON.stringify({ policy: { enabled: true, data: { autoEnrollEnabled: true } } }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(putResponse.status).toBe(200)
+  const createdPolicy = await putResponse.json()
+  expect(createdPolicy).toMatchObject({
+    organizationId: organizationUuid,
+    type: 8,
+    data: { autoEnrollEnabled: true },
+    enabled: true,
+    canToggleState: true,
+    object: "policy",
+  })
+  expect(
+    context.database
+      .query("SELECT org_uuid, atype, enabled, data FROM org_policies WHERE uuid = ?")
+      .get(createdPolicy.id),
+  ).toEqual({
+    org_uuid: organizationUuid,
+    atype: 8,
+    enabled: 1,
+    data: JSON.stringify({ autoEnrollEnabled: true }),
+  })
+
+  const vnextResponse = await context.app.request(`${listUrl}/8/vnext`, {
+    body: JSON.stringify({ policy: { enabled: false } }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(vnextResponse.status).toBe(200)
+  expect(await vnextResponse.json()).toMatchObject({ id: createdPolicy.id, enabled: false, data: null, type: 8 })
+  expect(
+    context.database
+      .query("SELECT COUNT(*) AS count FROM org_policies WHERE org_uuid = ? AND atype = ?")
+      .get(organizationUuid, 8),
+  ).toEqual({ count: 1 })
+
+  const inviteTokenResult = await jwtSign(
+    {
+      email: "owner@example.com",
+      exp: Math.floor(Date.parse("2026-08-28T00:00:00.000Z") / 1_000) + 3_600,
+      invited_by_email: "owner@example.com",
+      iss: "https://vault.example|invite",
+      member_id: membershipUuid,
+      nbf: Math.floor(Date.parse("2026-08-28T00:00:00.000Z") / 1_000),
+      org_id: organizationUuid,
+      sub: userUuid,
+    },
+    keyPair.privateKey,
+  )
+  if (!inviteTokenResult.success) throw new Error(inviteTokenResult.errorMessage)
+  const tokenListResponse = await context.app.request(
+    `${listUrl}/token?token=${encodeURIComponent(inviteTokenResult.data)}`,
+  )
+  expect(tokenListResponse.status).toBe(200)
+  expect(await tokenListResponse.json()).toMatchObject({ object: "list", continuationToken: null })
+
+  const masterResponse = await context.app.request(`${listUrl}/master-password`, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(masterResponse.status).toBe(200)
+  expect(await masterResponse.json()).toMatchObject({
+    organizationId: organizationUuid,
+    type: 1,
+    data: null,
+    enabled: false,
+    object: "policy",
+  })
+
+  const dummyResponse = await context.app.request(
+    "https://vault.example/api/organizations/00000000-01DC-01DC-01DC-000000000000/policies/master-password",
+  )
+  expect(dummyResponse.status).toBe(200)
+  expect(await dummyResponse.json()).toMatchObject({
+    organizationId: "00000000-01DC-01DC-01DC-000000000000",
+    type: 1,
+    data: null,
+    enabled: false,
+    object: "policy",
+  })
+
+  const unauthorizedResponse = await context.app.request(listUrl)
+  expect(unauthorizedResponse.status).toBe(401)
+  const unsupportedResponse = await context.app.request(`${listUrl}/4`, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(unsupportedResponse.status).toBe(400)
+  expect((await unsupportedResponse.json()).message).toBe("Invalid or unsupported policy type")
+})
+
+test("organization domains support CRUD, verification, aliases, and anonymous SSO lookup", async () => {
+  const context = await contextCreate()
+  const organizationUrl = `https://vault.example/api/organizations/${organizationUuid}`
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const domainResponse = await context.app.request(`${organizationUrl}/domain`, {
+    body: JSON.stringify({ domainName: "Example.Invalid" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(domainResponse.status).toBe(200)
+  const domain = await domainResponse.json()
+  expect(domain).toMatchObject({
+    domainName: "example.invalid",
+    organizationId: organizationUuid,
+    object: "organizationDomain",
+    verifiedDate: null,
+  })
+  expect(domain.txt).toMatch(/^bw=/u)
+
+  const listResponse = await context.app.request(`${organizationUrl}/domain`, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(listResponse.status).toBe(200)
+  expect(await listResponse.json()).toMatchObject({
+    data: [expect.objectContaining({ id: domain.id, domainName: "example.invalid" })],
+    object: "list",
+  })
+
+  const verifyResponse = await context.app.request(`${organizationUrl}/domain/${domain.id}/verify`, {
+    headers: { authorization: `Bearer ${context.token}` },
+    method: "POST",
+  })
+  expect(verifyResponse.status).toBe(200)
+  expect(await verifyResponse.json()).toMatchObject({ id: domain.id, verifiedDate: null })
+
+  const aliasResponse = await context.app.request(`${organizationUrl}/domain/${domain.id}/remove`, {
+    headers: { authorization: `Bearer ${context.token}` },
+    method: "POST",
+  })
+  expect(aliasResponse.status).toBe(200)
+  expect(
+    context.database.query("SELECT COUNT(*) AS count FROM organization_domains WHERE uuid = ?").get(domain.id),
+  ).toEqual({ count: 0 })
+
+  context.database.run(
+    `INSERT INTO organization_domains (
+       uuid, org_uuid, txt, domain_name, creation_date, next_run_date, verified_date
+     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      domainUuid,
+      organizationUuid,
+      "bw=verified",
+      "example.com",
+      "2026-08-28T00:00:00.000Z",
+      "2026-08-29T00:00:00.000Z",
+      "2026-08-28T00:00:00.000Z",
+    ],
+  )
+  context.database.run("UPDATE organizations SET identifier = ? WHERE uuid = ?", ["organization-sso", organizationUuid])
+  const ssoLookupResponse = await context.app.request("https://vault.example/api/organizations/domain/sso/verified", {
+    body: JSON.stringify({ email: "person@example.com" }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  })
+  expect(ssoLookupResponse.status).toBe(200)
+  expect(await ssoLookupResponse.json()).toMatchObject({
+    data: [
+      {
+        domainName: "example.com",
+        object: "verifiedOrganizationDomainSsoDetails",
+        organizationIdentifier: "organization-sso",
+        organizationName: "Organization",
+      },
+    ],
+    object: "list",
+  })
+})
+
+test("organization SSO configuration supports get and create-update", async () => {
+  const context = await contextCreate()
+  const organizationUrl = `https://vault.example/api/organizations/${organizationUuid}`
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const initialResponse = await context.app.request(`${organizationUrl}/sso`, {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(initialResponse.status).toBe(200)
+  expect(await initialResponse.json()).toMatchObject({
+    Data: null,
+    Enabled: false,
+    Identifier: null,
+    object: "organizationSso",
+    Urls: {
+      CallbackPath: "https://vault.example/oidc-signin",
+      SpAcsUrl: `https://vault.example/saml2/${organizationUuid}/Acs`,
+    },
+  })
+
+  const saveResponse = await context.app.request(`${organizationUrl}/sso`, {
+    body: JSON.stringify({
+      data: { authority: "https://idp.example", clientId: "client", configType: 0 },
+      enabled: true,
+      identifier: "organization-sso",
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(saveResponse.status).toBe(200)
+  expect(await saveResponse.json()).toMatchObject({
+    Data: { Authority: "https://idp.example", ClientId: "client", ConfigType: 0 },
+    Enabled: true,
+    Identifier: "organization-sso",
+    object: "organizationSso",
+  })
+  expect(context.database.query("SELECT org_uuid, enabled, data FROM organization_sso_configs").all()).toEqual([
+    {
+      org_uuid: organizationUuid,
+      enabled: 1,
+      data: JSON.stringify({ authority: "https://idp.example", clientId: "client", configType: 0 }),
+    },
+  ])
 })
 
 test("membership invite endpoint uses the organization admin guard and persists an invitation", async () => {
