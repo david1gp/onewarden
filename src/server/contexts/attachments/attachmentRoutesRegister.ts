@@ -9,7 +9,7 @@ import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import { requestQueryParse } from "../../../shared/validation/requestQueryParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
-import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
+import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import type { Attachment } from "./attachment.js"
@@ -362,11 +362,14 @@ function attachmentRequestContextResolve(
   context: Context<AuthenticationEnvironment>,
   options: AttachmentRouteOptions,
 ): Result<AttachmentRequestContext> {
-  const authentication = authenticationContextGet(context)
-  if (authentication === undefined)
-    return apiErrorCreate("attachmentAuthentication", "platform.unauthorized", "Authentication is required.")
-  const database = options.database ?? context.get("database")
-  if (database === undefined) return apiErrorCreate("attachmentDatabase", "platform.internal", "Database unavailable.")
+  const requestContext = authenticationDatabaseRequestContextResolve(context, {
+    authenticationErrorCreate: () =>
+      apiErrorCreate("attachmentAuthentication", "platform.unauthorized", "Authentication is required."),
+    databaseErrorCreate: () => apiErrorCreate("attachmentDatabase", "platform.internal", "Database unavailable."),
+    databaseOverride: options.database,
+  })
+  if (!requestContext.success) return requestContext
+  const { authentication, database } = requestContext.data
   return resultCreate({
     database,
     device: authentication.device,

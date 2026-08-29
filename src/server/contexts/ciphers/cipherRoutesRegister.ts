@@ -6,7 +6,7 @@ import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCrea
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
-import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
+import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { cipherArchive } from "./cipherArchive.js"
@@ -788,11 +788,14 @@ function cipherRequestContextResolve(
   context: Context<AuthenticationEnvironment>,
   options: CipherRouteOptions,
 ): CipherRequestContextResult {
-  const authentication = authenticationContextGet(context)
-  if (authentication === undefined)
-    return apiErrorCreate("cipherAuthentication", "platform.unauthorized", "Authentication is required.")
-  const database = options.database ?? context.get("database")
-  if (database === undefined) return apiErrorCreate("cipherDatabase", "platform.internal", "Database unavailable.")
+  const requestContext = authenticationDatabaseRequestContextResolve(context, {
+    authenticationErrorCreate: () =>
+      apiErrorCreate("cipherAuthentication", "platform.unauthorized", "Authentication is required."),
+    databaseErrorCreate: () => apiErrorCreate("cipherDatabase", "platform.internal", "Database unavailable."),
+    databaseOverride: options.database,
+  })
+  if (!requestContext.success) return requestContext
+  const { authentication, database } = requestContext.data
   return {
     success: true,
     data: { database, device: authentication.device, ipAddress: authentication.ip, userUuid: authentication.user.uuid },
