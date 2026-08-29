@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-35 are committed, pushed, deployed, and healthy on `main`. Task 36 is integrated and passes full unit, integration, compatibility, browser, check, and build verification; it awaits commit, push, and deployment. Task 37 is complete and verified in its isolated worktree and will be integrated after task 36 publication. Task 38 has partial isolated work and remains incomplete. Task 39 has not started.
+- Current context: tasks 34-36 are committed, pushed, deployed, and healthy on `main`. Task 37 is integrated and passes full unit, integration, compatibility, browser, check, and build verification; it awaits commit, push, and deployment. Task 38 has partial isolated work and remains incomplete. Task 39 has not started; known production routing/API-proxy gaps are assigned there.
 
 # Tasks
 
@@ -64,7 +64,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
 - [x] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
 - [x] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
-- [ ] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
+- [x] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
 - [ ] 38. Port and run the complete upstream-compatible behavior matrix, add protocol fixtures for uncovered APIs, and close every compatibility-manifest gap.
 - [ ] 39. Add production build, Caddy/systemd deployment, migrations, backup/restore, observability, security headers, and release verification.
 
