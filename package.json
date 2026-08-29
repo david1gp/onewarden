@@ -38,10 +38,13 @@
   "dependencies": {
     "@adaptive-ds/mdi": "^0.1.2",
     "@adaptive-ds/result": "0.6.0",
+    "@corvu/dialog": "^0.2.4",
+    "@corvu/popover": "^0.2.0",
     "@simplewebauthn/server": "^13.3.3",
     "@solid-primitives/keyed": "^1.5.3",
     "@tanstack/solid-router": "^1.170.30",
     "clsx": "^2.1.1",
+    "corvu": "^0.7.2",
     "hono": "4.13.2",
     "jose": "^6.2.10",
     "solid-js": "1.9.15",

@@ -1,0 +1,121 @@
+import { type JSX, Show } from "solid-js"
+import { InputS } from "#ui/input/input/InputS.jsx"
+import { Label } from "#ui/input/label/Label.jsx"
+import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
+import { Badge } from "#ui/static/badge/Badge.jsx"
+import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
+import {
+  type CipherLoginFormSectionStateProps,
+  cipherLoginFormSectionStateCreate,
+} from "./cipherLoginFormSectionStateCreate.js"
+
+export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps): JSX.Element {
+  const state = cipherLoginFormSectionStateCreate(props)
+
+  return (
+    <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Login Credentials</p>
+
+      {/* Username */}
+      <div class="space-y-1">
+        <Label for="cipher-username" class="text-xs">
+          Username / Email
+        </Label>
+        <InputS
+          id="cipher-username"
+          type="text"
+          placeholder="e.g. user@example.com"
+          valueSignal={state.usernameSignal}
+          class="h-9 w-full text-xs"
+        />
+      </div>
+
+      {/* Password */}
+      <div class="space-y-1">
+        <div class="flex items-center justify-between">
+          <Label for="cipher-password" class="text-xs">
+            Password
+          </Label>
+          <div class="flex items-center gap-2">
+            <Show when={state.passwordStrength()}>
+              {(strength) => (
+                <Badge
+                  variant={
+                    strength() === "Very Strong" || strength() === "Strong"
+                      ? "filledGreen"
+                      : strength() === "Medium"
+                        ? "subtle"
+                        : "filledRed"
+                  }
+                  class="px-1.5 py-0 text-[10px]"
+                >
+                  {strength()}
+                </Badge>
+              )}
+            </Show>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-5 px-1.5 text-[11px] text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              onClick={() => state.generatePassword()}
+            >
+              Generate
+            </Button>
+          </div>
+        </div>
+        <div class="relative flex items-center">
+          <InputS
+            id="cipher-password"
+            type={state.isPasswordRevealed() ? "text" : "password"}
+            placeholder="Enter password"
+            valueSignal={state.passwordSignal}
+            class="h-9 w-full pr-16 text-xs font-mono"
+          />
+          <div class="absolute right-1 flex items-center">
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+              iconClass="size-3.5"
+              onClick={() => state.togglePasswordReveal()}
+              class="h-7 px-2 text-xs text-slate-500"
+              aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
+            >
+              {state.isPasswordRevealed() ? "Hide" : "Show"}
+            </ButtonIcon>
+          </div>
+        </div>
+      </div>
+
+      {/* Authenticator Key (TOTP) */}
+      <div class="space-y-1">
+        <Label for="cipher-totp" class="text-xs">
+          Authenticator Key (TOTP Seed)
+        </Label>
+        <InputS
+          id="cipher-totp"
+          type="text"
+          placeholder="Base32 key (e.g. JBSWY3DPEHPK3PXP)"
+          valueSignal={state.totpSignal}
+          class="h-9 w-full text-xs font-mono"
+        />
+      </div>
+
+      {/* Website URI */}
+      <div class="space-y-1">
+        <Label for="cipher-uri" class="text-xs">
+          Website URL
+        </Label>
+        <InputS
+          id="cipher-uri"
+          type="url"
+          placeholder="https://example.com/login"
+          valueSignal={state.uriSignal}
+          class="h-9 w-full text-xs"
+        />
+      </div>
+    </CardWrapper>
+  )
+}
