@@ -1,11 +1,4 @@
-import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 
 /** A decrypted login entry as the popup renders it. */
-export interface ExtensionPopupLogin {
-  id: string
-  name: string
-  username: string | null
-  uri: string | null
-  /** Standard and custom fields the user may copy, in display order. */
-  copyableFields: ExtensionPopupCopyableField[]
-}
+export type ExtensionPopupLogin = ExtensionLogin
