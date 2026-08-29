@@ -7,6 +7,7 @@ export type SyncRouteOptions = {
   clock: Clock
   config: IdentityConfig
   database: DatabaseConnection | undefined
+  groupsEnabled: boolean
   publicKey: KeyInput | undefined
   publicOrigin: string | undefined
 }

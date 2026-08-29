@@ -7,6 +7,7 @@ export function cipherDeleteDependencies(database: DatabaseConnection, cipherUui
   const op = "cipherDeleteDependencies"
   try {
     database.run("DELETE FROM folders_ciphers WHERE cipher_uuid = ?", [cipherUuid])
+    database.run("DELETE FROM ciphers_collections WHERE cipher_uuid = ?", [cipherUuid])
     database.run("DELETE FROM favorites WHERE cipher_uuid = ?", [cipherUuid])
     database.run("DELETE FROM archives WHERE cipher_uuid = ?", [cipherUuid])
     database.run("DELETE FROM attachments WHERE cipher_uuid = ?", [cipherUuid])

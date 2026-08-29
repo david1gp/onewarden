@@ -7,13 +7,15 @@ import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderSave } from "../folders/folderSave.js"
+import { organizationMembershipFindByUserAndOrganization } from "../organizations/organizationMembershipFindByUserAndOrganization.js"
+import { organizationMembershipStatus } from "../organizations/organizationMembershipStatus.js"
 import type { Cipher } from "./cipher.js"
 import { cipherApplyData } from "./cipherApplyData.js"
 import { cipherDataPrepare } from "./cipherDataPrepare.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import type { CipherImportData } from "./cipherImportDataSchema.js"
 import { cipherPasswordHistoryValidate } from "./cipherPasswordHistoryValidate.js"
-import { cipherUserRevisionUpdate } from "./cipherUserRevisionUpdate.js"
+import { cipherRevisionUpdate } from "./cipherRevisionUpdate.js"
 
 export function cipherImport(
   database: DatabaseConnection,
@@ -22,12 +24,21 @@ export function cipherImport(
   clock: Clock,
   identifier: Identifier,
   maxNoteSize = 10_000,
+  groupsEnabled = false,
 ): Result<{ revisionDate: string }> {
   for (const [cipherIndex, cipherData] of data.ciphers.entries()) {
     const preparedResult = cipherDataPrepare(cipherData)
     if (!preparedResult.success) return preparedResult
-    if (preparedResult.data.organizationUuid !== null)
-      return cipherErrorCreate("cipherImport", "You don't have permission to add item to organization")
+    if (preparedResult.data.organizationUuid !== null) {
+      const membershipResult = organizationMembershipFindByUserAndOrganization(
+        database,
+        userUuid,
+        preparedResult.data.organizationUuid,
+      )
+      if (!membershipResult.success) return membershipResult
+      if (membershipResult.data?.status !== organizationMembershipStatus.confirmed)
+        return cipherErrorCreate("cipherImport", "You don't have permission to add item to organization")
+    }
     if (
       cipherData.notes !== null &&
       cipherData.notes !== undefined &&
@@ -49,6 +60,7 @@ export function cipherImport(
 
   return databaseTransaction(database, () => {
     const folderIds: string[] = []
+    const importedCiphers: Cipher[] = []
     for (const folderData of data.folders) {
       const requestedFolderId =
         folderData.id === undefined || folderData.id === null || folderData.id === "" ? null : folderData.id
@@ -97,10 +109,13 @@ export function cipherImport(
         updateRevision: false,
       })
       if (!applyResult.success) return applyResult
+      importedCiphers.push(applyResult.data)
     }
 
-    const revisionResult = cipherUserRevisionUpdate(database, userUuid, now)
-    if (!revisionResult.success) return revisionResult
+    for (const cipher of importedCiphers) {
+      const revisionResult = cipherRevisionUpdate(database, cipher, now, groupsEnabled, userUuid)
+      if (!revisionResult.success) return revisionResult
+    }
     return resultCreate({ revisionDate: now })
   })
 }

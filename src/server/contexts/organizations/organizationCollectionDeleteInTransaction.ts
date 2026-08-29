@@ -15,6 +15,7 @@ export function organizationCollectionDeleteInTransaction(
   try {
     database.run("DELETE FROM users_collections WHERE collection_uuid = ?", [collection.uuid])
     database.run("DELETE FROM collections_groups WHERE collections_uuid = ?", [collection.uuid])
+    database.run("DELETE FROM ciphers_collections WHERE collection_uuid = ?", [collection.uuid])
     database.run("DELETE FROM collections WHERE uuid = ? AND org_uuid = ?", [collection.uuid, organizationUuid])
     return organizationCollectionRevisionUpdate(database, affectedUserUuids, revisionDate)
   } catch {

@@ -10,6 +10,9 @@ import { authenticationContextGet } from "../authentication/authenticationContex
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { cipherArchive } from "./cipherArchive.js"
+import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
+import { cipherCollectionsDataSchema } from "./cipherCollectionsDataSchema.js"
+import { cipherCollectionsReplace } from "./cipherCollectionsReplace.js"
 import type { Cipher } from "./cipher.js"
 import { cipherCreate } from "./cipherCreate.js"
 import { cipherCreateRequestSchema } from "./cipherCreateRequestSchema.js"
@@ -22,7 +25,6 @@ import { cipherFindByUser } from "./cipherFindByUser.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
 import { cipherImport } from "./cipherImport.js"
 import { cipherImportDataSchema } from "./cipherImportDataSchema.js"
-import { cipherMove } from "./cipherMove.js"
 import { cipherMoveDataSchema } from "./cipherMoveDataSchema.js"
 import { cipherNotificationAdapterCreate } from "./cipherNotificationAdapterCreate.js"
 import { cipherNotificationSend } from "./cipherNotificationSend.js"
@@ -32,10 +34,16 @@ import type { CipherRouteOptions } from "./cipherRouteOptions.js"
 import type { CipherPartialData } from "./cipherPartialDataSchema.js"
 import { cipherPartialDataSchema } from "./cipherPartialDataSchema.js"
 import { cipherRestore } from "./cipherRestore.js"
+import { cipherShare } from "./cipherShare.js"
+import { cipherShareDataSchema } from "./cipherShareDataSchema.js"
+import { cipherShareSelected } from "./cipherShareSelected.js"
+import { cipherShareSelectedDataSchema } from "./cipherShareSelectedDataSchema.js"
 import { cipherToJson } from "./cipherToJson.js"
 import { cipherUpdate } from "./cipherUpdate.js"
 import { cipherUpdateType } from "./cipherUpdateType.js"
 import { cipherUserNotificationSend } from "./cipherUserNotificationSend.js"
+import { cipherUserUuidsFind } from "./cipherUserUuidsFind.js"
+import { cipherMoveSelected } from "./cipherMoveSelected.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
 
@@ -53,7 +61,11 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   const list = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = cipherRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const ciphersResult = cipherFindByUser(requestContext.data.database, requestContext.data.userUuid)
+    const ciphersResult = cipherFindByUser(
+      requestContext.data.database,
+      requestContext.data.userUuid,
+      options.groupsEnabled,
+    )
     if (!ciphersResult.success) return apiErrorResponseCreate(ciphersResult)
     const data: Record<string, unknown>[] = []
     for (const cipher of ciphersResult.data) {
@@ -78,8 +90,15 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     if (cipherResult.data === null)
       return apiErrorResponseCreate(cipherErrorCreate("cipherRoutesGet", "Cipher doesn't exist"))
-    if (cipherResult.data.userUuid !== requestContext.data.userUuid)
-      return apiErrorResponseCreate(cipherErrorCreate("cipherRoutesGet", "Cipher is not owned by user"))
+    const accessResult = cipherAccessFindByUser(
+      requestContext.data.database,
+      cipherResult.data,
+      requestContext.data.userUuid,
+      options.groupsEnabled,
+    )
+    if (!accessResult.success) return apiErrorResponseCreate(accessResult)
+    if (accessResult.data === null)
+      return apiErrorResponseCreate(cipherErrorCreate("cipherRoutesGet", "Cipher is not accessible"))
     const jsonResult = await cipherToJson(
       requestContext.data.database,
       cipherResult.data,
@@ -104,8 +123,13 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     const bodyResult = await requestBodyParse(context, cipherCreateRequestSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
     const body = bodyResult.data
-    const data = "cipher" in body ? body.cipher : body
-    return cipherCreateResponse(context, requestContext.data, data, options)
+    let data: CipherData | undefined
+    if ("cipher" in body && body.cipher !== undefined) data = body.cipher
+    if ("Cipher" in body && body.Cipher !== undefined) data = body.Cipher
+    if ("type" in body) data = body
+    if (data === undefined) return apiErrorResponseCreate(cipherErrorCreate("cipherRoutesCreate", "Cipher is required"))
+    const collectionIds = "cipher" in body || "Cipher" in body ? (body.collectionIds ?? body.CollectionIds) : undefined
+    return cipherCreateResponse(context, requestContext.data, data, options, collectionIds)
   }
 
   const importCiphers = async (context: Context<AuthenticationEnvironment>) => {
@@ -120,6 +144,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
       options.clock,
       options.identifier,
       options.maxNoteSize,
+      options.groupsEnabled,
     )
     if (!importResult.success) return apiErrorResponseCreate(importResult)
     await cipherUserNotificationSend(
@@ -145,6 +170,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
       requestContext.data.userUuid,
       bodyResult.data,
       options.clock,
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     await cipherNotificationSend(notification, cipherUpdateType.update, cipherResult.data, requestContext.data.device)
@@ -168,7 +194,14 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     if (cipherResult.data === null)
       return apiErrorResponseCreate(cipherErrorCreate("cipherRoutesPartial", "Cipher does not exist"))
-    if (cipherResult.data.userUuid !== requestContext.data.userUuid)
+    const accessResult = cipherAccessFindByUser(
+      requestContext.data.database,
+      cipherResult.data,
+      requestContext.data.userUuid,
+      options.groupsEnabled,
+    )
+    if (!accessResult.success) return apiErrorResponseCreate(accessResult)
+    if (accessResult.data === null)
       return apiErrorResponseCreate(
         cipherErrorCreate(
           "cipherRoutesPartial",
@@ -204,6 +237,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         requestContext.data.userUuid,
         soft,
         options.clock,
+        options.groupsEnabled,
       )
       if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
       if (!soft && options.attachmentStorage !== undefined)
@@ -234,6 +268,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         cipherId,
         requestContext.data.userUuid,
         options.clock,
+        options.groupsEnabled,
       )
       if (!restoreResult.success) return apiErrorResponseCreate(restoreResult)
       const jsonResult = await cipherToJson(
@@ -275,28 +310,24 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
           cipherErrorCreate("cipherRoutesMove", "Invalid folder", "Folder does not exist or belongs to another user"),
         )
     }
-    let moved = 0
-    let movedCipher: Cipher | undefined
-    for (const cipherId of body.ids) {
-      const moveResult = cipherMove(
-        requestContext.data.database,
-        cipherId,
-        requestContext.data.userUuid,
-        folderUuid,
-        options.clock,
+    const moveResult = cipherMoveSelected(
+      requestContext.data.database,
+      body.ids,
+      requestContext.data.userUuid,
+      folderUuid,
+      options.clock,
+      options.groupsEnabled,
+    )
+    if (!moveResult.success) return apiErrorResponseCreate(moveResult)
+    if (body.ids.length === 1 && moveResult.data.movedCipher !== undefined) {
+      await cipherNotificationSend(
+        notification,
+        cipherUpdateType.update,
+        moveResult.data.movedCipher,
+        requestContext.data.device,
+        null,
+        [requestContext.data.userUuid],
       )
-      if (!moveResult.success) return apiErrorResponseCreate(moveResult)
-      if (moveResult.data) {
-        moved += 1
-        if (body.ids.length === 1) {
-          const cipherResult = cipherFindByUuid(requestContext.data.database, cipherId)
-          if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
-          movedCipher = cipherResult.data ?? undefined
-        }
-      }
-    }
-    if (body.ids.length === 1 && movedCipher !== undefined) {
-      await cipherNotificationSend(notification, cipherUpdateType.update, movedCipher, requestContext.data.device)
     } else {
       await cipherUserNotificationSend(
         notification,
@@ -306,13 +337,6 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         requestContext.data.device,
       )
     }
-    if (moved !== body.ids.length)
-      return apiErrorResponseCreate(
-        cipherErrorCreate(
-          "cipherRoutesMove",
-          `Not all ciphers are moved! ${moved} of the selected ${body.ids.length} were moved.`,
-        ),
-      )
     return new Response(null, { status: 200 })
   }
 
@@ -322,6 +346,16 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     cipherArchiveResponse(context, options, false, notification)
   const bulkArchive = (context: Context<AuthenticationEnvironment>, archived: boolean) =>
     cipherBulkArchiveResponse(context, options, archived, notification)
+
+  const replaceCollections = (
+    context: Context<AuthenticationEnvironment>,
+    adminCollections: boolean,
+    wrapped: boolean,
+  ) => cipherCollectionsReplaceResponse(context, options, notification, adminCollections, wrapped)
+
+  const share = (context: Context<AuthenticationEnvironment>) => cipherShareResponse(context, options, notification)
+  const shareSelected = (context: Context<AuthenticationEnvironment>) =>
+    cipherShareSelectedResponse(context, options, notification)
 
   app.get("/api/ciphers", authenticate("get_ciphers"), list)
   app.get("/api/ciphers/:cipher_id", authenticate("get_cipher"), get)
@@ -349,6 +383,27 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   app.put("/api/ciphers/move", authenticate("move_cipher_selected_put"), move)
   app.put("/api/ciphers/archive", authenticate("archive_cipher_selected"), (context) => bulkArchive(context, true))
   app.put("/api/ciphers/unarchive", authenticate("unarchive_cipher_selected"), (context) => bulkArchive(context, false))
+  app.put("/api/ciphers/:cipher_id/collections_v2", authenticate("put_collections2_update"), (context) =>
+    replaceCollections(context, false, true),
+  )
+  app.post("/api/ciphers/:cipher_id/collections_v2", authenticate("post_collections2_update"), (context) =>
+    replaceCollections(context, false, true),
+  )
+  app.put("/api/ciphers/:cipher_id/collections", authenticate("put_collections_update"), (context) =>
+    replaceCollections(context, false, false),
+  )
+  app.post("/api/ciphers/:cipher_id/collections", authenticate("post_collections_update"), (context) =>
+    replaceCollections(context, false, false),
+  )
+  app.put("/api/ciphers/:cipher_id/collections-admin", authenticate("put_collections_admin"), (context) =>
+    replaceCollections(context, true, false),
+  )
+  app.post("/api/ciphers/:cipher_id/collections-admin", authenticate("post_collections_admin"), (context) =>
+    replaceCollections(context, true, false),
+  )
+  app.post("/api/ciphers/:cipher_id/share", authenticate("post_cipher_share"), share)
+  app.put("/api/ciphers/:cipher_id/share", authenticate("put_cipher_share"), share)
+  app.put("/api/ciphers/share", authenticate("put_cipher_share_selected"), shareSelected)
   app.post("/api/ciphers/:cipher_id", authenticate("post_cipher"), update)
   app.put("/api/ciphers/:cipher_id", authenticate("put_cipher"), update)
   app.post("/api/ciphers/:cipher_id/admin", authenticate("post_cipher_admin"), update)
@@ -367,11 +422,137 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   app.put("/api/ciphers/:cipher_id/unarchive", authenticate("unarchive_cipher_put"), unarchive)
 }
 
+async function cipherCollectionsReplaceResponse(
+  context: Context<AuthenticationEnvironment>,
+  options: CipherRouteOptions,
+  notification: ReturnType<typeof cipherNotificationAdapterCreate>,
+  adminCollections: boolean,
+  wrapped: boolean,
+): Promise<Response> {
+  const requestContext = cipherRequestContextResolve(context, options)
+  if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+  const pathResult = requestPathParse(context, cipherPathSchema)
+  if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+  const bodyResult = await requestBodyParse(context, cipherCollectionsDataSchema)
+  if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+  const collectionIds = bodyResult.data.collectionIds ?? bodyResult.data.CollectionIds
+  if (collectionIds === undefined)
+    return apiErrorResponseCreate(cipherErrorCreate("cipherCollectionsReplace", "CollectionIds is required"))
+  const result = cipherCollectionsReplace(
+    requestContext.data.database,
+    pathResult.data.cipher_id,
+    requestContext.data.userUuid,
+    collectionIds,
+    options.clock,
+    options.groupsEnabled,
+    adminCollections,
+  )
+  if (!result.success) return apiErrorResponseCreate(result)
+  await cipherNotificationSend(
+    notification,
+    cipherUpdateType.update,
+    result.data.cipher,
+    requestContext.data.device,
+    result.data.collectionIds,
+    result.data.userUuids,
+  )
+  const jsonResult = await cipherJsonData(
+    context,
+    requestContext.data.database,
+    result.data.cipher,
+    requestContext.data.userUuid,
+    options,
+  )
+  if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
+  return wrapped
+    ? context.json({ cipher: jsonResult.data, object: "optionalCipherDetails", unavailable: false })
+    : context.json(jsonResult.data)
+}
+
+async function cipherShareResponse(
+  context: Context<AuthenticationEnvironment>,
+  options: CipherRouteOptions,
+  notification: ReturnType<typeof cipherNotificationAdapterCreate>,
+): Promise<Response> {
+  const requestContext = cipherRequestContextResolve(context, options)
+  if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+  const pathResult = requestPathParse(context, cipherPathSchema)
+  if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+  const bodyResult = await requestBodyParse(context, cipherShareDataSchema)
+  if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+  const data = bodyResult.data.cipher ?? bodyResult.data.Cipher
+  const collectionIds = bodyResult.data.collectionIds ?? bodyResult.data.CollectionIds
+  if (data === undefined) return apiErrorResponseCreate(cipherErrorCreate("cipherShare", "Cipher is required"))
+  if (collectionIds === undefined)
+    return apiErrorResponseCreate(cipherErrorCreate("cipherShare", "CollectionIds is required"))
+  const result = cipherShare(
+    requestContext.data.database,
+    pathResult.data.cipher_id,
+    requestContext.data.userUuid,
+    data,
+    collectionIds,
+    options.clock,
+    options.groupsEnabled,
+  )
+  if (!result.success) return apiErrorResponseCreate(result)
+  const usersResult = cipherUserUuidsFind(requestContext.data.database, result.data, options.groupsEnabled)
+  if (!usersResult.success) return apiErrorResponseCreate(usersResult)
+  const sharedCollectionIds = result.data.organizationUuid === null ? [] : [...new Set(collectionIds)]
+  const updateType =
+    data.lastKnownRevisionDate === undefined || data.lastKnownRevisionDate === null
+      ? cipherUpdateType.create
+      : cipherUpdateType.update
+  await cipherNotificationSend(
+    notification,
+    updateType,
+    result.data,
+    requestContext.data.device,
+    sharedCollectionIds,
+    usersResult.data,
+  )
+  return cipherJsonResponse(context, requestContext.data.database, result.data, requestContext.data.userUuid, options)
+}
+
+async function cipherShareSelectedResponse(
+  context: Context<AuthenticationEnvironment>,
+  options: CipherRouteOptions,
+  notification: ReturnType<typeof cipherNotificationAdapterCreate>,
+): Promise<Response> {
+  const requestContext = cipherRequestContextResolve(context, options)
+  if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+  const bodyResult = await requestBodyParse(context, cipherShareSelectedDataSchema)
+  if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+  const ciphers = bodyResult.data.ciphers
+  const collectionIds = bodyResult.data.collectionIds
+  if (ciphers === undefined)
+    return apiErrorResponseCreate(cipherErrorCreate("cipherShareSelected", "You must select at least one cipher."))
+  if (collectionIds === undefined)
+    return apiErrorResponseCreate(cipherErrorCreate("cipherShareSelected", "You must select at least one collection."))
+  const result = cipherShareSelected(
+    requestContext.data.database,
+    ciphers,
+    [...new Set(collectionIds)],
+    requestContext.data.userUuid,
+    options.clock,
+    options.groupsEnabled,
+  )
+  if (!result.success) return apiErrorResponseCreate(result)
+  await cipherUserNotificationSend(
+    notification,
+    cipherUpdateType.sync,
+    requestContext.data.userUuid,
+    options.clock.now().toISOString(),
+    requestContext.data.device,
+  )
+  return new Response(null, { status: 200 })
+}
+
 async function cipherCreateResponse(
   context: Context<AuthenticationEnvironment>,
   requestContext: CipherRequestContext,
   data: CipherData,
   options: CipherRouteOptions,
+  collectionIds: readonly string[] | undefined = undefined,
 ): Promise<Response> {
   const cipherResult = cipherCreate(
     requestContext.database,
@@ -379,11 +560,37 @@ async function cipherCreateResponse(
     data,
     options.clock,
     options.identifier,
+    options.groupsEnabled,
+    collectionIds,
   )
   if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
   const notification = options.notification ?? cipherNotificationAdapterCreate()
-  await cipherNotificationSend(notification, cipherUpdateType.create, cipherResult.data, requestContext.device)
+  const userUuidsResult =
+    cipherResult.data.organizationUuid === null
+      ? undefined
+      : cipherUserUuidsFind(requestContext.database, cipherResult.data, options.groupsEnabled)
+  if (userUuidsResult !== undefined && !userUuidsResult.success) return apiErrorResponseCreate(userUuidsResult)
+  const notificationCollectionIds =
+    collectionIds === undefined ? null : cipherResult.data.organizationUuid === null ? [] : [...new Set(collectionIds)]
+  await cipherNotificationSend(
+    notification,
+    cipherUpdateType.create,
+    cipherResult.data,
+    requestContext.device,
+    notificationCollectionIds,
+    userUuidsResult?.data,
+  )
   return cipherJsonResponse(context, requestContext.database, cipherResult.data, requestContext.userUuid, options)
+}
+
+async function cipherJsonData(
+  context: Context<AuthenticationEnvironment>,
+  database: NonNullable<CipherRouteOptions["database"]>,
+  cipher: Cipher,
+  userUuid: string,
+  options: CipherRouteOptions,
+): Promise<Awaited<ReturnType<typeof cipherToJson>>> {
+  return cipherToJson(database, cipher, userUuid, cipherJsonOptions(context, options))
 }
 
 async function cipherJsonResponse(
@@ -401,9 +608,18 @@ async function cipherJsonResponse(
 function cipherJsonOptions(
   context: Context<AuthenticationEnvironment>,
   options: CipherRouteOptions,
-): { clock: CipherRouteOptions["clock"]; origin: string; privateKey: CipherRouteOptions["privateKey"] } {
+): {
+  adminCollections?: boolean
+  clock: CipherRouteOptions["clock"]
+  groupsEnabled: boolean
+  origin: string
+  privateKey: CipherRouteOptions["privateKey"]
+} {
+  const path = context.req.path
   return {
+    adminCollections: path.endsWith("/collections-admin"),
     clock: options.clock,
+    groupsEnabled: options.groupsEnabled,
     origin: new URL(options.publicOrigin ?? context.req.url).origin,
     privateKey: options.privateKey,
   }
@@ -454,6 +670,7 @@ async function cipherDeleteResponse(
     requestContext.data.userUuid,
     soft,
     options.clock,
+    options.groupsEnabled,
   )
   if (!result.success) return apiErrorResponseCreate(result)
   if (!soft && options.attachmentStorage !== undefined) await options.attachmentStorage.delete(result.data.uuid)
@@ -480,6 +697,7 @@ async function cipherRestoreResponse(
     pathResult.data.cipher_id,
     requestContext.data.userUuid,
     options.clock,
+    options.groupsEnabled,
   )
   if (!result.success) return apiErrorResponseCreate(result)
   await cipherNotificationSend(notification, cipherUpdateType.update, result.data, requestContext.data.device)
@@ -502,6 +720,7 @@ async function cipherArchiveResponse(
     requestContext.data.userUuid,
     archived,
     options.clock,
+    options.groupsEnabled,
   )
   if (!result.success) return apiErrorResponseCreate(result)
   await cipherNotificationSend(notification, cipherUpdateType.update, result.data, requestContext.data.device)
@@ -526,6 +745,7 @@ async function cipherBulkArchiveResponse(
       requestContext.data.userUuid,
       archived,
       options.clock,
+      options.groupsEnabled,
     )
     if (!result.success) return apiErrorResponseCreate(result)
     const jsonResult = await cipherToJson(

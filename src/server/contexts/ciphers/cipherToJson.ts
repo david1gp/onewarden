@@ -8,6 +8,8 @@ import { attachmentFindByCipher } from "../attachments/attachmentFindByCipher.js
 import { attachmentToJson } from "../attachments/attachmentToJson.js"
 import type { Cipher } from "./cipher.js"
 import { cipherArchiveFind } from "./cipherArchiveFind.js"
+import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
+import { cipherCollectionIdsFindByUser } from "./cipherCollectionIdsFindByUser.js"
 import { cipherFavoriteFind } from "./cipherFavoriteFind.js"
 import { cipherFolderFindByUser } from "./cipherFolderFindByUser.js"
 import { cipherPasswordHistoryNormalize } from "./cipherPasswordHistoryNormalize.js"
@@ -37,17 +39,43 @@ export function cipherToJson(
   database: DatabaseConnection,
   cipher: Cipher,
   userUuid: string,
-  options?: { clock: Clock; origin: string; privateKey: KeyInput | undefined },
+  options?: {
+    adminCollections?: boolean
+    clock: Clock
+    groupsEnabled?: boolean
+    origin: string
+    privateKey: KeyInput | undefined
+  },
+  groupsEnabled = false,
 ): Promise<Result<Record<string, unknown>>> {
-  return cipherToJsonAsync(database, cipher, userUuid, options)
+  return cipherToJsonAsync(database, cipher, userUuid, options, groupsEnabled)
 }
 
 async function cipherToJsonAsync(
   database: DatabaseConnection,
   cipher: Cipher,
   userUuid: string,
-  options: { clock: Clock; origin: string; privateKey: KeyInput | undefined } | undefined,
+  options:
+    | {
+        adminCollections?: boolean
+        clock: Clock
+        groupsEnabled?: boolean
+        origin: string
+        privateKey: KeyInput | undefined
+      }
+    | undefined,
+  groupsEnabled: boolean,
 ): Promise<Result<Record<string, unknown>>> {
+  const accessResult = cipherAccessFindByUser(database, cipher, userUuid, options?.groupsEnabled ?? groupsEnabled)
+  if (!accessResult.success) return accessResult
+  const collectionIdsResult = cipherCollectionIdsFindByUser(
+    database,
+    cipher,
+    userUuid,
+    options?.groupsEnabled ?? groupsEnabled,
+    options?.adminCollections,
+  )
+  if (!collectionIdsResult.success) return collectionIdsResult
   const folderResult = cipherFolderFindByUser(database, cipher.uuid, userUuid)
   if (!folderResult.success) return folderResult
   const favoriteResult = cipherFavoriteFind(database, cipher.uuid, userUuid)
@@ -81,6 +109,7 @@ async function cipherToJsonAsync(
               ? "sshKey"
               : undefined
   if (typeKey === undefined) return resultErrorCreate("cipherToJson", "Cipher has an invalid type.")
+  const access = accessResult.data ?? { hidePasswords: true, manage: false, readOnly: true }
 
   const result: Record<string, unknown> = {
     object: "cipherDetails",
@@ -94,7 +123,7 @@ async function cipherToJsonAsync(
     key: cipher.key,
     attachments,
     organizationUseTotp: true,
-    collectionIds: [],
+    collectionIds: collectionIdsResult.data,
     name: cipher.name,
     notes: cipher.notes,
     fields: jsonArrayParse(cipher.fields),
@@ -110,9 +139,9 @@ async function cipherToJsonAsync(
     folderId: folderResult.data,
     favorite: favoriteResult.data,
     archivedDate: archiveResult.data,
-    edit: true,
-    viewPassword: true,
-    permissions: { delete: true, restore: true },
+    edit: !access.readOnly,
+    viewPassword: !access.hidePasswords,
+    permissions: { delete: !access.readOnly, restore: !access.readOnly },
   }
   result[typeKey] = typeData
   return resultCreate(result)

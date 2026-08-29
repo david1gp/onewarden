@@ -33,6 +33,10 @@ export function organizationDelete(
         [organizationUuid],
       )
       database.run(
+        "DELETE FROM ciphers_collections WHERE collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)",
+        [organizationUuid],
+      )
+      database.run(
         "DELETE FROM users_collections WHERE collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)",
         [organizationUuid],
       )

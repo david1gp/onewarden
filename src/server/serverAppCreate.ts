@@ -242,6 +242,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     attachmentStorage,
     clock: identityClock,
     database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     identifier: identityIdentifier,
     maxNoteSize: options?.ciphers?.maxNoteSize,
     notification: options?.ciphers?.notification ?? notificationHub.adapter,
@@ -252,6 +253,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   attachmentRoutesRegister(app, {
     clock: identityClock,
     database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     identifier: identityIdentifier,
     maxFileSizeBytes: options?.attachments?.maxFileSizeBytes,
     notification: options?.attachments?.notification ?? notificationHub.adapter,
@@ -268,6 +270,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     clock: identityClock,
     config: identityConfig,
     database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
   })

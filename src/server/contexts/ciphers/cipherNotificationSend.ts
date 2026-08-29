@@ -8,18 +8,21 @@ export async function cipherNotificationSend(
   type: number,
   cipher: Cipher,
   device: IdentityDevice,
+  collectionIds: readonly string[] | null = null,
+  userIds?: readonly string[],
 ): Promise<void> {
   if (adapter.sendCipherUpdate === undefined) return
   const notification: CipherNotification = {
     contextId: device.uuid,
     payload: {
-      CollectionIds: null,
+      CollectionIds: collectionIds === null ? null : [...collectionIds],
       Id: cipher.uuid,
       OrganizationId: cipher.organizationUuid,
       RevisionDate: cipher.updatedAt,
       UserId: cipher.userUuid,
     },
     type,
+    ...(userIds === undefined ? {} : { userIds }),
   }
   try {
     await adapter.sendCipherUpdate(notification)

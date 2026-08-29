@@ -17,6 +17,8 @@ import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderToJson } from "../folders/folderToJson.js"
 import { identityUserProfileToJson } from "../identity/identityUserProfileToJson.js"
 import { identityUserSave } from "../identity/identityUserSave.js"
+import { organizationCollectionFindByUser } from "../organizations/organizationCollectionFindByUser.js"
+import { organizationCollectionToJson } from "../organizations/organizationCollectionToJson.js"
 import { sendFindByUser } from "../sends/sendFindByUser.js"
 import { sendToJson } from "../sends/sendToJson.js"
 import { syncDomainsDataSchema } from "./syncDomainsDataSchema.js"
@@ -42,7 +44,7 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     const { authentication, database } = requestContext.data
     const foldersResult = folderFindByUser(database, authentication.user.uuid)
     if (!foldersResult.success) return apiErrorResponseCreate(foldersResult)
-    const ciphersResult = cipherFindByUser(database, authentication.user.uuid)
+    const ciphersResult = cipherFindByUser(database, authentication.user.uuid, options.groupsEnabled)
     if (!ciphersResult.success) return apiErrorResponseCreate(ciphersResult)
     const sendsResult = sendFindByUser(database, authentication.user.uuid)
     if (!sendsResult.success) return apiErrorResponseCreate(sendsResult)
@@ -50,7 +52,13 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     const ciphers: Record<string, unknown>[] = []
     for (const cipher of ciphersResult.data) {
       if (!syncCipherVisible(cipher.type, clientVersionResult.data)) continue
-      const jsonResult = await cipherToJson(database, cipher, authentication.user.uuid)
+      const jsonResult = await cipherToJson(
+        database,
+        cipher,
+        authentication.user.uuid,
+        undefined,
+        options.groupsEnabled,
+      )
       if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
       ciphers.push(jsonResult.data)
     }
@@ -62,10 +70,17 @@ export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options
       sends.push(jsonResult.data)
     }
 
+    const collectionsResult = organizationCollectionFindByUser(
+      database,
+      authentication.user.uuid,
+      options.groupsEnabled,
+    )
+    if (!collectionsResult.success) return apiErrorResponseCreate(collectionsResult)
+
     return context.json({
       profile: identityUserProfileToJson(authentication.user, options.config, database),
       folders: foldersResult.data.map(folderToJson),
-      collections: [],
+      collections: collectionsResult.data.map(organizationCollectionToJson),
       policies: [],
       ciphers,
       domains: syncExcludeDomains(context) ? null : syncDomainsToJson(authentication.user, false),

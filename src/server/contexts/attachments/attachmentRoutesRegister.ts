@@ -14,16 +14,15 @@ import type { AuthenticationEnvironment } from "../authentication/authentication
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import type { Attachment } from "./attachment.js"
 import type { Cipher } from "../ciphers/cipher.js"
+import { cipherAccessFindByUser } from "../ciphers/cipherAccessFindByUser.js"
 import { cipherFindByUuid } from "../ciphers/cipherFindByUuid.js"
 import { cipherNotificationAdapterCreate } from "../ciphers/cipherNotificationAdapterCreate.js"
 import { cipherNotificationSend } from "../ciphers/cipherNotificationSend.js"
 import { cipherToJson } from "../ciphers/cipherToJson.js"
 import { cipherUpdateType } from "../ciphers/cipherUpdateType.js"
 import { cipherUserRevisionUpdate } from "../ciphers/cipherUserRevisionUpdate.js"
+import { cipherUserUuidsFind } from "../ciphers/cipherUserUuidsFind.js"
 import { pushRelayCipherUpdate } from "../push/pushRelayCipherUpdate.js"
-import { organizationMembershipFindByUserAndOrganization } from "../organizations/organizationMembershipFindByUserAndOrganization.js"
-import { organizationMembershipStatus } from "../organizations/organizationMembershipStatus.js"
-import { organizationMembershipType } from "../organizations/organizationMembershipType.js"
 import { attachmentDelete } from "./attachmentDelete.js"
 import { attachmentDownloadTokenVerify } from "./attachmentDownloadTokenVerify.js"
 import { attachmentFindById } from "./attachmentFindById.js"
@@ -68,6 +67,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       false,
       "attachmentRoutesGet",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const attachmentResult = attachmentFindById(requestContext.data.database, pathResult.data.attachment_id)
@@ -94,6 +94,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       true,
       "attachmentRoutesCreateV2",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const fileSizeResult = attachmentNumberResolve(bodyResult.data.fileSize)
@@ -142,6 +143,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       true,
       "attachmentRoutesUploadV2",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const multipartResult = await attachmentMultipartParse(context)
@@ -204,6 +206,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       true,
       "attachmentRoutesUploadLegacy",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const multipartResult = await attachmentMultipartParse(context)
@@ -243,6 +246,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       true,
       "attachmentRoutesReplace",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const multipartResult = await attachmentMultipartParse(context)
@@ -285,6 +289,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.userUuid,
       true,
       "attachmentRoutesRemove",
+      options.groupsEnabled,
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     const attachmentResult = attachmentFindById(requestContext.data.database, pathResult.data.attachment_id)
@@ -366,25 +371,14 @@ async function attachmentCipherResolve(
   userUuid: string,
   write: boolean,
   op: string,
+  groupsEnabled = false,
 ): Promise<Result<Cipher>> {
   const cipherResult = cipherFindByUuid(database, cipherUuid)
   if (!cipherResult.success) return cipherResult
   if (cipherResult.data === null) return attachmentErrorCreate(op, "Cipher doesn't exist")
-  if (cipherResult.data.userUuid === userUuid) return resultCreate(cipherResult.data)
-  if (cipherResult.data.organizationUuid === null)
-    return attachmentErrorCreate(op, write ? "Cipher is not write accessible" : "Cipher is not accessible")
-  const membershipResult = organizationMembershipFindByUserAndOrganization(
-    database,
-    userUuid,
-    cipherResult.data.organizationUuid,
-  )
-  if (!membershipResult.success) return membershipResult
-  const membership = membershipResult.data
-  if (
-    membership === null ||
-    membership.status !== organizationMembershipStatus.confirmed ||
-    (!membership.accessAll && membership.type < organizationMembershipType.admin)
-  )
+  const accessResult = cipherAccessFindByUser(database, cipherResult.data, userUuid, groupsEnabled)
+  if (!accessResult.success) return accessResult
+  if (accessResult.data === null || (write && accessResult.data.readOnly && !accessResult.data.manage))
     return attachmentErrorCreate(op, write ? "Cipher is not write accessible" : "Cipher is not accessible")
   return resultCreate(cipherResult.data)
 }
@@ -513,10 +507,16 @@ async function attachmentMutationNotify(
   notification: ReturnType<typeof cipherNotificationAdapterCreate>,
 ): Promise<Result<void>> {
   const revisionDate = options.clock.now().toISOString()
-  const revisionResult = cipherUserRevisionUpdate(database, userUuid, revisionDate)
-  if (!revisionResult.success) return revisionResult
+  const usersResult = cipherUserUuidsFind(database, cipher, options.groupsEnabled)
+  if (!usersResult.success) return usersResult
+  const userUuids = new Set(usersResult.data)
+  userUuids.add(userUuid)
+  for (const affectedUserUuid of userUuids) {
+    const revisionResult = cipherUserRevisionUpdate(database, affectedUserUuid, revisionDate)
+    if (!revisionResult.success) return revisionResult
+  }
   const revisionCipher = { ...cipher, updatedAt: revisionDate }
-  await cipherNotificationSend(notification, cipherUpdateType.update, revisionCipher, device)
+  await cipherNotificationSend(notification, cipherUpdateType.update, revisionCipher, device, null, [...userUuids])
   if (options.push !== undefined)
     await pushRelayCipherUpdate(options.push, cipherUpdateType.update, revisionCipher, device, database)
   return resultCreate(undefined)
@@ -539,9 +539,15 @@ async function cipherJsonResponse(
 function attachmentJsonOptions(
   context: Context<AuthenticationEnvironment>,
   options: AttachmentRouteOptions,
-): { clock: AttachmentRouteOptions["clock"]; origin: string; privateKey: AttachmentRouteOptions["privateKey"] } {
+): {
+  clock: AttachmentRouteOptions["clock"]
+  groupsEnabled?: boolean
+  origin: string
+  privateKey: AttachmentRouteOptions["privateKey"]
+} {
   return {
     clock: options.clock,
+    groupsEnabled: options.groupsEnabled,
     origin: attachmentOriginResolve(context, options),
     privateKey: options.privateKey,
   }

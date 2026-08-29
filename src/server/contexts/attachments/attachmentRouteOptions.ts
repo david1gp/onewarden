@@ -9,6 +9,7 @@ import type { AttachmentFileStorageAdapter } from "./attachmentFileStorageAdapte
 export type AttachmentRouteOptions = {
   clock: Clock
   database: DatabaseConnection | undefined
+  groupsEnabled?: boolean
   identifier: Identifier
   maxFileSizeBytes?: number
   notification?: CipherNotificationAdapter

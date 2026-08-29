@@ -4,10 +4,16 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
+import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
 import { cipherFolderSet } from "./cipherFolderSet.js"
 import { cipherUserRevisionUpdate } from "./cipherUserRevisionUpdate.js"
+
+type CipherMoveOptions = {
+  revisionDate?: string
+  transaction?: boolean
+}
 
 export function cipherMove(
   database: DatabaseConnection,
@@ -15,21 +21,31 @@ export function cipherMove(
   userUuid: string,
   folderUuid: string | null,
   clock: Clock,
+  groupsEnabled = false,
+  options: CipherMoveOptions = {},
 ): Result<boolean> {
   const cipherResult = cipherFindByUuid(database, cipherUuid)
   if (!cipherResult.success) return cipherResult
-  if (cipherResult.data === null || cipherResult.data.userUuid !== userUuid) return resultCreate(false)
+  if (cipherResult.data === null) return resultCreate(false)
+  const accessResult = cipherAccessFindByUser(database, cipherResult.data, userUuid, groupsEnabled)
+  if (!accessResult.success) return accessResult
+  if (accessResult.data === null) return resultCreate(false)
   if (folderUuid !== null) {
     const folderResult = folderFindByUuidAndUser(database, folderUuid, userUuid)
     if (!folderResult.success) return folderResult
     if (folderResult.data === null)
       return cipherErrorCreate("cipherMove", "Invalid folder", "Folder does not exist or belongs to another user")
   }
-  return databaseTransaction(database, () => {
-    const revisionResult = cipherUserRevisionUpdate(database, userUuid, clock.now().toISOString())
+  const persist = () => {
+    const revisionResult = cipherUserRevisionUpdate(
+      database,
+      userUuid,
+      options.revisionDate ?? clock.now().toISOString(),
+    )
     if (!revisionResult.success) return revisionResult
     const folderResult = cipherFolderSet(database, cipherUuid, folderUuid)
     if (!folderResult.success) return folderResult
     return resultCreate(true)
-  })
+  }
+  return options.transaction === false ? persist() : databaseTransaction(database, persist)
 }

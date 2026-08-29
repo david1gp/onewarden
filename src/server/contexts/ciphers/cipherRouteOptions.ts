@@ -9,6 +9,7 @@ export type CipherRouteOptions = {
   clock: Clock
   attachmentStorage?: AttachmentFileStorageAdapter
   database: DatabaseConnection | undefined
+  groupsEnabled: boolean
   identifier: Identifier
   maxNoteSize?: number
   notification?: CipherNotificationAdapter

@@ -11,10 +11,11 @@ import type { CipherData } from "./cipherDataSchema.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import { cipherFavoriteSet } from "./cipherFavoriteSet.js"
 import { cipherFolderSet } from "./cipherFolderSet.js"
+import { cipherRevisionUpdate } from "./cipherRevisionUpdate.js"
 import { cipherSave } from "./cipherSave.js"
-import { cipherUserRevisionUpdate } from "./cipherUserRevisionUpdate.js"
 
 type CipherApplyDataOptions = {
+  groupsEnabled?: boolean
   revisionDate?: string
   transaction?: boolean
   updateRevision?: boolean
@@ -37,8 +38,6 @@ export function cipherApplyData(
   const preparedResult = cipherDataPrepare(data)
   if (!preparedResult.success) return preparedResult
   const prepared = preparedResult.data
-  if (prepared.organizationUuid !== null)
-    return cipherErrorCreate("cipherApplyData", "You don't have permission to add item to organization")
   if (prepared.folderUuid !== null) {
     const folderResult = folderFindByUuidAndUser(database, prepared.folderUuid, userUuid)
     if (!folderResult.success) return folderResult
@@ -56,12 +55,13 @@ export function cipherApplyData(
     notes: prepared.notes,
     passwordHistory: prepared.passwordHistory,
     reprompt: prepared.reprompt,
+    organizationUuid: prepared.organizationUuid,
     updatedAt: now,
-    userUuid,
+    userUuid: prepared.organizationUuid === null ? userUuid : null,
   }
   const persist = () => {
     if (options.updateRevision !== false) {
-      const revisionResult = cipherUserRevisionUpdate(database, userUuid, now)
+      const revisionResult = cipherRevisionUpdate(database, nextCipher, now, options.groupsEnabled, userUuid)
       if (!revisionResult.success) return revisionResult
     }
     const saveResult = cipherSave(database, nextCipher)

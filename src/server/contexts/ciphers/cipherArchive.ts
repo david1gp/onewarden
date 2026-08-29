@@ -3,6 +3,7 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { Cipher } from "./cipher.js"
+import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
 import { cipherArchiveDelete } from "./cipherArchiveDelete.js"
 import { cipherArchiveSet } from "./cipherArchiveSet.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
@@ -14,12 +15,15 @@ export function cipherArchive(
   userUuid: string,
   archived: boolean,
   clock: Clock,
+  groupsEnabled = false,
 ): Result<Cipher> {
   const cipherResult = cipherFindByUuid(database, cipherUuid)
   if (!cipherResult.success) return cipherResult
   if (cipherResult.data === null) return cipherErrorCreate("cipherArchive", "Cipher doesn't exist")
   const cipher = cipherResult.data
-  if (cipher.userUuid !== userUuid)
+  const accessResult = cipherAccessFindByUser(database, cipher, userUuid, groupsEnabled)
+  if (!accessResult.success) return accessResult
+  if (accessResult.data === null)
     return cipherErrorCreate("cipherArchive", "Cipher is not accessible for the current user")
   const now = clock.now().toISOString()
   const archiveResult = archived
