@@ -9,16 +9,17 @@ export function organizationCollectionWritableByUser(
   userUuid: string,
   organizationUuid: string,
   groupsEnabled = false,
+  confirmedOnly = true,
 ): Result<boolean> {
   const op = "organizationCollectionWritableByUser"
   try {
     const row = database
-      .query<{ writable: number }, [string, string, string, string, number]>(
+      .query<{ writable: number }, [string, number, string, string, string, number]>(
         `SELECT CASE WHEN EXISTS (
            SELECT 1
            FROM collections AS c
            JOIN users_organizations AS uo
-             ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ? AND uo.status = 2
+             ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ? AND (? = 0 OR uo.status = 2)
            LEFT JOIN users_collections AS uc
              ON uc.collection_uuid = c.uuid AND uc.user_uuid = ?
            WHERE c.uuid = ? AND c.org_uuid = ? AND (
@@ -40,7 +41,7 @@ export function organizationCollectionWritableByUser(
            )
          ) THEN 1 ELSE 0 END AS writable`,
       )
-      .get(userUuid, userUuid, collectionUuid, organizationUuid, groupsEnabled ? 1 : 0)
+      .get(userUuid, confirmedOnly ? 1 : 0, userUuid, collectionUuid, organizationUuid, groupsEnabled ? 1 : 0)
     return resultCreate(row?.writable === 1)
   } catch {
     return resultErrorCreate(op, "Collection write access lookup failed.")

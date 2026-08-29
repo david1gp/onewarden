@@ -27,6 +27,8 @@ import { cipherFindByUser } from "./cipherFindByUser.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
 import { cipherImport } from "./cipherImport.js"
 import { cipherImportDataSchema } from "./cipherImportDataSchema.js"
+import { cipherOrganizationImport } from "./cipherOrganizationImport.js"
+import { cipherOrganizationImportDataSchema } from "./cipherOrganizationImportDataSchema.js"
 import { cipherMoveDataSchema } from "./cipherMoveDataSchema.js"
 import { cipherNotificationAdapterCreate } from "./cipherNotificationAdapterCreate.js"
 import { cipherNotificationSend } from "./cipherNotificationSend.js"
@@ -52,6 +54,7 @@ import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
 import { eventType } from "../events/eventType.js"
 import { organizationManagerLooseMiddleware } from "../organizations/organizationManagerLooseMiddleware.js"
+import { organizationMemberMiddleware } from "../organizations/organizationMemberMiddleware.js"
 import { organizationMembershipHasFullAccess } from "../organizations/organizationMembershipHasFullAccess.js"
 import { organizationErrorCreate } from "../organizations/organizationErrorCreate.js"
 
@@ -66,6 +69,12 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     publicOrigin: options.publicOrigin,
   })
   const organizationManagerLoose = organizationManagerLooseMiddleware({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
+  const organizationMember = organizationMemberMiddleware({
     clock: options.clock,
     database: options.database,
     publicKey: options.publicKey,
@@ -207,6 +216,53 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
       importResult.data.revisionDate,
       requestContext.data.device,
     )
+    return new Response(null, { status: 200 })
+  }
+
+  const importOrganizationCiphers = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = cipherRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const queryResult = requestQueryParse(context, cipherOrganizationDetailsQuerySchema)
+    if (!queryResult.success) return apiErrorResponseCreate(queryResult)
+    const organizationUuid = context.get("organizationId")
+    if (organizationUuid === undefined || organizationUuid !== queryResult.data.organizationId)
+      return apiErrorResponseCreate(organizationErrorCreate("cipherRoutesOrganizationImport", "Organization not found"))
+    const bodyResult = await requestBodyParse(context, cipherOrganizationImportDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const importResult = cipherOrganizationImport(
+      requestContext.data.database,
+      requestContext.data.userUuid,
+      queryResult.data.organizationId,
+      bodyResult.data,
+      options.clock,
+      options.identifier,
+      options.maxNoteSize,
+      options.groupsEnabled,
+    )
+    if (!importResult.success) return apiErrorResponseCreate(importResult)
+    const eventContext = {
+      deviceType: requestContext.data.device.type,
+      ipAddress: requestContext.data.ipAddress,
+    }
+    for (const collection of importResult.data.createdCollections)
+      options.event?.organizationEventCreate(
+        eventType.collectionCreated,
+        collection.uuid,
+        queryResult.data.organizationId,
+        requestContext.data.userUuid,
+        eventContext,
+      )
+    for (const importedCipher of importResult.data.ciphers) {
+      await cipherNotificationSend(
+        notification,
+        cipherUpdateType.create,
+        importedCipher.cipher,
+        requestContext.data.device,
+        importedCipher.collectionIds,
+        importedCipher.userUuids,
+      )
+      cipherEventCreate(options, eventType.cipherCreated, importedCipher.cipher, requestContext.data)
+    }
     return new Response(null, { status: 200 })
   }
 
@@ -432,6 +488,12 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   app.post("/api/ciphers/create", authenticate("post_ciphers_create"), createWrapped)
   app.post("/api/ciphers/admin", authenticate("post_ciphers_admin"), createWrapped)
   app.post("/api/ciphers/import", authenticate("post_ciphers_import"), importCiphers)
+  app.post(
+    "/api/ciphers/import-organization",
+    authenticate("post_org_import"),
+    organizationMember,
+    importOrganizationCiphers,
+  )
   app.delete("/api/ciphers", authenticate("delete_cipher_selected"), (context) => bulkDelete(context, false))
   app.post("/api/ciphers/delete", authenticate("delete_cipher_selected_post"), (context) => bulkDelete(context, false))
   app.put("/api/ciphers/delete", authenticate("delete_cipher_selected_put"), (context) => bulkDelete(context, true))
