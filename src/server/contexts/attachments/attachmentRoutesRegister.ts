@@ -11,7 +11,7 @@ import { requestQueryParse } from "../../../shared/validation/requestQueryParse.
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import type { Attachment } from "./attachment.js"
 import type { Cipher } from "../ciphers/cipher.js"
 import { cipherFindByUuid } from "../ciphers/cipherFindByUuid.js"
@@ -50,14 +50,12 @@ const attachmentSizeLeeway = 1024 * 1024
 export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, options: AttachmentRouteOptions): void {
   const notification = options.notification ?? cipherNotificationAdapterCreate()
   const storage = options.storage ?? attachmentFileStorageAdapterCreate()
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const get = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = attachmentRequestContextResolve(context, options)

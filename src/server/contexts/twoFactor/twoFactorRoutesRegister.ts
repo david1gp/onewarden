@@ -10,7 +10,7 @@ import { databaseTransaction } from "../../database/databaseTransaction.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { authenticationTrustedDeviceClearAllByUser } from "../authentication/authenticationTrustedDeviceClearAllByUser.js"
 import type { IdentityRouteOptions } from "../identity/identityRouteOptions.js"
 import { identityUserFindByEmail } from "../identity/identityUserFindByEmail.js"
@@ -145,14 +145,12 @@ const requestAliases: Record<string, string> = {
 
 export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, options: IdentityRouteOptions): void {
   const adapters = twoFactorAdaptersCreate(options.twoFactor, options.config, options.clock)
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const getTwoFactor = (context: Context<AuthenticationEnvironment>) => {
     const request = twoFactorRequestContextResolve(context, options)

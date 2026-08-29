@@ -8,7 +8,7 @@ import { requestPathParse } from "../../../shared/validation/requestPathParse.js
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { folderCreate } from "./folderCreate.js"
 import { folderDataSchema } from "./folderDataSchema.js"
 import { folderDelete } from "./folderDelete.js"
@@ -27,14 +27,12 @@ const folderPathSchema = v.object({ folder_id: v.string() })
 
 export function folderRoutesRegister(app: Hono<AuthenticationEnvironment>, options: FolderRouteOptions): void {
   const notification = options.notification ?? folderNotificationAdapterCreate()
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const list = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = folderRequestContextResolve(context, options)

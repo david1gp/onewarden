@@ -10,7 +10,7 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderUpdate } from "../folders/folderUpdate.js"
 import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
@@ -60,14 +60,12 @@ export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
   options: IdentityRouteOptions,
 ): void {
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const profile = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = identityAccountRequestContextResolve(context, options)

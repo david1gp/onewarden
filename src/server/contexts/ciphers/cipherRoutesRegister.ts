@@ -8,7 +8,7 @@ import { requestPathParse } from "../../../shared/validation/requestPathParse.js
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { cipherArchive } from "./cipherArchive.js"
 import type { Cipher } from "./cipher.js"
 import { cipherCreate } from "./cipherCreate.js"
@@ -43,14 +43,12 @@ const cipherPathSchema = v.object({ cipher_id: v.string() })
 
 export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, options: CipherRouteOptions): void {
   const notification = options.notification ?? cipherNotificationAdapterCreate()
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const list = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = cipherRequestContextResolve(context, options)

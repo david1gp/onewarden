@@ -4,7 +4,7 @@ import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCrea
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationGuardErrorCreate } from "../authentication/authenticationGuardErrorCreate.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { organizationAdminMiddleware } from "./organizationAdminMiddleware.js"
 import { organizationMemberMiddleware } from "./organizationMemberMiddleware.js"
 import { organizationPublicImport } from "./organizationPublicImport.js"
@@ -19,14 +19,12 @@ export function organizationPublicRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
   options: OrganizationPublicRouteOptions,
 ): void {
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
   const organizationAuthentication = {
     clock: options.clock,
     database: options.database,

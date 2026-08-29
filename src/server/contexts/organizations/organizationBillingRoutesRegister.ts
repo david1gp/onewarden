@@ -1,6 +1,6 @@
 import type { Hono } from "hono"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { organizationMemberMiddleware } from "./organizationMemberMiddleware.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 
@@ -13,14 +13,12 @@ export function organizationBillingRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
   options: OrganizationBillingRouteOptions,
 ): void {
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
   const member = organizationMemberMiddleware({
     clock: options.clock,
     database: options.database,

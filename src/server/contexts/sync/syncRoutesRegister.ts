@@ -10,7 +10,7 @@ import type { AuthenticationClientVersion } from "../authentication/authenticati
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { cipherFindByUser } from "../ciphers/cipherFindByUser.js"
 import { cipherToJson } from "../ciphers/cipherToJson.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
@@ -26,14 +26,12 @@ import type { SyncRouteOptions } from "./syncRouteOptions.js"
 const sshKeyMinimumClientVersion = { build: [], major: 2024, minor: 12, patch: 0, preRelease: [], raw: "2024.12.0" }
 
 export function syncRoutesRegister(app: Hono<AuthenticationEnvironment>, options: SyncRouteOptions): void {
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
 
   const sync = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = syncRequestContextResolve(context, options)

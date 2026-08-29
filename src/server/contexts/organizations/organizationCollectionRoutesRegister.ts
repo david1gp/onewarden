@@ -5,7 +5,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { organizationManagerLooseMiddleware } from "./organizationManagerLooseMiddleware.js"
 import { organizationManagerMiddleware } from "./organizationManagerMiddleware.js"
@@ -42,14 +42,12 @@ export function organizationCollectionRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
   options: OrganizationRouteOptions,
 ): void {
-  const authenticate = (routeName: string) =>
-    authenticationMiddleware({
-      clock: options.clock,
-      database: options.database,
-      publicKey: options.publicKey,
-      publicOrigin: options.publicOrigin,
-      routeName,
-    })
+  const authenticate = authenticationMiddlewareCreate({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
   const organizationAuthentication = {
     clock: options.clock,
     database: options.database,
