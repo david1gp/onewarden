@@ -23,8 +23,33 @@ const identityConfigNonNegativeIntegerSchema = v.pipe(
   v.integer(),
   v.minValue(0),
 )
+const identityConfigOrganizationCreationUsersSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.transform((value) => value.toLowerCase()),
+  v.check(identityConfigOrganizationCreationUsersIsValid, "ORG_CREATION_USERS contains invalid email addresses."),
+)
+
+function identityConfigOrganizationCreationUsersIsValid(value: string): boolean {
+  if (value === "" || value === "all" || value === "none") return true
+  return value.split(",").every((email) => identityConfigEmailIsValid(email.trim()))
+}
+
+function identityConfigEmailIsValid(email: string): boolean {
+  const separator = email.lastIndexOf("@")
+  if (separator < 1 || separator !== email.indexOf("@") || separator === email.length - 1 || /[\s]/u.test(email))
+    return false
+  const domain = email.slice(separator + 1)
+  try {
+    const domainUrl = new URL(`https://${domain}`)
+    return domainUrl.pathname === "/" && domainUrl.search === "" && domainUrl.hostname.length > 0
+  } catch {
+    return false
+  }
+}
 
 export const identityConfigSchema = v.object({
+  ORG_CREATION_USERS: v.optional(identityConfigOrganizationCreationUsersSchema, ""),
   SIGNUPS_ALLOWED: v.optional(identityConfigBooleanSchema, "true"),
   SIGNUPS_VERIFY: v.optional(identityConfigBooleanSchema, "false"),
   SIGNUPS_VERIFY_RESEND_TIME: v.optional(identityConfigNonNegativeIntegerSchema, "3600"),

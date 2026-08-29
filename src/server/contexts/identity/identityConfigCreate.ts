@@ -2,6 +2,7 @@ import type { IdentityConfig } from "./identityConfigSchema.js"
 
 export function identityConfigCreate(overrides?: Partial<IdentityConfig>): IdentityConfig {
   return {
+    ORG_CREATION_USERS: overrides?.ORG_CREATION_USERS ?? "",
     SIGNUPS_ALLOWED: overrides?.SIGNUPS_ALLOWED ?? true,
     SIGNUPS_VERIFY: overrides?.SIGNUPS_VERIFY ?? false,
     SIGNUPS_VERIFY_RESEND_TIME: overrides?.SIGNUPS_VERIFY_RESEND_TIME ?? 3_600,

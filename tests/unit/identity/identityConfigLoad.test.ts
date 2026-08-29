@@ -5,6 +5,7 @@ test("identityConfigLoad applies task 6 registration defaults", () => {
   expect(identityConfigLoad({})).toEqual({
     success: true,
     data: {
+      ORG_CREATION_USERS: "",
       SIGNUPS_ALLOWED: true,
       SIGNUPS_VERIFY: false,
       SIGNUPS_VERIFY_RESEND_TIME: 3600,
@@ -63,4 +64,12 @@ test("identityConfigLoad rejects invalid resend and emergency values", () => {
   expect(identityConfigLoad({ EMERGENCY_ACCESS_ALLOWED: "yes" }).success).toBe(false)
   expect(identityConfigLoad({ SIGNUPS_VERIFY_RESEND_TIME: "-1" }).success).toBe(false)
   expect(identityConfigLoad({ SIGNUPS_VERIFY_RESEND_LIMIT: "0" }).success).toBe(true)
+})
+
+test("identityConfigLoad validates and normalizes organization creation users", () => {
+  expect(identityConfigLoad({ ORG_CREATION_USERS: " ALL " })).toMatchObject({
+    success: true,
+    data: { ORG_CREATION_USERS: "all" },
+  })
+  expect(identityConfigLoad({ ORG_CREATION_USERS: "allowed@example.com,invalid" }).success).toBe(false)
 })
