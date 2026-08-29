@@ -11,13 +11,11 @@ import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
 import { organizationMembershipType } from "./organizationMembershipType.js"
 import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
+import type { Organization } from "./organization.js"
 import type { OrganizationPublicImportData } from "./organizationPublicImportDataSchema.js"
 import type { OrganizationPublicImportOptions } from "./organizationPublicImportOptions.js"
 
-type OrganizationImportOrganizationRow = {
-  billing_email: string
-  name: string
-}
+type OrganizationImportOrganization = Pick<Organization, "billingEmail" | "name">
 
 export async function organizationPublicImport(
   data: OrganizationPublicImportData,
@@ -116,7 +114,7 @@ async function organizationPublicImportMember(
     accessAll: false,
     akey: "",
     externalId: organizationPublicExternalIdNormalize(memberData.externalId),
-    invitedByEmail: organizationResult.data.billing_email,
+    invitedByEmail: organizationResult.data.billingEmail,
     organizationUuid: options.organizationUuid,
     resetPasswordKey: null,
     status:
@@ -272,12 +270,12 @@ function organizationPublicImportInviteFailure(
 function organizationPublicOrganizationFind(
   database: DatabaseConnection,
   organizationUuid: string,
-): Result<OrganizationImportOrganizationRow | null> {
+): Result<OrganizationImportOrganization | null> {
   try {
     return resultCreate(
       database
-        .query<OrganizationImportOrganizationRow, [string]>(
-          "SELECT name, billing_email FROM organizations WHERE uuid = ? LIMIT 1",
+        .query<OrganizationImportOrganization, [string]>(
+          "SELECT name, billing_email AS billingEmail FROM organizations WHERE uuid = ? LIMIT 1",
         )
         .get(organizationUuid),
     )

@@ -1,12 +1,6 @@
-type AdminOrganization = {
-  uuid: string
-  name: string
-  billing_email: string
-  private_key: string | null
-  public_key: string | null
-}
+import type { Organization } from "../organizations/organization.js"
 
-export function adminOrganizationJsonCreate(organization: AdminOrganization, mailEnabled = false) {
+export function adminOrganizationJsonCreate(organization: Organization, mailEnabled = false) {
   return {
     id: organization.uuid,
     name: organization.name,
@@ -33,7 +27,7 @@ export function adminOrganizationJsonCreate(organization: AdminOrganization, mai
     useOrganizationDomains: false,
     usePam: false,
     usePhishingBlocker: false,
-    hasPublicAndPrivateKeys: organization.private_key !== null && organization.public_key !== null,
+    hasPublicAndPrivateKeys: organization.privateKey !== null && organization.publicKey !== null,
     useResetPassword: mailEnabled,
     allowAdminAccessToAllCollectionItems: true,
     limitCollectionCreation: true,
@@ -54,7 +48,7 @@ export function adminOrganizationJsonCreate(organization: AdminOrganization, mai
     secretsManagerPlan: null,
     smSeats: null,
     smServiceAccounts: null,
-    billingEmail: organization.billing_email,
+    billingEmail: organization.billingEmail,
     planType: 6,
     usersGetPremium: true,
     object: "organization" as const,

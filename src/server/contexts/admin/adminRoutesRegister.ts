@@ -15,6 +15,8 @@ import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserFromRow } from "../identity/identityUserFromRow.js"
 import type { IdentityUserRow } from "../identity/identityUserRow.js"
 import { identityUserSave } from "../identity/identityUserSave.js"
+import type { Organization } from "../organizations/organization.js"
+import { organizationSelect } from "../organizations/organizationSelect.js"
 import { twoFactorRecordDeleteAllByUser } from "../twoFactor/twoFactorRecordDeleteAllByUser.js"
 import { twoFactorRecoveryCodeClear } from "../twoFactor/twoFactorRecoveryCodeClear.js"
 import type { AdminBackupAdapter } from "./adminBackupAdapter.js"
@@ -48,14 +50,6 @@ type AdminHandler = (context: Context<any>) => Response | Promise<Response>
 
 const adminFakeUuid = "00000000-0000-0000-0000-000000000000"
 const adminFakeSsoIdentifier = "00000000-01DC-01DC-01DC-000000000000"
-
-type AdminOrganizationRow = {
-  uuid: string
-  name: string
-  billing_email: string
-  private_key: string | null
-  public_key: string | null
-}
 
 export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteOptions): void {
   const options = adminRouteOptionsNormalize(suppliedOptions)
@@ -390,9 +384,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     if (!databaseResult.success) return apiErrorResponseCreate(databaseResult)
     try {
       const organizations = databaseResult.data
-        .query<AdminOrganizationRow, []>(
-          "SELECT uuid, name, billing_email, private_key, public_key FROM organizations ORDER BY uuid",
-        )
+        .query<Organization, []>(`SELECT ${organizationSelect} FROM organizations ORDER BY uuid`)
         .all()
         .map((organization) => ({
           ...adminOrganizationJsonCreate(organization, options.identityConfig.MAIL_ENABLED),
