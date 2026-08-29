@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-36 are committed, pushed, deployed, and healthy on `main`. Task 37 is integrated and passes full unit, integration, compatibility, browser, check, and build verification; it awaits commit, push, and deployment. Task 38 has partial isolated work and remains incomplete. Task 39 has not started; known production routing/API-proxy gaps are assigned there.
+- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 Wave 1 is integrated and fully verified: explicit HEAD route introspection, `/api/tasks`, HIBP breach lookup, and cipher organization-details compatibility are complete; the wave awaits commit, push, and deployment. Remaining Task 38 groups are cipher purge/bulk/import, SSO enrollment, managed-account recovery, and auth requests. Task 39 has not started.
 
 # Tasks
 
