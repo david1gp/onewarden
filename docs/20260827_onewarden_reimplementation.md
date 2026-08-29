@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: task 34 is committed, pushed, and deployed on `main`. Task 35 is implemented with uncommitted publication-integration and demo-alignment fixes that must be reviewed, repaired, fully tested, committed, pushed, and deployed. Tasks 36-38 have work on isolated branches/worktrees and must be integrated and verified serially after task 35 publication; task 38 remains incomplete. Task 39 has not started.
+- Current context: task 34 is committed, pushed, and deployed on `main`. Task 35 implementation and all unit, integration, compatibility, browser, check, and build verification are complete; its publication fixes await commit, push, and deployment. Tasks 36-38 have work on isolated branches/worktrees and must be integrated and verified serially after task 35 publication; task 38 remains incomplete. Task 39 has not started.
 
 # Tasks
 
@@ -62,7 +62,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 32. Port static/web compatibility routes, health endpoints, configuration endpoints, legacy aliases, and fallback behavior with tests.
 - [x] 33. Build accessible authentication, registration, verification, unlock, and two-factor UI flows with browser tests.
 - [x] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
-- [ ] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
+- [x] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
 - [ ] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
 - [ ] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
 - [ ] 38. Port and run the complete upstream-compatible behavior matrix, add protocol fixtures for uncovered APIs, and close every compatibility-manifest gap.
