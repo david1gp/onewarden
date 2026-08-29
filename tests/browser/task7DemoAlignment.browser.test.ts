@@ -22,10 +22,15 @@ test.describe("task 7 demo alignment", () => {
 
   test("renders every canonical demo route directly", async ({ page }) => {
     for (const route of canonicalDemoRoutes) {
-      const response = await page.goto(route.path)
+      const routePage = await page.context().newPage()
+      try {
+        const response = await routePage.goto(route.path)
 
-      expect(response?.status(), `${route.path} should serve the demo page`).toBe(200)
-      await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible()
+        expect(response?.status(), `${route.path} should serve the demo page`).toBe(200)
+        await expect(routePage.getByRole("heading", { level: 1, name: route.heading })).toBeVisible()
+      } finally {
+        await routePage.close()
+      }
     }
   })
 

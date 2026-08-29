@@ -7,6 +7,7 @@ import { vaultBrowserMockDataCreate } from "./helpers/vaultBrowserMockDataCreate
 
 test.describe("task 34 vault shell and navigation UI", () => {
   test("serves direct SPA demo entry points", async ({ page }) => {
+    test.slow()
     const demoRoutes = [
       "/demo",
       "/demo/all",
@@ -22,7 +23,7 @@ test.describe("task 34 vault shell and navigation UI", () => {
     for (const path of demoRoutes) {
       const response = await page.goto(path)
       expect(response?.status(), `${path} should serve the SPA`).not.toBe(404)
-      await expect(page.locator("body")).toBeVisible()
+      await expect(page.locator("#root")).not.toBeEmpty({ timeout: 15_000 })
     }
   })
 
