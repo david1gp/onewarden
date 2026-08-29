@@ -27,10 +27,10 @@ const variantClasses = {
   // filled colors
   primary: "bg-indigo-500 text-white hover:bg-indigo-700 dark:bg-slate-800 dark:border-slate-700",
   // filled colors status
-  success: "bg-green-500 text-white border-green-500",
-  error: "bg-red-600 text-white border-red-600 dark:border-red-600",
-  info: "bg-sky-700 text-white border-sky-700 dark:bg-sky-700 dark:border-sky-700",
-  warning: "bg-yellow-500 text-white border-yellow-500",
+  success: "bg-emerald-700 text-white border-emerald-700 dark:bg-emerald-600 dark:border-emerald-600",
+  error: "bg-rose-700 text-white border-rose-700 dark:bg-rose-600 dark:border-rose-600",
+  info: "bg-sky-600 text-white border-sky-600 dark:bg-sky-600 dark:border-sky-600",
+  warning: "bg-amber-600 text-white border-amber-600 dark:bg-amber-600 dark:border-amber-600",
 } as const satisfies Record<ToastVariant, string>
 
 const defaultVariant = toastVariant.default
