@@ -16,7 +16,9 @@ interface CheckboxProps extends MayHaveClass, MayHaveChildren, MayHaveDisabled, 
 
 /** Accessible labeled checkbox driven by a controlled `checked`/`onChange` pair. */
 export function Checkbox(p: CheckboxProps) {
-  const [s, rest] = splitProps(p, ["id", "checked", "onChange", "disabled", "class", "children"])
+  const [s, rest] = splitProps(p, ["id", "checked", "onChange", "disabled", "class", "children", "aria-label"])
+  const rawAriaLabel = (p as { "aria-label"?: unknown })["aria-label"]
+  const ariaLabel = typeof rawAriaLabel === "string" ? rawAriaLabel : undefined
 
   return (
     <div class={classMerge("flex items-start gap-1", s.class)}>
@@ -27,11 +29,12 @@ export function Checkbox(p: CheckboxProps) {
         onChange={(e) => s.onChange(e.currentTarget.checked)}
         class="peer sr-only"
         disabled={s.disabled}
+        aria-label={ariaLabel ?? (s.children ? undefined : "Toggle option")}
         {...rest}
       />
       <div
         class={classMerge(
-          "flex size-6 items-center justify-center", // sizing + layout
+          "pointer-events-none flex size-6 items-center justify-center", // sizing + layout
           "peer-focus-visible:rounded-sm peer-focus-visible:ring-2 peer-focus-visible:ring-blue-600 peer-focus-visible:ring-offset-2", // focus
           s.disabled && classesDisabledDirectly, // disabled state
         )}
@@ -42,10 +45,7 @@ export function Checkbox(p: CheckboxProps) {
       <label
         id={s.id ? `${s.id}-label` : undefined}
         for={s.id}
-        class={classMerge(
-          "cursor-pointer", // interaction
-          s.disabled && classesDisabledDirectly, // disabled state
-        )}
+        class={classMerge("cursor-pointer", s.disabled && classesDisabledDirectly)}
       >
         {s.children}
       </label>

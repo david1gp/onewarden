@@ -17,6 +17,7 @@ import type { MayHaveInnerClass } from "#ui/utils/MayHaveInnerClass.js"
 
 export interface CorvuDialogProps extends MayHaveClass, MayHaveInnerClass, MayHaveChildren, ButtonIcon1Props {
   buttonChildren?: JSX.Element
+  hideTrigger?: boolean
   title: string
   description?: string
   titleClass?: string
@@ -33,21 +34,23 @@ export function CorvuDialog(p: CorvuDialogProps) {
 
   return (
     <Dialog open={p.open} onOpenChange={p.onOpenChange}>
-      <Dialog.Trigger
-        class={buttonCva2(
-          p.variant,
-          p.size,
-          classesButtonClickAnimation,
-          (p.disabled || p.isDisabled?.()) && classesDisabledDirectly,
-          p.class,
-        )}
-      >
-        {p.icon && <Icon path={p.icon} class={buttonIconCva(p.variant, p.buttonChildren && "mr-2", p.iconClass)} />}
-        {p.buttonChildren}
-        {p.iconRight && (
-          <Icon path={p.iconRight} class={buttonIconCva(p.variant, p.buttonChildren && "ml-2", p.iconClass)} />
-        )}
-      </Dialog.Trigger>
+      {!p.hideTrigger && (p.buttonChildren || p.icon || p.iconRight) && (
+        <Dialog.Trigger
+          class={buttonCva2(
+            p.variant,
+            p.size,
+            classesButtonClickAnimation,
+            (p.disabled || p.isDisabled?.()) && classesDisabledDirectly,
+            p.class,
+          )}
+        >
+          {p.icon && <Icon path={p.icon} class={buttonIconCva(p.variant, p.buttonChildren && "mr-2", p.iconClass)} />}
+          {p.buttonChildren}
+          {p.iconRight && (
+            <Icon path={p.iconRight} class={buttonIconCva(p.variant, p.buttonChildren && "ml-2", p.iconClass)} />
+          )}
+        </Dialog.Trigger>
+      )}
       <Dialog.Portal>
         <Dialog.Overlay class={classesDialogOverlayMerge()} />
         <Dialog.Content class={classesDialogContentMerge(p.innerClass)}>
@@ -55,7 +58,7 @@ export function CorvuDialog(p: CorvuDialogProps) {
             <div>
               <Dialog.Label class={classMerge("text-lg font-semibold", p.titleClass)}>{p.title}</Dialog.Label>
               {p.description && (
-                <Dialog.Description class={classMerge("text-muted-foreground", p.descriptionClass)}>
+                <Dialog.Description class={classMerge("text-slate-600 dark:text-slate-300", p.descriptionClass)}>
                   {p.description}
                 </Dialog.Description>
               )}

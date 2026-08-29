@@ -28,8 +28,8 @@ const variantClasses = {
   outline: "text-slate-900 border-slate-300 dark:text-slate-100 dark:border-slate-700",
   contrast: "bg-slate-900 border-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 dark:border-slate-50",
   filledGreen: "bg-green-700 text-white border-green-700 dark:bg-green-700 dark:border-green-700",
-  filledYellow: "bg-yellow-500 text-slate-900 border-yellow-500 dark:bg-yellow-600 dark:text-slate-900 dark:border-yellow-600",
-  filledBlue: "bg-sky-700 text-white border-sky-700 dark:bg-sky-700 dark:border-sky-700",
+  filledYellow: "bg-yellow-700 text-white border-yellow-700",
+  filledBlue: "bg-sky-700 text-white border-sky-700",
   filledRed: "bg-red-700 text-white border-red-700 dark:bg-red-700 dark:border-red-700",
 } as const satisfies Record<BadgeVariant, string>
 
