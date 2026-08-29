@@ -152,6 +152,23 @@ test("manifest preserves mounted paths, path parameters, queries, ranks, and con
   })
 })
 
+test("manifest recognizes explicit HEAD routes for root and alive", () => {
+  expect(manifestRouteFind("web_index_head")).toMatchObject({
+    handler: "web_index_head",
+    method: "HEAD",
+    mount: "/",
+    path: "/",
+    rocketPath: "/",
+  })
+  expect(manifestRouteFind("alive_head")).toMatchObject({
+    handler: "alive_head",
+    method: "HEAD",
+    mount: "/",
+    path: "/alive",
+    rocketPath: "/alive",
+  })
+})
+
 test("manifest aliases preserve explicit legacy aliases and every route collision", () => {
   const legacyAliases = manifest.aliases.filter((alias) => alias.kind === "legacy")
   expect(legacyAliases).toHaveLength(4)

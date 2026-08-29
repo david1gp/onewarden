@@ -177,6 +177,7 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/devices/identifier/:device_id" },
   { basePath: "/", method: "GET", path: "/api/devices/identifier/:device_id" },
   { basePath: "/", method: "GET", path: "/api/devices/knowndevice" },
+  { basePath: "/", method: "GET", path: "/api/tasks" },
   { basePath: "/", method: "GET", path: "/api/settings/domains" },
   { basePath: "/", method: "GET", path: "/api/settings/domains" },
   { basePath: "/", method: "GET", path: "/api/sync" },
@@ -218,6 +219,9 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/api/organizations/:org_id/users/:member_id/events" },
   { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/events" },
   { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/events" },
+  { basePath: "/", method: "GET", path: "/api/ciphers/organization-details" },
+  { basePath: "/", method: "GET", path: "/api/ciphers/organization-details" },
+  { basePath: "/", method: "GET", path: "/api/ciphers/organization-details" },
   ...duplicatedRouteRegistrations,
   ...duplicatedEmergencyAccessRouteRegistrations,
   ...duplicatedTwoFactorRouteRegistrations,
@@ -228,6 +232,10 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/alive" },
   { basePath: "/", method: "GET", path: "/api/alive" },
   { basePath: "/", method: "GET", path: "/api/config" },
+  ...[
+    { basePath: "/", method: "GET", path: "/api/hibp/breach" },
+    { basePath: "/", method: "GET", path: "/api/hibp/breach" },
+  ],
   { basePath: "/", method: "GET", path: "/api/now" },
   { basePath: "/", method: "GET", path: "/api/plans" },
   { basePath: "/", method: "GET", path: "/api/organizations/:_org_id/billing/metadata" },
@@ -429,6 +437,17 @@ test("serverAppCreate route registrations match the current compatibility baseli
 
   expect([...registrations].sort(serverRouteRegistrationCompare)).toEqual(currentRouteRegistrations)
   expect(serverRouteRegistrationDrift(registrations, currentRouteRegistrations)).toEqual({ extra: [], missing: [] })
+})
+
+test("serverAppCreate introspection recognizes explicit HEAD routes for root and alive", () => {
+  const headRegistrations = serverRouteRegistrationIntrospect(serverAppCreate()).filter(
+    (registration) => registration.method === "HEAD",
+  )
+
+  expect(headRegistrations).toEqual([
+    { basePath: "/", method: "HEAD", path: "/" },
+    { basePath: "/", method: "HEAD", path: "/alive" },
+  ])
 })
 
 test("route-registration drift rejects an unplanned route even when its path is upstream-compatible", () => {

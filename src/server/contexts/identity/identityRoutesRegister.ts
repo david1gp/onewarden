@@ -24,6 +24,7 @@ import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateToken
 import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
+import { identityTasksRoutesRegister } from "./identityTasksRoutesRegister.js"
 import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
 import { twoFactorRoutesRegister } from "../twoFactor/twoFactorRoutesRegister.js"
 
@@ -317,6 +318,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json({ token: result.data.token, userId: result.data.userId })
   })
   identityAccountRoutesRegister(app, options)
+  identityTasksRoutesRegister(app, options)
   twoFactorRoutesRegister(app, options)
   identityDevicePushRoutesRegister(app, options)
 }

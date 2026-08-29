@@ -16,8 +16,8 @@ export type ServerRouteRegistration = {
 
 export function serverRouteRegistrationIntrospect(app: HonoRouteApp): ServerRouteRegistration[] {
   const registrations = app.routes
-    .filter((route) => route.method !== "ALL")
     .map(({ basePath, method, path }) => ({ basePath, method: method.toUpperCase(), path }))
+    .filter((route) => route.method !== "ALL")
 
   return registrations.sort((left, right) => {
     const leftKey = `${left.basePath} ${left.method} ${left.path}`

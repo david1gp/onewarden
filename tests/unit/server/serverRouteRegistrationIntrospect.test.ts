@@ -17,6 +17,23 @@ test("serverRouteRegistrationIntrospect excludes middleware, normalizes methods,
   ])
 })
 
+test("serverRouteRegistrationIntrospect recognizes explicit HEAD registrations for root and alive", () => {
+  const registrations = serverRouteRegistrationIntrospect({
+    routes: [
+      { basePath: "/", method: "GET", path: "/" },
+      { basePath: "/", method: "HEAD", path: "/" },
+      { basePath: "/", method: "GET", path: "/alive" },
+      { basePath: "/", method: "HEAD", path: "/alive" },
+      { basePath: "/", method: "ALL", path: "/*" },
+    ],
+  })
+
+  expect(registrations.filter((registration) => registration.method === "HEAD")).toEqual([
+    { basePath: "/", method: "HEAD", path: "/" },
+    { basePath: "/", method: "HEAD", path: "/alive" },
+  ])
+})
+
 test("serverRouteRegistrationDrift reports missing, extra, and duplicate registrations", () => {
   const expected = [
     { basePath: "/", method: "GET", path: "/health" },
