@@ -9,6 +9,11 @@ export type WebAppRouteName =
   | "cipher-create"
   | "cipher-edit"
   | "cipher-view"
+  | "settings"
+  | "sends"
+  | "send-access"
+  | "emergency-access"
+  | "admin-login"
   | "directory"
   | "admin"
   | "all-items"
@@ -48,6 +53,45 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
     routePath === "/two-factor-setup"
   ) {
     return "auth-two-factor-setup"
+  }
+  if (
+    routePath === "/settings" ||
+    routePath === "/settings/account" ||
+    routePath === "/settings/profile" ||
+    routePath === "/settings/security" ||
+    routePath === "/settings/email" ||
+    routePath === "/settings/devices" ||
+    routePath === "/settings/sessions" ||
+    routePath === "/settings/tools" ||
+    routePath === "/settings/import" ||
+    routePath === "/settings/export" ||
+    routePath === "/settings/danger" ||
+    routePath === "/settings/delete-account"
+  ) {
+    return "settings"
+  }
+  if (routePath === "/settings/emergency" || routePath === "/emergency-access" || routePath === "/emergency") {
+    return "emergency-access"
+  }
+  if (routePath === "/sends" || routePath === "/send") {
+    return "sends"
+  }
+  if (routePath.startsWith("/send/") || routePath.startsWith("/sends/access/") || routePath === "/send-access") {
+    return "send-access"
+  }
+  if (routePath === "/admin-ui/login") {
+    return "admin-login"
+  }
+  if (
+    routePath === "/admin-ui" ||
+    routePath === "/admin-ui/dashboard" ||
+    routePath === "/admin-ui/users" ||
+    routePath === "/admin-ui/organizations" ||
+    routePath === "/admin-ui/diagnostics" ||
+    routePath === "/admin-ui/config" ||
+    routePath === "/admin-ui/tools"
+  ) {
+    return "admin"
   }
   if (routePath === "/two-factor-challenge" || routePath === "/2fa-challenge") {
     return "auth-two-factor-challenge"

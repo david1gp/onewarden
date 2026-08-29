@@ -3,12 +3,12 @@ import { resolve } from "node:path"
 import type { Context, Hono } from "hono"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
-import { identityOriginResolve } from "../identity/identityOriginResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
-import { webNotFoundResponseCreate } from "./webNotFoundResponseCreate.js"
-import type { WebRouteOptions } from "./webRouteOptions.js"
+import { identityOriginResolve } from "../identity/identityOriginResolve.js"
 import { webContentTypeResolve } from "./webContentTypeResolve.js"
 import { webFilePathResolve } from "./webFilePathResolve.js"
+import { webNotFoundResponseCreate } from "./webNotFoundResponseCreate.js"
+import type { WebRouteOptions } from "./webRouteOptions.js"
 import { webTimestampCreate } from "./webTimestampCreate.js"
 
 const defaultWebVaultFolder = "build/web"
@@ -230,9 +230,48 @@ function webPathIsSpaRoute(path: string): boolean {
     "/demo/deleted",
     "/demo/locked",
     "/demo/lock",
+    "/organizations",
+    "/organization",
+    "/org",
+    "/demo/organizations",
+    "/demo/organization",
+    "/demo/org",
+    "/settings",
+    "/settings/account",
+    "/settings/profile",
+    "/settings/security",
+    "/settings/email",
+    "/settings/devices",
+    "/settings/sessions",
+    "/settings/tools",
+    "/settings/import",
+    "/settings/export",
+    "/settings/danger",
+    "/settings/delete-account",
+    "/settings/emergency",
+    "/sends",
+    "/send",
+    "/send-access",
+    "/emergency-access",
+    "/emergency",
+    "/admin-ui",
+    "/admin-ui/dashboard",
+    "/admin-ui/users",
+    "/admin-ui/organizations",
+    "/admin-ui/diagnostics",
+    "/admin-ui/config",
+    "/admin-ui/tools",
+    "/admin-ui/login",
   ]
   if (routes.includes(normalized)) return true
-  return normalized === "/ciphers" || normalized.startsWith("/ciphers/")
+  return (
+    normalized === "/ciphers" ||
+    normalized.startsWith("/ciphers/") ||
+    normalized === "/vault" ||
+    normalized.startsWith("/vault/") ||
+    normalized.startsWith("/send/") ||
+    normalized.startsWith("/sends/access/")
+  )
 }
 
 function webDatabaseHealthy(database: WebRouteOptions["database"]): boolean {

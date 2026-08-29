@@ -17,6 +17,11 @@ export interface VaultShellProps {
   enableUrlSync?: boolean
   autoSync?: boolean
   onOpenOrganizations?: () => void
+  onOpenSends?: () => void
+  onOpenEmergencyAccess?: () => void
+  onOpenSettings?: () => void
+  onLock?: () => void
+  onLogout?: () => void
 }
 
 export function vaultShellStateCreate(props: VaultShellProps = {}) {

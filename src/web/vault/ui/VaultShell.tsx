@@ -21,8 +21,8 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
       </a>
 
       {/* Top Application Header / Banner */}
-      <header class="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 text-xs dark:border-slate-800 dark:bg-slate-900">
-        <div class="flex items-center gap-2.5">
+      <header class="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 text-xs dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex min-w-0 items-center gap-2.5">
           <div class="flex size-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
             <Icon path={vaultSvgIcons.shieldCheck} class="size-4" />
           </div>
@@ -32,7 +32,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
           </Badge>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex max-w-full flex-wrap items-center justify-end gap-2">
           <Show when={state.errorMessage()}>
             <span class="truncate text-[11px] text-rose-700 font-medium dark:text-rose-400">
               {state.errorMessage()}
@@ -48,6 +48,66 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               class="text-xs text-slate-600 dark:text-slate-300"
             >
               Organizations
+            </ButtonIcon>
+          </Show>
+          <Show when={props.onOpenSends}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.send}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onOpenSends?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Send
+            </ButtonIcon>
+          </Show>
+          <Show when={props.onOpenEmergencyAccess}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.lifebuoy}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onOpenEmergencyAccess?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Emergency
+            </ButtonIcon>
+          </Show>
+          <Show when={props.onOpenSettings}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.server}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onOpenSettings?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Settings
+            </ButtonIcon>
+          </Show>
+          <Show when={props.onLock}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.lock}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onLock?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Lock
+            </ButtonIcon>
+          </Show>
+          <Show when={props.onLogout}>
+            <ButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={vaultSvgIcons.login}
+              iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
+              onClick={() => props.onLogout?.()}
+              class="text-xs text-slate-600 dark:text-slate-300"
+            >
+              Log Out
             </ButtonIcon>
           </Show>
           <ButtonIcon

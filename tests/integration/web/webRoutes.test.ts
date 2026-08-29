@@ -1,9 +1,9 @@
 import { afterEach, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 
 const temporaryFolders: string[] = []
@@ -38,7 +38,26 @@ test("web routes serve the vault, static files, aliases, health, and protocol me
   expect(indexResponse.headers.get("cache-control")).toBe("public, max-age=600")
   expect(await indexResponse.text()).toContain("Test vault")
 
-  for (const path of ["/login", "/unlock", "/demo"]) {
+  for (const path of [
+    "/login",
+    "/unlock",
+    "/demo",
+    "/organizations",
+    "/organization",
+    "/org",
+    "/demo/organizations",
+    "/demo/organization",
+    "/demo/org",
+    "/vault",
+    "/vault/cipher-id",
+    "/vault/cipher-id/edit",
+    "/settings/security",
+    "/sends",
+    "/send/access-id",
+    "/sends/access/access-id",
+    "/emergency-access",
+    "/admin-ui/users",
+  ]) {
     const spaResponse = await app.request(`http://localhost${path}`)
     expect(spaResponse.status).toBe(200)
     expect(await spaResponse.text()).toContain("Test vault")
