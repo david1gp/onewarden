@@ -3,10 +3,12 @@ import { type Result } from "#result"
 import { passwordHashCreate } from "../../shared/crypto/passwordHashCreate.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionEmailSchema } from "../extensionEmailSchema.js"
+import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
 
 const extensionMasterKeyDeriveRequestSchema = v.object({
-  password: v.pipe(v.string(), v.minLength(1)),
-  email: v.pipe(v.string(), v.minLength(1)),
+  password: extensionPasswordSchema,
+  email: extensionEmailSchema,
   kdfMetadata: v.object({
     kdfType: v.number(),
     iterations: v.number(),

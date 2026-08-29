@@ -1,10 +1,9 @@
 import * as v from "valibot"
 import { type Result } from "#result"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
-import { bitwardenPasswordTokenResponseSchema } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
-import { bitwardenPreloginResponseSchema } from "../../shared/api/bitwardenPreloginResponseSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
 import { extensionPersonalLoginCipherDecrypt } from "../crypto/extensionPersonalLoginCipherDecrypt.js"
 import { extensionPersonalLoginCipherEncrypt } from "../crypto/extensionPersonalLoginCipherEncrypt.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
@@ -13,13 +12,6 @@ import { extensionEncryptedPayloadEncrypt } from "../crypto/extensionEncryptedPa
 import type { ExtensionEncryptedPayload } from "../storage/extensionEncryptedPayloadSchema.js"
 import { extensionUserKeyUnlock } from "../crypto/extensionUserKeyUnlock.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
-
-const extensionVaultUnlockRequestSchema = v.object({
-  email: v.pipe(v.string(), v.minLength(1)),
-  password: v.pipe(v.string(), v.minLength(1)),
-  prelogin: v.optional(bitwardenPreloginResponseSchema),
-  token: bitwardenPasswordTokenResponseSchema,
-})
 
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 

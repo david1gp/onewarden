@@ -19,6 +19,8 @@ import {
   type ExtensionPersonalLoginCipher,
   extensionPersonalLoginCipherSchema,
 } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import { extensionEmailSchema } from "../extensionEmailSchema.js"
+import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
 import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
 import type { ExtensionAuthSession } from "../storage/extensionAuthSessionStorageSchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
@@ -76,8 +78,8 @@ type ExtensionCreateLoginResult = {
 }
 
 const passwordLoginRequestSchema = v.object({
-  email: v.pipe(v.string(), v.trim(), v.minLength(1)),
-  password: v.pipe(v.string(), v.minLength(1)),
+  email: extensionEmailSchema,
+  password: extensionPasswordSchema,
   clientId: v.optional(v.pipe(v.string(), v.minLength(1)), "browser"),
   scope: v.optional(v.pipe(v.string(), v.minLength(1)), "api offline_access"),
   deviceIdentifier: v.optional(v.pipe(v.string(), v.minLength(1)), "onewarden-extension"),
@@ -86,8 +88,8 @@ const passwordLoginRequestSchema = v.object({
 })
 
 const unlockRequestSchema = v.object({
-  email: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
-  password: v.pipe(v.string(), v.minLength(1)),
+  email: v.optional(extensionEmailSchema),
+  password: extensionPasswordSchema,
 })
 
 const syncRequestSchema = v.object({

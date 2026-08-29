@@ -2,9 +2,10 @@ import * as v from "valibot"
 import { type Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
 
 const extensionMasterPasswordHashDeriveRequestSchema = v.object({
-  password: v.pipe(v.string(), v.minLength(1)),
+  password: extensionPasswordSchema,
 })
 
 export async function extensionMasterPasswordHashDerive(

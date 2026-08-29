@@ -1,23 +1,13 @@
 import * as v from "valibot"
 import { type Result } from "#result"
-import {
-  type BitwardenPasswordTokenResponse,
-  bitwardenPasswordTokenResponseSchema,
-} from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
+import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
-import { bitwardenPreloginResponseSchema } from "../../shared/api/bitwardenPreloginResponseSchema.js"
 import { hkdfSha256Expand } from "../../shared/crypto/hkdfSha256Expand.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
 import { extensionEncStringDecrypt } from "./extensionEncStringDecrypt.js"
 import { extensionMasterKeyDerive } from "./extensionMasterKeyDerive.js"
-
-const extensionUserKeyUnlockRequestSchema = v.object({
-  email: v.pipe(v.string(), v.minLength(1)),
-  password: v.pipe(v.string(), v.minLength(1)),
-  prelogin: v.optional(bitwardenPreloginResponseSchema),
-  token: bitwardenPasswordTokenResponseSchema,
-})
 
 type KdfMetadata = {
   kdfType: number
@@ -87,7 +77,7 @@ function topLevelPreloginKdfRead(prelogin: BitwardenPreloginResponse): KdfMetada
 
 export async function extensionUserKeyUnlock(request: unknown): Promise<Result<Uint8Array>> {
   const op = "extensionUserKeyUnlock"
-  const parsed = v.safeParse(extensionUserKeyUnlockRequestSchema, request)
+  const parsed = v.safeParse(extensionVaultUnlockRequestSchema, request)
   if (!parsed.success) {
     return resultErrorCreate(op, "Vault unlock request is invalid.", {
       code: "platform.invalid-request",
