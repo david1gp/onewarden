@@ -32,6 +32,7 @@ import { attachmentSave } from "./attachmentSave.js"
 import { attachmentSizeByOrganization } from "./attachmentSizeByOrganization.js"
 import { attachmentSizeByUser } from "./attachmentSizeByUser.js"
 import { attachmentToJson } from "./attachmentToJson.js"
+import { eventType } from "../events/eventType.js"
 
 const attachmentCipherPathSchema = v.object({ cipher_id: v.string() })
 const attachmentPathSchema = v.object({ cipher_id: v.string(), attachment_id: v.string() })
@@ -192,6 +193,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       notification,
     )
     if (!mutationResult.success) return apiErrorResponseCreate(mutationResult)
+    attachmentEventCreate(options, eventType.cipherAttachmentCreated, cipherResult.data, requestContext.data)
     return new Response(null, { status: 200 })
   }
 
@@ -222,6 +224,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.device,
     )
     if (!uploadResult.success) return apiErrorResponseCreate(uploadResult)
+    attachmentEventCreate(options, eventType.cipherAttachmentCreated, cipherResult.data, requestContext.data)
     const cipherJsonResult = await cipherJsonResponse(context, cipherResult.data, requestContext.data.userUuid, options)
     if (!cipherJsonResult.success) return apiErrorResponseCreate(cipherJsonResult)
     return context.json(cipherJsonResult.data)
@@ -273,6 +276,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       requestContext.data.device,
     )
     if (!uploadResult.success) return apiErrorResponseCreate(uploadResult)
+    attachmentEventCreate(options, eventType.cipherAttachmentCreated, cipherResult.data, requestContext.data)
     const cipherJsonResult = await cipherJsonResponse(context, cipherResult.data, requestContext.data.userUuid, options)
     if (!cipherJsonResult.success) return apiErrorResponseCreate(cipherJsonResult)
     return context.json(cipherJsonResult.data)
@@ -309,6 +313,7 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
       notification,
     )
     if (!mutationResult.success) return apiErrorResponseCreate(mutationResult)
+    attachmentEventCreate(options, eventType.cipherAttachmentDeleted, cipherResult.data, requestContext.data)
     const cipherJsonResult = await cipherJsonResponse(context, cipherResult.data, requestContext.data.userUuid, options)
     if (!cipherJsonResult.success) return apiErrorResponseCreate(cipherJsonResult)
     return context.json({ cipher: cipherJsonResult.data })
@@ -362,7 +367,25 @@ function attachmentRequestContextResolve(
     return apiErrorCreate("attachmentAuthentication", "platform.unauthorized", "Authentication is required.")
   const database = options.database ?? context.get("database")
   if (database === undefined) return apiErrorCreate("attachmentDatabase", "platform.internal", "Database unavailable.")
-  return resultCreate({ database, device: authentication.device, userUuid: authentication.user.uuid })
+  return resultCreate({
+    database,
+    device: authentication.device,
+    ipAddress: authentication.ip,
+    userUuid: authentication.user.uuid,
+  })
+}
+
+function attachmentEventCreate(
+  options: AttachmentRouteOptions,
+  event: number,
+  cipher: Cipher,
+  requestContext: AttachmentRequestContext,
+): void {
+  if (cipher.organizationUuid === null) return
+  options.event?.cipherEventCreate(event, cipher.uuid, cipher.organizationUuid, requestContext.userUuid, {
+    deviceType: requestContext.device.type,
+    ipAddress: requestContext.ipAddress,
+  })
 }
 
 async function attachmentCipherResolve(
@@ -564,5 +587,6 @@ function attachmentErrorCreate(op: string, message: string): ResultErr {
 type AttachmentRequestContext = {
   database: NonNullable<AttachmentRouteOptions["database"]>
   device: AuthenticationContext["device"]
+  ipAddress: string
   userUuid: string
 }

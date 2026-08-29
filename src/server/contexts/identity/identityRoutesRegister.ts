@@ -99,6 +99,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
+        event: options.event,
       })
       if (!result.success) return apiErrorResponseCreate(result)
       return context.json(result.data)
@@ -128,6 +129,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         rateLimiter: options.rateLimiter,
         clientIp: identityClientIpResolve(context),
         sso,
+        event: options.event,
         push: options.push,
       })
       if (!result.success) return apiErrorResponseCreate(result)
@@ -164,6 +166,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         publicOrigin: options.publicOrigin,
         clientVersion: context.req.header("Bitwarden-Client-Version"),
         twoFactor: options.twoFactor,
+        event: options.event,
       })
       if (!result.success) {
         const twoFactorResponse = identityTwoFactorLoginResponse(result)

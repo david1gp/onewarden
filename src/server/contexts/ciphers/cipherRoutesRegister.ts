@@ -46,6 +46,7 @@ import { cipherUserUuidsFind } from "./cipherUserUuidsFind.js"
 import { cipherMoveSelected } from "./cipherMoveSelected.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderFindByUuidAndUser } from "../folders/folderFindByUuidAndUser.js"
+import { eventType } from "../events/eventType.js"
 
 const cipherPathSchema = v.object({ cipher_id: v.string() })
 
@@ -174,6 +175,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     )
     if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
     await cipherNotificationSend(notification, cipherUpdateType.update, cipherResult.data, requestContext.data.device)
+    cipherEventCreate(options, eventType.cipherUpdated, cipherResult.data, requestContext.data)
     return cipherJsonResponse(
       context,
       requestContext.data.database,
@@ -240,6 +242,12 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         options.groupsEnabled,
       )
       if (!deleteResult.success) return apiErrorResponseCreate(deleteResult)
+      cipherEventCreate(
+        options,
+        soft ? eventType.cipherSoftDeleted : eventType.cipherDeleted,
+        deleteResult.data,
+        requestContext.data,
+      )
       if (!soft && options.attachmentStorage !== undefined)
         await options.attachmentStorage.delete(deleteResult.data.uuid)
     }
@@ -271,6 +279,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
         options.groupsEnabled,
       )
       if (!restoreResult.success) return apiErrorResponseCreate(restoreResult)
+      cipherEventCreate(options, eventType.cipherRestored, restoreResult.data, requestContext.data)
       const jsonResult = await cipherToJson(
         requestContext.data.database,
         restoreResult.data,
@@ -580,6 +589,7 @@ async function cipherCreateResponse(
     notificationCollectionIds,
     userUuidsResult?.data,
   )
+  cipherEventCreate(options, eventType.cipherCreated, cipherResult.data, requestContext)
   return cipherJsonResponse(context, requestContext.database, cipherResult.data, requestContext.userUuid, options)
 }
 
@@ -673,6 +683,12 @@ async function cipherDeleteResponse(
     options.groupsEnabled,
   )
   if (!result.success) return apiErrorResponseCreate(result)
+  cipherEventCreate(
+    options,
+    soft ? eventType.cipherSoftDeleted : eventType.cipherDeleted,
+    result.data,
+    requestContext.data,
+  )
   if (!soft && options.attachmentStorage !== undefined) await options.attachmentStorage.delete(result.data.uuid)
   await cipherNotificationSend(
     notification,
@@ -700,6 +716,7 @@ async function cipherRestoreResponse(
     options.groupsEnabled,
   )
   if (!result.success) return apiErrorResponseCreate(result)
+  cipherEventCreate(options, eventType.cipherRestored, result.data, requestContext.data)
   await cipherNotificationSend(notification, cipherUpdateType.update, result.data, requestContext.data.device)
   return cipherJsonResponse(context, requestContext.data.database, result.data, requestContext.data.userUuid, options)
 }
@@ -776,12 +793,29 @@ function cipherRequestContextResolve(
     return apiErrorCreate("cipherAuthentication", "platform.unauthorized", "Authentication is required.")
   const database = options.database ?? context.get("database")
   if (database === undefined) return apiErrorCreate("cipherDatabase", "platform.internal", "Database unavailable.")
-  return { success: true, data: { database, device: authentication.device, userUuid: authentication.user.uuid } }
+  return {
+    success: true,
+    data: { database, device: authentication.device, ipAddress: authentication.ip, userUuid: authentication.user.uuid },
+  }
+}
+
+function cipherEventCreate(
+  options: CipherRouteOptions,
+  event: number,
+  cipher: Cipher,
+  requestContext: CipherRequestContext,
+): void {
+  if (cipher.organizationUuid === null) return
+  options.event?.cipherEventCreate(event, cipher.uuid, cipher.organizationUuid, requestContext.userUuid, {
+    deviceType: requestContext.device.type,
+    ipAddress: requestContext.ipAddress,
+  })
 }
 
 type CipherRequestContext = {
   database: NonNullable<CipherRouteOptions["database"]>
   device: NonNullable<AuthenticationContext>["device"]
+  ipAddress: string
   userUuid: string
 }
 

@@ -5,6 +5,7 @@ import { identityDeviceSave } from "../../../src/server/contexts/identity/identi
 import type { IdentityMailAdapter } from "../../../src/server/contexts/identity/identityMailAdapter.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import { eventType } from "../../../src/server/contexts/events/eventType.js"
 import { organizationMembershipStatus } from "../../../src/server/contexts/organizations/organizationMembershipStatus.js"
 import { organizationMembershipType } from "../../../src/server/contexts/organizations/organizationMembershipType.js"
 import type { PushRelayAdapter } from "../../../src/server/contexts/push/pushRelayAdapter.js"
@@ -262,6 +263,7 @@ test("admin deauthorization, membership compatibility, and organization deletion
   )
   const unregistered: string[] = []
   const app = appCreate(database, {
+    identityConfig: { ORG_EVENTS_ENABLED: true },
     push: {
       registerDevice: async () => resultCreate(undefined),
       unregisterDevice: async (pushUuid) => {
@@ -282,6 +284,14 @@ test("admin deauthorization, membership compatibility, and organization deletion
   expect(database.query("SELECT atype FROM users_organizations WHERE uuid = ?").get("admin-membership")).toEqual({
     atype: 3,
   })
+  expect(database.query("SELECT event_type, org_uuid, org_user_uuid, act_user_uuid FROM event").all()).toEqual([
+    {
+      act_user_uuid: "vaultwarden-admin-00000-000000000000",
+      event_type: eventType.organizationUserUpdated,
+      org_uuid: "admin-org",
+      org_user_uuid: "admin-membership",
+    },
+  ])
   const profile = await request(app, `/admin/users/${user.uuid}`, "GET", cookie)
   expect(profile.status).toBe(200)
   expect((await profile.json()) as { twoFactorEnabled: boolean; organizations: unknown[] }).toMatchObject({

@@ -16,6 +16,7 @@ import { identityRefreshTokenClaimsDecode } from "../../../src/server/contexts/i
 import { identitySsoAuthSave } from "../../../src/server/contexts/identity/identitySsoAuthSave.js"
 import { identitySsoUserSave } from "../../../src/server/contexts/identity/identitySsoUserSave.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import { eventType } from "../../../src/server/contexts/events/eventType.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
@@ -297,6 +298,16 @@ test("personal API-key grant returns the exact account contract, claims, and per
       .query("SELECT uuid, user_uuid, name, atype, length(refresh_token) AS token_length FROM devices")
       .all(),
   ).toEqual([{ uuid: "api-device", user_uuid: "user-uuid", name: "API device", atype: 9, token_length: 86 }])
+})
+
+test("personal API-key grant emits a user login event when organization events are enabled", async () => {
+  const context = await contextCreate({ config: { ORG_EVENTS_ENABLED: true } })
+  const response = await requestForm(context.app, apiKeyForm())
+
+  expect(response.status).toBe(200)
+  expect(context.database.query("SELECT event_type, user_uuid, act_user_uuid FROM event").all()).toEqual([
+    { act_user_uuid: context.user.uuid, event_type: eventType.userLoggedIn, user_uuid: context.user.uuid },
+  ])
 })
 
 test("personal API-key grant omits empty account keys and preserves API-key aliases", async () => {

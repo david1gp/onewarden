@@ -23,6 +23,9 @@ import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 import { identityVerifyEmailTokenCreate } from "./identityVerifyEmailTokenCreate.js"
 import { twoFactorLogin } from "../twoFactor/twoFactorLogin.js"
 import type { TwoFactorAdapters } from "../twoFactor/twoFactorAdapters.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
+import { identityDeviceTypeParse } from "./identityDeviceTypeParse.js"
 
 type IdentityPasswordLoginOptions = {
   clock: Clock
@@ -39,6 +42,7 @@ type IdentityPasswordLoginOptions = {
   publicOrigin: string | undefined
   clientVersion?: string
   twoFactor?: TwoFactorAdapters
+  event?: EventAdapter
 }
 
 async function identityPasswordVerificationRequire(
@@ -93,12 +97,22 @@ export async function identityPasswordLogin(
   if (!userResult.success) return userResult
   const user = userResult.data
   if (user === null) return identityDomainErrorCreate(op, "Username or password is incorrect. Try again")
-  if (!user.enabled) return identityDomainErrorCreate(op, "This user has been disabled")
+  const eventContext = {
+    deviceType: identityDeviceTypeParse(data.deviceType),
+    ipAddress: options.clientIp,
+  }
+  if (!user.enabled) {
+    options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+    return identityDomainErrorCreate(op, "This user has been disabled")
+  }
   const password = data.password
   if (password === undefined) return identityDomainErrorCreate(op, "password cannot be blank")
   const passwordResult = await passwordHashVerify(password, user.salt, user.passwordHash, user.passwordIterations)
   if (!passwordResult.success) return passwordResult
-  if (!passwordResult.data) return identityDomainErrorCreate(op, "Username or password is incorrect. Try again")
+  if (!passwordResult.data) {
+    options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+    return identityDomainErrorCreate(op, "Username or password is incorrect. Try again")
+  }
 
   if (user.passwordIterations < options.config.PASSWORD_ITERATIONS) {
     const upgradedHashResult = await passwordHashCreate(password, user.salt, options.config.PASSWORD_ITERATIONS)
@@ -111,7 +125,10 @@ export async function identityPasswordLogin(
   }
 
   const verificationResult = await identityPasswordVerificationRequire(user, options)
-  if (!verificationResult.success) return verificationResult
+  if (!verificationResult.success) {
+    options.event?.userEventCreate(eventType.userFailedLogin, user.uuid, eventContext)
+    return verificationResult
+  }
 
   const deviceResult = identityDeviceResolve(database, data, user.uuid, options.clock, options.identifier)
   if (!deviceResult.success) return deviceResult
@@ -131,8 +148,11 @@ export async function identityPasswordLogin(
     publicOrigin: options.publicOrigin,
     identifier: options.identifier,
     twoFactor: options.twoFactor,
+    event: options.event,
   })
-  if (!twoFactorResult.success) return twoFactorResult
+  if (!twoFactorResult.success) {
+    return twoFactorResult
+  }
 
   const bundleResult = await identityTokenBundleCreate(
     user,
@@ -154,5 +174,6 @@ export async function identityPasswordLogin(
   }
   const response = identityUserTokenResponseCreate(user, bundleResult.data)
   if (twoFactorResult.data !== null) response.TwoFactorToken = twoFactorResult.data
+  options.event?.userEventCreate(eventType.userLoggedIn, user.uuid, { ...eventContext, deviceType: device.type })
   return resultCreate(response)
 }
