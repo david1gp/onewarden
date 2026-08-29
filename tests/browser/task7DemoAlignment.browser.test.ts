@@ -70,12 +70,12 @@ test.describe("task 7 demo alignment", () => {
     await expect(item(/^ProtonMail Secure Mailbox/)).not.toBeVisible()
 
     await nav.getByRole("button", { name: /^Secure Notes\s+\d+$/ }).click()
-    await expect(item(/^Hardware Wallet Master Seeds/)).toBeVisible()
-    await expect(item(/^Office Wi-Fi & Guest Access/)).not.toBeVisible()
-
-    await nav.getByRole("button", { name: /^Personal\s+\(\d+\)$/ }).click()
-    await expect(item(/^Home Gateway & Router Specs/)).toBeVisible()
+    await expect(item(/^Office Wi-Fi & Guest Access/)).toBeVisible()
     await expect(item(/^Hardware Wallet Master Seeds/)).not.toBeVisible()
+
+    await nav.getByRole("button", { name: /^My Vault\s+\d+$/ }).click()
+    await expect(item(/^Home Gateway & Router Specs/)).toBeVisible()
+    await expect(item(/^Hardware Wallet Master Seeds/)).toBeVisible()
 
     await nav.getByRole("button", { name: /^Favorites\s+\d+$/ }).click()
     await expect(item(/^ProtonMail Secure Mailbox/)).toBeVisible()

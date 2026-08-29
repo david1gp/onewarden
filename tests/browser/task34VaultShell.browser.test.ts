@@ -33,14 +33,14 @@ test.describe("task 34 vault shell and navigation UI", () => {
     const itemList = page.getByRole("list", { name: "Vault Credentials" })
     const itemButton = (name: RegExp) => itemList.getByRole("button", { name })
 
-    // Select Personal Vault
+    // Select My Vault
     const nav = page.getByRole("navigation", { name: "Vault Navigation" })
-    await nav.getByRole("button", { name: /^Personal\s+\d+$/ }).click()
+    await nav.getByRole("button", { name: /^My Vault\s+\d+$/ }).click()
     await expect(itemButton(/ProtonMail Secure Mailbox/i)).toBeVisible()
     await expect(itemButton(/AWS Console - Root Admin/i)).not.toBeVisible()
 
-    // Select Work Vault
-    await nav.getByRole("button", { name: /^Work\s+\d+$/ }).click()
+    // Select organization vault
+    await nav.getByRole("button", { name: /^Acme Corporation\s+\d+$/ }).click()
     await expect(itemButton(/GitHub Enterprise/i)).toBeVisible()
 
     // Select Favorites
