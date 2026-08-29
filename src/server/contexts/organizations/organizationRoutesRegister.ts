@@ -3,9 +3,11 @@ import type { Result } from "#result"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { passwordHashVerify } from "../../../shared/crypto/passwordHashVerify.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddleware } from "../authentication/authenticationMiddleware.js"
+import { identityOriginResolve } from "../identity/identityOriginResolve.js"
 import { notificationUpdateType } from "../notifications/notificationUpdateType.js"
 import { organizationAdminMiddleware } from "./organizationAdminMiddleware.js"
 import { organizationApiKeyCreateOrRotate } from "./organizationApiKeyCreateOrRotate.js"
@@ -24,6 +26,15 @@ import { organizationKeysDataSchema } from "./organizationKeysDataSchema.js"
 import { organizationLeave } from "./organizationLeave.js"
 import { organizationMemberMiddleware } from "./organizationMemberMiddleware.js"
 import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
+import { organizationMembershipAccept } from "./organizationMembershipAccept.js"
+import { organizationMembershipAcceptDataSchema } from "./organizationMembershipAcceptDataSchema.js"
+import { organizationMembershipConfirm } from "./organizationMembershipConfirm.js"
+import { organizationMembershipConfirmDataSchema } from "./organizationMembershipConfirmDataSchema.js"
+import { organizationMembershipInvite } from "./organizationMembershipInvite.js"
+import { organizationMembershipInviteDataSchema } from "./organizationMembershipInviteDataSchema.js"
+import { organizationMembershipPathSchema } from "./organizationMembershipPathSchema.js"
+import { organizationMembershipResend } from "./organizationMembershipResend.js"
+import { organizationMembershipRoutesRegister } from "./organizationMembershipRoutesRegister.js"
 import { organizationOwnerMiddleware } from "./organizationOwnerMiddleware.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 import { organizationSave } from "./organizationSave.js"
@@ -278,6 +289,140 @@ export function organizationRoutesRegister(
     return context.json(organizationApiKeyToJson(apiKeyResult.data))
   }
 
+  const inviteMember = async (context: Context<AuthenticationEnvironment>) => {
+    const authentication = authenticationContextGet(context)
+    if (authentication === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesInvite", "Authentication is required.", 401),
+      )
+    const database = databaseResolve(context)
+    if (database === undefined)
+      return apiErrorResponseCreate(organizationErrorCreate("organizationRoutesInvite", "Database unavailable."))
+    const organizationUuid = context.get("organizationId")
+    if (organizationUuid === undefined)
+      return apiErrorResponseCreate(organizationErrorCreate("organizationRoutesInvite", "Organization not found", 404))
+    const actorMembership = context.get("organizationMembership")
+    if (actorMembership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesInvite", "The current user isn't member of the organization", 401),
+      )
+    const bodyResult = await requestBodyParse(context, organizationMembershipInviteDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await organizationMembershipInvite(
+      database,
+      organizationUuid,
+      authentication.user.email,
+      bodyResult.data,
+      {
+        actorMembership,
+        clock: options.clock,
+        config: options.config,
+        identifier: options.identifier,
+        issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+        mail: options.mail,
+        privateKey: options.privateKey,
+      },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const resendMember = async (context: Context<AuthenticationEnvironment>) => {
+    const authentication = authenticationContextGet(context)
+    if (authentication === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesResend", "Authentication is required.", 401),
+      )
+    const database = databaseResolve(context)
+    if (database === undefined)
+      return apiErrorResponseCreate(organizationErrorCreate("organizationRoutesResend", "Database unavailable."))
+    const pathResult = requestPathParse(context, organizationMembershipPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const result = await organizationMembershipResend(
+      database,
+      pathResult.data.org_id,
+      pathResult.data.member_id,
+      authentication.user.email,
+      {
+        clock: options.clock,
+        config: options.config,
+        issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+        mail: options.mail,
+        privateKey: options.privateKey,
+      },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const acceptMember = async (context: Context<AuthenticationEnvironment>) => {
+    const authentication = authenticationContextGet(context)
+    if (authentication === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesAccept", "Authentication is required.", 401),
+      )
+    const database = databaseResolve(context)
+    if (database === undefined)
+      return apiErrorResponseCreate(organizationErrorCreate("organizationRoutesAccept", "Database unavailable."))
+    const pathResult = requestPathParse(context, organizationMembershipPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const bodyResult = await requestBodyParse(context, organizationMembershipAcceptDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await organizationMembershipAccept(
+      database,
+      authentication.user,
+      pathResult.data.org_id,
+      pathResult.data.member_id,
+      bodyResult.data,
+      {
+        clock: options.clock,
+        config: options.config,
+        issuer: identityOriginResolve(options.publicOrigin, context.req.url),
+        mail: options.mail,
+        publicKey: options.publicKey,
+      },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const confirmMember = async (context: Context<AuthenticationEnvironment>) => {
+    const authentication = authenticationContextGet(context)
+    if (authentication === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesConfirm", "Authentication is required.", 401),
+      )
+    const database = databaseResolve(context)
+    if (database === undefined)
+      return apiErrorResponseCreate(organizationErrorCreate("organizationRoutesConfirm", "Database unavailable."))
+    const actorMembership = context.get("organizationMembership")
+    if (actorMembership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationRoutesConfirm", "The current user isn't member of the organization", 401),
+      )
+    const pathResult = requestPathParse(context, organizationMembershipPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const bodyResult = await requestBodyParse(context, organizationMembershipConfirmDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await organizationMembershipConfirm(
+      database,
+      actorMembership,
+      pathResult.data.org_id,
+      pathResult.data.member_id,
+      bodyResult.data.key ?? "",
+      { clock: options.clock, config: options.config, mail: options.mail },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    organizationUsersNotify(
+      [result.data.userUuid],
+      authentication.device.uuid,
+      options,
+      "syncOrgKeys",
+      new Date(result.data.revisionDate),
+    )
+    return new Response(null, { status: 200 })
+  }
+
   const owner = organizationOwnerMiddleware(organizationAuthentication)
   const admin = organizationAdminMiddleware(organizationAuthentication)
   const member = organizationMemberMiddleware(organizationAuthentication)
@@ -297,6 +442,11 @@ export function organizationRoutesRegister(
   app.post("/api/organizations/:org_id/rotate-api-key", authenticate("rotate_api_key"), admin, (context) =>
     updateApiKey(context, true),
   )
+  app.post("/api/organizations/:org_id/users/invite", authenticate("send_invite"), admin, inviteMember)
+  app.post("/api/organizations/:org_id/users/:member_id/reinvite", authenticate("reinvite_member"), admin, resendMember)
+  app.post("/api/organizations/:org_id/users/:member_id/accept", authenticate("accept_invite"), acceptMember)
+  app.post("/api/organizations/:org_id/users/:member_id/confirm", authenticate("confirm_invite"), admin, confirmMember)
+  organizationMembershipRoutesRegister(app, options)
 }
 
 function organizationMembersNotify(

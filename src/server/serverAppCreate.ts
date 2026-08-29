@@ -193,17 +193,6 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
     twoFactor: identityOptions?.twoFactor,
   })
-  organizationRoutesRegister(app, {
-    clock: identityClock,
-    config: identityConfig,
-    database: identityDatabase,
-    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
-    identifier: identityIdentifier,
-    notification: options?.organizations?.notification ?? notificationHub.adapter,
-    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
-    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
-    publicOrigin: identityOptions?.publicOrigin,
-  })
   organizationPublicRoutesRegister(app, {
     clock: identityClock,
     config: identityConfig,
@@ -211,6 +200,18 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     identifier: identityIdentifier,
     mail: identityMail,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
+  })
+  organizationRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    identifier: identityIdentifier,
+    mail: identityMail,
+    notification: options?.organizations?.notification ?? notificationHub.adapter,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
