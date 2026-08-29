@@ -15,6 +15,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Implement each feature increment before running or editing its tests; repair every failing test without dismissing failures as unrelated.
 - Run and repair end-to-end tests only after the corresponding feature implementation is complete.
 - When a phase is complete and all tests pass, use a fresh Luna subagent with the `commits` skill to commit, push, and deploy it before continuing to the next phase.
+- Reuse existing demo pages and components, extracting shared behavior where needed; keep UI implementation DRY and import reusable primitives from `./ui` via `#ui/...`.
 
 # Approach
 
@@ -23,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 8-11, 13-14, 16-18, and 25-32 are complete on main; task 12 two-factor foundations and task 19 organization core are the next parallel implementation increments in isolated worktrees.
+- Current context: tasks 12, 19, and 21 are committed, pushed, deployed, and healthy on main. Task 20 invite/accept/confirm/resend passes non-e2e checks and still awaits update/remove/restore/bulk completion. Task 23 policy/domain/SSO behavior passes non-e2e checks with migration 0014 and awaits custom permission and SSO-login completion review. Task 24 event persistence, retrieval, retention, and hooks pass non-e2e checks with migration 0015 and await completion review. Task 33's first auth UI increment passes browser/e2e and axe across all routes except one duplicate demo h1, which is being repaired and retested. Tasks 15 and 22 can now begin independently from the deployed collection core.
 
 # Tasks
 
@@ -38,16 +39,16 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 9. Port authentication guards, security-stamp rules, client-version checks, trusted-device rules, and organization role guards with tests.
 - [x] 10. Port user profile, keys, password changes, KDF changes, account revision, account deletion, and device management APIs with tests.
 - [x] 11. Port email workflows and account lifecycle APIs, using deterministic mail adapters and behavior tests.
-- [ ] 12. Port authenticator, email, WebAuthn, Duo, YubiKey, recovery-code, and remembered-device two-factor behavior with tests.
+- [x] 12. Port authenticator, email, WebAuthn, Duo, YubiKey, recovery-code, and remembered-device two-factor behavior with tests.
 - [x] 13. Port folder CRUD, ordering, revisions, and notification hooks with tests.
 - [x] 14. Port cipher create/read/update/delete/restore, bulk operations, favorites, ownership, and revision behavior with tests.
 - [ ] 15. Port cipher sharing, collection assignment, organization ownership transfer, and access-control behavior with tests.
 - [x] 16. Port attachment metadata, upload, download-token, download, replacement, quota, and deletion behavior with tests.
 - [x] 17. Port sync responses, domains, equivalent domains, profile composition, revisions, and exclusion rules with tests.
 - [x] 18. Port personal import/export and cipher-password-history behavior with tests.
-- [ ] 19. Port organization creation, update, deletion, keys, billing compatibility, limits, and seat behavior with tests.
+- [x] 19. Port organization creation, update, deletion, keys, billing compatibility, limits, and seat behavior with tests.
 - [ ] 20. Port organization membership invite, accept, confirm, update, remove, restore, resend, and bulk behavior with tests.
-- [ ] 21. Port collection CRUD, user/group assignments, access details, and bulk behavior with tests.
+- [x] 21. Port collection CRUD, user/group assignments, access details, and bulk behavior with tests.
 - [ ] 22. Port group CRUD, membership, collection access, directory-sync compatibility, and bulk behavior with tests.
 - [ ] 23. Port organization policies, organization domains, SSO configuration, and policy enforcement behavior with tests.
 - [ ] 24. Port organization event logging, event retrieval, retention rules, and event notification hooks with tests.
