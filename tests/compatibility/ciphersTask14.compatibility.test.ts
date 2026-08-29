@@ -24,19 +24,28 @@ const expectedCipherRoutes = [
   ["POST", "/api/ciphers/:cipher_id/attachment/v2"],
   ["POST", "/api/ciphers/:cipher_id/delete"],
   ["POST", "/api/ciphers/:cipher_id/delete-admin"],
+  ["POST", "/api/ciphers/:cipher_id/collections"],
+  ["POST", "/api/ciphers/:cipher_id/collections-admin"],
+  ["POST", "/api/ciphers/:cipher_id/collections_v2"],
   ["POST", "/api/ciphers/:cipher_id/partial"],
+  ["POST", "/api/ciphers/:cipher_id/share"],
   ["POST", "/api/ciphers/delete"],
   ["POST", "/api/ciphers/delete-admin"],
   ["POST", "/api/ciphers/move"],
   ["PUT", "/api/ciphers/:cipher_id"],
   ["PUT", "/api/ciphers/:cipher_id/admin"],
   ["PUT", "/api/ciphers/:cipher_id/archive"],
+  ["PUT", "/api/ciphers/:cipher_id/collections"],
+  ["PUT", "/api/ciphers/:cipher_id/collections-admin"],
+  ["PUT", "/api/ciphers/:cipher_id/collections_v2"],
   ["PUT", "/api/ciphers/:cipher_id/delete"],
   ["PUT", "/api/ciphers/:cipher_id/delete-admin"],
   ["PUT", "/api/ciphers/:cipher_id/partial"],
   ["PUT", "/api/ciphers/:cipher_id/restore"],
   ["PUT", "/api/ciphers/:cipher_id/restore-admin"],
+  ["PUT", "/api/ciphers/:cipher_id/share"],
   ["PUT", "/api/ciphers/:cipher_id/unarchive"],
+  ["PUT", "/api/ciphers/share"],
   ["PUT", "/api/ciphers/archive"],
   ["PUT", "/api/ciphers/delete"],
   ["PUT", "/api/ciphers/delete-admin"],
@@ -56,7 +65,9 @@ const expectedRegisteredCipherRoutes = expectedCipherRoutes.toSorted(
   ([leftMethod, leftPath], [rightMethod, rightPath]) => {
     const left = `${leftMethod} ${leftPath}`
     const right = `${rightMethod} ${rightPath}`
-    return left.localeCompare(right)
+    if (left < right) return -1
+    if (left > right) return 1
+    return 0
   },
 )
 
@@ -73,7 +84,9 @@ test("cipher routes and aliases match the task 14 upstream route subset", () => 
     manifestRoutes.toSorted(([leftMethod, leftPath], [rightMethod, rightPath]) => {
       const left = `${leftMethod} ${leftPath}`
       const right = `${rightMethod} ${rightPath}`
-      return left.localeCompare(right)
+      if (left < right) return -1
+      if (left > right) return 1
+      return 0
     }),
   ).toEqual(expectedRegisteredCipherRoutes)
 })

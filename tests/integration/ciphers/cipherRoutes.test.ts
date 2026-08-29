@@ -4,6 +4,8 @@ import { identityConfigCreate } from "../../../src/server/contexts/identity/iden
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import { organizationMembershipStatus } from "../../../src/server/contexts/organizations/organizationMembershipStatus.js"
+import { organizationMembershipType } from "../../../src/server/contexts/organizations/organizationMembershipType.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
@@ -218,6 +220,315 @@ test("cipher route aliases implement bulk delete, restore, and move", async () =
   })
   expect(restore.status).toBe(200)
   expect((await restore.json()).data).toHaveLength(2)
+})
+
+test("cipher sharing and collection routes support organization ownership and all compatibility aliases", async () => {
+  const context = await contextCreate()
+  const organizationUuid = "00000000-0000-4000-8000-000000000601"
+  const firstCollectionUuid = "00000000-0000-4000-8000-000000000602"
+  const secondCollectionUuid = "00000000-0000-4000-8000-000000000603"
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    organizationUuid,
+    "Cipher Organization",
+    "billing@example.com",
+  ])
+  context.database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "00000000-0000-4000-8000-000000000604",
+      "cipher-user",
+      organizationUuid,
+      1,
+      "organization-key",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.owner,
+    ],
+  )
+  for (const [uuid, name] of [
+    [firstCollectionUuid, "First"],
+    [secondCollectionUuid, "Second"],
+  ] as const)
+    context.database.run("INSERT INTO collections (uuid, org_uuid, name) VALUES (?, ?, ?)", [
+      uuid,
+      organizationUuid,
+      name,
+    ])
+
+  const firstCipherResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Shared first")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(firstCipherResponse.status).toBe(200)
+  const firstCipher = (await firstCipherResponse.json()) as Record<string, unknown>
+  const shareBody = {
+    Cipher: { ...loginData("Shared first"), lastKnownRevisionDate: date, organizationId: organizationUuid },
+    CollectionIds: [firstCollectionUuid],
+  }
+  const shareResponse = await context.app.request("https://vault.example/api/ciphers/cipher-one/share", {
+    body: JSON.stringify(shareBody),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(shareResponse.status).toBe(200)
+  expect(await shareResponse.json()).toMatchObject({
+    collectionIds: [firstCollectionUuid],
+    organizationId: organizationUuid,
+  })
+  expect(firstCipher.id).toBe("cipher-one")
+
+  const plainReplace = await context.app.request("https://vault.example/api/ciphers/cipher-one/collections", {
+    body: JSON.stringify({ CollectionIds: [secondCollectionUuid] }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(plainReplace.status).toBe(200)
+  const wrappedRemove = await context.app.request("https://vault.example/api/ciphers/cipher-one/collections_v2", {
+    body: JSON.stringify({ collectionIds: [] }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(wrappedRemove.status).toBe(200)
+  expect(await wrappedRemove.json()).toMatchObject({ object: "optionalCipherDetails", cipher: { collectionIds: [] } })
+  const adminPut = await context.app.request("https://vault.example/api/ciphers/cipher-one/collections-admin", {
+    body: JSON.stringify({ collectionIds: [firstCollectionUuid] }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(adminPut.status).toBe(200)
+  const adminPost = await context.app.request("https://vault.example/api/ciphers/cipher-one/collections-admin", {
+    body: JSON.stringify({ collectionIds: [secondCollectionUuid] }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(adminPost.status).toBe(200)
+  expect(
+    context.database.query("SELECT collection_uuid FROM ciphers_collections WHERE cipher_uuid = ?").all("cipher-one"),
+  ).toEqual([{ collection_uuid: secondCollectionUuid }])
+
+  const secondCipherResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Shared second")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(secondCipherResponse.status).toBe(200)
+  const personalShareResponse = await context.app.request("https://vault.example/api/ciphers/cipher-two/share", {
+    body: JSON.stringify({
+      cipher: { ...loginData("Shared second"), organizationId: null },
+      collectionIds: [firstCollectionUuid],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(personalShareResponse.status).toBe(200)
+  expect(context.notifications.at(-1)).toMatchObject({
+    payload: { CollectionIds: [], Id: "cipher-two", OrganizationId: null, UserId: "cipher-user" },
+    type: 1,
+    userIds: ["cipher-user"],
+  })
+  const putShareResponse = await context.app.request("https://vault.example/api/ciphers/cipher-two/share", {
+    body: JSON.stringify({
+      cipher: { ...loginData("Shared second"), organizationId: organizationUuid },
+      collectionIds: [],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(putShareResponse.status).toBe(200)
+  expect(context.database.query("SELECT organization_uuid FROM ciphers WHERE uuid = ?").get("cipher-two")).toEqual({
+    organization_uuid: organizationUuid,
+  })
+
+  const createdOrganizationCipher = await context.app.request("https://vault.example/api/ciphers/create", {
+    body: JSON.stringify({
+      Cipher: { ...loginData("Created organization"), organizationId: organizationUuid },
+      CollectionIds: [firstCollectionUuid],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createdOrganizationCipher.status).toBe(200)
+  expect(await createdOrganizationCipher.json()).toMatchObject({
+    collectionIds: [firstCollectionUuid],
+    organizationId: organizationUuid,
+  })
+  expect(
+    context.database.query("SELECT collection_uuid FROM ciphers_collections WHERE cipher_uuid = ?").get("folder-one"),
+  ).toEqual({ collection_uuid: firstCollectionUuid })
+  expect(context.notifications.at(-1)).toMatchObject({
+    payload: { CollectionIds: [firstCollectionUuid], Id: "folder-one", OrganizationId: organizationUuid },
+    type: 1,
+    userIds: ["cipher-user"],
+  })
+})
+
+test("bulk cipher sharing is atomic and sends one vault sync notification", async () => {
+  const context = await contextCreate()
+  const organizationUuid = "00000000-0000-4000-8000-000000000611"
+  const collectionUuid = "00000000-0000-4000-8000-000000000612"
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    organizationUuid,
+    "Bulk organization",
+    "bulk@example.com",
+  ])
+  context.database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "00000000-0000-4000-8000-000000000613",
+      "cipher-user",
+      organizationUuid,
+      1,
+      "bulk-key",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.owner,
+    ],
+  )
+  context.database.run("INSERT INTO collections (uuid, org_uuid, name) VALUES (?, ?, ?)", [
+    collectionUuid,
+    organizationUuid,
+    "Bulk collection",
+  ])
+
+  const first = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Bulk first")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  const second = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Bulk second")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(first.status).toBe(200)
+  expect(second.status).toBe(200)
+  context.notifications.length = 0
+
+  const shareBody = (id: string, name: string) => ({
+    id,
+    ...loginData(name),
+    lastKnownRevisionDate: "invalid-but-ignored-by-bulk-share",
+    organizationId: organizationUuid,
+  })
+  const response = await context.app.request("https://vault.example/api/ciphers/share", {
+    body: JSON.stringify({
+      ciphers: [shareBody("cipher-one", "Bulk first"), shareBody("cipher-two", "Bulk second")],
+      collectionIds: [collectionUuid],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe("")
+  expect(context.database.query("SELECT organization_uuid, user_uuid FROM ciphers ORDER BY uuid").all()).toEqual([
+    { organization_uuid: organizationUuid, user_uuid: null },
+    { organization_uuid: organizationUuid, user_uuid: null },
+  ])
+  expect(context.notifications).toEqual([
+    {
+      contextId: "cipher-device",
+      payload: { Date: date, UserId: "cipher-user" },
+      type: 4,
+    },
+  ])
+
+  const before = context.database
+    .query("SELECT organization_uuid, user_uuid FROM ciphers WHERE uuid = ?")
+    .get("cipher-one")
+  const failed = await context.app.request("https://vault.example/api/ciphers/share", {
+    body: JSON.stringify({
+      ciphers: [shareBody("missing-cipher", "Missing"), shareBody("cipher-one", "Bulk first")],
+      collectionIds: [collectionUuid],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(failed.status).toBe(400)
+  expect(
+    context.database.query("SELECT organization_uuid, user_uuid FROM ciphers WHERE uuid = ?").get("cipher-one"),
+  ).toEqual(before)
+})
+
+test("bulk move includes accessible organization ciphers and notifies the requesting user", async () => {
+  const context = await contextCreate()
+  const organizationUuid = "00000000-0000-4000-8000-000000000621"
+  const collectionUuid = "00000000-0000-4000-8000-000000000622"
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    organizationUuid,
+    "Move organization",
+    "move@example.com",
+  ])
+  context.database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "00000000-0000-4000-8000-000000000623",
+      "cipher-user",
+      organizationUuid,
+      1,
+      "move-key",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.owner,
+    ],
+  )
+  context.database.run("INSERT INTO collections (uuid, org_uuid, name) VALUES (?, ?, ?)", [
+    collectionUuid,
+    organizationUuid,
+    "Move collection",
+  ])
+  const create = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Move shared")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(create.status).toBe(200)
+  const share = await context.app.request("https://vault.example/api/ciphers/cipher-one/share", {
+    body: JSON.stringify({
+      cipher: { ...loginData("Move shared"), organizationId: organizationUuid },
+      collectionIds: [collectionUuid],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(share.status).toBe(200)
+  const folder = await context.app.request("https://vault.example/api/folders", {
+    body: JSON.stringify({ name: "Move shared folder" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  const folderData = await folder.json()
+  context.notifications.length = 0
+
+  const move = await context.app.request("https://vault.example/api/ciphers/move", {
+    body: JSON.stringify({ folderId: folderData.id, ids: ["cipher-one"] }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(move.status).toBe(200)
+  expect(
+    context.database.query("SELECT folder_uuid FROM folders_ciphers WHERE cipher_uuid = ?").get("cipher-one"),
+  ).toEqual({ folder_uuid: folderData.id })
+  expect(context.notifications).toMatchObject([
+    {
+      payload: { Id: "cipher-one", UserId: null },
+      type: 0,
+      userIds: ["cipher-user"],
+    },
+  ])
+
+  context.notifications.length = 0
+  const failedMove = await context.app.request("https://vault.example/api/ciphers/move", {
+    body: JSON.stringify({ folderId: null, ids: ["cipher-one", "missing-cipher"] }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(failedMove.status).toBe(400)
+  expect(await failedMove.json()).toMatchObject({
+    message: "Not all ciphers are moved! 1 of the selected 2 were moved.",
+  })
+  expect(
+    context.database.query("SELECT folder_uuid FROM folders_ciphers WHERE cipher_uuid = ?").get("cipher-one"),
+  ).toEqual({ folder_uuid: folderData.id })
+  expect(context.notifications).toEqual([])
 })
 
 test("personal cipher import maps folders, ignores client revisions, persists history, and sends one vault update", async () => {
