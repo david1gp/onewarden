@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 12, 15, 19-24, and 33 are committed, pushed, deployed, and healthy on main with migrations through 0016. Task 34 passes browser/e2e and axe and enters publication. Tasks 35-37 pass browser/e2e and axe and publish sequentially afterward. Task 38 increments A-C are integrated with migration 0017; D-E integration remains, followed by six parallel compatibility-only coverage groups and a final manifest audit.
+- Current context: task 34 is committed, pushed, and deployed on `main`. Task 35 is implemented with uncommitted publication-integration and demo-alignment fixes that must be reviewed, repaired, fully tested, committed, pushed, and deployed. Tasks 36-38 have work on isolated branches/worktrees and must be integrated and verified serially after task 35 publication; task 38 remains incomplete. Task 39 has not started.
 
 # Tasks
 
@@ -61,7 +61,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 31. Port admin authentication, users, organizations, diagnostics, configuration, mail test, invite, deauthorization, and backup APIs with tests.
 - [x] 32. Port static/web compatibility routes, health endpoints, configuration endpoints, legacy aliases, and fallback behavior with tests.
 - [x] 33. Build accessible authentication, registration, verification, unlock, and two-factor UI flows with browser tests.
-- [ ] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
+- [x] 34. Build the responsive vault shell, navigation, search, filters, collections, folders, empty states, and keyboard workflows with browser tests.
 - [ ] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
 - [ ] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
 - [ ] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
