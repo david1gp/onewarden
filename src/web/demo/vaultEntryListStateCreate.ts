@@ -1,6 +1,8 @@
 import { createMemo } from "solid-js"
+import { vaultCategoryIconResolve } from "./vaultCategoryIconResolve.js"
+import { vaultCategoryThemeResolve } from "./vaultCategoryThemeResolve.js"
+import { vaultCategoryTitleResolve } from "./vaultCategoryTitleResolve.js"
 import type { VaultItem } from "./vaultItemSchema.js"
-import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
 export interface VaultEntryListStateProps {
   items: () => readonly VaultItem[]
@@ -25,48 +27,8 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     if (props.selectedVault() !== "all") {
       return `${props.selectedVault()} Vault`
     }
-    const catTitles: Record<string, string> = {
-      login: "Logins",
-      secureNote: "Secure Notes",
-      creditCard: "Credit Cards",
-      identity: "Identities",
-      server: "Servers",
-      sshKey: "SSH Keys",
-    }
-    return catTitles[props.selectedCategory()] ?? "All Items"
+    return vaultCategoryTitleResolve(props.selectedCategory())
   })
-
-  const getCategoryIcon = (category: string): string => {
-    const map: Record<string, string> = {
-      login: vaultSvgIcons.login,
-      secureNote: vaultSvgIcons.secureNote,
-      creditCard: vaultSvgIcons.creditCard,
-      identity: vaultSvgIcons.identity,
-      password: vaultSvgIcons.password,
-      server: vaultSvgIcons.server,
-      sshKey: vaultSvgIcons.sshKey,
-    }
-    return map[category] ?? vaultSvgIcons.login
-  }
-
-  const getCategoryTheme = (category: string): { bg: string; text: string } => {
-    switch (category) {
-      case "login":
-        return { bg: "bg-blue-100 dark:bg-blue-950/60", text: "text-blue-600 dark:text-blue-400" }
-      case "secureNote":
-        return { bg: "bg-amber-100 dark:bg-amber-950/60", text: "text-amber-600 dark:text-amber-400" }
-      case "creditCard":
-        return { bg: "bg-emerald-100 dark:bg-emerald-950/60", text: "text-emerald-600 dark:text-emerald-400" }
-      case "identity":
-        return { bg: "bg-purple-100 dark:bg-purple-950/60", text: "text-purple-600 dark:text-purple-400" }
-      case "server":
-        return { bg: "bg-slate-200 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300" }
-      case "sshKey":
-        return { bg: "bg-teal-100 dark:bg-teal-950/60", text: "text-teal-600 dark:text-teal-400" }
-      default:
-        return { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-300" }
-    }
-  }
 
   const getItemSubtitle = (item: VaultItem): string => {
     if (item.username) return item.username
@@ -90,8 +52,8 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     selectedItemId: props.selectedItemId,
     searchQuery: props.searchQuery,
     filterTitle,
-    getCategoryIcon,
-    getCategoryTheme,
+    getCategoryIcon: vaultCategoryIconResolve,
+    getCategoryTheme: vaultCategoryThemeResolve,
     getItemSubtitle,
     selectItem: props.onSelectItem,
     setSearchQuery: props.onSearchChange,
