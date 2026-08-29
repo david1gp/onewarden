@@ -17,10 +17,6 @@ interface CheckboxProps extends MayHaveClass, MayHaveChildren, MayHaveDisabled, 
 /** Accessible labeled checkbox driven by a controlled `checked`/`onChange` pair. */
 export function Checkbox(p: CheckboxProps) {
   const [s, rest] = splitProps(p, ["id", "checked", "onChange", "disabled", "class", "children"])
-  const handleToggle = () => {
-    if (s.disabled) return
-    s.onChange(!s.checked)
-  }
 
   return (
     <div class={classMerge("flex items-start gap-1", s.class)}>
@@ -29,29 +25,17 @@ export function Checkbox(p: CheckboxProps) {
         type="checkbox"
         checked={s.checked}
         onChange={(e) => s.onChange(e.currentTarget.checked)}
-        class="sr-only invisible"
+        class="peer sr-only"
         disabled={s.disabled}
-        aria-describedby={s.id ? `${s.id}-error` : undefined}
         {...rest}
       />
       <div
-        onClick={handleToggle}
         class={classMerge(
-          "size-6", // sizing + interaction
-          "cursor-pointer", // cursor
-          "flex items-center justify-center", // layout children
+          "flex size-6 items-center justify-center", // sizing + layout
+          "peer-focus-visible:rounded-sm peer-focus-visible:ring-2 peer-focus-visible:ring-blue-600 peer-focus-visible:ring-offset-2", // focus
           s.disabled && classesDisabledDirectly, // disabled state
         )}
-        role="checkbox"
-        aria-checked={s.checked}
-        aria-labelledby={s.id ? `${s.id}-label` : undefined}
-        tabindex={0}
-        onKeyDown={(e) => {
-          if (e.key === " " || e.key === "Enter") {
-            e.preventDefault()
-            handleToggle()
-          }
-        }}
+        aria-hidden="true"
       >
         <Icon path={s.checked ? mdiCheckboxMarked : mdiCheckboxBlankOutline} class="size-6 text-current" />
       </div>
@@ -62,10 +46,6 @@ export function Checkbox(p: CheckboxProps) {
           "cursor-pointer", // interaction
           s.disabled && classesDisabledDirectly, // disabled state
         )}
-        onClick={(e) => {
-          e.preventDefault()
-          handleToggle()
-        }}
       >
         {s.children}
       </label>

@@ -9,9 +9,9 @@ export function DemoEmptyState(): JSX.Element {
   return (
     <div class="flex h-full w-full flex-col overflow-hidden">
       <VaultDemoHeader currentDemo="empty-state" title="Empty Vault State" />
-      <div class="flex-1 overflow-hidden">
+      <main id="main-content" tabindex="-1" class="flex-1 overflow-hidden focus:outline-none">
         <VaultWorkspace initialItems={state.items} />
-      </div>
+      </main>
     </div>
   )
 }

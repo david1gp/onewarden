@@ -14,6 +14,14 @@ export function DemoDirectory(): JSX.Element {
     <div
       class={`h-full overflow-y-auto ${classesScrollbar} bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100`}
     >
+      {/* biome-ignore lint/a11y/useValidAnchor: skip link shifts programmatic focus to main content */}
+      <a
+        href="#main-content"
+        onClick={() => document.getElementById("main-content")?.focus()}
+        class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-blue-600 focus:px-3 focus:py-2 focus:text-white"
+      >
+        Skip to main content
+      </a>
       {/* Top Banner Header */}
       <header class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -40,10 +48,10 @@ export function DemoDirectory(): JSX.Element {
       </header>
 
       {/* Directory Grid */}
-      <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 focus:outline-none">
         <div class="mb-6 flex items-center justify-between">
           <h2 class="font-semibold text-lg text-slate-900 dark:text-slate-100">Representative Vault Views</h2>
-          <span class="text-xs text-slate-500">{state.demos.length} Demo Pages</span>
+          <span class="text-xs text-slate-600 dark:text-slate-400">{state.demos.length} Demo Pages</span>
         </div>
 
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">

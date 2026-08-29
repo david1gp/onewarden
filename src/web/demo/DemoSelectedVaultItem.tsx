@@ -17,13 +17,13 @@ export function DemoSelectedVaultItem(props: DemoSelectedVaultItemProps): JSX.El
   return (
     <div class="flex h-full w-full flex-col overflow-hidden">
       <VaultDemoHeader currentDemo={props.currentDemo} title={props.title} />
-      <div class="flex-1 overflow-hidden">
+      <main id="main-content" tabindex="-1" class="flex-1 overflow-hidden focus:outline-none">
         <VaultWorkspace
           initialItems={props.selected.items}
           defaultCategory={props.selected.defaultCategory}
           defaultSelectedId={props.selected.defaultSelectedId}
         />
-      </div>
+      </main>
     </div>
   )
 }

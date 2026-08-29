@@ -9,6 +9,14 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
 
   return (
     <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-700 shadow-xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+      {/* biome-ignore lint/a11y/useValidAnchor: skip link shifts programmatic focus to main content */}
+      <a
+        href="#main-content"
+        onClick={() => document.getElementById("main-content")?.focus()}
+        class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-blue-600 focus:px-3 focus:py-2 focus:text-white"
+      >
+        Skip to main content
+      </a>
       <div class="flex items-center gap-3">
         <LinkButtonExternal
           href="/demo"
@@ -21,13 +29,13 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
           Demo Index
         </LinkButtonExternal>
         <div class="hidden h-4 w-px bg-slate-200 sm:block dark:bg-slate-700" />
-        <span class="font-semibold text-slate-900 dark:text-slate-100">{state.title()}</span>
+        <h1 class="font-semibold text-slate-900 dark:text-slate-100 text-xs">{state.title()}</h1>
         <Badge variant="subtle" class="hidden sm:inline-flex text-[10px] px-1.5 py-0">
           Presentation Mode
         </Badge>
       </div>
 
-      <nav class="flex flex-wrap items-center gap-1">
+      <nav aria-label="Demo Views" class="flex flex-wrap items-center gap-1">
         <For each={state.demoLinks}>
           {(link) => {
             const isActive = () => state.currentDemo() === link.id

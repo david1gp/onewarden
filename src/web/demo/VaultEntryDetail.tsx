@@ -22,7 +22,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
               <Icon path={vaultSvgIcons.lock} class="size-7" />
             </div>
             <p class="mt-4 font-semibold text-sm text-slate-800 dark:text-slate-200">No Item Selected</p>
-            <p class="mt-1 max-w-xs text-xs text-slate-500">
+            <p class="mt-1 max-w-xs text-xs text-slate-600 dark:text-slate-400">
               Select an item from the list to view stored credentials, secure notes, and metadata.
             </p>
           </div>
@@ -49,7 +49,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                     <Badge variant="outline" class="text-xs">
                       {state.getCategoryLabel(item().category)}
                     </Badge>
-                    <span class="text-xs text-slate-400">Updated {item().updatedAt}</span>
+                    <span class="text-xs text-slate-600 dark:text-slate-400">Updated {item().updatedAt}</span>
                   </div>
                 </div>
               </div>
@@ -62,7 +62,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                   class="text-xs"
                   icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
                   iconClass={`size-4 fill-current dark:fill-current ${
-                    item().favorite ? "text-amber-500 dark:text-amber-400" : "text-slate-500 dark:text-slate-400"
+                    item().favorite ? "text-amber-500 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"
                   }`}
                   onClick={() => state.toggleFavorite()}
                   aria-label="Toggle Favorite"
@@ -84,7 +84,9 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                   <Show when={item().username}>
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Username</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Username
+                        </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().username}
                         </p>
@@ -97,7 +99,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "username"
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("username", item().username ?? "")}
                       >
@@ -111,7 +113,9 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Password</p>
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Password
+                          </p>
                           <Show when={item().passwordStrength}>
                             <Badge variant="filledGreen" class="px-1.5 py-0 text-[10px]">
                               {item().passwordStrength}
@@ -128,7 +132,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                           size="sm"
                           class="text-xs"
                           icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                          iconClass="size-3.5 fill-current dark:fill-current text-slate-500 dark:text-slate-400"
+                          iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                           onClick={() => state.togglePasswordReveal()}
                         >
                           {state.isPasswordRevealed() ? "Hide" : "Show"}
@@ -141,7 +145,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                           iconClass={`size-3.5 fill-current dark:fill-current ${
                             state.copiedField() === "password"
                               ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-slate-500 dark:text-slate-400"
+                              : "text-slate-600 dark:text-slate-400"
                           }`}
                           onClick={() => state.copyToClipboard("password", item().password ?? "")}
                         >
@@ -156,7 +160,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
-                          <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             One-Time Password (2FA)
                           </p>
                           <span class="size-1.5 animate-pulse rounded-full bg-blue-500" />
@@ -173,7 +177,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "totp"
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("totp", item().totp?.replace(/\s+/g, "") ?? "")}
                       >
@@ -186,7 +190,9 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                   <Show when={item().url}>
                     <div class="group flex items-center justify-between gap-2">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-400 uppercase tracking-wider">Website</p>
+                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          Website
+                        </p>
                         <LinkTextExternal
                           href={item().url ?? "#"}
                           target="_blank"
@@ -205,7 +211,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "url"
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-slate-400"
+                            : "text-slate-600 dark:text-slate-400"
                         }`}
                         onClick={() => state.copyToClipboard("url", item().url ?? "")}
                       >
@@ -228,7 +234,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                         return (
                           <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80">
                             <div class="min-w-0 flex-1">
-                              <p class="truncate font-semibold text-[11px] text-slate-400 uppercase tracking-wider">
+                              <p class="truncate font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
                                 {field.label}
                               </p>
                               <p class="truncate font-mono text-slate-800 text-xs select-all dark:text-slate-200">
@@ -242,7 +248,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                                   size="sm"
                                   class="text-xs"
                                   icon={isRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                                  iconClass="size-3.5 fill-current dark:fill-current text-slate-500 dark:text-slate-400"
+                                  iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                                   onClick={() => state.toggleConcealedField(idx())}
                                 >
                                   {isRevealed() ? "Hide" : "Show"}
@@ -258,7 +264,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                                 iconClass={`size-3.5 fill-current dark:fill-current ${
                                   state.copiedField() === `custom-${idx()}`
                                     ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-slate-500 dark:text-slate-400"
+                                    : "text-slate-600 dark:text-slate-400"
                                 }`}
                                 onClick={() => state.copyToClipboard(`custom-${idx()}`, field.value)}
                               >
@@ -291,7 +297,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
                     {item().folder ?? "No Folder"}
                   </Badge>
                 </div>
-                <div class="pt-2 text-[11px] text-slate-400">
+                <div class="pt-2 text-[11px] text-slate-600 dark:text-slate-400">
                   <span>Created {item().createdAt}</span>
                 </div>
               </CardWrapper>

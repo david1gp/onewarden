@@ -27,7 +27,7 @@ const variantClasses = {
   subtle: "bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100",
   outline: "text-foreground",
   contrast: "bg-slate-900 border-transparent text-white dark:bg-slate-50 dark:text-slate-900",
-  filledGreen: "bg-green-500 text-white border-green-500",
+  filledGreen: "bg-green-700 text-white border-green-700 dark:bg-green-700 dark:border-green-700",
   filledYellow: "bg-yellow-500 text-white border-yellow-500",
   filledBlue: "bg-sky-500 text-white border-sky-500",
   filledRed: "bg-red-600 text-white border-red-600 dark:border-red-600",
