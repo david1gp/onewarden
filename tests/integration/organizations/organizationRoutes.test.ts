@@ -1,0 +1,508 @@
+import { afterEach, expect, test } from "bun:test"
+import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
+import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
+import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
+import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
+import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
+import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import { organizationMembershipStatus } from "../../../src/server/contexts/organizations/organizationMembershipStatus.js"
+import { organizationMembershipType } from "../../../src/server/contexts/organizations/organizationMembershipType.js"
+import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
+import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
+import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+
+const keyPairResult = rsaKeyPairGenerate()
+if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
+const keyPair = keyPairResult.data
+const userUuid = "00000000-0000-4000-8000-000000000101"
+const deviceUuid = "00000000-0000-4000-8000-000000000102"
+const organizationUuid = "00000000-0000-4000-8000-000000000103"
+const membershipUuid = "00000000-0000-4000-8000-000000000104"
+const collectionUuid = "00000000-0000-4000-8000-000000000105"
+const databases: DatabaseConnection[] = []
+
+async function userCreate(): Promise<IdentityUser> {
+  const salt = Uint8Array.from({ length: 64 }, (_, index) => index + 1)
+  const passwordHashResult = await passwordHashCreate("organization-password", salt, 100_000)
+  if (!passwordHashResult.success) throw new Error(passwordHashResult.errorMessage)
+  return {
+    uuid: userUuid,
+    enabled: true,
+    createdAt: "2026-08-28T00:00:00.000Z",
+    updatedAt: "2026-08-28T00:00:00.000Z",
+    verifiedAt: "2026-08-27T00:00:00.000Z",
+    lastVerifyingAt: null,
+    loginVerifyCount: 0,
+    email: "owner@example.com",
+    emailNew: null,
+    emailNewToken: null,
+    name: "Organization Owner",
+    passwordHash: passwordHashResult.data,
+    salt,
+    passwordIterations: 100_000,
+    passwordHint: null,
+    akey: "user-akey",
+    privateKey: null,
+    publicKey: null,
+    securityStamp: "organization-owner-stamp",
+    stampException: null,
+    equivalentDomains: "[]",
+    excludedGlobals: "[]",
+    clientKdfType: 0,
+    clientKdfIter: 100_000,
+    clientKdfMemory: null,
+    clientKdfParallelism: null,
+    apiKey: null,
+    avatarColor: null,
+    externalId: null,
+  }
+}
+
+function deviceCreate(): IdentityDevice {
+  return {
+    uuid: deviceUuid,
+    createdAt: "2026-08-28T00:00:00.000Z",
+    updatedAt: "2026-08-28T00:00:00.000Z",
+    userUuid,
+    name: "Organization Device",
+    type: 7,
+    pushUuid: null,
+    pushToken: null,
+    refreshToken: "organization-refresh-token",
+    twoFactorRemember: null,
+  }
+}
+
+async function contextCreate(configOverrides: Parameters<typeof identityConfigCreate>[0] = {}): Promise<{
+  app: ReturnType<typeof serverAppCreate>
+  database: DatabaseConnection
+  token: string
+}> {
+  const databaseResult = databaseTestCreate()
+  if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
+  const database = databaseResult.data
+  databases.push(database)
+  const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
+  const config = identityConfigCreate({ PASSWORD_ITERATIONS: 100_000, ...configOverrides })
+  const user = await userCreate()
+  const userResult = identityUserSave(database, user)
+  if (!userResult.success) throw new Error(userResult.errorMessage)
+  const device = deviceCreate()
+  const deviceResult = identityDeviceSave(database, device, clock, false)
+  if (!deviceResult.success) throw new Error(deviceResult.errorMessage)
+  const bundleResult = await identityTokenBundleCreate(
+    user,
+    device,
+    "organization-client",
+    "https://vault.example",
+    keyPair.privateKey,
+    clock,
+    config,
+  )
+  if (!bundleResult.success) throw new Error(bundleResult.errorMessage)
+  const app = serverAppCreate({
+    clock,
+    database,
+    identifier: identifierTestCreate([organizationUuid, membershipUuid, collectionUuid]),
+    identity: {
+      clock,
+      config,
+      database,
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey,
+      publicOrigin: "https://vault.example",
+      rateLimiter: { check: () => resultCreate(undefined) },
+    },
+  })
+  return { app, database, token: bundleResult.data.accessToken }
+}
+
+function jsonHeaders(token: string): HeadersInit {
+  return { authorization: `Bearer ${token}`, "content-type": "application/json", "x-request-id": "organization-test" }
+}
+
+afterEach(() => {
+  for (const database of databases.splice(0)) databaseClose(database)
+})
+
+test("organization CRUD, keys, aliases, and persistence match upstream behavior", async () => {
+  const context = await contextCreate()
+  const url = `https://vault.example/api/organizations/${organizationUuid}`
+
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "Billing@Example.COM",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: "4",
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+  expect(await createResponse.json()).toMatchObject({
+    id: organizationUuid,
+    name: "Organization",
+    billingEmail: "billing@example.com",
+    seats: null,
+    maxCollections: null,
+    maxStorageGb: 32_767,
+    planType: 6,
+    hasPublicAndPrivateKeys: false,
+    object: "organization",
+  })
+  expect(
+    context.database.query("SELECT name, billing_email FROM organizations WHERE uuid = ?").get(organizationUuid),
+  ).toEqual({
+    name: "Organization",
+    billing_email: "billing@example.com",
+  })
+  expect(context.database.query("PRAGMA table_info(organizations)").all()).toEqual([
+    { cid: 0, dflt_value: null, name: "uuid", notnull: 1, pk: 1, type: "TEXT" },
+    { cid: 1, dflt_value: null, name: "name", notnull: 1, pk: 0, type: "TEXT" },
+    { cid: 2, dflt_value: null, name: "billing_email", notnull: 1, pk: 0, type: "TEXT" },
+    { cid: 3, dflt_value: null, name: "private_key", notnull: 0, pk: 0, type: "TEXT" },
+    { cid: 4, dflt_value: null, name: "public_key", notnull: 0, pk: 0, type: "TEXT" },
+  ])
+  expect(
+    context.database
+      .query("SELECT access_all, akey, status, atype FROM users_organizations WHERE uuid = ?")
+      .get(membershipUuid),
+  ).toEqual({
+    access_all: 1,
+    akey: "encrypted-owner-key",
+    status: organizationMembershipStatus.confirmed,
+    atype: organizationMembershipType.owner,
+  })
+  expect(context.database.query("SELECT name FROM collections WHERE uuid = ?").get(collectionUuid)).toEqual({
+    name: "Initial Collection",
+  })
+
+  const getResponse = await context.app.request(url, { headers: { authorization: `Bearer ${context.token}` } })
+  expect(getResponse.status).toBe(200)
+  expect((await getResponse.json()) as { object: string }).toMatchObject({ object: "organization" })
+
+  const putResponse = await context.app.request(url, {
+    body: JSON.stringify({ billingEmail: "Updated@Example.COM", name: "Renamed Organization" }),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(putResponse.status).toBe(200)
+  expect(await putResponse.json()).toMatchObject({
+    name: "Renamed Organization",
+    billingEmail: "updated@example.com",
+  })
+
+  const postResponse = await context.app.request(url, {
+    body: JSON.stringify({ billingEmail: "Again@Example.COM", name: "Posted Organization" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(postResponse.status).toBe(200)
+  expect(await postResponse.json()).toMatchObject({ name: "Posted Organization", billingEmail: "again@example.com" })
+
+  const keysResponse = await context.app.request(`${url}/keys`, {
+    body: JSON.stringify({ encryptedPrivateKey: "encrypted-private-key", publicKey: "public-key" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(keysResponse.status).toBe(200)
+  expect(await keysResponse.json()).toEqual({
+    object: "organizationKeys",
+    publicKey: "public-key",
+    privateKey: "encrypted-private-key",
+  })
+  expect(
+    context.database.query("SELECT private_key, public_key FROM organizations WHERE uuid = ?").get(organizationUuid),
+  ).toEqual({
+    private_key: "encrypted-private-key",
+    public_key: "public-key",
+  })
+
+  const secondKeysResponse = await context.app.request(`${url}/keys`, {
+    body: JSON.stringify({ encryptedPrivateKey: "another-private-key", publicKey: "another-public-key" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(secondKeysResponse.status).toBe(400)
+  expect((await secondKeysResponse.json()).message).toBe("Organization Keys already exist")
+
+  const deleteResponse = await context.app.request(url, {
+    body: JSON.stringify({ MasterPasswordHash: "organization-password" }),
+    headers: jsonHeaders(context.token),
+    method: "DELETE",
+  })
+  expect(deleteResponse.status).toBe(200)
+  expect(await deleteResponse.text()).toBe("")
+  expect(
+    context.database.query("SELECT COUNT(*) AS count FROM organizations WHERE uuid = ?").get(organizationUuid),
+  ).toEqual({ count: 0 })
+})
+
+test("organization billing compatibility returns plans, empty metadata, warnings, and self-host limits", async () => {
+  const context = await contextCreate()
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 2,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const plansResponse = await context.app.request("https://vault.example/api/plans")
+  expect(plansResponse.status).toBe(200)
+  expect(await plansResponse.json()).toEqual({
+    object: "list",
+    data: [
+      {
+        object: "plan",
+        type: 0,
+        product: 0,
+        name: "Free",
+        nameLocalizationKey: "planNameFree",
+        bitwardenProduct: 0,
+        maxUsers: 0,
+        descriptionLocalizationKey: "planDescFree",
+      },
+      {
+        object: "plan",
+        type: 0,
+        product: 1,
+        name: "Free",
+        nameLocalizationKey: "planNameFree",
+        bitwardenProduct: 1,
+        maxUsers: 0,
+        descriptionLocalizationKey: "planDescFree",
+      },
+    ],
+    continuationToken: null,
+  })
+
+  const billingHeaders = { authorization: `Bearer ${context.token}` }
+  const metadataResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/billing/metadata`,
+    { headers: billingHeaders },
+  )
+  expect(metadataResponse.status).toBe(200)
+  expect(await metadataResponse.json()).toEqual({ object: "list", data: [], continuationToken: null })
+
+  const warningsResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/billing/vnext/warnings`,
+    { headers: billingHeaders },
+  )
+  expect(warningsResponse.status).toBe(200)
+  expect(await warningsResponse.json()).toEqual({
+    freeTrial: null,
+    inactiveSubscription: null,
+    resellerRenewal: null,
+    taxId: null,
+  })
+
+  const selfHostMetadataResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/billing/vnext/self-host/metadata`,
+    { headers: billingHeaders },
+  )
+  expect(selfHostMetadataResponse.status).toBe(200)
+  expect(await selfHostMetadataResponse.json()).toEqual({
+    isOnSecretsManagerStandalone: false,
+    organizationOccupiedSeats: 0,
+  })
+})
+
+test("organization creation requires a plan type", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({ object: "error" })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM organizations").get()).toEqual({ count: 0 })
+})
+
+test("organization creation rejects a non-integer numeric plan type", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 4.5,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({ object: "error" })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM organizations").get()).toEqual({ count: 0 })
+})
+
+test("organization creation honors the configured user allow list", async () => {
+  const context = await contextCreate({ ORG_CREATION_USERS: "allowed@example.com" })
+  const response = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(400)
+  expect((await response.json()).message).toBe("User not allowed to create organizations")
+  expect(context.database.query("SELECT COUNT(*) AS count FROM organizations").get()).toEqual({ count: 0 })
+})
+
+test("organization key retrieval, API-key rotation, and export preserve core compatibility", async () => {
+  const context = await contextCreate()
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      keys: { encryptedPrivateKey: "encrypted-private-key", publicKey: "public-key" },
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  for (const path of [`${organizationUuid}/public-key`, `${organizationUuid}/keys`]) {
+    const response = await context.app.request(`https://vault.example/api/organizations/${path}`, {
+      headers: { authorization: `Bearer ${context.token}` },
+    })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ object: "organizationPublicKey", publicKey: "public-key" })
+  }
+
+  const apiKeyRequest = {
+    body: JSON.stringify({ MasterPasswordHash: "organization-password" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  } as const
+  const createApiKeyResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/api-key`,
+    apiKeyRequest,
+  )
+  expect(createApiKeyResponse.status).toBe(200)
+  const createdApiKey = await createApiKeyResponse.json()
+  expect(createdApiKey).toMatchObject({ object: "apiKey", revisionDate: "2026-08-28T00:00:00.000Z" })
+  expect(createdApiKey.apiKey).toMatch(/^[A-Za-z0-9]{30}$/)
+
+  const repeatedApiKeyResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/api-key`,
+    apiKeyRequest,
+  )
+  expect(await repeatedApiKeyResponse.json()).toEqual(createdApiKey)
+
+  const invalidApiKeyResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/api-key`,
+    {
+      body: JSON.stringify({ masterPasswordHash: "wrong" }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    },
+  )
+  expect(invalidApiKeyResponse.status).toBe(400)
+  expect((await invalidApiKeyResponse.json()).message).toBe("Invalid password")
+
+  const rotateApiKeyResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/rotate-api-key`,
+    apiKeyRequest,
+  )
+  const rotatedApiKey = await rotateApiKeyResponse.json()
+  expect(rotatedApiKey).toMatchObject({ object: "apiKey", revisionDate: "2026-08-28T00:00:00.000Z" })
+  expect(rotatedApiKey.apiKey).toMatch(/^[A-Za-z0-9]{30}$/)
+  expect(rotatedApiKey.apiKey).not.toBe(createdApiKey.apiKey)
+
+  const cipherUuid = "00000000-0000-4000-8000-00000000010f"
+  context.database.run(
+    `INSERT INTO ciphers (uuid, created_at, updated_at, organization_uuid, atype, name, data)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      cipherUuid,
+      "2026-08-28T00:00:00.000Z",
+      "2026-08-28T00:00:00.000Z",
+      organizationUuid,
+      1,
+      "Exported login",
+      JSON.stringify({ Password: "encrypted-password" }),
+    ],
+  )
+  const exportResponse = await context.app.request(
+    `https://vault.example/api/organizations/${organizationUuid}/export`,
+    { headers: { authorization: `Bearer ${context.token}` } },
+  )
+  expect(exportResponse.status).toBe(200)
+  const exportBody = await exportResponse.json()
+  expect(exportBody.collections).toEqual([
+    {
+      defaultUserCollectionEmail: null,
+      externalId: null,
+      id: collectionUuid,
+      name: "Initial Collection",
+      object: "collection",
+      organizationId: organizationUuid,
+      type: 0,
+    },
+  ])
+  expect(exportBody.ciphers).toHaveLength(1)
+  expect(exportBody.ciphers[0]).toMatchObject({
+    id: cipherUuid,
+    login: { password: "encrypted-password" },
+    name: "Exported login",
+    object: "cipherDetails",
+  })
+  for (const field of ["archivedDate", "edit", "favorite", "folderId", "permissions", "viewPassword"])
+    expect(exportBody.ciphers[0]).not.toHaveProperty(field)
+})
+
+test("the final organization owner cannot leave", async () => {
+  const context = await contextCreate()
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const leaveResponse = await context.app.request(`https://vault.example/api/organizations/${organizationUuid}/leave`, {
+    headers: { authorization: `Bearer ${context.token}` },
+    method: "POST",
+  })
+  expect(leaveResponse.status).toBe(400)
+  expect((await leaveResponse.json()).message).toBe("The last owner can't leave")
+  expect(context.database.query("SELECT COUNT(*) AS count FROM users_organizations").get()).toEqual({ count: 1 })
+})

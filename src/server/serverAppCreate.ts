@@ -10,10 +10,10 @@ import type { Logger } from "../shared/logging/logger.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
 import type { AdminRouteOptions } from "./contexts/admin/adminRouteOptions.js"
 import { adminRoutesRegister } from "./contexts/admin/adminRoutesRegister.js"
-import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { AttachmentFileStorageAdapter } from "./contexts/attachments/attachmentFileStorageAdapter.js"
 import { attachmentFileStorageAdapterCreate } from "./contexts/attachments/attachmentFileStorageAdapterCreate.js"
 import { attachmentRoutesRegister } from "./contexts/attachments/attachmentRoutesRegister.js"
+import type { AuthenticationEnvironment } from "./contexts/authentication/authenticationEnvironment.js"
 import type { CipherNotificationAdapter } from "./contexts/ciphers/cipherNotificationAdapter.js"
 import { cipherRoutesRegister } from "./contexts/ciphers/cipherRoutesRegister.js"
 import type { EmergencyAccessNotificationAdapter } from "./contexts/emergencyAccess/emergencyAccessNotificationAdapter.js"
@@ -29,10 +29,12 @@ import type { IdentityRouteOptions } from "./contexts/identity/identityRouteOpti
 import { identityRoutesRegister } from "./contexts/identity/identityRoutesRegister.js"
 import { identitySsoAdapterCreate } from "./contexts/identity/identitySsoAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
+import type { NotificationAdapter } from "./contexts/notifications/notificationAdapter.js"
 import type { NotificationHub } from "./contexts/notifications/notificationHub.js"
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { notificationRoutesRegister } from "./contexts/notifications/notificationRoutesRegister.js"
 import { organizationPublicRoutesRegister } from "./contexts/organizations/organizationPublicRoutesRegister.js"
+import { organizationRoutesRegister } from "./contexts/organizations/organizationRoutesRegister.js"
 import type { PushRelayAdapter } from "./contexts/push/pushRelayAdapter.js"
 import { pushRelayAdapterCreate } from "./contexts/push/pushRelayAdapterCreate.js"
 import type { PushRelayConfiguration } from "./contexts/push/pushRelayConfiguration.js"
@@ -60,7 +62,10 @@ type ServerAppOptions = {
   identifier?: Identifier
   logger?: Logger
   notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
-  organizations?: { groupsEnabled?: boolean }
+  organizations?: {
+    groupsEnabled?: boolean
+    notification?: NotificationAdapter
+  }
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
   sends?: {
     notification?: SendNotificationAdapter
@@ -186,6 +191,17 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     push,
     rateLimiter: identityOptions?.rateLimiter ?? identityRateLimiter(identityConfig, identityClock),
     sso: identityOptions?.sso ?? identitySsoAdapterCreate(identityConfig, identityOptions?.publicOrigin, identityClock),
+  })
+  organizationRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled ?? false,
+    identifier: identityIdentifier,
+    notification: options?.organizations?.notification ?? notificationHub.adapter,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
   })
   organizationPublicRoutesRegister(app, {
     clock: identityClock,
