@@ -280,7 +280,7 @@ systemctl --user restart "$service_name"
 
 printf 'Running postdeploy verification.\n'
 bun "$source_dir/tools/release/releasePostdeployVerify.ts" \
-  --package "$target_dir" \
+  --package "$package_dir" \
   --runtime "$target_dir" \
   --service "$service_name" \
   --port "$port"
