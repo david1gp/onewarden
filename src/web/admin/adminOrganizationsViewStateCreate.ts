@@ -6,6 +6,10 @@ export function adminOrganizationsViewStateCreate(state: AdminShellState) {
     state.selectOrganization(id)
     state.openDialog({ kind: "organizationDetails", entityId: id })
   }
+  const reloadOrganizations = () => {
+    state.organizationsReload()
+    state.showFeedback({ kind: "success", message: "Organizations reloaded from the demo directory." })
+  }
 
-  return { search, open }
+  return { search, open, reloadOrganizations }
 }
