@@ -25,4 +25,4 @@ Add complete collection management to `/demo/admin`, reuse the existing organiza
 - [x] 1. Implement the `/demo/admin` collection state, UI integration, and focused automated tests.
 - [x] 2. Verify collection workflows in a real browser and fix only defects in the new flow.
 - [x] 3. Audit and summarize remaining Vaultwarden parity gaps with repository evidence.
-- [ ] 4. Run full release verification, use the commits skill to split and push intentional changes, then deploy and verify production health. Release gates pass; commit and push complete; deploy and live verification pending.
+- [x] 4. Run full release verification, use the commits skill to split and push intentional changes, then deploy and verify production health.
