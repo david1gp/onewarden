@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-38 are committed, pushed, deployed, and healthy on `main`. Task 38 route coverage matches the upstream compatibility surface, focused tests pass, and the deferred browser suite passes all 50 tests. Task 39 has not started.
+- Current context: tasks 34-38 are committed, pushed, deployed, and healthy on `main`. Task 39 implementation is complete: packaged Bun runtime, systemd deployment, project-registry-owned routing, persistent storage, integrity-checked backup/restore, observability, security headers, deterministic release identity, pre/post deployment verification, and automatic runtime rollback are implemented. Typecheck, release package verification, and the deferred browser suite all pass; Task 39 is ready to commit, push, deploy, and verify live.
 
 # Tasks
 
@@ -66,7 +66,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
 - [x] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
 - [x] 38. Port and run the complete upstream-compatible behavior matrix, add protocol fixtures for uncovered APIs, and close every compatibility-manifest gap.
-- [ ] 39. Add production build, Caddy/systemd deployment, migrations, backup/restore, observability, security headers, and release verification.
+- [x] 39. Add production build, project-registry/systemd deployment, migrations, backup/restore, observability, security headers, and release verification.
 
 # Paths
 
