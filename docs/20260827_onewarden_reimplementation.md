@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-38 are committed, pushed, deployed, and healthy on `main`. Task 39 implementation is complete: packaged Bun runtime, systemd deployment, project-registry-owned routing, persistent storage, integrity-checked backup/restore, observability, security headers, deterministic release identity, pre/post deployment verification, and automatic runtime rollback are implemented. Typecheck, release package verification, and the deferred browser suite all pass; Task 39 is ready to commit, push, deploy, and verify live.
+- Current context: tasks 34-39 are committed, pushed, deployed, and healthy on `main`. Typecheck, release verification, and all 50 deferred browser tests pass. The deployed release is `039e5d0352c12b92d4b3a50a74c9c6930c14f024`; project-registry routing, local readiness, public health, security headers, release identity, schema identity, predeploy backup, and startup logs are verified.
 
 # Tasks
 
