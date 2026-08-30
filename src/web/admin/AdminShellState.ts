@@ -1,5 +1,6 @@
 import type { Accessor } from "solid-js"
 import type { SignalObject } from "#ui/utils/createSignalObject.js"
+import type { AdminCollectionsState } from "./AdminCollectionsState.js"
 import type { AdminConfirmation } from "./adminConfirmationSchema.js"
 import type { AdminDiagnostics } from "./adminDiagnosticsSchema.js"
 import type { AdminDialog } from "./adminDialogSchema.js"
@@ -21,6 +22,7 @@ import type { AdminUser } from "./adminUserSchema.js"
 export interface AdminShellState {
   settings: Accessor<AdminSettings>
   users: Accessor<readonly AdminUser[]>
+  collectionState: AdminCollectionsState
   diagnostics: Accessor<AdminDiagnostics>
   supportInformation: Accessor<string | null>
   activeSection: Accessor<AdminSection>

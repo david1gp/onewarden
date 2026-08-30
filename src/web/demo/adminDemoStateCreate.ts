@@ -18,6 +18,7 @@ import type {
 } from "../admin/adminSettingsSchema.js"
 import type { AdminUserOrganizationRole } from "../admin/adminUserOrganizationRoleSchema.js"
 import type { AdminUser } from "../admin/adminUserSchema.js"
+import { adminCollectionsStateCreate } from "./adminCollectionsStateCreate.js"
 import { adminDiagnosticsDemoData } from "./adminDiagnosticsDemoData.js"
 import { adminOrganizationsDemoData } from "./adminOrganizationsDemoData.js"
 import { adminSettingsDemoData } from "./adminSettingsDemoData.js"
@@ -236,6 +237,7 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
   const organizations = createSignalObject<readonly AdminOrganization[]>(
     props.organizations ?? adminOrganizationsDemoData,
   )
+  const collectionState = adminCollectionsStateCreate({ organizations })
   const diagnostics = createSignalObject(props.diagnostics ?? adminDiagnosticsDemoData)
   const supportInformation = createSignalObject<string | null>(null)
   const clipboard = props.clipboard ?? (typeof navigator !== "undefined" ? navigator.clipboard : undefined)
@@ -546,6 +548,7 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     settings: settings.get,
     users: users.get,
     organizations: organizations.get,
+    collectionState,
     diagnostics: diagnostics.get,
     supportInformation: supportInformation.get,
     activeSection: activeSection.get,

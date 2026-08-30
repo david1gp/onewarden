@@ -4,6 +4,7 @@ import { Button } from "#ui/interactive/button/Button.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
+import { AdminCollectionsPanel } from "./AdminCollectionsPanel.jsx"
 import type { AdminShellState } from "./AdminShellState.js"
 import { AdminStatusBadge } from "./AdminStatusBadge.jsx"
 import { adminOrganizationsViewStateCreate } from "./adminOrganizationsViewStateCreate.js"
@@ -99,6 +100,7 @@ export function AdminOrganizationsView(p: { state: AdminShellState }) {
           )}
         </For>
       </div>
+      <AdminCollectionsPanel state={p.state} />
     </section>
   )
 }
