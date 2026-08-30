@@ -383,6 +383,133 @@ test("cipher sharing and collection routes support organization ownership and al
   })
 })
 
+test("bulk collection assignment updates selected organization ciphers without revisions or notifications", async () => {
+  const context = await contextCreate()
+  const organizationUuid = "00000000-0000-4000-8000-000000000691"
+  const firstCollectionUuid = "00000000-0000-4000-8000-000000000692"
+  const secondCollectionUuid = "00000000-0000-4000-8000-000000000693"
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    organizationUuid,
+    "Bulk collections",
+    "bulk@example.com",
+  ])
+  context.database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "00000000-0000-4000-8000-000000000694",
+      "cipher-user",
+      organizationUuid,
+      1,
+      "organization-key",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.owner,
+    ],
+  )
+  for (const [uuid, name] of [
+    [firstCollectionUuid, "First"],
+    [secondCollectionUuid, "Second"],
+  ] as const)
+    context.database.run("INSERT INTO collections (uuid, org_uuid, name) VALUES (?, ?, ?)", [
+      uuid,
+      organizationUuid,
+      name,
+    ])
+
+  for (const name of ["Bulk first", "Bulk second"]) {
+    const response = await context.app.request("https://vault.example/api/ciphers/create", {
+      body: JSON.stringify({ Cipher: { ...loginData(name), organizationId: organizationUuid } }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    })
+    expect(response.status).toBe(200)
+  }
+  context.notifications.length = 0
+  const revisionBefore = context.database
+    .query<{ updated_at: string }, [string]>("SELECT updated_at FROM users WHERE uuid = ?")
+    .get("cipher-user")
+
+  const addResponse = await context.app.request("https://vault.example/api/ciphers/bulk-collections", {
+    body: JSON.stringify({
+      cipherIds: ["cipher-one", "cipher-two", "missing-cipher"],
+      collectionIds: [firstCollectionUuid, secondCollectionUuid],
+      organizationId: organizationUuid,
+      removeCollections: false,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(addResponse.status).toBe(200)
+  expect(await addResponse.text()).toBe("")
+  expect(
+    context.database
+      .query("SELECT cipher_uuid, collection_uuid FROM ciphers_collections ORDER BY cipher_uuid, collection_uuid")
+      .all(),
+  ).toEqual([
+    { cipher_uuid: "cipher-one", collection_uuid: firstCollectionUuid },
+    { cipher_uuid: "cipher-one", collection_uuid: secondCollectionUuid },
+    { cipher_uuid: "cipher-two", collection_uuid: firstCollectionUuid },
+    { cipher_uuid: "cipher-two", collection_uuid: secondCollectionUuid },
+  ])
+  expect(context.database.query("SELECT updated_at FROM users WHERE uuid = ?").get("cipher-user")).toEqual(
+    revisionBefore,
+  )
+  expect(context.notifications).toEqual([])
+
+  const removeResponse = await context.app.request("https://vault.example/api/ciphers/bulk-collections", {
+    body: JSON.stringify({
+      cipherIds: ["cipher-one", "cipher-two"],
+      collectionIds: [firstCollectionUuid],
+      organizationId: organizationUuid,
+      removeCollections: true,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(removeResponse.status).toBe(200)
+  expect(await removeResponse.text()).toBe("")
+  expect(
+    context.database.query("SELECT cipher_uuid, collection_uuid FROM ciphers_collections ORDER BY cipher_uuid").all(),
+  ).toEqual([
+    { cipher_uuid: "cipher-one", collection_uuid: secondCollectionUuid },
+    { cipher_uuid: "cipher-two", collection_uuid: secondCollectionUuid },
+  ])
+
+  const invalidCollectionResponse = await context.app.request("https://vault.example/api/ciphers/bulk-collections", {
+    body: JSON.stringify({
+      cipherIds: ["cipher-one"],
+      collectionIds: ["missing-collection"],
+      organizationId: organizationUuid,
+      removeCollections: false,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(invalidCollectionResponse.status).toBe(404)
+  expect((await invalidCollectionResponse.json()).message).toBe("Resource not found")
+
+  const nonMemberResponse = await context.app.request("https://vault.example/api/ciphers/bulk-collections", {
+    body: JSON.stringify({
+      cipherIds: [],
+      collectionIds: [],
+      organizationId: "00000000-0000-4000-8000-000000000695",
+      removeCollections: false,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(nonMemberResponse.status).toBe(400)
+  expect((await nonMemberResponse.json()).message).toBe(
+    "You need to be a Member of the Organization to call this endpoint",
+  )
+
+  const invalidBodyResponse = await context.app.request("https://vault.example/api/ciphers/bulk-collections", {
+    body: JSON.stringify({ organizationId: organizationUuid }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(invalidBodyResponse.status).toBe(400)
+})
+
 test("personal cipher purge validates the password, removes folders and dependencies, and syncs the vault", async () => {
   const context = await contextCreate({ password: "current-password" })
   const folderResponse = await context.app.request("https://vault.example/api/folders", {

@@ -13,6 +13,8 @@ import { authenticationMiddlewareCreate } from "../authentication/authentication
 import { cipherArchive } from "./cipherArchive.js"
 import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
 import { cipherCollectionsDataSchema } from "./cipherCollectionsDataSchema.js"
+import { cipherBulkCollectionsDataSchema } from "./cipherBulkCollectionsDataSchema.js"
+import { cipherCollectionsBulkUpdate } from "./cipherCollectionsBulkUpdate.js"
 import { cipherCollectionsReplace } from "./cipherCollectionsReplace.js"
 import type { Cipher } from "./cipher.js"
 import { cipherCreate } from "./cipherCreate.js"
@@ -486,6 +488,24 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   const bulkArchive = (context: Context<AuthenticationEnvironment>, archived: boolean) =>
     cipherBulkArchiveResponse(context, options, archived, notification)
 
+  const bulkCollections = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = cipherRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const bodyResult = await requestBodyParse(context, cipherBulkCollectionsDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = cipherCollectionsBulkUpdate(
+      requestContext.data.database,
+      requestContext.data.userUuid,
+      bodyResult.data.organizationId,
+      bodyResult.data.cipherIds,
+      bodyResult.data.collectionIds,
+      bodyResult.data.removeCollections,
+      options.groupsEnabled,
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
   const replaceCollections = (
     context: Context<AuthenticationEnvironment>,
     adminCollections: boolean,
@@ -535,6 +555,7 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
   app.put("/api/ciphers/restore", authenticate("restore_cipher_selected"), bulkRestore)
   app.put("/api/ciphers/restore-admin", authenticate("restore_cipher_selected_admin"), bulkRestore)
   app.post("/api/ciphers/move", authenticate("move_cipher_selected"), move)
+  app.post("/api/ciphers/bulk-collections", authenticate("post_bulk_collections"), bulkCollections)
   app.put("/api/ciphers/move", authenticate("move_cipher_selected_put"), move)
   app.put("/api/ciphers/archive", authenticate("archive_cipher_selected"), (context) => bulkArchive(context, true))
   app.put("/api/ciphers/unarchive", authenticate("unarchive_cipher_selected"), (context) => bulkArchive(context, false))
