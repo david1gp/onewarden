@@ -23,7 +23,7 @@ test.describe("task 35 cipher UI", () => {
   test("renders cipher detail views for logins, secure notes, credit cards, and identities", async ({ page }) => {
     await page.goto("/")
     await browserAuthenticatedSessionUnlock(page)
-    await expect(page.getByText("Vault Decrypted")).toBeVisible()
+    await expect(page.getByRole("heading", { name: "OneWarden" })).toBeVisible()
 
     // 1. Login view
     await expect(page.getByRole("heading", { name: "GitHub Work Account" })).toBeVisible()

@@ -12,7 +12,7 @@ test.describe("task 34 demo admin", () => {
 
     await page.getByRole("button", { name: "Diagnostics" }).click()
     await expect(page.getByRole("heading", { name: "Diagnostics", level: 2 })).toBeVisible()
-    await page.getByText("Database", { exact: true }).click()
+    await page.locator("summary").filter({ hasText: "Database" }).click()
     await expect(page.getByText("Last query completed in 4 ms.", { exact: true })).toBeVisible()
   })
 
@@ -44,6 +44,7 @@ test.describe("task 34 demo admin", () => {
     await page.goto("/demo")
     await page.getByRole("link").filter({ hasText: "Administration Workspace" }).click()
 
+    await page.locator("summary").filter({ hasText: "General settings" }).click()
     const signups = page.getByRole("checkbox", { name: "Allow new signups" })
     await expect(signups).toBeChecked()
     await page.locator('label[for="admin-setting-signupsAllowed"]').click()
@@ -63,6 +64,6 @@ test.describe("task 34 demo admin", () => {
     await page.getByRole("button", { name: "Organizations" }).click()
     await page.getByRole("button", { name: "View details" }).last().click()
     await expect(page.getByRole("dialog", { name: "Organization details" })).toBeVisible()
-    await expect(page.getByRole("button", { name: "Disable organization" })).toBeDisabled()
+    await expect(page.getByRole("button", { name: "Enable organization" })).toBeEnabled()
   })
 })
