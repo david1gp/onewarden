@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 implementation is complete, route coverage matches the upstream compatibility surface, focused tests pass, and the deferred browser suite passes all 50 tests after repairing three stale Task 34/35 assertions. Task 38 is ready to commit, push, and deploy. Task 39 has not started.
+- Current context: tasks 34-38 are committed, pushed, deployed, and healthy on `main`. Task 38 route coverage matches the upstream compatibility surface, focused tests pass, and the deferred browser suite passes all 50 tests. Task 39 has not started.
 
 # Tasks
 
