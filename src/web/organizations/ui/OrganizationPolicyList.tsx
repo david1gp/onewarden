@@ -18,7 +18,7 @@ export function OrganizationPolicyList(props: OrganizationPolicyListProps): JSX.
       <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 class="font-bold text-slate-900 text-xl dark:text-slate-100">Enterprise Security Policies</h2>
-          <p class="mt-1 text-slate-500 text-xs dark:text-slate-400">
+          <p class="mt-1 text-slate-500 text-sm dark:text-slate-400">
             Enforce organization-wide security rules, credential complexity, and access controls.
           </p>
         </div>
@@ -32,7 +32,7 @@ export function OrganizationPolicyList(props: OrganizationPolicyListProps): JSX.
             placeholder="Search policies..."
             value={state.searchQuery()}
             onInput={(e) => state.handleSearchChange(e.currentTarget.value)}
-            class="h-8 w-full rounded-md border-slate-200 bg-white pl-8 pr-3 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
+            class="h-8 w-full rounded-md border-slate-200 bg-white pl-8 pr-3 text-sm placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
         </div>
       </div>
@@ -42,7 +42,7 @@ export function OrganizationPolicyList(props: OrganizationPolicyListProps): JSX.
         <For
           each={state.filteredPolicies()}
           fallback={
-            <div class="col-span-full rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400 text-xs dark:border-slate-800 dark:bg-slate-900">
+            <div class="col-span-full rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400 text-sm dark:border-slate-800 dark:bg-slate-900">
               <p>No security policies found matching search.</p>
             </div>
           }
@@ -61,32 +61,37 @@ export function OrganizationPolicyList(props: OrganizationPolicyListProps): JSX.
                         <path d={vaultSvgIcons.shieldCheck} />
                       </svg>
                     </div>
-                    <Badge variant={isEnabled() ? "filledBlue" : "subtle"} class="text-[10px] px-2 py-0.5">
+                    <Badge variant={isEnabled() ? "filledBlue" : "subtle"} class="text-sm px-2 py-0.5">
                       {isEnabled() ? "Active" : "Disabled"}
                     </Badge>
                   </div>
 
                   <h3 class="mt-3.5 font-bold text-slate-900 text-sm dark:text-slate-100">{name()}</h3>
-                  <p class="mt-1.5 text-slate-600 text-xs leading-relaxed dark:text-slate-400">{description()}</p>
+                  <p class="mt-1.5 text-slate-600 text-sm leading-relaxed dark:text-slate-400">{description()}</p>
                 </div>
 
                 <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-                  <span class="font-mono text-[10px] text-slate-600">Type #{policy.type}</span>
+                  <span class="font-mono text-sm text-slate-600">Type #{policy.type}</span>
                   <div class="flex items-center gap-2">
                     <Button
                       variant={isEnabled() ? "outline" : "subtle"}
                       size="sm"
                       onClick={() => state.handleToggle(policy)}
-                      class="h-7 px-2.5 text-xs"
+                      class="h-8 px-2.5 text-sm"
                     >
+                      <Icon
+                        path={isEnabled() ? vaultSvgIcons.shieldAlert : vaultSvgIcons.shieldCheck}
+                        class="mr-1.5 size-3.5"
+                      />
                       {isEnabled() ? "Disable" : "Enable"}
                     </Button>
                     <Button
                       variant="filled"
                       size="sm"
                       onClick={() => state.handleEdit(policy)}
-                      class="h-7 px-2.5 text-xs"
+                      class="h-8 px-2.5 text-sm"
                     >
+                      <Icon path={vaultSvgIcons.cog} class="mr-1.5 size-3.5" />
                       Configure
                     </Button>
                   </div>

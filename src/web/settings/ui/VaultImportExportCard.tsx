@@ -23,17 +23,17 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Import &amp; Export</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Backup, transfer, or restore your vault credentials
             </p>
           </div>
         </div>
-        <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs dark:bg-slate-800">
+        <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            class={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+            class={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
               state.subTab() === "import"
                 ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -46,7 +46,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
             type="button"
             variant="ghost"
             size="sm"
-            class={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+            class={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
               state.subTab() === "export"
                 ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -61,7 +61,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
       <Show when={state.subTab() === "import"}>
         <form onSubmit={state.handleImport} class="mt-6 max-w-xl space-y-4">
           <div>
-            <Label class="block text-xs font-medium text-slate-700 dark:text-slate-300">File Format</Label>
+            <Label class="block text-sm font-medium text-slate-700 dark:text-slate-300">File Format</Label>
             <div class="mt-1 flex gap-4">
               <Button
                 type="button"
@@ -85,7 +85,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
           </div>
 
           <div>
-            <Label for="import-file" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="import-file" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Select File to Import
             </Label>
             <div class="mt-1">
@@ -94,13 +94,13 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
                 type="file"
                 accept=".json,.csv,application/json,text/csv"
                 onChange={state.handleFileUpload}
-                class="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300"
+                class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-300"
               />
             </div>
           </div>
 
           <div>
-            <Label for="import-master-password" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="import-master-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Master Password (when vault is locked)
             </Label>
             <Input
@@ -113,7 +113,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
           </div>
 
           <div>
-            <Label for="import-paste" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="import-paste" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Or Paste Vault Data
             </Label>
             <div class="mt-1">
@@ -123,13 +123,14 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
                 rows={6}
                 value={state.importContent()}
                 onInput={(e) => state.setImportContent(e.currentTarget.value)}
-                class="w-full font-mono text-xs"
+                class="w-full font-mono text-sm"
               />
             </div>
           </div>
 
           <div class="pt-2">
-            <Button type="submit" variant="filled" size="sm" class="h-9 text-xs" disabled={state.isImporting()}>
+            <Button type="submit" variant="filled" size="sm" class="h-9 text-sm" disabled={state.isImporting()}>
+              <Icon path={vaultSvgIcons.download} class="mr-1.5 size-3.5" />
               {state.isImporting() ? "Importing Vault..." : "Import Vault"}
             </Button>
           </div>
@@ -139,7 +140,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
       <Show when={state.subTab() === "export"}>
         <form onSubmit={state.handleExport} class="mt-6 max-w-xl space-y-4">
           <div>
-            <Label class="block text-xs font-medium text-slate-700 dark:text-slate-300">Export Format</Label>
+            <Label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Export Format</Label>
             <div class="mt-1 flex flex-wrap gap-4">
               <Button
                 type="button"
@@ -173,7 +174,7 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
 
           <Show when={state.exportFormat() !== "json-encrypted"}>
             <div>
-              <Label for="export-master-password" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <Label for="export-master-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Master Password (when vault is locked)
               </Label>
               <Input
@@ -187,18 +188,20 @@ export function VaultImportExportCard(props: VaultImportExportCardProps): JSX.El
           </Show>
 
           <Show when={state.exportFormat() !== "json-encrypted"}>
-            <div class="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
+            <div class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
               Warning: Decrypted exports contain your plaintext passwords and secrets. Store exported files in a secure
               location and delete them when no longer needed.
             </div>
           </Show>
 
           <div class="pt-2 flex items-center gap-3">
-            <Button type="submit" variant="filled" size="sm" class="h-9 text-xs" disabled={state.isExporting()}>
+            <Button type="submit" variant="filled" size="sm" class="h-9 text-sm" disabled={state.isExporting()}>
+              <Icon path={vaultSvgIcons.download} class="mr-1.5 size-3.5" />
               {state.isExporting() ? "Exporting..." : "Export Vault"}
             </Button>
             <Show when={state.lastExportData()}>
-              <Button type="button" variant="outline" size="sm" class="h-9 text-xs" onClick={state.handleCopyExport}>
+              <Button type="button" variant="outline" size="sm" class="h-9 text-sm" onClick={state.handleCopyExport}>
+                <Icon path={vaultSvgIcons.copy} class="mr-1.5 size-3.5" />
                 Copy to Clipboard
               </Button>
             </Show>

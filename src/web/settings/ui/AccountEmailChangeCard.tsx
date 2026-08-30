@@ -21,20 +21,20 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
         </div>
         <div>
           <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Change Account Email</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
+          <p class="text-sm text-slate-500 dark:text-slate-400">
             Update the email address associated with your OneWarden account
           </p>
         </div>
       </div>
 
-      <div class="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+      <div class="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
         Current Email: <span class="font-semibold text-slate-900 dark:text-slate-100">{state.currentEmail()}</span>
       </div>
 
       <Show when={state.step() === 1}>
         <form onSubmit={state.handleRequestToken} class="mt-6 max-w-md space-y-4">
           <div>
-            <Label for="change-new-email" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="change-new-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               New Email Address
             </Label>
             <div class="mt-1">
@@ -44,13 +44,13 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
                 placeholder="new.email@example.com"
                 value={state.newEmailInput()}
                 onInput={(e) => state.setNewEmailInput(e.currentTarget.value)}
-                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"
+                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
           </div>
 
           <div>
-            <Label for="change-email-pwd" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="change-email-pwd" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Current Master Password
             </Label>
             <div class="mt-1">
@@ -60,13 +60,14 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
                 placeholder="Enter master password"
                 value={state.masterPasswordInput()}
                 onInput={(e) => state.setMasterPasswordInput(e.currentTarget.value)}
-                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"
+                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
           </div>
 
           <div class="pt-2">
-            <Button type="submit" variant="filled" size="sm" class="h-9 text-xs" disabled={state.isRequestingToken()}>
+            <Button type="submit" variant="filled" size="sm" class="h-9 text-sm" disabled={state.isRequestingToken()}>
+              <Icon path={vaultSvgIcons.email} class="mr-1.5 size-3.5" />
               {state.isRequestingToken() ? "Sending Code..." : "Send Verification Code"}
             </Button>
           </div>
@@ -75,13 +76,13 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
 
       <Show when={state.step() === 2}>
         <form onSubmit={state.handleCompleteChange} class="mt-6 max-w-md space-y-4">
-          <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
+          <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300">
             A verification code has been sent to <strong>{state.newEmailInput()}</strong>. Please enter it below along
             with your master password to complete the change.
           </div>
 
           <div>
-            <Label for="change-email-token" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="change-email-token" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Verification Code / Token
             </Label>
             <div class="mt-1">
@@ -91,13 +92,13 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
                 placeholder="Enter token from email"
                 value={state.tokenInput()}
                 onInput={(e) => state.setTokenInput(e.currentTarget.value)}
-                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"
+                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
           </div>
 
           <div>
-            <Label for="change-email-pwd-confirm" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="change-email-pwd-confirm" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Confirm Master Password
             </Label>
             <div class="mt-1">
@@ -107,16 +108,18 @@ export function AccountEmailChangeCard(props: AccountEmailChangeCardProps): JSX.
                 placeholder="Enter master password"
                 value={state.masterPasswordInput()}
                 onInput={(e) => state.setMasterPasswordInput(e.currentTarget.value)}
-                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"
+                class="h-9 w-full rounded-md border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
           </div>
 
           <div class="pt-2 flex items-center gap-3">
-            <Button type="submit" variant="filled" size="sm" class="h-9 text-xs" disabled={state.isCompletingChange()}>
+            <Button type="submit" variant="filled" size="sm" class="h-9 text-sm" disabled={state.isCompletingChange()}>
+              <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
               {state.isCompletingChange() ? "Completing..." : "Confirm & Update Email"}
             </Button>
-            <Button type="button" variant="ghost" size="sm" class="h-9 text-xs" onClick={state.handleReset}>
+            <Button type="button" variant="ghost" size="sm" class="h-9 text-sm" onClick={state.handleReset}>
+              <Icon path={vaultSvgIcons.arrowLeft} class="mr-1.5 size-3.5" />
               Back
             </Button>
           </div>

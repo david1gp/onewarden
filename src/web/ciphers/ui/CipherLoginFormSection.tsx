@@ -6,6 +6,7 @@ import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import {
   type CipherLoginFormSectionStateProps,
@@ -17,11 +18,11 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
 
   return (
     <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-      <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Login Credentials</p>
+      <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Login Credentials</p>
 
       {/* Username */}
       <div class="space-y-1">
-        <Label for="cipher-username" class="text-xs">
+        <Label for="cipher-username" class="text-sm">
           Username / Email
         </Label>
         <InputS
@@ -29,14 +30,14 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
           type="text"
           placeholder="e.g. user@example.com"
           valueSignal={state.usernameSignal}
-          class="h-9 w-full text-xs"
+          class="h-9 w-full text-sm"
         />
       </div>
 
       {/* Password */}
       <div class="space-y-1">
         <div class="flex items-center justify-between">
-          <Label for="cipher-password" class="text-xs">
+          <Label for="cipher-password" class="text-sm">
             Password
           </Label>
           <div class="flex items-center gap-2">
@@ -50,7 +51,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
                         ? "subtle"
                         : "filledRed"
                   }
-                  class="px-1.5 py-0 text-[10px]"
+                  class="px-1.5 py-0 text-sm"
                 >
                   {strength()}
                 </Badge>
@@ -59,9 +60,10 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
             <Button
               variant="ghost"
               size="sm"
-              class="h-5 px-1.5 text-[11px] text-blue-700 hover:text-blue-800 dark:text-blue-300"
+              class="h-8 px-2 text-sm text-blue-700 hover:text-blue-800 dark:text-blue-300"
               onClick={() => state.generatePassword()}
             >
+              <Icon path={vaultSvgIcons.refresh} class="mr-1.5 size-3.5" />
               Generate
             </Button>
           </div>
@@ -72,7 +74,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
             type={state.isPasswordRevealed() ? "text" : "password"}
             placeholder="Enter password"
             valueSignal={state.passwordSignal}
-            class="h-9 w-full pr-16 text-xs font-mono"
+            class="h-9 w-full pr-16 text-sm font-mono"
           />
           <div class="absolute right-1 flex items-center">
             <ButtonIcon
@@ -81,7 +83,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
               icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
               iconClass="size-3.5"
               onClick={() => state.togglePasswordReveal()}
-              class="h-7 px-2 text-xs text-slate-600 dark:text-slate-400"
+              class="h-8 px-2 text-sm text-slate-600 dark:text-slate-400"
               aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
             >
               {state.isPasswordRevealed() ? "Hide" : "Show"}
@@ -92,7 +94,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
 
       {/* Authenticator Key (TOTP) */}
       <div class="space-y-1">
-        <Label for="cipher-totp" class="text-xs">
+        <Label for="cipher-totp" class="text-sm">
           Authenticator Key (TOTP Seed)
         </Label>
         <InputS
@@ -100,15 +102,16 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
           type="text"
           placeholder="Base32 key (e.g. JBSWY3DPEHPK3PXP)"
           valueSignal={state.totpSignal}
-          class="h-9 w-full text-xs font-mono"
+          class="h-9 w-full text-sm font-mono"
         />
       </div>
 
       {/* Website URIs */}
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <Label class="text-xs">Website URLs</Label>
-          <Button variant="ghost" size="sm" class="h-7 px-2 text-[11px]" onClick={() => state.addUri()}>
+          <Label class="text-sm">Website URLs</Label>
+          <Button variant="ghost" size="sm" class="h-8 px-2 text-sm" onClick={() => state.addUri()}>
+            <Icon path={vaultSvgIcons.plus} class="mr-1.5 size-3.5" />
             Add URL
           </Button>
         </div>
@@ -120,7 +123,7 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
               type="url"
               placeholder="https://example.com/login"
               valueSignal={state.uriSignal}
-              class="h-9 w-full text-xs"
+              class="h-9 w-full text-sm"
             />
           }
         >
@@ -134,17 +137,18 @@ export function CipherLoginFormSection(props: CipherLoginFormSectionStateProps):
                     placeholder="https://example.com/login"
                     value={entry.uri}
                     onInput={(e) => state.updateUri(index(), e.currentTarget.value)}
-                    class="h-9 w-full text-xs"
+                    class="h-9 w-full text-sm"
                     aria-label={`Website URL ${index() + 1}`}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    class="h-9 shrink-0 px-2 text-xs text-rose-700 dark:text-rose-300"
+                    class="h-9 shrink-0 px-2 text-sm text-rose-700 dark:text-rose-300"
                     onClick={() => state.removeUri(index())}
                     aria-label={`Remove website URL ${index() + 1}`}
                   >
+                    <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                     Remove
                   </Button>
                 </div>

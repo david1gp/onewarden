@@ -25,7 +25,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
             size="sm"
             icon={vaultSvgIcons.plus}
             onClick={state.onCreateClick}
-            class="h-7 gap-1 px-2 text-xs"
+            class="h-7 gap-1 px-2 text-sm"
             iconClass="size-3.5 mr-1"
           >
             <span>New Collection</span>
@@ -41,7 +41,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
             placeholder="Search collections..."
             value={state.searchQuery()}
             onInput={(e) => state.handleSearchChange(e.currentTarget.value)}
-            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
+            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-sm placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
         </div>
       </div>
@@ -51,7 +51,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
         <For
           each={state.filteredCollections()}
           fallback={
-            <div class="p-6 text-center text-slate-400 text-xs">
+            <div class="p-6 text-center text-slate-400 text-sm">
               <p>No collections found.</p>
             </div>
           }
@@ -75,12 +75,12 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
                   <div class="min-w-0">
                     <p class="truncate font-semibold text-slate-900 text-sm dark:text-slate-100">{col.name}</p>
                     <Show when={col.externalId}>
-                      <p class="truncate font-mono text-[11px] text-slate-600 dark:text-slate-400">{col.externalId}</p>
+                      <p class="truncate font-mono text-sm text-slate-600 dark:text-slate-400">{col.externalId}</p>
                     </Show>
                   </div>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1 pl-2">
-                  <Badge variant="subtle" class="text-[10px] px-1.5 py-0">
+                  <Badge variant="subtle" class="text-sm px-1.5 py-0">
                     {col.users?.length ?? 0} members
                   </Badge>
                 </div>

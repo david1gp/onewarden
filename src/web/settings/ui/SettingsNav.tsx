@@ -14,7 +14,7 @@ export function SettingsNav(props: SettingsNavStateCreateProps): JSX.Element {
           type="button"
           variant="outline"
           size="sm"
-          class="w-full justify-start text-xs font-medium"
+          class="w-full justify-start text-sm font-medium"
           onClick={state.handleBackToVault}
           aria-label="Back to Vault"
         >
@@ -31,7 +31,7 @@ export function SettingsNav(props: SettingsNavStateCreateProps): JSX.Element {
               variant="ghost"
               size="sm"
               onClick={() => state.handleSelectTab(item.id)}
-              class={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+              class={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                 state.isTabActive(item.id)
                   ? "bg-blue-50 text-blue-700 shadow-xs dark:bg-blue-950/60 dark:text-blue-300"
                   : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60"
@@ -56,7 +56,7 @@ export function SettingsNav(props: SettingsNavStateCreateProps): JSX.Element {
           type="button"
           variant="outline"
           size="sm"
-          class="w-full justify-start text-xs text-blue-600 dark:text-blue-400"
+          class="w-full justify-start text-sm text-blue-600 dark:text-blue-400"
           onClick={state.handleNavigateToTwoFactor}
         >
           <Icon path={vaultSvgIcons.twoFactor} class="mr-2 size-3.5 text-blue-600 dark:text-blue-400" />

@@ -19,7 +19,7 @@ export function CipherPage(props: CipherPageStateProps): JSX.Element {
             icon={vaultSvgIcons.arrowLeft}
             iconClass="size-3.5 mr-1"
             onClick={props.onNavigateBack}
-            class="text-xs text-slate-600 dark:text-slate-300"
+            class="h-8 text-sm text-slate-600 dark:text-slate-300"
           >
             Back to Vault
           </ButtonIcon>
@@ -33,7 +33,7 @@ export function CipherPage(props: CipherPageStateProps): JSX.Element {
             <div class="flex h-full items-center justify-center p-8">
               <div class="flex flex-col items-center gap-2">
                 <div class="size-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                <p class="text-xs text-slate-600 dark:text-slate-400">Loading cipher...</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Loading cipher...</p>
               </div>
             </div>
           }

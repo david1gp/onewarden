@@ -35,7 +35,7 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
           </div>
           <div>
             <h1 class="font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">OneWarden Admin Panel</h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               System administration, user oversight, and server diagnostics
             </p>
           </div>
@@ -43,7 +43,7 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
 
         <div class="flex items-center gap-2">
           <Show when={props.onNavigateHome}>
-            <Button type="button" variant="outline" size="sm" class="text-xs" onClick={state.handleNavigateHome}>
+            <Button type="button" variant="outline" size="sm" class="h-8 text-sm" onClick={state.handleNavigateHome}>
               <Icon path={vaultSvgIcons.personalVault} class="mr-1.5 size-3.5" />
               Vault
             </Button>
@@ -52,10 +52,11 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs text-red-600 dark:text-red-400"
+            class="h-8 text-sm text-red-600 dark:text-red-400"
             onClick={state.handleLogout}
             disabled={state.isLoggingOut()}
           >
+            <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
             {state.isLoggingOut() ? "Logging out..." : "Log Out Admin"}
           </Button>
         </div>
@@ -66,7 +67,7 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
         {(msg) => (
           <div
             role="alert"
-            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           >
             {msg()}
           </div>
@@ -77,7 +78,7 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
         {(msg) => (
           <div
             role="status"
-            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
           >
             {msg()}
           </div>
@@ -93,7 +94,7 @@ export function AdminDashboardView(props: AdminDashboardViewProps): JSX.Element 
               variant="ghost"
               size="sm"
               onClick={() => state.setCurrentTab(tab.id)}
-              class={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+              class={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 state.currentTab() === tab.id
                   ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
                   : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"

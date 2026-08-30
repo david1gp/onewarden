@@ -18,12 +18,13 @@ export function OrganizationEventViewer(props: OrganizationEventViewerProps): JS
       <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 class="font-bold text-slate-900 text-xl dark:text-slate-100">Event & Audit Logs</h2>
-          <p class="mt-1 text-slate-500 text-xs dark:text-slate-400">
+          <p class="mt-1 text-slate-500 text-sm dark:text-slate-400">
             Real-time security and operational events logged across your organization.
           </p>
         </div>
         <Show when={state.onRefresh}>
-          <Button variant="outline" size="sm" onClick={state.onRefresh} disabled={state.isLoading()}>
+          <Button variant="outline" size="sm" class="h-8" onClick={state.onRefresh} disabled={state.isLoading()}>
+            <Icon path={vaultSvgIcons.refresh} class="mr-1.5 size-3.5" />
             {state.isLoading() ? "Refreshing..." : "Refresh Events"}
           </Button>
         </Show>
@@ -41,18 +42,18 @@ export function OrganizationEventViewer(props: OrganizationEventViewerProps): JS
             placeholder="Search events, actors, IP addresses..."
             value={state.searchQuery()}
             onInput={(e) => state.handleSearchChange(e.currentTarget.value)}
-            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
+            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-sm placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
         </div>
 
         {/* Member Selector Filter */}
-        <div class="flex items-center gap-1.5 text-xs">
+        <div class="flex items-center gap-1.5 text-sm">
           <span class="text-slate-500 dark:text-slate-400">Member:</span>
           <select
             aria-label="Filter events by member"
             value={state.selectedMemberFilter()}
             onChange={state.handleMemberFilterChange}
-            class="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            class="h-8 rounded-md border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
           >
             <option value="all">All Members</option>
             <For each={state.members()}>{(m) => <option value={m.userId || m.id}>{m.name || m.email}</option>}</For>
@@ -63,7 +64,7 @@ export function OrganizationEventViewer(props: OrganizationEventViewerProps): JS
       {/* Events Table / List */}
       <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs dark:border-slate-800 dark:bg-slate-900">
         <section class="overflow-x-auto" tabindex="0" aria-label="Scrollable event log table">
-          <table class="w-full text-left text-xs">
+          <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300">
               <tr>
                 <th class="px-4 py-3">Event Type</th>
@@ -88,7 +89,7 @@ export function OrganizationEventViewer(props: OrganizationEventViewerProps): JS
                   <tr class="hover:bg-slate-50/75 dark:hover:bg-slate-800/40">
                     <td class="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
                       <div class="flex items-center gap-2">
-                        <Badge variant="subtle" class="px-1.5 py-0 font-mono text-[10px]">
+                        <Badge variant="subtle" class="px-1.5 py-0 font-mono text-sm">
                           {event.type}
                         </Badge>
                         <span>{state.getEventName(event.type)}</span>
@@ -112,7 +113,8 @@ export function OrganizationEventViewer(props: OrganizationEventViewerProps): JS
         {/* Pagination / Continuation */}
         <Show when={state.continuationToken() && state.onLoadMore}>
           <div class="border-t border-slate-100 p-3 text-center dark:border-slate-800">
-            <Button variant="ghost" size="sm" onClick={state.onLoadMore} disabled={state.isLoading()}>
+            <Button variant="ghost" size="sm" class="h-8" onClick={state.onLoadMore} disabled={state.isLoading()}>
+              <Icon path={vaultSvgIcons.history} class="mr-1.5 size-3.5" />
               {state.isLoading() ? "Loading more..." : "Load Older Events"}
             </Button>
           </div>

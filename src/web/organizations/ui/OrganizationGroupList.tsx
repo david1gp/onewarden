@@ -25,7 +25,7 @@ export function OrganizationGroupList(props: OrganizationGroupListProps): JSX.El
             size="sm"
             icon={vaultSvgIcons.plus}
             onClick={state.onCreateClick}
-            class="h-7 gap-1 px-2 text-xs"
+            class="h-7 gap-1 px-2 text-sm"
             iconClass="size-3.5 mr-1"
           >
             <span>New Group</span>
@@ -41,7 +41,7 @@ export function OrganizationGroupList(props: OrganizationGroupListProps): JSX.El
             placeholder="Search groups..."
             value={state.searchQuery()}
             onInput={(e) => state.handleSearchChange(e.currentTarget.value)}
-            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
+            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-sm placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
         </div>
       </div>
@@ -51,7 +51,7 @@ export function OrganizationGroupList(props: OrganizationGroupListProps): JSX.El
         <For
           each={state.filteredGroups()}
           fallback={
-            <div class="p-6 text-center text-slate-400 text-xs">
+            <div class="p-6 text-center text-slate-400 text-sm">
               <p>No groups found.</p>
             </div>
           }
@@ -75,7 +75,7 @@ export function OrganizationGroupList(props: OrganizationGroupListProps): JSX.El
                   <div class="min-w-0">
                     <p class="truncate font-semibold text-slate-900 text-sm dark:text-slate-100">{group.name}</p>
                     <Show when={group.externalId}>
-                      <p class="truncate text-slate-600 text-xs dark:text-slate-400">ID: {group.externalId}</p>
+                      <p class="truncate text-slate-600 text-sm dark:text-slate-400">ID: {group.externalId}</p>
                     </Show>
                   </div>
                 </div>
@@ -83,19 +83,19 @@ export function OrganizationGroupList(props: OrganizationGroupListProps): JSX.El
                   <Show
                     when={group.accessAll}
                     fallback={
-                      <Badge variant="subtle" class="text-[10px] px-1.5 py-0">
+                      <Badge variant="subtle" class="text-sm px-1.5 py-0">
                         {group.collections?.length ?? 0} collections
                       </Badge>
                     }
                   >
                     <Badge
                       variant="outline"
-                      class="text-[10px] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:text-indigo-300"
+                      class="text-sm px-1.5 py-0 border-indigo-300 text-indigo-700 dark:text-indigo-300"
                     >
                       All Collections
                     </Badge>
                   </Show>
-                  <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">
                     {group.users?.length ?? 0} members
                   </span>
                 </div>

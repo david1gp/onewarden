@@ -21,7 +21,7 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
             <Icon path={vaultSvgIcons.shieldCheck} class="size-7 text-blue-600 dark:text-blue-400" />
           </div>
           <h1 class="mt-4 font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">Verify Email Address</h1>
-          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Confirm your account registration with your verification token.
           </p>
         </div>
@@ -32,7 +32,7 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
           {(msg) => (
             <div
               role="status"
-              class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+              class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
               {msg()}
             </div>
@@ -41,7 +41,7 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
 
         <form onSubmit={state.handleVerify} class="space-y-4">
           <div>
-            <Label for="verify-user-id" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="verify-user-id" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               User ID *
             </Label>
             <Input
@@ -51,12 +51,12 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
               value={state.userId()}
               onInput={(e) => state.setUserId(e.currentTarget.value)}
               required
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
           <div>
-            <Label for="verify-token" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="verify-token" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Verification Token *
             </Label>
             <Input
@@ -66,7 +66,7 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
               value={state.token()}
               onInput={(e) => state.setToken(e.currentTarget.value)}
               required
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
@@ -74,9 +74,10 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
             <Button
               type="submit"
               variant="filledBlue"
-              class="w-full justify-center text-xs font-semibold"
+              class="h-8 w-full justify-center text-sm font-semibold"
               disabled={state.isSubmitting()}
             >
+              <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
               <Show when={state.isSubmitting()} fallback="Confirm & Verify Email">
                 Verifying Token...
               </Show>
@@ -85,12 +86,12 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
         </form>
 
         <SeparatorWithText>
-          <span class="text-xs text-slate-600 dark:text-slate-400">Or Request a Verification Link</span>
+          <span class="text-sm text-slate-600 dark:text-slate-400">Or Request a Verification Link</span>
         </SeparatorWithText>
 
         <div class="space-y-3">
           <div>
-            <Label for="resend-email" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="resend-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Account Email
             </Label>
             <Input
@@ -99,23 +100,24 @@ export function AuthVerifyEmailView(props: AuthVerifyEmailViewProps): JSX.Elemen
               placeholder="user@example.com"
               value={state.resendEmail()}
               onInput={(e) => state.setResendEmail(e.currentTarget.value)}
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
           <Button
             type="button"
             variant="outline"
-            class="w-full justify-center text-xs"
+            class="h-8 w-full justify-center text-sm"
             disabled={state.isResending()}
             onClick={state.handleResend}
           >
+            <Icon path={vaultSvgIcons.email} class="mr-1.5 size-3.5" />
             <Show when={state.isResending()} fallback="Send Verification Email">
               Sending Email...
             </Show>
           </Button>
         </div>
 
-        <div class="border-t border-slate-100 pt-4 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
+        <div class="border-t border-slate-100 pt-4 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
           Ready to sign in?{" "}
           <LinkTextExternal href="/login" class="font-semibold">
             Return to Log In

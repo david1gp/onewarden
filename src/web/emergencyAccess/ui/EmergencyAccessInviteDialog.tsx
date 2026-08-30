@@ -1,5 +1,6 @@
 import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
@@ -27,17 +28,20 @@ export function EmergencyAccessInviteDialog(props: EmergencyAccessInviteDialogPr
                 Invite Emergency Contact
               </h2>
             </div>
-            <button
+            <ButtonIconOnly
               type="button"
+              variant="ghost"
+              size="none"
+              title="Close Invite Emergency Contact dialog"
               aria-label="Close Invite Emergency Contact dialog"
+              icon={vaultSvgIcons.close}
+              iconClass="size-4"
               onClick={state.handleClose}
-              class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            >
-              ✕
-            </button>
+              class="size-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            />
           </div>
 
-          <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-xs">
+          <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-sm">
             <div>
               <label for="contact-email" class="block font-medium text-slate-700 dark:text-slate-300">
                 Contact Email Address
@@ -59,27 +63,29 @@ export function EmergencyAccessInviteDialog(props: EmergencyAccessInviteDialogPr
                 <button
                   type="button"
                   onClick={() => state.setAccessType(0)}
-                  class={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+                  class={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
                     state.accessType() === 0
                       ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
                       : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
+                  <Icon path={vaultSvgIcons.eye} class="size-3.5" />
                   View (Read Only)
                 </button>
                 <button
                   type="button"
                   onClick={() => state.setAccessType(1)}
-                  class={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
+                  class={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
                     state.accessType() === 1
                       ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
                       : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
+                  <Icon path={vaultSvgIcons.key} class="size-3.5" />
                   Takeover (Full Account)
                 </button>
               </div>
-              <p class="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 {state.accessType() === 0
                   ? "Contact can view all vault items and copy passwords when recovery is approved."
                   : "Contact can reset your master password and take complete ownership of your account."}
@@ -94,7 +100,7 @@ export function EmergencyAccessInviteDialog(props: EmergencyAccessInviteDialogPr
                 id="contact-wait-time"
                 value={String(state.waitTimeDays())}
                 onChange={(e) => state.setWaitTimeDays(Number(e.currentTarget.value))}
-                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 <option value="0">Immediately (0 Days)</option>
                 <option value="1">1 Day</option>
@@ -103,17 +109,19 @@ export function EmergencyAccessInviteDialog(props: EmergencyAccessInviteDialogPr
                 <option value="7">7 Days</option>
                 <option value="14">14 Days</option>
               </select>
-              <p class="mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 You will be notified when recovery is initiated, allowing you to reject the request during this waiting
                 period.
               </p>
             </div>
 
             <div class="flex items-center justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-              <Button type="button" variant="ghost" size="sm" onClick={state.handleClose}>
+              <Button type="button" variant="ghost" size="sm" class="h-8" onClick={state.handleClose}>
+                <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                 Cancel
               </Button>
-              <Button type="submit" variant="filled" size="sm" disabled={state.isSubmitting()}>
+              <Button type="submit" variant="filled" size="sm" class="h-8" disabled={state.isSubmitting()}>
+                <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
                 {state.isSubmitting() ? "Inviting..." : "Send Invite"}
               </Button>
             </div>

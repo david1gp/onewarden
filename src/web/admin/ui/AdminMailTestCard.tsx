@@ -17,7 +17,7 @@ export function AdminMailTestCard(props: AdminMailTestCardProps): JSX.Element {
         </div>
         <div>
           <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">SMTP Mail Test</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Test outbound email delivery configuration</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Test outbound email delivery configuration</p>
         </div>
       </div>
 
@@ -28,9 +28,10 @@ export function AdminMailTestCard(props: AdminMailTestCardProps): JSX.Element {
           value={state.emailInput()}
           onInput={(e) => state.setEmailInput(e.currentTarget.value)}
           required
-          class="h-8 w-full text-xs"
+          class="h-8 w-full text-sm"
         />
-        <Button type="submit" variant="filled" size="sm" class="h-8 shrink-0 text-xs" disabled={state.isSending()}>
+        <Button type="submit" variant="filled" size="sm" class="h-8 shrink-0 text-sm" disabled={state.isSending()}>
+          <Icon path={vaultSvgIcons.email} class="mr-1.5 size-3.5" />
           {state.isSending() ? "Sending..." : "Send Test Mail"}
         </Button>
       </form>

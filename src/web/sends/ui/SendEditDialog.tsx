@@ -1,5 +1,6 @@
 import { createEffect, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
 import { Checkbox } from "#ui/input/check/Checkbox.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
@@ -32,17 +33,20 @@ export function SendEditDialog(props: SendEditDialogProps): JSX.Element {
                   Edit Send
                 </h2>
               </div>
-              <button
+              <ButtonIconOnly
                 type="button"
+                variant="ghost"
+                size="none"
+                title="Close Edit Send dialog"
                 aria-label="Close Edit Send dialog"
+                icon={vaultSvgIcons.close}
+                iconClass="size-4"
                 onClick={state.handleClose}
-                class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              >
-                ✕
-              </button>
+                class="size-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              />
             </div>
 
-            <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-xs">
+            <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-sm">
               <div>
                 <label for="edit-send-name" class="block font-medium text-slate-700 dark:text-slate-300">
                   Name
@@ -90,8 +94,9 @@ export function SendEditDialog(props: SendEditDialogProps): JSX.Element {
                       size="sm"
                       onClick={state.handleRemovePassword}
                       disabled={state.isRemovingPassword()}
-                      class="mt-1 p-0 text-[11px] text-red-600 hover:underline dark:text-red-400"
+                      class="mt-1 h-8 text-sm text-red-600 hover:underline dark:text-red-400"
                     >
+                      <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                       {state.isRemovingPassword() ? "Removing..." : "Remove current password"}
                     </Button>
                   </Show>
@@ -118,7 +123,7 @@ export function SendEditDialog(props: SendEditDialogProps): JSX.Element {
                   id="editHideEmail"
                   checked={state.hideEmail()}
                   onChange={(checked) => state.setHideEmail(checked)}
-                  class="text-xs text-slate-700 dark:text-slate-300"
+                  class="text-sm text-slate-700 dark:text-slate-300"
                 >
                   Hide my email address from recipients
                 </Checkbox>
@@ -129,17 +134,19 @@ export function SendEditDialog(props: SendEditDialogProps): JSX.Element {
                     checked={state.disabled()}
                     onChange={(checked) => state.setDisabled(checked)}
                   />
-                  <label for="editDisabled" class="text-xs text-slate-700 dark:text-slate-300">
+                  <label for="editDisabled" class="text-sm text-slate-700 dark:text-slate-300">
                     Disable this Send (prevent access)
                   </label>
                 </div>
               </div>
 
               <div class="flex items-center justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-                <Button type="button" variant="ghost" size="sm" onClick={state.handleClose}>
+                <Button type="button" variant="ghost" size="sm" class="h-8" onClick={state.handleClose}>
+                  <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                   Cancel
                 </Button>
-                <Button type="submit" variant="filled" size="sm" disabled={state.isSubmitting()}>
+                <Button type="submit" variant="filled" size="sm" class="h-8" disabled={state.isSubmitting()}>
+                  <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
                   {state.isSubmitting() ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

@@ -3,6 +3,8 @@ import { Button } from "#ui/interactive/button/Button.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import {
   type OrganizationSettingsCardProps,
   organizationSettingsCardStateCreate,
@@ -16,7 +18,7 @@ export function OrganizationSettingsCard(props: OrganizationSettingsCardProps): 
       <CardWrapper>
         <div class="mb-6">
           <h2 class="font-bold text-slate-900 text-lg dark:text-slate-100">Organization Settings</h2>
-          <p class="text-slate-500 text-xs dark:text-slate-400">
+          <p class="text-slate-500 text-sm dark:text-slate-400">
             Manage your organization profile, billing contact, and capabilities.
           </p>
         </div>
@@ -72,10 +74,10 @@ export function OrganizationSettingsCard(props: OrganizationSettingsCardProps): 
 
               {/* Readonly Info / Capabilities Grid */}
               <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider dark:text-slate-200">
+                <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wider dark:text-slate-200">
                   Plan & Subscription Details
                 </h3>
-                <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4 text-xs">
+                <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
                   <div>
                     <span class="text-slate-500 dark:text-slate-400">Plan Type</span>
                     <p class="font-semibold text-slate-800 dark:text-slate-200">Enterprise (Self-Hosted)</p>
@@ -102,7 +104,8 @@ export function OrganizationSettingsCard(props: OrganizationSettingsCardProps): 
               </div>
 
               <div class="flex items-center justify-end gap-3 pt-2">
-                <Button variant="filled" type="submit" disabled={state.isSaving()}>
+                <Button variant="filled" class="h-8" type="submit" disabled={state.isSaving()}>
+                  <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
                   {state.isSaving() ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

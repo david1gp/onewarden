@@ -1,5 +1,6 @@
 import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
@@ -28,30 +29,33 @@ export function EmergencyAccessTakeoverDialog(props: EmergencyAccessTakeoverDial
                   Account Takeover
                 </h2>
               </div>
-              <button
+              <ButtonIconOnly
                 type="button"
+                variant="ghost"
+                size="none"
+                title="Close Account Takeover dialog"
                 aria-label="Close Account Takeover dialog"
+                icon={vaultSvgIcons.close}
+                iconClass="size-4"
                 onClick={state.handleClose}
-                class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              >
-                ✕
-              </button>
+                class="size-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              />
             </div>
 
-            <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
               You are taking over the account of <strong>{contact().email}</strong>. Setting a new master password will
               allow you to log in as this user.
             </div>
 
             <Show when={state.errorMessage()}>
               {(msg) => (
-                <div class="mt-3 rounded-lg bg-red-100 p-2.5 text-xs text-red-700 dark:bg-red-900/50 dark:text-red-200">
+                <div class="mt-3 rounded-lg bg-red-100 p-2.5 text-sm text-red-700 dark:bg-red-900/50 dark:text-red-200">
                   {msg()}
                 </div>
               )}
             </Show>
 
-            <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-xs">
+            <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-sm">
               <div>
                 <label for="takeover-new-password" class="block font-medium text-slate-700 dark:text-slate-300">
                   New Master Password
@@ -83,16 +87,18 @@ export function EmergencyAccessTakeoverDialog(props: EmergencyAccessTakeoverDial
               </div>
 
               <div class="flex items-center justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-                <Button type="button" variant="ghost" size="sm" onClick={state.handleClose}>
+                <Button type="button" variant="ghost" size="sm" class="h-8" onClick={state.handleClose}>
+                  <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="filled"
                   size="sm"
-                  class="bg-red-600 hover:bg-red-700 text-white"
+                  class="h-8 bg-red-600 hover:bg-red-700 text-white"
                   disabled={state.isSubmitting()}
                 >
+                  <Icon path={vaultSvgIcons.key} class="mr-1.5 size-3.5" />
                   {state.isSubmitting() ? "Applying Takeover..." : "Complete Takeover"}
                 </Button>
               </div>

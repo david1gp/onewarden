@@ -19,7 +19,7 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Users Management</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Manage registered accounts, invite users, revoke sessions, and reset 2FA
             </p>
           </div>
@@ -29,14 +29,14 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs"
+            class="text-sm"
             onClick={state.loadUsers}
             disabled={state.isLoading()}
           >
             <Icon path={vaultSvgIcons.refresh} class="mr-1 size-3.5" />
             Refresh
           </Button>
-          <Button type="button" variant="filled" size="sm" class="text-xs" onClick={state.openInvite}>
+          <Button type="button" variant="filled" size="sm" class="h-8 text-sm" onClick={state.openInvite}>
             <Icon path={vaultSvgIcons.userPlus} class="mr-1 size-3.5" />
             Invite User
           </Button>
@@ -46,7 +46,7 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
       {/* Invite Modal / Box */}
       <Show when={state.isInviteOpen()}>
         <div class="my-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/40">
-          <h3 class="font-semibold text-xs text-blue-900 dark:text-blue-200">Invite New User</h3>
+          <h3 class="font-semibold text-sm text-blue-900 dark:text-blue-200">Invite New User</h3>
           <form onSubmit={state.handleInviteUser} class="mt-2 flex max-w-md items-center gap-2">
             <label for="admin-invite-email" class="sr-only">
               User email
@@ -58,12 +58,14 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
               value={state.inviteEmail()}
               onInput={(e) => state.setInviteEmail(e.currentTarget.value)}
               required
-              class="h-8 w-full text-xs"
+              class="h-8 w-full text-sm"
             />
-            <Button type="submit" variant="filled" size="sm" class="h-8 shrink-0 text-xs" disabled={state.isInviting()}>
+            <Button type="submit" variant="filled" size="sm" class="h-8 shrink-0 text-sm" disabled={state.isInviting()}>
+              <Icon path={vaultSvgIcons.send} class="mr-1.5 size-3.5" />
               {state.isInviting() ? "Sending..." : "Send Invite"}
             </Button>
-            <Button type="button" variant="ghost" size="sm" class="h-8 text-xs" onClick={state.closeInvite}>
+            <Button type="button" variant="ghost" size="sm" class="h-8 text-sm" onClick={state.closeInvite}>
+              <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
               Cancel
             </Button>
           </form>
@@ -82,10 +84,10 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
             placeholder="Search users..."
             value={state.searchQuery()}
             onInput={(e) => state.setSearchQuery(e.currentTarget.value)}
-            class="h-8 w-full text-xs"
+            class="h-8 w-full text-sm"
           />
         </div>
-        <span class="text-xs text-slate-500">
+        <span class="text-sm text-slate-500">
           Total: {state.totalCount()} {state.totalCount() === 1 ? "user" : "users"}
         </span>
       </div>
@@ -95,7 +97,7 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
         <Show
           when={state.users().length > 0}
           fallback={
-            <div class="py-12 text-center text-xs text-slate-500">
+            <div class="py-12 text-center text-sm text-slate-500">
               {state.isLoading() ? "Loading users..." : "No users found."}
             </div>
           }
@@ -103,14 +105,14 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
           <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
             <For each={state.users()}>
               {(user) => (
-                <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-xs">
+                <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-sm">
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-semibold text-slate-900 dark:text-slate-100">{user.name || user.email}</span>
                       <Show when={!user.userEnabled}>
                         <Badge
                           variant="subtle"
-                          class="bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 text-[10px]"
+                          class="bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 text-sm"
                         >
                           Disabled
                         </Badge>
@@ -118,13 +120,13 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
                       <Show when={user.twoFactorEnabled}>
                         <Badge
                           variant="subtle"
-                          class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]"
+                          class="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-sm"
                         >
                           2FA Active
                         </Badge>
                       </Show>
                     </div>
-                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                       <span>{user.email}</span>
                       <span>•</span>
                       <span>Created: {new Date(user.createdAt).toLocaleDateString()}</span>
@@ -140,21 +142,23 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
                       type="button"
                       variant="outline"
                       size="sm"
-                      class="text-[11px]"
+                      class="h-8 text-sm"
                       onClick={() => state.handleDeauthUser(user)}
                       disabled={state.isActionRunning() && state.actionTargetId() === user.id}
                       title="Deauthorize all sessions"
                     >
+                      <Icon path={vaultSvgIcons.server} class="mr-1.5 size-3.5" />
                       Deauth
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      class="text-[11px]"
+                      class="h-8 text-sm"
                       onClick={() => state.handleToggleUserStatus(user)}
                       disabled={state.isActionRunning() && state.actionTargetId() === user.id}
                     >
+                      <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                       {user.userEnabled ? "Disable" : "Enable"}
                     </Button>
                     <Show when={user.twoFactorEnabled}>
@@ -162,10 +166,11 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
                         type="button"
                         variant="outline"
                         size="sm"
-                        class="text-[11px] text-amber-600 dark:text-amber-400"
+                        class="h-8 text-sm text-amber-600 dark:text-amber-400"
                         onClick={() => state.handleRemove2fa(user)}
                         disabled={state.isActionRunning() && state.actionTargetId() === user.id}
                       >
+                        <Icon path={vaultSvgIcons.shieldAlert} class="mr-1.5 size-3.5" />
                         Reset 2FA
                       </Button>
                     </Show>
@@ -173,20 +178,22 @@ export function AdminUsersCard(props: AdminUsersCardProps): JSX.Element {
                       type="button"
                       variant="outline"
                       size="sm"
-                      class="text-[11px]"
+                      class="h-8 text-sm"
                       onClick={() => state.handleResendInvite(user)}
                       disabled={state.isActionRunning() && state.actionTargetId() === user.id}
                     >
+                      <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
                       Reinvite
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      class="text-[11px] text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                      class="h-8 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                       onClick={() => state.handleDeleteUser(user)}
                       disabled={state.isActionRunning() && state.actionTargetId() === user.id}
                     >
+                      <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                       Delete
                     </Button>
                   </div>

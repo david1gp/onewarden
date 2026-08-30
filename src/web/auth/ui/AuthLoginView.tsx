@@ -35,7 +35,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
             <h1 class="mt-4 font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">
               Log In to OneWarden
             </h1>
-            <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Access your secure encrypted password vault from any device.
             </p>
           </div>
@@ -44,7 +44,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
 
           <form onSubmit={state.handleSubmit} class="space-y-4">
             <div>
-              <Label for="login-email" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <Label for="login-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Email Address
               </Label>
               <Input
@@ -55,13 +55,13 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
                 value={state.email()}
                 onInput={(e) => state.setEmail(e.currentTarget.value)}
                 required
-                class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+                class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
               />
             </div>
 
             <div>
               <div class="flex items-center justify-between">
-                <Label for="login-password" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                <Label for="login-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Master Password
                 </Label>
               </div>
@@ -74,7 +74,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
                   value={state.masterPassword()}
                   onInput={(e) => state.setMasterPassword(e.currentTarget.value)}
                   required
-                  class="h-9 w-full rounded-md border-slate-200 bg-slate-50 pr-10 pl-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+                  class="h-9 w-full rounded-md border-slate-200 bg-slate-50 pr-10 pl-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
                 />
                 <ButtonIcon
                   type="button"
@@ -90,7 +90,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
 
             <div class="flex items-center justify-between pt-1">
               <Checkbox id="remember-email" checked={state.rememberEmail()} onChange={state.setRememberEmail}>
-                <span class="select-none text-xs text-slate-600 dark:text-slate-400">Remember email</span>
+                <span class="select-none text-sm text-slate-600 dark:text-slate-400">Remember email</span>
               </Checkbox>
             </div>
 
@@ -98,9 +98,10 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
               <Button
                 type="submit"
                 variant="filledBlue"
-                class="w-full justify-center text-xs font-semibold"
+                class="h-8 w-full justify-center text-sm font-semibold"
                 disabled={state.isSubmitting()}
               >
+                <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                 <Show when={state.isSubmitting()} fallback="Log In">
                   Signing In & Decrypting...
                 </Show>
@@ -108,7 +109,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
             </div>
           </form>
 
-          <div class="flex flex-col gap-2 border-t border-slate-100 pt-4 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
+          <div class="flex flex-col gap-2 border-t border-slate-100 pt-4 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
             <div>
               Don't have an account?{" "}
               <LinkTextExternal href="/register" class="font-semibold">

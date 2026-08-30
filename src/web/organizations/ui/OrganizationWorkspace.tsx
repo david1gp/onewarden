@@ -1,5 +1,6 @@
 import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
 import { OrganizationNav } from "./OrganizationNav.jsx"
 import { OrganizationSettingsCard } from "./OrganizationSettingsCard.jsx"
 import { OrganizationMemberList } from "./OrganizationMemberList.jsx"
@@ -52,7 +53,7 @@ export function OrganizationWorkspace(props: OrganizationWorkspaceProps): JSX.El
         {(notif) => (
           <div
             role={notif().error ? "alert" : "status"}
-            class={`flex items-center justify-between px-4 py-2 text-xs font-medium ${
+            class={`flex items-center justify-between px-4 py-2 text-sm font-medium ${
               notif().error ? "bg-red-600 text-white" : "bg-emerald-600 text-white"
             }`}
           >
@@ -78,7 +79,8 @@ export function OrganizationWorkspace(props: OrganizationWorkspaceProps): JSX.El
                 Create your first organization to share ciphers, manage collections, and invite team members.
               </p>
               <div class="mt-6">
-                <Button variant="filled" onClick={state.handleOpenCreateOrg}>
+                <Button variant="filled" class="h-8" onClick={state.handleOpenCreateOrg}>
+                  <Icon path={vaultSvgIcons.plus} class="mr-1.5 size-3.5" />
                   Create Organization
                 </Button>
               </div>

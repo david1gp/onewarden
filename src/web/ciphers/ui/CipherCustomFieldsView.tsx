@@ -14,7 +14,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
   return (
     <Show when={state.fields().length > 0}>
       <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-        <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Custom Fields</p>
+        <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Custom Fields</p>
         <div class="space-y-2.5">
           <For each={state.fields()}>
             {(field, idx) => {
@@ -24,7 +24,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
               return (
                 <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80">
                   <div class="min-w-0 flex-1">
-                    <p class="truncate font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                    <p class="truncate font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                       {field.name}
                     </p>
                     <Show
@@ -32,13 +32,13 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                       fallback={
                         <Badge
                           variant={field.value === "true" || field.value === "1" ? "filledGreen" : "subtle"}
-                          class="mt-0.5 text-xs"
+                          class="mt-0.5 text-sm"
                         >
                           {field.value === "true" || field.value === "1" ? "Enabled / Checked" : "Disabled / Unchecked"}
                         </Badge>
                       }
                     >
-                      <p class="truncate font-mono text-slate-800 text-xs select-all dark:text-slate-200">
+                      <p class="truncate font-mono text-slate-800 text-sm select-all dark:text-slate-200">
                         {isRevealed() ? field.value : "••••••••••••"}
                       </p>
                     </Show>
@@ -48,7 +48,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                       <ButtonIcon
                         variant="ghost"
                         size="sm"
-                        class="text-xs"
+                        class="h-8 text-sm"
                         icon={isRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                         iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                         onClick={() => state.toggleConcealedField(idx())}
@@ -61,7 +61,7 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="text-xs"
+                        class="h-8 text-sm"
                         icon={isCopied() ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           isCopied() ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"

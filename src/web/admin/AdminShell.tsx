@@ -3,6 +3,8 @@ import { Input } from "#ui/input/input/Input.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import { AdminDiagnosticsView } from "./AdminDiagnosticsView.jsx"
 import { AdminOrganizationsView } from "./AdminOrganizationsView.jsx"
 import { adminShellStateCreate } from "./adminShellStateCreate.js"
@@ -56,7 +58,8 @@ export function AdminShell(p: { state: AdminShellState }) {
                   <span>
                     <AdminStatusBadge status={feedback.kind} /> <span class="ml-2">{feedback.message}</span>
                   </span>
-                  <Button variant="ghost" size="sm" onClick={p.state.clearFeedback}>
+                  <Button variant="ghost" size="sm" class="h-8" onClick={p.state.clearFeedback}>
+                    <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                     Dismiss
                   </Button>
                 </CardWrapper>
@@ -92,7 +95,8 @@ export function AdminShell(p: { state: AdminShellState }) {
               <h2 id="admin-dialog-title" class="text-lg font-semibold">
                 {state.dialogTitle()}
               </h2>
-              <Button variant="ghost" size="sm" aria-label="Close dialog" onClick={p.state.closeDialog}>
+              <Button variant="ghost" size="sm" class="h-8" aria-label="Close dialog" onClick={p.state.closeDialog}>
+                <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                 Close
               </Button>
             </div>
@@ -107,10 +111,12 @@ export function AdminShell(p: { state: AdminShellState }) {
                     class="w-full"
                   />
                   <div class="flex justify-end gap-2">
-                    <Button variant="outline" onClick={p.state.closeDialog}>
+                    <Button variant="outline" class="h-8" onClick={p.state.closeDialog}>
+                      <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                       Cancel
                     </Button>
-                    <Button type="submit" variant="filledBlue">
+                    <Button type="submit" variant="filledBlue" class="h-8">
+                      <Icon path={vaultSvgIcons.send} class="mr-1.5 size-3.5" />
                       Send invitation
                     </Button>
                   </div>
@@ -144,10 +150,12 @@ export function AdminShell(p: { state: AdminShellState }) {
                         </div>
                       </dl>
                       <div class="flex flex-wrap justify-end gap-2">
-                        <Button variant="outline" onClick={state.disableUser}>
+                        <Button variant="outline" class="h-8" onClick={state.disableUser}>
+                          <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                           Disable user
                         </Button>
-                        <Button variant="outlineRed" onClick={state.deleteUser}>
+                        <Button variant="outlineRed" class="h-8" onClick={state.deleteUser}>
+                          <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                           Delete user
                         </Button>
                       </div>
@@ -189,8 +197,10 @@ export function AdminShell(p: { state: AdminShellState }) {
                         <Button
                           variant="outlineRed"
                           disabled={organization.status === "disabled"}
+                          class="h-8"
                           onClick={state.disableOrganization}
                         >
+                          <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                           Disable organization
                         </Button>
                       </div>
@@ -220,10 +230,12 @@ export function AdminShell(p: { state: AdminShellState }) {
                 {confirmation.message}
               </p>
               <div class="mt-6 flex justify-end gap-2">
-                <Button variant="outline" onClick={p.state.closeConfirmation}>
+                <Button variant="outline" class="h-8" onClick={p.state.closeConfirmation}>
+                  <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                   Cancel
                 </Button>
-                <Button variant="filledRed" onClick={state.confirm}>
+                <Button variant="filledRed" class="h-8" onClick={state.confirm}>
+                  <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                   Confirm
                 </Button>
               </div>

@@ -1,5 +1,6 @@
 import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
 import { Checkbox } from "#ui/input/check/Checkbox.jsx"
 import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
@@ -27,19 +28,20 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
                 Create Send
               </h2>
             </div>
-            <Button
+            <ButtonIconOnly
               type="button"
               variant="ghost"
-              size="sm"
+              size="none"
+              title="Close Create Send dialog"
               aria-label="Close Create Send dialog"
+              icon={vaultSvgIcons.close}
+              iconClass="size-4"
               onClick={state.handleClose}
-              class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            >
-              ✕
-            </Button>
+              class="size-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            />
           </div>
 
-          <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-xs">
+          <form onSubmit={state.handleSubmit} class="mt-4 space-y-4 text-sm">
             {/* Type selector */}
             <div class="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
               <Button
@@ -96,11 +98,11 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
                     id="send-file"
                     type="file"
                     onChange={state.handleFileChange}
-                    class="mt-1 block w-full text-slate-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950 dark:file:text-blue-300"
+                    class="mt-1 block w-full text-slate-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950 dark:file:text-blue-300"
                   />
                   <Show when={state.selectedFile()}>
                     {(file) => (
-                      <p class="mt-1 text-[11px] text-slate-500">
+                      <p class="mt-1 text-sm text-slate-500">
                         {file().name} ({(file().size / 1024).toFixed(1)} KB)
                       </p>
                     )}
@@ -181,7 +183,7 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
                     value
                   ] ?? value
                 }
-                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -189,16 +191,18 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
               id="hideEmail"
               checked={state.hideEmail()}
               onChange={(checked) => state.setHideEmail(checked)}
-              class="pt-2 text-xs text-slate-700 dark:text-slate-300"
+              class="pt-2 text-sm text-slate-700 dark:text-slate-300"
             >
               Hide my email address from recipients
             </Checkbox>
 
             <div class="flex items-center justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-              <Button type="button" variant="ghost" size="sm" onClick={state.handleClose}>
+              <Button type="button" variant="ghost" size="sm" class="h-8" onClick={state.handleClose}>
+                <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                 Cancel
               </Button>
-              <Button type="submit" variant="filled" size="sm" disabled={state.isSubmitting()}>
+              <Button type="submit" variant="filled" size="sm" class="h-8" disabled={state.isSubmitting()}>
+                <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
                 {state.isSubmitting() ? "Creating..." : "Create Send"}
               </Button>
             </div>

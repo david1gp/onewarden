@@ -22,7 +22,7 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Emergency Access</h2>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
               Manage trusted contacts who can request access to your vault
             </p>
           </div>
@@ -32,14 +32,14 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs"
+            class="text-sm"
             onClick={state.loadData}
             disabled={state.isLoading()}
           >
             <Icon path={vaultSvgIcons.refresh} class="mr-1 size-3.5" />
             Refresh
           </Button>
-          <Button type="button" variant="filled" size="sm" class="text-xs" onClick={state.openInvite}>
+          <Button type="button" variant="filled" size="sm" class="h-8 text-sm" onClick={state.openInvite}>
             <Icon path={vaultSvgIcons.userPlus} class="mr-1 size-3.5" />
             Invite Contact
           </Button>
@@ -48,13 +48,13 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
 
       <div class="mt-6 space-y-6">
         <div>
-          <h3 class="font-semibold text-xs text-slate-800 uppercase tracking-wider dark:text-slate-200">
+          <h3 class="font-semibold text-sm text-slate-800 uppercase tracking-wider dark:text-slate-200">
             Trusted Contacts ({state.trustedContacts().length})
           </h3>
           <Show
             when={state.trustedContacts().length > 0}
             fallback={
-              <div class="py-4 text-xs text-slate-600 dark:text-slate-400">
+              <div class="py-4 text-sm text-slate-600 dark:text-slate-400">
                 No trusted emergency contacts configured yet.
               </div>
             }
@@ -62,13 +62,13 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
             <div class="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
               <For each={state.trustedContacts()}>
                 {(contact) => (
-                  <div class="flex items-center justify-between py-3 text-xs">
+                  <div class="flex items-center justify-between py-3 text-sm">
                     <div>
                       <div class="flex items-center gap-2">
                         <span class="font-medium text-slate-900 dark:text-slate-100">
                           {contact.name || contact.email}
                         </span>
-                        <Badge variant="subtle" class="text-[10px]">
+                        <Badge variant="subtle" class="text-sm">
                           {contact.status === 0
                             ? "Invited"
                             : contact.status === 1
@@ -80,7 +80,7 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                                   : "Recovery Approved"}
                         </Badge>
                       </div>
-                      <p class="text-[11px] text-slate-600 dark:text-slate-400">
+                      <p class="text-sm text-slate-600 dark:text-slate-400">
                         {contact.email} • {contact.type === 0 ? "View" : "Takeover"} • {contact.waitTimeDays} days wait
                       </p>
                     </div>
@@ -91,9 +91,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                           type="button"
                           variant="filled"
                           size="sm"
-                          class="text-xs"
+                          class="h-8 text-sm"
                           onClick={() => state.handleConfirmContact(contact)}
                         >
+                          <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                           Confirm
                         </Button>
                       </Show>
@@ -101,18 +102,20 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                         type="button"
                         variant="outline"
                         size="sm"
-                        class="text-xs"
+                        class="h-8 text-sm"
                         onClick={() => state.openEdit(contact)}
                       >
+                        <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
                         Edit
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        class="text-xs text-red-600 dark:text-red-400"
+                        class="h-8 text-sm text-red-600 dark:text-red-400"
                         onClick={() => state.handleDeleteContact(contact)}
                       >
+                        <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                         Remove
                       </Button>
                     </div>
@@ -124,13 +127,13 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
         </div>
 
         <div class="border-t border-slate-100 pt-4 dark:border-slate-800">
-          <h3 class="font-semibold text-xs text-slate-800 uppercase tracking-wider dark:text-slate-200">
+          <h3 class="font-semibold text-sm text-slate-800 uppercase tracking-wider dark:text-slate-200">
             Vaults Granted to Me ({state.grantedVaults().length})
           </h3>
           <Show
             when={state.grantedVaults().length > 0}
             fallback={
-              <div class="py-4 text-xs text-slate-600 dark:text-slate-400">
+              <div class="py-4 text-sm text-slate-600 dark:text-slate-400">
                 No vaults have been granted to you for emergency access.
               </div>
             }
@@ -138,10 +141,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
             <div class="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
               <For each={state.grantedVaults()}>
                 {(vault) => (
-                  <div class="flex items-center justify-between py-3 text-xs">
+                  <div class="flex items-center justify-between py-3 text-sm">
                     <div>
                       <span class="font-medium text-slate-900 dark:text-slate-100">{vault.email}</span>
-                      <p class="text-[11px] text-slate-600 dark:text-slate-400">
+                      <p class="text-sm text-slate-600 dark:text-slate-400">
                         {vault.type === 0 ? "View Access" : "Takeover Access"} • Wait: {vault.waitTimeDays} days
                       </p>
                     </div>
@@ -151,9 +154,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                           type="button"
                           variant="filled"
                           size="sm"
-                          class="text-xs"
+                          class="h-8 text-sm"
                           onClick={() => state.handleAcceptInvite(vault)}
                         >
+                          <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                           Accept
                         </Button>
                       </Show>
@@ -162,9 +166,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                           type="button"
                           variant="filled"
                           size="sm"
-                          class="text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                          class="h-8 text-sm bg-amber-600 hover:bg-amber-700 text-white"
                           onClick={() => state.handleInitiateAccess(vault)}
                         >
+                          <Icon path={vaultSvgIcons.key} class="mr-1.5 size-3.5" />
                           Initiate Access
                         </Button>
                       </Show>
@@ -173,9 +178,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                           type="button"
                           variant="filled"
                           size="sm"
-                          class="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          class="h-8 text-sm bg-blue-600 hover:bg-blue-700 text-white"
                           onClick={() => state.openVaultView(vault)}
                         >
+                          <Icon path={vaultSvgIcons.eye} class="mr-1.5 size-3.5" />
                           View Items
                         </Button>
                       </Show>
@@ -184,9 +190,10 @@ export function EmergencyAccessCard(props: EmergencyAccessCardProps): JSX.Elemen
                           type="button"
                           variant="filled"
                           size="sm"
-                          class="text-xs bg-red-600 hover:bg-red-700 text-white"
+                          class="h-8 text-sm bg-red-600 hover:bg-red-700 text-white"
                           onClick={() => state.openTakeover(vault)}
                         >
+                          <Icon path={vaultSvgIcons.key} class="mr-1.5 size-3.5" />
                           Take Over
                         </Button>
                       </Show>

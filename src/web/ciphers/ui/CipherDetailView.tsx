@@ -27,7 +27,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               <Icon path={vaultSvgIcons.lock} class="size-7" />
             </div>
             <p class="mt-4 font-semibold text-sm text-slate-800 dark:text-slate-200">No Cipher Selected</p>
-            <p class="mt-1 max-w-xs text-xs text-slate-600 dark:text-slate-400">
+            <p class="mt-1 max-w-xs text-sm text-slate-600 dark:text-slate-400">
               Select a cipher item from your vault to view stored credentials, secure notes, and metadata.
             </p>
           </div>
@@ -37,7 +37,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
           <div class={`flex-1 overflow-y-auto ${classesScrollbar} p-4 sm:p-6`}>
             {/* Trash Banner if soft-deleted */}
             <Show when={state.isDeleted()}>
-              <div class="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200">
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200">
                 <div class="flex items-center gap-2">
                   <Icon path={vaultSvgIcons.trash} class="size-4 shrink-0 text-amber-700 dark:text-amber-300" />
                   <span>This cipher is in your Trash (deleted on {item().deletedDate}).</span>
@@ -47,10 +47,11 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Button
                       variant="outline"
                       size="sm"
-                      class="h-7 text-xs"
+                      class="h-8 text-sm"
                       onClick={state.handleRestore}
                       disabled={state.isActionLoading()}
                     >
+                      <Icon path={vaultSvgIcons.restore} class="mr-1.5 size-3.5" />
                       Restore Cipher
                     </Button>
                   </Show>
@@ -58,10 +59,11 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Button
                       variant="filledRed"
                       size="sm"
-                      class="h-7 text-xs font-semibold"
+                      class="h-8 text-sm font-semibold"
                       onClick={() => state.openDeleteDialog(true)}
                       disabled={state.isActionLoading()}
                     >
+                      <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                       Delete Permanently
                     </Button>
                   </Show>
@@ -72,7 +74,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
             {/* Error Banner */}
             <Show when={state.actionErrorMessage()}>
               {(err) => (
-                <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
+                <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
                   {err()}
                 </div>
               )}
@@ -80,7 +82,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
             {/* Header / Title Banner */}
             <div class="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-5 sm:gap-4 dark:border-slate-800">
-              <div class="flex min-w-0 items-start gap-3.5">
+              <div class="flex min-w-0 flex-1 basis-full items-start gap-3.5 sm:basis-64">
                 <div
                   class={`flex size-12 shrink-0 items-center justify-center rounded-xl shadow-xs ${state.categoryTheme().bg} ${state.categoryTheme().text}`}
                 >
@@ -91,26 +93,26 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     {item().name}
                   </h2>
                   <div class="mt-1 flex flex-wrap items-center gap-2">
-                    <Badge variant={state.categoryTheme().badgeVariant} class="text-xs">
+                    <Badge variant={state.categoryTheme().badgeVariant} class="max-w-full truncate text-sm">
                       {state.categoryLabel()}
                     </Badge>
                     <Show when={item().folderName}>
-                      <Badge variant="subtle" class="text-xs">
+                      <Badge variant="subtle" class="max-w-full truncate text-sm">
                         {item().folderName}
                       </Badge>
                     </Show>
                     <Show when={state.isArchived()}>
-                      <Badge variant="outline" class="text-xs text-amber-700 border-amber-300">
+                      <Badge variant="outline" class="text-sm text-amber-700 border-amber-300">
                         Archived
                       </Badge>
                     </Show>
                     <Show when={item().organizationId}>
-                      <Badge variant="outline" class="text-xs text-blue-700 border-blue-300">
+                      <Badge variant="outline" class="text-sm text-blue-700 border-blue-300">
                         Organization
                       </Badge>
                     </Show>
                     <Show when={item().revisionDate}>
-                      <span class="text-xs text-slate-600 dark:text-slate-400">Updated {item().revisionDate}</span>
+                      <span class="text-sm text-slate-600 dark:text-slate-400">Updated {item().revisionDate}</span>
                     </Show>
                   </div>
                 </div>
@@ -122,7 +124,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <ButtonIcon
                     variant="outline"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
                     iconClass={`size-4 fill-current dark:fill-current ${
                       item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
@@ -135,14 +137,15 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 </Show>
 
                 <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
-                  <Button variant="ghost" size="sm" class="text-xs" onClick={() => state.editItem()}>
+                  <Button variant="ghost" size="sm" class="h-8 text-sm" onClick={() => state.editItem()}>
+                    <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
                     Edit
                   </Button>
 
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     onClick={() => state.openShareDialog()}
                     title={item().organizationId ? "Manage Collections" : "Share to Organization"}
                   >
@@ -153,7 +156,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     onClick={() => state.handleClone()}
                     disabled={state.isActionLoading()}
                     title="Clone cipher item"
@@ -165,7 +168,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     onClick={() => state.handleToggleArchive()}
                     disabled={state.isActionLoading()}
                     title={state.isArchived() ? "Unarchive cipher" : "Archive cipher"}
@@ -177,7 +180,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="text-xs text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                    class="h-8 text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
                     onClick={() => state.openDeleteDialog(false)}
                     title="Move cipher to trash"
                   >
@@ -205,7 +208,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().login?.username}>
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Username
                         </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
@@ -215,7 +218,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "username"
@@ -235,11 +238,11 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
-                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Password
                           </p>
                           <Show when={item().passwordStrength}>
-                            <Badge variant="filledGreen" class="px-1.5 py-0 text-[10px]">
+                            <Badge variant="filledGreen" class="px-1.5 py-0 text-sm">
                               {item().passwordStrength}
                             </Badge>
                           </Show>
@@ -256,7 +259,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           <ButtonIcon
                             variant="ghost"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={vaultSvgIcons.history}
                             iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                             onClick={() => state.openHistoryDialog()}
@@ -268,7 +271,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           <ButtonIcon
                             variant="ghost"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                             iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
                             onClick={() => state.togglePasswordReveal()}
@@ -279,7 +282,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           <ButtonIcon
                             variant="subtle"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                             iconClass={`size-3.5 fill-current dark:fill-current ${
                               state.copiedField() === "password"
@@ -301,7 +304,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-1.5">
-                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             One-Time Password (2FA)
                           </p>
                           <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
@@ -313,7 +316,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "totp" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "totp"
@@ -332,14 +335,14 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().login?.uris && item().login!.uris!.length > 0}>
                     <div class="group flex items-center justify-between gap-2">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Website
                         </p>
                         <LinkTextExternal
                           href={item().login?.uris?.[0]?.uri ?? "#"}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="inline-flex max-w-full items-center gap-1 font-medium text-blue-700 text-xs dark:text-blue-300"
+                          class="inline-flex max-w-full items-center gap-1 font-medium text-blue-700 text-sm dark:text-blue-300"
                         >
                           <span class="truncate">{item().login?.uris?.[0]?.uri}</span>
                           <Icon path={vaultSvgIcons.externalLink} class="size-3 shrink-0" />
@@ -348,7 +351,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "uri" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass={`size-3.5 fill-current dark:fill-current ${
                           state.copiedField() === "uri"
@@ -369,8 +372,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               <Show when={item().type === 3 && item().card}>
                 <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
-                    <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Card Credentials</p>
-                    <Badge variant="filledGreen" class="text-[10px]">
+                    <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Card Credentials</p>
+                    <Badge variant="filledGreen" class="text-sm">
                       {state.cardBrand()}
                     </Badge>
                   </div>
@@ -379,7 +382,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().card?.cardholderName}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Cardholder Name
                         </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
@@ -389,7 +392,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "cardholder" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass="size-3.5"
                         onClick={() => state.copyToClipboard("cardholder", item().card?.cardholderName ?? "")}
@@ -404,7 +407,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().card?.number}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Card Number
                         </p>
                         <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
@@ -415,7 +418,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         <ButtonIcon
                           variant="ghost"
                           size="sm"
-                          class="text-xs"
+                          class="h-8 text-sm"
                           icon={state.isCardNumberRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                           iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                           onClick={() => state.toggleCardNumberReveal()}
@@ -426,7 +429,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         <ButtonIcon
                           variant="subtle"
                           size="sm"
-                          class="text-xs"
+                          class="h-8 text-sm"
                           icon={state.copiedField() === "cardNumber" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                           iconClass="size-3.5"
                           onClick={() =>
@@ -444,7 +447,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <div class="grid grid-cols-2 gap-4">
                     <Show when={item().card?.expMonth || item().card?.expYear}>
                       <div>
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Expiration
                         </p>
                         <p class="font-medium text-sm text-slate-900 dark:text-slate-100">
@@ -456,7 +459,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().card?.code}>
                       <div class="flex items-center justify-between gap-2">
                         <div>
-                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Security Code (CVV)
                           </p>
                           <p class="font-mono text-sm text-slate-900 select-all dark:text-slate-100">
@@ -467,7 +470,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           <ButtonIcon
                             variant="ghost"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={state.isCvvRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                             iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                             onClick={() => state.toggleCvvReveal()}
@@ -478,7 +481,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                           <ButtonIcon
                             variant="subtle"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={state.copiedField() === "cvv" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                             iconClass="size-3.5"
                             onClick={() => state.copyToClipboard("cvv", item().card?.code ?? "")}
@@ -496,13 +499,13 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               {/* Type 4: Identity Details */}
               <Show when={item().type === 4 && item().identity}>
                 <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Personal & Identity Profile</p>
+                  <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Personal & Identity Profile</p>
 
                   {/* Full Name */}
                   <Show when={state.formattedIdentityFullName()}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Full Name
                         </p>
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
@@ -512,7 +515,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "fullname" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass="size-3.5"
                         onClick={() => state.copyToClipboard("fullname", state.formattedIdentityFullName())}
@@ -527,17 +530,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().identity?.username}>
                     <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Username
                         </p>
-                        <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
+                        <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().identity?.username}
                         </p>
                       </div>
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="h-8 shrink-0 text-sm"
                         icon={state.copiedField() === "identity-username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass="size-3.5"
                         onClick={() => state.copyToClipboard("identity-username", item().identity?.username ?? "")}
@@ -552,17 +555,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().identity?.email}>
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Email
                           </p>
-                          <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
+                          <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.email}
                           </p>
                         </div>
                         <ButtonIcon
                           variant="subtle"
                           size="sm"
-                          class="shrink-0 text-xs"
+                          class="h-8 shrink-0 text-sm"
                           icon={state.copiedField() === "email" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                           iconClass="size-3.5"
                           onClick={() => state.copyToClipboard("email", item().identity?.email ?? "")}
@@ -576,17 +579,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().identity?.phone}>
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Phone
                           </p>
-                          <p class="truncate text-xs text-slate-900 select-all dark:text-slate-100">
+                          <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.phone}
                           </p>
                         </div>
                         <ButtonIcon
                           variant="subtle"
                           size="sm"
-                          class="shrink-0 text-xs"
+                          class="shrink-0 text-sm"
                           icon={state.copiedField() === "phone" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                           iconClass="size-3.5"
                           onClick={() => state.copyToClipboard("phone", item().identity?.phone ?? "")}
@@ -602,17 +605,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={state.formattedIdentityAddress()}>
                     <div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800/80">
                       <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                           Address
                         </p>
-                        <p class="whitespace-pre-line text-xs text-slate-900 select-all dark:text-slate-100">
+                        <p class="whitespace-pre-line text-sm text-slate-900 select-all dark:text-slate-100">
                           {state.formattedIdentityAddress()}
                         </p>
                       </div>
                       <ButtonIcon
                         variant="subtle"
                         size="sm"
-                        class="shrink-0 text-xs"
+                        class="shrink-0 text-sm"
                         icon={state.copiedField() === "address" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                         iconClass="size-3.5"
                         onClick={() => state.copyToClipboard("address", state.formattedIdentityAddress())}
@@ -631,10 +634,10 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.ssn}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               SSN / National ID
                             </p>
-                            <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
+                            <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {state.isSsnRevealed() ? item().identity?.ssn : "•••-••-••••"}
                             </p>
                           </div>
@@ -642,7 +645,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             <ButtonIcon
                               variant="ghost"
                               size="sm"
-                              class="text-xs"
+                              class="h-8 text-sm"
                               icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                               iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                               onClick={() => state.toggleSsnReveal()}
@@ -653,7 +656,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             <ButtonIcon
                               variant="subtle"
                               size="sm"
-                              class="text-xs"
+                              class="h-8 text-sm"
                               icon={state.copiedField() === "ssn" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                               iconClass="size-3.5"
                               onClick={() => state.copyToClipboard("ssn", item().identity?.ssn ?? "")}
@@ -668,10 +671,10 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.passportNumber}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               Passport Number
                             </p>
-                            <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
+                            <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {state.isPassportRevealed() ? item().identity?.passportNumber : "•••••••••"}
                             </p>
                           </div>
@@ -679,7 +682,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             <ButtonIcon
                               variant="ghost"
                               size="sm"
-                              class="text-xs"
+                              class="h-8 text-sm"
                               icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                               iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                               onClick={() => state.togglePassportReveal()}
@@ -690,7 +693,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             <ButtonIcon
                               variant="subtle"
                               size="sm"
-                              class="text-xs"
+                              class="h-8 text-sm"
                               icon={state.copiedField() === "passport" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                               iconClass="size-3.5"
                               onClick={() => state.copyToClipboard("passport", item().identity?.passportNumber ?? "")}
@@ -705,17 +708,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       <Show when={item().identity?.licenseNumber}>
                         <div class="flex items-center justify-between gap-2">
                           <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               Driver's License Number
                             </p>
-                            <p class="truncate font-mono text-xs text-slate-900 select-all dark:text-slate-100">
+                            <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {item().identity?.licenseNumber}
                             </p>
                           </div>
                           <ButtonIcon
                             variant="subtle"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             icon={state.copiedField() === "license" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                             iconClass="size-3.5"
                             onClick={() => state.copyToClipboard("license", item().identity?.licenseNumber ?? "")}
@@ -746,11 +749,11 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               <Show when={item().notes}>
                 <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div class="flex items-center justify-between">
-                    <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Secure Notes</p>
+                    <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Secure Notes</p>
                     <ButtonIcon
                       variant="subtle"
                       size="sm"
-                      class="text-xs"
+                      class="h-8 text-sm"
                       icon={state.copiedField() === "notes" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                       iconClass="size-3.5"
                       onClick={() => state.copyToClipboard("notes", item().notes ?? "")}
@@ -759,7 +762,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       {state.copiedField() === "notes" ? "Copied" : "Copy"}
                     </ButtonIcon>
                   </div>
-                  <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 font-mono text-slate-700 text-xs leading-relaxed dark:bg-slate-950 dark:text-slate-300">
+                  <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 font-mono text-slate-700 text-sm leading-relaxed dark:bg-slate-950 dark:text-slate-300">
                     {item().notes}
                   </pre>
                 </CardWrapper>
@@ -767,27 +770,27 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
               {/* Folder & Metadata Footer */}
               <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Metadata & Organization</p>
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="subtle" class="text-xs">
+                <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Metadata & Organization</p>
+                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <Badge variant="subtle" class="max-w-full truncate text-sm">
                     {item().folderName ?? "No Folder"}
                   </Badge>
                   <Show when={item().organizationId}>
-                    <Badge variant="outline" class="text-xs">
+                    <Badge variant="outline" class="max-w-full truncate text-sm">
                       Organization: {item().organizationId}
                     </Badge>
                   </Show>
                   <Show when={item().collectionIds && item().collectionIds!.length > 0}>
                     <For each={item().collectionIds!}>
                       {(colId) => (
-                        <Badge variant="filledBlue" class="text-xs">
+                        <Badge variant="filledBlue" class="max-w-full truncate text-sm">
                           {colId}
                         </Badge>
                       )}
                     </For>
                   </Show>
                 </div>
-                <div class="pt-2 text-[11px] text-slate-600 dark:text-slate-400">
+                <div class="pt-2 text-sm text-slate-600 dark:text-slate-400">
                   <Show when={item().creationDate}>
                     <span>Created {item().creationDate} · </span>
                   </Show>

@@ -2,6 +2,8 @@ import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
 import { Checkbox } from "#ui/input/check/Checkbox.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { type OrganizationSsoCardProps, organizationSsoCardStateCreate } from "./organizationSsoCardStateCreate.js"
 
 export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Element {
@@ -13,14 +15,14 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
         {/* Header */}
         <div>
           <h2 class="font-bold text-slate-900 text-xl dark:text-slate-100">Single Sign-On (SSO) Configuration</h2>
-          <p class="mt-1 text-slate-500 text-xs dark:text-slate-400">
+          <p class="mt-1 text-slate-500 text-sm dark:text-slate-400">
             Allow members to log into their OneWarden vault using your enterprise Identity Provider (IdP).
           </p>
         </div>
 
         <Show when={state.errorMessage()}>
           {(msg) => (
-            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
+            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 font-medium dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
               {msg()}
             </div>
           )}
@@ -28,7 +30,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
 
         <Show when={state.successMessage()}>
           {(msg) => (
-            <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 font-medium dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+            <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 font-medium dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
               {msg()}
             </div>
           )}
@@ -40,7 +42,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
             <div class="flex items-center justify-between">
               <div>
                 <span class="font-bold text-slate-900 text-sm dark:text-slate-100">Enable Single Sign-On</span>
-                <p class="text-slate-500 text-xs dark:text-slate-400">
+                <p class="text-slate-500 text-sm dark:text-slate-400">
                   Allow organization members to authenticate with your configured Identity Provider.
                 </p>
               </div>
@@ -51,11 +53,11 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
           {/* Organization Identifier */}
           <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
             <h3 class="font-bold text-slate-900 text-sm dark:text-slate-100">Organization SSO Identifier</h3>
-            <p class="mt-1 text-slate-500 text-xs dark:text-slate-400">
+            <p class="mt-1 text-slate-500 text-sm dark:text-slate-400">
               A unique identifier used by users during SSO vault login (e.g. acme-corp).
             </p>
             <div class="mt-3">
-              <label class="block font-medium text-slate-700 text-xs dark:text-slate-300" for="sso-identifier">
+              <label class="block font-medium text-slate-700 text-sm dark:text-slate-300" for="sso-identifier">
                 SSO Identifier
               </label>
               <Input
@@ -78,7 +80,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
                 variant={state.ssoType() === "oidc" ? "filled" : "outline"}
                 size="sm"
                 onClick={() => state.handleSsoTypeChange("oidc")}
-                class="text-xs"
+                class="text-sm"
               >
                 OpenID Connect (OIDC)
               </Button>
@@ -87,7 +89,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
                 variant={state.ssoType() === "saml" ? "filled" : "outline"}
                 size="sm"
                 onClick={() => state.handleSsoTypeChange("saml")}
-                class="text-xs"
+                class="text-sm"
               >
                 SAML 2.0
               </Button>
@@ -97,7 +99,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
             <Show when={state.ssoType() === "oidc"}>
               <div class="mt-5 space-y-4">
                 <div>
-                  <label class="block font-medium text-slate-700 text-xs dark:text-slate-300" for="sso-authority">
+                  <label class="block font-medium text-slate-700 text-sm dark:text-slate-300" for="sso-authority">
                     Authority / Issuer URL
                   </label>
                   <Input
@@ -111,7 +113,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
                 </div>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="block font-medium text-slate-700 text-xs dark:text-slate-300" for="sso-client-id">
+                    <label class="block font-medium text-slate-700 text-sm dark:text-slate-300" for="sso-client-id">
                       Client ID
                     </label>
                     <Input
@@ -124,7 +126,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
                     />
                   </div>
                   <div>
-                    <label class="block font-medium text-slate-700 text-xs dark:text-slate-300" for="sso-client-secret">
+                    <label class="block font-medium text-slate-700 text-sm dark:text-slate-300" for="sso-client-secret">
                       Client Secret
                     </label>
                     <Input
@@ -139,7 +141,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
                 </div>
                 <div>
                   <label
-                    class="block font-medium text-slate-700 text-xs dark:text-slate-300"
+                    class="block font-medium text-slate-700 text-sm dark:text-slate-300"
                     for="sso-metadata-address"
                   >
                     Metadata Address (Optional)
@@ -160,7 +162,7 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
             <Show when={state.ssoType() === "saml"}>
               <div class="mt-5 space-y-4">
                 <div>
-                  <label class="block font-medium text-slate-700 text-xs dark:text-slate-300" for="sso-saml-entity">
+                  <label class="block font-medium text-slate-700 text-sm dark:text-slate-300" for="sso-saml-entity">
                     IdP Entity ID
                   </label>
                   <Input
@@ -181,10 +183,10 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
             {(urls) => (
               <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
                 <h3 class="font-bold text-slate-900 text-sm dark:text-slate-100">Service Provider (SP) Endpoints</h3>
-                <p class="mt-1 text-slate-500 text-xs dark:text-slate-400">
+                <p class="mt-1 text-slate-500 text-sm dark:text-slate-400">
                   Provide these URLs to your Identity Provider during application registration.
                 </p>
-                <div class="mt-4 space-y-3 font-mono text-[11px]">
+                <div class="mt-4 space-y-3 font-mono text-sm">
                   <div>
                     <span class="text-slate-500 font-sans font-semibold dark:text-slate-400">
                       Callback / Redirect URI:
@@ -212,7 +214,8 @@ export function OrganizationSsoCard(props: OrganizationSsoCardProps): JSX.Elemen
 
           {/* Save Button */}
           <div class="flex items-center justify-end">
-            <Button variant="filled" size="sm" type="submit" disabled={state.isSubmitting()}>
+            <Button variant="filled" size="sm" class="h-8" type="submit" disabled={state.isSubmitting()}>
+              <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
               {state.isSubmitting() ? "Saving SSO Settings..." : "Save SSO Configuration"}
             </Button>
           </div>

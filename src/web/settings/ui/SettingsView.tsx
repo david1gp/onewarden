@@ -18,7 +18,7 @@ export function SettingsView(props: SettingsViewProps): JSX.Element {
         <h1 class="font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">
           Account &amp; Security Settings
         </h1>
-        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Manage your personal profile, cryptographic keys, sessions, and vault backups
         </p>
       </div>
@@ -27,7 +27,7 @@ export function SettingsView(props: SettingsViewProps): JSX.Element {
         {(msg) => (
           <div
             role="alert"
-            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           >
             {msg()}
           </div>
@@ -38,7 +38,7 @@ export function SettingsView(props: SettingsViewProps): JSX.Element {
         {(msg) => (
           <div
             role="status"
-            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
           >
             {msg()}
           </div>

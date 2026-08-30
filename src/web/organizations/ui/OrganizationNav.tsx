@@ -43,7 +43,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
           size="sm"
           icon={vaultSvgIcons.plus}
           onClick={state.handleNewOrgClick}
-          class="h-8 gap-1 px-2.5 text-xs"
+          class="h-8 gap-1 px-2.5 text-sm"
           iconClass="size-3.5 mr-1"
         >
           <span>New Org</span>
@@ -52,19 +52,19 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
 
       {/* Right: Tab Navigation */}
       <Show when={state.currentOrg() !== null}>
-        <div class="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-xs dark:bg-slate-800">
+        <div class="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
           <Button
             variant={state.isTabActive("members") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("members")}
-            class={`h-8 gap-1.5 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 gap-1.5 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("members")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
             <span>Members</span>
-            <Badge variant="subtle" class="px-1.5 py-0 text-[10px]">
+            <Badge variant="subtle" class="px-1.5 py-0 text-sm">
               {state.memberCount()}
             </Badge>
           </Button>
@@ -73,14 +73,14 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("collections") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("collections")}
-            class={`h-8 gap-1.5 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 gap-1.5 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("collections")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
             <span>Collections</span>
-            <Badge variant="subtle" class="px-1.5 py-0 text-[10px]">
+            <Badge variant="subtle" class="px-1.5 py-0 text-sm">
               {state.collectionCount()}
             </Badge>
           </Button>
@@ -89,14 +89,14 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("groups") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("groups")}
-            class={`h-8 gap-1.5 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 gap-1.5 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("groups")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
             <span>Groups</span>
-            <Badge variant="subtle" class="px-1.5 py-0 text-[10px]">
+            <Badge variant="subtle" class="px-1.5 py-0 text-sm">
               {state.groupCount()}
             </Badge>
           </Button>
@@ -105,14 +105,14 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("policies") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("policies")}
-            class={`h-8 gap-1.5 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 gap-1.5 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("policies")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
             <span>Policies</span>
-            <Badge variant="subtle" class="px-1.5 py-0 text-[10px]">
+            <Badge variant="subtle" class="px-1.5 py-0 text-sm">
               {state.policyCount()}
             </Badge>
           </Button>
@@ -121,7 +121,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("events") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("events")}
-            class={`h-8 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("events")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -134,14 +134,14 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("domains") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("domains")}
-            class={`h-8 gap-1.5 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 gap-1.5 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("domains")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
             }`}
           >
             <span>Domains</span>
-            <Badge variant="subtle" class="px-1.5 py-0 text-[10px]">
+            <Badge variant="subtle" class="px-1.5 py-0 text-sm">
               {state.domainCount()}
             </Badge>
           </Button>
@@ -150,7 +150,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("sso") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("sso")}
-            class={`h-8 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("sso")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -163,7 +163,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
             variant={state.isTabActive("settings") ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.handleSelectTab("settings")}
-            class={`h-8 px-3 py-1 text-xs transition-colors ${
+            class={`h-8 px-3 py-1 text-sm transition-colors ${
               state.isTabActive("settings")
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"

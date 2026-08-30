@@ -32,7 +32,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
             <h2 class="font-bold text-lg text-slate-900 dark:text-slate-50">
               {state.isEditMode() ? "Edit Cipher" : "Add New Item"}
             </h2>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
               {state.isEditMode()
                 ? "Modify credentials and security metadata."
                 : "Create a new encrypted entry in your vault."}
@@ -44,19 +44,21 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               type="button"
               variant="outline"
               size="sm"
-              class="text-xs"
+              class="h-8 text-sm"
               onClick={state.handleCancel}
               disabled={state.isSaving()}
             >
+              <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
               Cancel
             </Button>
             <Button
               type="submit"
               variant="filledBlue"
               size="sm"
-              class="text-xs font-semibold"
+              class="h-8 text-sm font-semibold"
               disabled={state.isSaving()}
             >
+              <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
               {state.isSaving() ? "Saving..." : "Save Item"}
             </Button>
           </div>
@@ -65,7 +67,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
         {/* Error Banner */}
         <Show when={state.effectiveError()}>
           {(error) => (
-            <div class="flex items-center gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
+            <div class="flex items-center gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
               <Icon path={vaultSvgIcons.shieldAlert} class="size-4 shrink-0 text-rose-700 dark:text-rose-300" />
               <span>{error()}</span>
             </div>
@@ -74,12 +76,12 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
 
         {/* Type & General Details */}
         <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-          <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Item Information</p>
+          <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Item Information</p>
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {/* Type selector */}
             <div class="space-y-1 sm:col-span-1">
-              <Label for="cipher-form-type" class="text-xs">
+              <Label for="cipher-form-type" class="text-sm">
                 Type
               </Label>
               <SelectSingleNative
@@ -87,14 +89,14 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
                 valueSignal={state.type}
                 getOptions={state.typeOptions}
                 valueText={state.typeLabel}
-                class="h-9 text-xs py-1"
+                class="h-9 text-sm py-1"
                 disabled={state.isEditMode()}
               />
             </div>
 
             {/* Name / Title */}
             <div class="space-y-1 sm:col-span-2">
-              <Label for="cipher-form-name" class="text-xs">
+              <Label for="cipher-form-name" class="text-sm">
                 Name <LabelAsterix />
               </Label>
               <InputS
@@ -102,7 +104,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
                 type="text"
                 placeholder="e.g. GitHub Account, Personal Visa"
                 valueSignal={state.name}
-                class="h-9 w-full text-xs"
+                class="h-9 w-full text-sm"
                 required
               />
             </div>
@@ -111,7 +113,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
           {/* Folder & Favorite */}
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="space-y-1">
-              <Label for="cipher-form-folder" class="text-xs">
+              <Label for="cipher-form-folder" class="text-sm">
                 Folder ID
               </Label>
               <InputS
@@ -119,7 +121,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
                 type="text"
                 placeholder="e.g. folder-work"
                 valueSignal={state.folderId}
-                class="h-9 w-full text-xs"
+                class="h-9 w-full text-sm"
               />
             </div>
 
@@ -127,7 +129,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               <CheckBooleanSingle
                 valueSignal={state.favorite}
                 valueText={(fav) => (fav ? "Favorited (Pinned to Favorites)" : "Add to Favorites")}
-                class="h-9 w-full text-xs"
+                class="h-9 w-full text-sm"
               />
             </div>
           </div>
@@ -187,7 +189,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
         {/* Notes (for types other than secure note, which renders notes as main content) */}
         <Show when={state.numericType() !== 2}>
           <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-            <Label for="cipher-form-notes" class="text-xs font-semibold">
+            <Label for="cipher-form-notes" class="text-sm font-semibold">
               Notes
             </Label>
             <TextareaS
@@ -195,7 +197,7 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               placeholder="Additional notes or context..."
               valueSignal={state.notes}
               rows={4}
-              class="w-full text-xs font-mono"
+              class="w-full text-sm font-mono"
             />
           </CardWrapper>
         </Show>
@@ -206,19 +208,21 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs"
+            class="h-8 text-sm"
             onClick={state.handleCancel}
             disabled={state.isSaving()}
           >
+            <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
             Cancel
           </Button>
           <Button
             type="submit"
             variant="filledBlue"
             size="sm"
-            class="text-xs font-semibold"
+            class="h-8 text-sm font-semibold"
             disabled={state.isSaving()}
           >
+            <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
             {state.isSaving() ? "Saving..." : "Save Item"}
           </Button>
         </div>

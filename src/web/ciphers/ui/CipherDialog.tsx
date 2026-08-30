@@ -42,7 +42,7 @@ export function CipherDialog(props: CipherDialogStateProps): JSX.Element {
                 <div class="flex h-full items-center justify-center p-8">
                   <div class="flex flex-col items-center gap-2">
                     <div class="size-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                    <p class="text-xs text-slate-600 dark:text-slate-400">Loading cipher details...</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Loading cipher details...</p>
                   </div>
                 </div>
               }

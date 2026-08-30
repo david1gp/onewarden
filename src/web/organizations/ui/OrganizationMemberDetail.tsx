@@ -1,6 +1,7 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import {
   type OrganizationMemberDetailProps,
@@ -14,7 +15,8 @@ export function OrganizationMemberDetail(props: OrganizationMemberDetailProps): 
     <div class="flex h-full flex-col overflow-y-auto bg-white p-6 dark:bg-slate-900">
       <Show when={state.hasBack()}>
         <div class="mb-4 md:hidden">
-          <Button variant="outline" size="sm" onClick={state.handleBackClick}>
+          <Button variant="outline" size="sm" class="h-8" onClick={state.handleBackClick}>
+            <Icon path={vaultSvgIcons.arrowLeft} class="mr-1.5 size-3.5" />
             Back to members
           </Button>
         </div>
@@ -56,7 +58,7 @@ export function OrganizationMemberDetail(props: OrganizationMemberDetailProps): 
 
             {/* Quick Details Card */}
             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-              <div class="grid grid-cols-2 gap-4 text-xs">
+              <div class="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span class="text-slate-500 dark:text-slate-400">Member ID</span>
                   <p class="font-mono text-slate-800 dark:text-slate-200 truncate">{mem().id}</p>
@@ -88,7 +90,7 @@ export function OrganizationMemberDetail(props: OrganizationMemberDetailProps): 
               <Show
                 when={!mem().accessAll}
                 fallback={
-                  <p class="mt-2 text-slate-500 text-xs dark:text-slate-400">
+                  <p class="mt-2 text-slate-500 text-sm dark:text-slate-400">
                     This user has access to all current and future collections in this organization.
                   </p>
                 }
@@ -96,13 +98,13 @@ export function OrganizationMemberDetail(props: OrganizationMemberDetailProps): 
                 <Show
                   when={(mem().collections?.length ?? 0) > 0}
                   fallback={
-                    <p class="mt-2 text-slate-500 text-xs italic dark:text-slate-400">No collections assigned yet.</p>
+                    <p class="mt-2 text-slate-500 text-sm italic dark:text-slate-400">No collections assigned yet.</p>
                   }
                 >
                   <div class="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
                     <For each={mem().collections}>
                       {(col) => (
-                        <div class="flex items-center justify-between p-3 text-xs">
+                        <div class="flex items-center justify-between p-3 text-sm">
                           <span class="font-medium text-slate-800 dark:text-slate-200">{col.name || col.id}</span>
                           <div class="flex items-center gap-1.5">
                             <Show when={col.readOnly}>
@@ -125,30 +127,35 @@ export function OrganizationMemberDetail(props: OrganizationMemberDetailProps): 
 
             {/* Actions Bar */}
             <div class="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-5 dark:border-slate-800">
-              <Button variant="filled" size="sm" onClick={state.handleEditClick}>
+              <Button variant="filled" size="sm" class="h-8" onClick={state.handleEditClick}>
+                <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
                 Edit Role & Permissions
               </Button>
               <Show when={state.isInvited()}>
-                <Button variant="outline" size="sm" onClick={state.handleReinviteClick}>
+                <Button variant="outline" size="sm" class="h-8" onClick={state.handleReinviteClick}>
+                  <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
                   Resend Invite
                 </Button>
               </Show>
               <Show when={!state.isRevoked() && !state.isInvited()}>
-                <Button variant="outline" size="sm" onClick={state.handleRevokeClick}>
+                <Button variant="outline" size="sm" class="h-8" onClick={state.handleRevokeClick}>
+                  <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                   Revoke Access
                 </Button>
               </Show>
               <Show when={state.isRevoked()}>
-                <Button variant="outline" size="sm" onClick={state.handleRestoreClick}>
+                <Button variant="outline" size="sm" class="h-8" onClick={state.handleRestoreClick}>
+                  <Icon path={vaultSvgIcons.restore} class="mr-1.5 size-3.5" />
                   Restore Access
                 </Button>
               </Show>
               <Button
                 variant="outline"
                 size="sm"
+                class="h-8 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                 onClick={state.handleRemoveClick}
-                class="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
               >
+                <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                 Remove from Org
               </Button>
             </div>

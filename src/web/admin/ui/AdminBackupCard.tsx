@@ -17,7 +17,7 @@ export function AdminBackupCard(props: AdminBackupCardProps): JSX.Element {
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Database Backup</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Create an instantaneous snapshot of the SQLite database
             </p>
           </div>
@@ -26,7 +26,7 @@ export function AdminBackupCard(props: AdminBackupCardProps): JSX.Element {
           type="button"
           variant="filled"
           size="sm"
-          class="text-xs"
+          class="text-sm"
           onClick={state.handleCreateBackup}
           disabled={state.isBackingUp()}
         >
@@ -37,7 +37,7 @@ export function AdminBackupCard(props: AdminBackupCardProps): JSX.Element {
 
       <Show when={state.lastBackupResult()}>
         {(msg) => (
-          <div class="mt-4 rounded-lg bg-purple-50 p-3 font-mono text-xs text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+          <div class="mt-4 rounded-lg bg-purple-50 p-3 font-mono text-sm text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
             {msg()}
           </div>
         )}

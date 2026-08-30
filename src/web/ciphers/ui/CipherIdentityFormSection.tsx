@@ -15,23 +15,23 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
 
   return (
     <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-      <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Identity Details</p>
+      <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Identity Details</p>
 
       {/* Name components */}
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div class="space-y-1 sm:col-span-1">
-          <Label for="cipher-identity-title" class="text-xs">
+          <Label for="cipher-identity-title" class="text-sm">
             Title
           </Label>
           <SelectSingleNative
             id="cipher-identity-title"
             valueSignal={state.titleSignal}
             getOptions={state.titleOptions}
-            class="h-9 text-xs py-1"
+            class="h-9 text-sm py-1"
           />
         </div>
         <div class="space-y-1 sm:col-span-1">
-          <Label for="cipher-identity-first-name" class="text-xs">
+          <Label for="cipher-identity-first-name" class="text-sm">
             First Name
           </Label>
           <InputS
@@ -39,11 +39,11 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="Alex"
             valueSignal={state.firstNameSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
         <div class="space-y-1 sm:col-span-1">
-          <Label for="cipher-identity-middle-name" class="text-xs">
+          <Label for="cipher-identity-middle-name" class="text-sm">
             Middle Name
           </Label>
           <InputS
@@ -51,11 +51,11 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="J."
             valueSignal={state.middleNameSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
         <div class="space-y-1 sm:col-span-1">
-          <Label for="cipher-identity-last-name" class="text-xs">
+          <Label for="cipher-identity-last-name" class="text-sm">
             Last Name
           </Label>
           <InputS
@@ -63,7 +63,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="Rivera"
             valueSignal={state.lastNameSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
       </div>
@@ -71,7 +71,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
       {/* Contact & Company */}
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div class="space-y-1">
-          <Label for="cipher-identity-company" class="text-xs">
+          <Label for="cipher-identity-company" class="text-sm">
             Company / Organization
           </Label>
           <InputS
@@ -79,11 +79,11 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="Acme Corp"
             valueSignal={state.companySignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
         <div class="space-y-1">
-          <Label for="cipher-identity-email" class="text-xs">
+          <Label for="cipher-identity-email" class="text-sm">
             Email
           </Label>
           <InputS
@@ -91,11 +91,11 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="email"
             placeholder="alex@acme.com"
             valueSignal={state.emailSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
         <div class="space-y-1">
-          <Label for="cipher-identity-phone" class="text-xs">
+          <Label for="cipher-identity-phone" class="text-sm">
             Phone
           </Label>
           <InputS
@@ -103,11 +103,11 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="tel"
             placeholder="+1 555-0199"
             valueSignal={state.phoneSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
         <div class="space-y-1">
-          <Label for="cipher-identity-username" class="text-xs">
+          <Label for="cipher-identity-username" class="text-sm">
             Username
           </Label>
           <InputS
@@ -115,21 +115,21 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="arivera"
             valueSignal={state.usernameSignal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
           />
         </div>
       </div>
 
       {/* Address */}
       <div class="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">Address</p>
+        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">Address</p>
         <div class="space-y-2">
           <InputS
             id="cipher-identity-address1"
             type="text"
             placeholder="Street Address Line 1"
             valueSignal={state.address1Signal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
             aria-label="Street Address Line 1"
           />
           <InputS
@@ -137,7 +137,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="Street Address Line 2"
             valueSignal={state.address2Signal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
             aria-label="Street Address Line 2"
           />
           <InputS
@@ -145,7 +145,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
             type="text"
             placeholder="Street Address Line 3"
             valueSignal={state.address3Signal}
-            class="h-9 w-full text-xs"
+            class="h-9 w-full text-sm"
             aria-label="Street Address Line 3"
           />
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -154,7 +154,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
               type="text"
               placeholder="City"
               valueSignal={state.citySignal}
-              class="h-9 w-full text-xs"
+              class="h-9 w-full text-sm"
               aria-label="City"
             />
             <InputS
@@ -162,7 +162,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
               type="text"
               placeholder="State / Province"
               valueSignal={state.stateSignal}
-              class="h-9 w-full text-xs"
+              class="h-9 w-full text-sm"
               aria-label="State / Province"
             />
             <InputS
@@ -170,7 +170,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
               type="text"
               placeholder="Postal Code"
               valueSignal={state.postalCodeSignal}
-              class="h-9 w-full text-xs"
+              class="h-9 w-full text-sm"
               aria-label="Postal Code"
             />
             <InputS
@@ -178,7 +178,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
               type="text"
               placeholder="Country"
               valueSignal={state.countrySignal}
-              class="h-9 w-full text-xs"
+              class="h-9 w-full text-sm"
               aria-label="Country"
             />
           </div>
@@ -187,12 +187,12 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
 
       {/* Official Identification */}
       <div class="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p class="font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
           Identification Numbers
         </p>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div class="space-y-1">
-            <Label for="cipher-identity-ssn" class="text-xs">
+            <Label for="cipher-identity-ssn" class="text-sm">
               SSN / National ID
             </Label>
             <div class="relative flex items-center">
@@ -201,7 +201,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                 type={state.isSsnRevealed() ? "text" : "password"}
                 placeholder="XXX-XX-XXXX"
                 valueSignal={state.ssnSignal}
-                class="h-9 w-full pr-14 text-xs font-mono"
+                class="h-9 w-full pr-14 text-sm font-mono"
               />
               <div class="absolute right-1 flex items-center">
                 <ButtonIcon
@@ -210,7 +210,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                   icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                   iconClass="size-3.5"
                   onClick={() => state.toggleSsnReveal()}
-                  class="h-7 px-1.5 text-xs text-slate-600 dark:text-slate-400"
+                  class="h-8 px-2 text-sm text-slate-600 dark:text-slate-400"
                   aria-label={state.isSsnRevealed() ? "Hide SSN" : "Show SSN"}
                 >
                   {state.isSsnRevealed() ? "Hide" : "Show"}
@@ -220,7 +220,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
           </div>
 
           <div class="space-y-1">
-            <Label for="cipher-identity-passport" class="text-xs">
+            <Label for="cipher-identity-passport" class="text-sm">
               Passport Number
             </Label>
             <div class="relative flex items-center">
@@ -229,7 +229,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                 type={state.isPassportRevealed() ? "text" : "password"}
                 placeholder="Passport #"
                 valueSignal={state.passportNumberSignal}
-                class="h-9 w-full pr-14 text-xs font-mono"
+                class="h-9 w-full pr-14 text-sm font-mono"
               />
               <div class="absolute right-1 flex items-center">
                 <ButtonIcon
@@ -238,7 +238,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
                   icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                   iconClass="size-3.5"
                   onClick={() => state.togglePassportReveal()}
-                  class="h-7 px-1.5 text-xs text-slate-600 dark:text-slate-400"
+                  class="h-8 px-2 text-sm text-slate-600 dark:text-slate-400"
                   aria-label={state.isPassportRevealed() ? "Hide Passport" : "Show Passport"}
                 >
                   {state.isPassportRevealed() ? "Hide" : "Show"}
@@ -248,7 +248,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
           </div>
 
           <div class="space-y-1">
-            <Label for="cipher-identity-license" class="text-xs">
+            <Label for="cipher-identity-license" class="text-sm">
               Driver's License
             </Label>
             <InputS
@@ -256,7 +256,7 @@ export function CipherIdentityFormSection(props: CipherIdentityFormSectionStateP
               type="text"
               placeholder="License #"
               valueSignal={state.licenseNumberSignal}
-              class="h-9 w-full text-xs font-mono"
+              class="h-9 w-full text-sm font-mono"
             />
           </div>
         </div>

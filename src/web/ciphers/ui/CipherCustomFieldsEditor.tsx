@@ -34,8 +34,8 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
   return (
     <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
       <div class="flex items-center justify-between">
-        <Label class="font-semibold text-slate-900 text-xs dark:text-slate-100">Custom Fields</Label>
-        <span class="text-[11px] text-slate-600 dark:text-slate-400">Additional metadata fields</span>
+        <Label class="font-semibold text-slate-900 text-sm dark:text-slate-100">Custom Fields</Label>
+        <span class="text-sm text-slate-600 dark:text-slate-400">Additional metadata fields</span>
       </div>
 
       <div class="space-y-3">
@@ -48,7 +48,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
                   placeholder="Field name"
                   value={field.name}
                   onInput={(e) => state.updateFieldName(idx(), e.currentTarget.value)}
-                  class="h-8 w-full text-xs"
+                  class="h-8 w-full text-sm"
                   aria-label={`Field name ${idx() + 1}`}
                 />
               </div>
@@ -60,7 +60,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
                     <Button
                       variant={field.value === "true" ? "filledGreen" : "outline"}
                       size="sm"
-                      class="h-8 w-full text-xs"
+                      class="h-8 w-full text-sm"
                       onClick={() => state.updateFieldValue(idx(), field.value === "true" ? "false" : "true")}
                     >
                       {field.value === "true" ? "Enabled (true)" : "Disabled (false)"}
@@ -72,7 +72,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
                     placeholder="Field value"
                     value={field.value}
                     onInput={(e) => state.updateFieldValue(idx(), e.currentTarget.value)}
-                    class="h-8 w-full text-xs"
+                    class="h-8 w-full text-sm"
                     aria-label={`Field value ${idx() + 1}`}
                   />
                 </Show>
@@ -80,7 +80,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
 
               <div class="flex items-center gap-1.5 sm:w-auto">
                 <select
-                  class="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-800 focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  class="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   value={String(field.type)}
                   onChange={(e) =>
                     state.updateFieldType(idx(), Number.parseInt(e.currentTarget.value, 10) as 0 | 1 | 2 | 3)
@@ -116,7 +116,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
             placeholder="New field label..."
             value={state.newFieldName.get()}
             onInput={(e) => state.newFieldName.set(e.currentTarget.value)}
-            class="h-8 w-full text-xs"
+            class="h-8 w-full text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
@@ -134,7 +134,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
             valueSignal={state.newFieldType}
             getOptions={fieldTypeOptions}
             valueText={fieldTypeLabel}
-            class="h-8 text-xs py-1"
+            class="h-8 text-sm py-1"
           />
         </div>
         <ButtonIcon
@@ -143,7 +143,7 @@ export function CipherCustomFieldsEditor(props: CipherCustomFieldsEditorStatePro
           icon={vaultSvgIcons.plus}
           iconClass="size-3.5"
           onClick={() => state.addField()}
-          class="h-8 shrink-0 text-xs"
+          class="h-8 shrink-0 text-sm"
         >
           Add Field
         </ButtonIcon>

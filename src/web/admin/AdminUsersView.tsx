@@ -2,6 +2,8 @@ import { For, Show } from "solid-js"
 import { Input } from "#ui/input/input/Input.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import type { AdminShellState } from "./AdminShellState.js"
 import { AdminStatusBadge } from "./AdminStatusBadge.jsx"
 import { adminUsersViewStateCreate } from "./adminUsersViewStateCreate.js"
@@ -18,7 +20,8 @@ export function AdminUsersView(p: { state: AdminShellState }) {
           </h2>
           <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Manage access, roles, and account status.</p>
         </div>
-        <Button variant="filledBlue" onClick={state.invite}>
+        <Button variant="filledBlue" class="h-8" onClick={state.invite}>
+          <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
           Invite user
         </Button>
       </div>
@@ -45,7 +48,8 @@ export function AdminUsersView(p: { state: AdminShellState }) {
               </div>
               <AdminStatusBadge status={user.role} />
               <AdminStatusBadge status={user.status} />
-              <Button variant="outline" size="sm" onClick={state.open(user.id)}>
+              <Button variant="outline" size="sm" class="h-8" onClick={state.open(user.id)}>
+                <Icon path={vaultSvgIcons.eye} class="mr-1.5 size-3.5" />
                 View details
               </Button>
             </CardWrapper>

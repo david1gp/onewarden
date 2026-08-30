@@ -12,10 +12,10 @@ export function CipherSecureNoteFormSection(props: CipherSecureNoteFormSectionSt
 
   return (
     <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-      <p class="font-semibold text-slate-900 text-xs dark:text-slate-100">Secure Note Content</p>
+      <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Secure Note Content</p>
 
       <div class="space-y-1">
-        <Label for="cipher-secure-note-content" class="text-xs">
+        <Label for="cipher-secure-note-content" class="text-sm">
           Notes / Secret Content
         </Label>
         <TextareaS
@@ -23,7 +23,7 @@ export function CipherSecureNoteFormSection(props: CipherSecureNoteFormSectionSt
           placeholder="Enter confidential notes, recovery seeds, configuration, or keys..."
           valueSignal={state.notesSignal}
           rows={8}
-          class="w-full text-xs font-mono leading-relaxed"
+          class="w-full text-sm font-mono leading-relaxed"
         />
       </div>
     </CardWrapper>

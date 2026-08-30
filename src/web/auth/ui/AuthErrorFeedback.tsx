@@ -11,7 +11,7 @@ export function AuthErrorFeedback(props: AuthErrorFeedbackProps): JSX.Element {
     <div
       role="alert"
       class={classMerge(
-        "rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
+        "rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300",
         props.class,
       )}
     >

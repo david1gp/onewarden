@@ -17,7 +17,7 @@ export function AdminDiagnosticsCard(props: AdminDiagnosticsCardProps): JSX.Elem
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">System Diagnostics</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Server runtime status, database details, and environment capabilities
             </p>
           </div>
@@ -26,7 +26,7 @@ export function AdminDiagnosticsCard(props: AdminDiagnosticsCardProps): JSX.Elem
           type="button"
           variant="outline"
           size="sm"
-          class="text-xs"
+          class="text-sm"
           onClick={state.loadDiagnostics}
           disabled={state.isLoading()}
         >
@@ -39,28 +39,28 @@ export function AdminDiagnosticsCard(props: AdminDiagnosticsCardProps): JSX.Elem
         <Show
           when={state.diagnostics()}
           fallback={
-            <div class="py-12 text-center text-xs text-slate-500">
+            <div class="py-12 text-center text-sm text-slate-500">
               {state.isLoading() ? "Loading diagnostic info..." : "Diagnostics unavailable."}
             </div>
           }
         >
           {(diagnostics) => (
-            <div class="space-y-4 text-xs">
+            <div class="space-y-4 text-sm">
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
-                  <span class="text-[11px] text-slate-500">Database Engine</span>
+                  <span class="text-sm text-slate-500">Database Engine</span>
                   <p class="mt-0.5 font-semibold text-slate-900 dark:text-slate-100">
                     {diagnostics().db_type ?? "Unknown"}
                   </p>
                 </div>
                 <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
-                  <span class="text-[11px] text-slate-500">Release</span>
+                  <span class="text-sm text-slate-500">Release</span>
                   <p class="mt-0.5 font-semibold text-slate-900 dark:text-slate-100">
                     {diagnostics().current_release ?? "Unknown"}
                   </p>
                 </div>
                 <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
-                  <span class="text-[11px] text-slate-500">Web Vault</span>
+                  <span class="text-sm text-slate-500">Web Vault</span>
                   <p class="mt-0.5 font-semibold text-slate-900 dark:text-slate-100">
                     {diagnostics().web_vault_enabled ? "Enabled" : "Disabled"}
                   </p>
@@ -68,8 +68,8 @@ export function AdminDiagnosticsCard(props: AdminDiagnosticsCardProps): JSX.Elem
               </div>
 
               <div class="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
-                <h3 class="mb-3 font-semibold text-xs text-slate-800 dark:text-slate-200">Runtime Details</h3>
-                <div class="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] dark:border-slate-800 dark:bg-slate-950">
+                <h3 class="mb-3 font-semibold text-sm text-slate-800 dark:text-slate-200">Runtime Details</h3>
+                <div class="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm dark:border-slate-800 dark:bg-slate-950">
                   <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
                     <span class="text-slate-600 dark:text-slate-400">Database version</span>
                     <span class="font-semibold text-slate-900 dark:text-slate-200">

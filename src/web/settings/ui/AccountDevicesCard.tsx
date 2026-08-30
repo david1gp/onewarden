@@ -21,7 +21,7 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">
               Authorized Devices &amp; Sessions
             </h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Active clients currently authorized to access your vault
             </p>
           </div>
@@ -31,7 +31,7 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs"
+            class="h-8 text-sm"
             onClick={state.loadDevices}
             disabled={state.isLoading()}
           >
@@ -42,9 +42,10 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs text-red-600 dark:text-red-400"
+            class="h-8 text-sm text-red-600 dark:text-red-400"
             onClick={state.openDeauthorizeDialog}
           >
+            <Icon path={vaultSvgIcons.server} class="mr-1.5 size-3.5" />
             Deauthorize All
           </Button>
         </div>
@@ -52,8 +53,8 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
 
       <Show when={state.isDeauthorizeDialogOpen()}>
         <div class="my-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40">
-          <h3 class="font-semibold text-xs text-red-900 dark:text-red-200">Deauthorize All Sessions</h3>
-          <p class="mt-1 text-[11px] text-red-800 dark:text-red-300">
+          <h3 class="font-semibold text-sm text-red-900 dark:text-red-200">Deauthorize All Sessions</h3>
+          <p class="mt-1 text-sm text-red-800 dark:text-red-300">
             This will log out all other active web sessions, desktop apps, mobile devices, and browser extensions.
           </p>
           <div class="mt-3 flex max-w-md items-center gap-2">
@@ -62,19 +63,21 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
               placeholder="Master password"
               value={state.masterPasswordInput()}
               onInput={(e) => state.setMasterPasswordInput(e.currentTarget.value)}
-              class="h-8 w-full rounded-md border-red-300 bg-white px-2.5 text-xs dark:border-red-800 dark:bg-slate-900"
+              class="h-8 w-full rounded-md border-red-300 bg-white px-2.5 text-sm dark:border-red-800 dark:bg-slate-900"
             />
             <Button
               type="button"
               variant="filled"
               size="sm"
-              class="h-8 shrink-0 text-xs bg-red-600 hover:bg-red-700 text-white"
+              class="h-8 shrink-0 text-sm bg-red-600 hover:bg-red-700 text-white"
               onClick={state.handleDeauthorizeAll}
               disabled={state.isDeauthorizing()}
             >
+              <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
               {state.isDeauthorizing() ? "Revoking..." : "Confirm Deauthorize"}
             </Button>
-            <Button type="button" variant="ghost" size="sm" class="h-8 text-xs" onClick={state.closeDeauthorizeDialog}>
+            <Button type="button" variant="ghost" size="sm" class="h-8 text-sm" onClick={state.closeDeauthorizeDialog}>
+              <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
               Cancel
             </Button>
           </div>
@@ -85,7 +88,7 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
         <Show
           when={state.devices().length > 0}
           fallback={
-            <div class="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
+            <div class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
               {state.isLoading() ? "Loading active devices..." : "No active devices found."}
             </div>
           }
@@ -100,26 +103,26 @@ export function AccountDevicesCard(props: AccountDevicesCardProps): JSX.Element 
                     </div>
                     <div>
                       <div class="flex items-center gap-2">
-                        <span class="font-medium text-xs text-slate-900 dark:text-slate-100">
+                        <span class="font-medium text-sm text-slate-900 dark:text-slate-100">
                           {dev.name || state.deviceTypeLabel(dev.type)}
                         </span>
                         <Show when={dev.isCurrent}>
                           <Badge
                             variant="subtle"
-                            class="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10px]"
+                            class="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-sm"
                           >
                             Current Device
                           </Badge>
                         </Show>
                       </div>
-                      <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                         <span>{state.deviceTypeLabel(dev.type)}</span>
                         <span>•</span>
                         <span>IP: {dev.ip ?? "Unknown"}</span>
                       </div>
                     </div>
                   </div>
-                  <div class="text-right text-[11px] text-slate-500 dark:text-slate-400">
+                  <div class="text-right text-sm text-slate-500 dark:text-slate-400">
                     <div>Added: {new Date(dev.creationDate).toLocaleDateString()}</div>
                   </div>
                 </div>

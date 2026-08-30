@@ -20,7 +20,7 @@ export function AdminOrganizationsCard(props: AdminOrganizationsCardProps): JSX.
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Organizations</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               View and manage organizations hosted on this server
             </p>
           </div>
@@ -29,7 +29,7 @@ export function AdminOrganizationsCard(props: AdminOrganizationsCardProps): JSX.
           type="button"
           variant="outline"
           size="sm"
-          class="text-xs"
+          class="text-sm"
           onClick={state.loadOrganizations}
           disabled={state.isLoading()}
         >
@@ -42,7 +42,7 @@ export function AdminOrganizationsCard(props: AdminOrganizationsCardProps): JSX.
         <Show
           when={state.organizations().length > 0}
           fallback={
-            <div class="py-12 text-center text-xs text-slate-500">
+            <div class="py-12 text-center text-sm text-slate-500">
               {state.isLoading() ? "Loading organizations..." : "No organizations created on this instance yet."}
             </div>
           }
@@ -50,10 +50,10 @@ export function AdminOrganizationsCard(props: AdminOrganizationsCardProps): JSX.
           <div class="divide-y divide-slate-100 dark:divide-slate-800/80">
             <For each={state.organizations()}>
               {(org) => (
-                <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-xs">
+                <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-sm">
                   <div>
                     <span class="font-semibold text-slate-900 dark:text-slate-100">{org.name}</span>
-                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                       <span>ID: {org.id}</span>
                       <Show when={org.user_count !== undefined}>
                         <span>•</span>
@@ -70,7 +70,7 @@ export function AdminOrganizationsCard(props: AdminOrganizationsCardProps): JSX.
                     type="button"
                     variant="outline"
                     size="sm"
-                    class="self-end text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 sm:self-center"
+                    class="self-end text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 sm:self-center"
                     onClick={() => state.handleDeleteOrganization(org)}
                     disabled={state.isDeleting() && state.deleteTargetId() === org.id}
                   >

@@ -34,13 +34,13 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
         <Show
           when={state.email()}
           fallback={
-            <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Enter your Master Password or use biometric passkey to unlock encrypted credentials.
             </p>
           }
         >
           {(email) => (
-            <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Logged in as <span class="font-medium text-slate-700 dark:text-slate-200">{email()}</span>. Enter your
               Master Password to unlock.
             </p>
@@ -52,7 +52,7 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
 
       <form onSubmit={state.handleSubmit} class="space-y-4">
         <div>
-          <Label for="master-password" class="block text-xs text-slate-700 dark:text-slate-300">
+          <Label for="master-password" class="block text-sm text-slate-700 dark:text-slate-300">
             Master Password
           </Label>
           <Input
@@ -63,7 +63,7 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
             value={state.masterPassword()}
             onInput={(e) => state.setMasterPassword(e.currentTarget.value)}
             required
-            class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+            class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
           />
         </div>
 
@@ -71,9 +71,10 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
           <Button
             type="submit"
             variant="filledBlue"
-            class="w-full justify-center text-xs font-semibold"
+            class="h-8 w-full justify-center text-sm font-semibold"
             disabled={state.isSubmitting()}
           >
+            <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
             <Show when={state.isSubmitting()} fallback="Unlock Vault">
               Decrypting Vault...
             </Show>
@@ -83,7 +84,7 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
             <ButtonIcon
               type="button"
               variant="outline"
-              class="w-full justify-center text-xs"
+              class="w-full justify-center text-sm"
               icon={vaultSvgIcons.shieldCheck}
               iconClass="size-3.5 text-blue-600 dark:text-blue-400 fill-current dark:fill-current"
               disabled={state.isSubmitting()}
@@ -97,10 +98,11 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
             <Button
               type="button"
               variant="outline"
-              class="w-full justify-center text-xs text-slate-600 dark:text-slate-400"
+              class="h-8 w-full justify-center text-sm text-slate-600 dark:text-slate-400"
               disabled={state.isSubmitting()}
               onClick={state.handleLogout}
             >
+              <Icon path={vaultSvgIcons.arrowLeft} class="mr-1.5 size-3.5" />
               Log Out of Account
             </Button>
           </Show>
@@ -108,7 +110,7 @@ export function AuthUnlockCard(props: AuthUnlockCardProps): JSX.Element {
       </form>
 
       <Show when={state.footerNote()}>
-        <div class="border-t border-slate-100 pt-3 text-center text-[11px] text-slate-600 dark:border-slate-800 dark:text-slate-400">
+        <div class="border-t border-slate-100 pt-3 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
           {state.footerNote()}
         </div>
       </Show>

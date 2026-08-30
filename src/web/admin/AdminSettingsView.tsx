@@ -3,6 +3,8 @@ import { Checkbox } from "#ui/input/check/Checkbox.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import type { AdminSettingsOverride } from "./adminSettingsSchema.js"
 import type { AdminShellState } from "./AdminShellState.js"
 import { adminSettingsViewStateCreate } from "./adminSettingsViewStateCreate.js"
@@ -28,7 +30,8 @@ export function AdminSettingsView(p: { state: AdminShellState }) {
           </h2>
           <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Server policy and authentication controls.</p>
         </div>
-        <Button variant="outline" onClick={state.reset}>
+        <Button variant="outline" class="h-8" onClick={state.reset}>
+          <Icon path={vaultSvgIcons.refresh} class="mr-1.5 size-3.5" />
           Reset overrides
         </Button>
       </div>

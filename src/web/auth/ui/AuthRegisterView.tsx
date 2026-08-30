@@ -21,7 +21,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
             <Icon path={vaultSvgIcons.shieldCheck} class="size-7 text-blue-600 dark:text-blue-400" />
           </div>
           <h1 class="mt-4 font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">Create an Account</h1>
-          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Get started with end-to-end encrypted password and credential storage.
           </p>
         </div>
@@ -32,7 +32,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
           {(msg) => (
             <div
               role="status"
-              class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+              class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
               {msg()}
             </div>
@@ -41,7 +41,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
 
         <form onSubmit={state.handleSubmit} class="space-y-4">
           <div>
-            <Label for="register-email" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="register-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Email Address *
             </Label>
             <Input
@@ -52,12 +52,12 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
               value={state.email()}
               onInput={(e) => state.setEmail(e.currentTarget.value)}
               required
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
           <div>
-            <Label for="register-name" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="register-name" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Your Name (Optional)
             </Label>
             <Input
@@ -67,12 +67,12 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
               placeholder="Alice Smith"
               value={state.name()}
               onInput={(e) => state.setName(e.currentTarget.value)}
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
           <div>
-            <Label for="register-password" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="register-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Master Password *
             </Label>
             <div class="relative mt-1">
@@ -84,7 +84,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
                 value={state.masterPassword()}
                 onInput={(e) => state.setMasterPassword(e.currentTarget.value)}
                 required
-                class="h-9 w-full rounded-md border-slate-200 bg-slate-50 pr-10 pl-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+                class="h-9 w-full rounded-md border-slate-200 bg-slate-50 pr-10 pl-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
               />
               <ButtonIcon
                 type="button"
@@ -99,7 +99,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
           </div>
 
           <div>
-            <Label for="register-confirm-password" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="register-confirm-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Confirm Master Password *
             </Label>
             <Input
@@ -110,12 +110,12 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
               value={state.confirmPassword()}
               onInput={(e) => state.setConfirmPassword(e.currentTarget.value)}
               required
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
           <div>
-            <Label for="register-hint" class="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Label for="register-hint" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Master Password Hint (Optional)
             </Label>
             <Input
@@ -124,7 +124,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
               placeholder="A reminder only you will understand"
               value={state.passwordHint()}
               onInput={(e) => state.setPasswordHint(e.currentTarget.value)}
-              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-xs focus:bg-white dark:border-slate-700 dark:bg-slate-800"
+              class="mt-1 h-9 w-full rounded-md border-slate-200 bg-slate-50 px-3 text-sm focus:bg-white dark:border-slate-700 dark:bg-slate-800"
             />
           </div>
 
@@ -132,9 +132,10 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
             <Button
               type="submit"
               variant="filledBlue"
-              class="w-full justify-center text-xs font-semibold"
+              class="h-8 w-full justify-center text-sm font-semibold"
               disabled={state.isSubmitting()}
             >
+              <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
               <Show when={state.isSubmitting()} fallback="Create Account">
                 Generating Keys & Creating Account...
               </Show>
@@ -142,7 +143,7 @@ export function AuthRegisterView(props: AuthRegisterViewProps): JSX.Element {
           </div>
         </form>
 
-        <div class="border-t border-slate-100 pt-4 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
+        <div class="border-t border-slate-100 pt-4 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
           Already have an account?{" "}
           <LinkTextExternal href="/login" class="font-semibold">
             Log In

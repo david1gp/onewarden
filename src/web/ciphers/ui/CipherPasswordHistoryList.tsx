@@ -14,7 +14,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
       <Show
         when={state.entries().length > 0}
         fallback={
-          <div class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
+          <div class="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
             No previous passwords recorded for this cipher item.
           </div>
         }
@@ -22,12 +22,12 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
         <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
           <For each={state.entries()}>
             {(entry, index) => (
-              <li class="flex items-center justify-between gap-3 p-3 text-xs">
+              <li class="flex items-center justify-between gap-3 p-3 text-sm">
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
                     {state.isRevealed(index()) ? entry.password : "••••••••••••••••••••"}
                   </p>
-                  <p class="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                  <p class="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
                     Last used: {state.formatDate(entry.lastUsedDate)}
                   </p>
                 </div>
@@ -35,7 +35,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
                   <ButtonIcon
                     variant="ghost"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     icon={state.isRevealed(index()) ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
                     iconClass="size-3.5 text-slate-600 dark:text-slate-400"
                     onClick={() => state.toggleReveal(index())}
@@ -46,7 +46,7 @@ export function CipherPasswordHistoryList(props: CipherPasswordHistoryListStateP
                   <ButtonIcon
                     variant="subtle"
                     size="sm"
-                    class="text-xs"
+                    class="h-8 text-sm"
                     icon={state.isCopied(index()) ? vaultSvgIcons.check : vaultSvgIcons.copy}
                     iconClass={`size-3.5 ${state.isCopied(index()) ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"}`}
                     onClick={() => state.copyPassword(index(), entry.password)}

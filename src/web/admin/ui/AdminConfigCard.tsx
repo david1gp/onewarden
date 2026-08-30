@@ -18,7 +18,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
           </div>
           <div>
             <h2 class="font-semibold text-base text-slate-900 dark:text-slate-100">Server Configuration</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
               Inspect and update runtime server settings and feature toggles
             </p>
           </div>
@@ -28,7 +28,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs"
+            class="text-sm"
             onClick={state.loadConfig}
             disabled={state.isLoading()}
           >
@@ -39,7 +39,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
             type="button"
             variant="outline"
             size="sm"
-            class="text-xs text-red-600 dark:text-red-400"
+            class="text-sm text-red-600 dark:text-red-400"
             onClick={state.handleDeleteConfig}
             disabled={state.isDeleting()}
           >
@@ -50,7 +50,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
 
       <form onSubmit={state.handleSaveConfig} class="mt-6 space-y-4">
         <div>
-          <label for="admin-config-json" class="block font-medium text-xs text-slate-700 dark:text-slate-300">
+          <label for="admin-config-json" class="block font-medium text-sm text-slate-700 dark:text-slate-300">
             Configuration (JSON Editor)
           </label>
           <Textarea
@@ -58,7 +58,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
             rows={12}
             value={state.configJsonInput()}
             onInput={(e) => state.setConfigJsonInput(e.currentTarget.value)}
-            class="mt-1 font-mono text-xs"
+            class="mt-1 font-mono text-sm"
           />
         </div>
 
@@ -67,7 +67,7 @@ export function AdminConfigCard(props: AdminConfigCardProps): JSX.Element {
             type="submit"
             variant="filled"
             size="sm"
-            class="text-xs"
+            class="text-sm"
             disabled={state.isSaving() || state.isLoading()}
           >
             {state.isSaving() ? "Saving Configuration..." : "Save Configuration"}

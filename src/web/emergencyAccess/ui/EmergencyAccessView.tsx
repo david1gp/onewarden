@@ -28,18 +28,18 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
       <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 class="font-bold text-2xl text-slate-900 tracking-tight dark:text-slate-50">Emergency Access</h1>
-          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Designate trusted emergency contacts to access your vault or take over your account in case of emergency
           </p>
         </div>
         <div class="flex items-center gap-2">
           <Show when={props.onNavigateToVault}>
-            <Button type="button" variant="outline" size="sm" class="text-xs" onClick={state.handleBackToVault}>
+            <Button type="button" variant="outline" size="sm" class="h-8 text-sm" onClick={state.handleBackToVault}>
               <Icon path={vaultSvgIcons.arrowLeft} class="mr-1.5 size-3.5" />
               Back to Vault
             </Button>
           </Show>
-          <Button type="button" variant="filled" size="sm" class="text-xs" onClick={state.openInvite}>
+          <Button type="button" variant="filled" size="sm" class="h-8 text-sm" onClick={state.openInvite}>
             <Icon path={vaultSvgIcons.userPlus} class="mr-1.5 size-3.5" />
             Invite Contact
           </Button>
@@ -51,7 +51,7 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
         {(msg) => (
           <div
             role="alert"
-            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+            class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
           >
             {msg()}
           </div>
@@ -62,7 +62,7 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
         {(msg) => (
           <div
             role="status"
-            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+            class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
           >
             {msg()}
           </div>
@@ -80,14 +80,14 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                 variant="ghost"
                 size="sm"
                 onClick={() => state.setCurrentTab(tab.id)}
-                class={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold transition-colors ${
+                class={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
                   state.currentTab() === tab.id
                     ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
                     : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
                 <span>{tab.label}</span>
-                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] dark:bg-slate-800">{tab.count()}</span>
+                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-800">{tab.count()}</span>
               </Button>
             )}
           </For>
@@ -99,7 +99,7 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
             <Show
               when={state.trustedContacts().length > 0}
               fallback={
-                <div class="py-12 text-center text-xs text-slate-600 dark:text-slate-400">
+                <div class="py-12 text-center text-sm text-slate-600 dark:text-slate-400">
                   {state.isLoading()
                     ? "Loading emergency contacts..."
                     : "You haven't designated any emergency contacts yet. Click 'Invite Contact' to add one."}
@@ -116,20 +116,20 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                         </div>
                         <div class="min-w-0">
                           <div class="flex items-center gap-2">
-                            <span class="font-semibold text-xs text-slate-900 dark:text-slate-100">
+                            <span class="font-semibold text-sm text-slate-900 dark:text-slate-100">
                               {contact.name || contact.email}
                             </span>
-                            <Badge variant="subtle" class={`text-[10px] ${state.statusBadgeClass(contact.status)}`}>
+                            <Badge variant="subtle" class={`text-sm ${state.statusBadgeClass(contact.status)}`}>
                               {state.statusLabel(contact.status)}
                             </Badge>
                             <Badge
                               variant="subtle"
-                              class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px]"
+                              class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-sm"
                             >
                               {contact.type === 0 ? "View" : "Takeover"}
                             </Badge>
                           </div>
-                          <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                          <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                             <span>Email: {contact.email}</span>
                             <span>•</span>
                             <span>Wait time: {contact.waitTimeDays} days</span>
@@ -144,10 +144,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="outline"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             onClick={() => state.handleReinviteContact(contact)}
                             disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                           >
+                            <Icon path={vaultSvgIcons.send} class="mr-1.5 size-3.5" />
                             Resend Invite
                           </Button>
                         </Show>
@@ -157,10 +158,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             onClick={() => state.handleConfirmContact(contact)}
                             disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                           >
+                            <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                             Confirm Contact
                           </Button>
                         </Show>
@@ -170,20 +172,22 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            class="h-8 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={() => state.handleApproveRecovery(contact)}
                             disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                           >
+                            <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                             Approve Access
                           </Button>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            class="text-xs text-red-600 dark:text-red-400"
+                            class="h-8 text-sm text-red-600 dark:text-red-400"
                             onClick={() => state.handleRejectRecovery(contact)}
                             disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                           >
+                            <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                             Reject
                           </Button>
                         </Show>
@@ -193,10 +197,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="outline"
                             size="sm"
-                            class="text-xs text-red-600 dark:text-red-400"
+                            class="h-8 text-sm text-red-600 dark:text-red-400"
                             onClick={() => state.handleRejectRecovery(contact)}
                             disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                           >
+                            <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                             Revoke Access
                           </Button>
                         </Show>
@@ -205,19 +210,21 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                           type="button"
                           variant="outline"
                           size="sm"
-                          class="text-xs"
+                          class="h-8 text-sm"
                           onClick={() => state.handleOpenEdit(contact)}
                         >
+                          <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
                           Edit
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          class="text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          class="h-8 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                           onClick={() => state.handleDeleteContact(contact)}
                           disabled={state.isActionRunning() && state.actionTargetId() === contact.id}
                         >
+                          <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                           Remove
                         </Button>
                       </div>
@@ -235,7 +242,7 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
             <Show
               when={state.grantedVaults().length > 0}
               fallback={
-                <div class="py-12 text-center text-xs text-slate-600 dark:text-slate-400">
+                <div class="py-12 text-center text-sm text-slate-600 dark:text-slate-400">
                   {state.isLoading()
                     ? "Loading granted emergency accesses..."
                     : "No one has designated you as an emergency contact yet."}
@@ -252,20 +259,20 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                         </div>
                         <div class="min-w-0">
                           <div class="flex items-center gap-2">
-                            <span class="font-semibold text-xs text-slate-900 dark:text-slate-100">
+                            <span class="font-semibold text-sm text-slate-900 dark:text-slate-100">
                               {vault.name || vault.email}
                             </span>
-                            <Badge variant="subtle" class={`text-[10px] ${state.statusBadgeClass(vault.status)}`}>
+                            <Badge variant="subtle" class={`text-sm ${state.statusBadgeClass(vault.status)}`}>
                               {state.statusLabel(vault.status)}
                             </Badge>
                             <Badge
                               variant="subtle"
-                              class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px]"
+                              class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-sm"
                             >
                               {vault.type === 0 ? "View Access" : "Takeover Access"}
                             </Badge>
                           </div>
-                          <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                          <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                             <span>Grantor Email: {vault.email}</span>
                             <span>•</span>
                             <span>Wait time: {vault.waitTimeDays} days</span>
@@ -280,10 +287,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs"
+                            class="h-8 text-sm"
                             onClick={() => state.handleAcceptInvite(vault)}
                             disabled={state.isActionRunning() && state.actionTargetId() === vault.id}
                           >
+                            <Icon path={vaultSvgIcons.check} class="mr-1.5 size-3.5" />
                             Accept Invitation
                           </Button>
                         </Show>
@@ -293,10 +301,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                            class="h-8 text-sm bg-amber-600 hover:bg-amber-700 text-white"
                             onClick={() => state.handleInitiateAccess(vault)}
                             disabled={state.isActionRunning() && state.actionTargetId() === vault.id}
                           >
+                            <Icon path={vaultSvgIcons.restore} class="mr-1.5 size-3.5" />
                             Initiate Access Recovery
                           </Button>
                         </Show>
@@ -306,9 +315,10 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                            class="h-8 text-sm bg-blue-600 hover:bg-blue-700 text-white"
                             onClick={() => state.handleOpenVaultView(vault)}
                           >
+                            <Icon path={vaultSvgIcons.eye} class="mr-1.5 size-3.5" />
                             View Vault Items
                           </Button>
                         </Show>
@@ -318,9 +328,10 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                             type="button"
                             variant="filled"
                             size="sm"
-                            class="text-xs bg-red-600 hover:bg-red-700 text-white"
+                            class="h-8 text-sm bg-red-600 hover:bg-red-700 text-white"
                             onClick={() => state.handleOpenTakeover(vault)}
                           >
+                            <Icon path={vaultSvgIcons.key} class="mr-1.5 size-3.5" />
                             Take Over Account
                           </Button>
                         </Show>
@@ -329,10 +340,11 @@ export function EmergencyAccessView(props: EmergencyAccessViewProps): JSX.Elemen
                           type="button"
                           variant="outline"
                           size="sm"
-                          class="text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          class="h-8 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                           onClick={() => state.handleDeleteContact(vault)}
                           disabled={state.isActionRunning() && state.actionTargetId() === vault.id}
                         >
+                          <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                           Remove
                         </Button>
                       </div>

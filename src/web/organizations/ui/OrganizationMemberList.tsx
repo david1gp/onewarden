@@ -25,7 +25,7 @@ export function OrganizationMemberList(props: OrganizationMemberListProps): JSX.
             size="sm"
             icon={vaultSvgIcons.plus}
             onClick={state.onInviteClick}
-            class="h-7 gap-1 px-2 text-xs"
+            class="h-7 gap-1 px-2 text-sm"
             iconClass="size-3.5 mr-1"
             aria-label="Invite members"
           >
@@ -42,7 +42,7 @@ export function OrganizationMemberList(props: OrganizationMemberListProps): JSX.
             placeholder="Search members..."
             value={state.searchQuery()}
             onInput={(e) => state.handleSearchChange(e.currentTarget.value)}
-            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-xs placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
+            class="h-8 w-full rounded-md border-slate-200 bg-slate-50 pl-8 pr-3 text-sm placeholder:text-slate-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
           />
         </div>
       </div>
@@ -52,7 +52,7 @@ export function OrganizationMemberList(props: OrganizationMemberListProps): JSX.
         <For
           each={state.filteredMembers()}
           fallback={
-            <div class="p-6 text-center text-slate-400 text-xs">
+            <div class="p-6 text-center text-slate-400 text-sm">
               <p>No members found.</p>
             </div>
           }
@@ -69,7 +69,7 @@ export function OrganizationMemberList(props: OrganizationMemberListProps): JSX.
                 }`}
               >
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-semibold text-xs dark:bg-slate-800 dark:text-slate-300">
+                  <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-semibold text-sm dark:bg-slate-800 dark:text-slate-300">
                     {mem.name ? mem.name.charAt(0).toUpperCase() : mem.email.charAt(0).toUpperCase()}
                   </div>
                   <div class="min-w-0">
@@ -77,15 +77,15 @@ export function OrganizationMemberList(props: OrganizationMemberListProps): JSX.
                       {mem.name || mem.email}
                     </p>
                     <Show when={mem.name}>
-                      <p class="truncate text-slate-600 text-xs dark:text-slate-400">{mem.email}</p>
+                      <p class="truncate text-slate-600 text-sm dark:text-slate-400">{mem.email}</p>
                     </Show>
                   </div>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1 pl-2">
-                  <Badge variant={statusInfo().variant} class="text-[10px] px-1.5 py-0">
+                  <Badge variant={statusInfo().variant} class="text-sm px-1.5 py-0">
                     {statusInfo().label}
                   </Badge>
-                  <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">
                     {state.resolveMemberRole(mem.type)}
                   </span>
                 </div>

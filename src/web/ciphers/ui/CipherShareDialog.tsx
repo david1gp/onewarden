@@ -9,6 +9,7 @@ import { buttonCvaIconOnly, buttonVariant } from "#ui/interactive/button/buttonC
 import { buttonIconCva } from "#ui/interactive/button/buttonIconCva.js"
 import { classesDialogContentMerge, classesDialogOverlayMerge } from "#ui/interactive/dialog/classesDialogContent.js"
 import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { type CipherShareDialogStateProps, cipherShareDialogStateCreate } from "./cipherShareDialogStateCreate.js"
 
 export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Element {
@@ -40,14 +41,14 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
           <form onSubmit={state.handleShare} class="space-y-4 p-5">
             <Show when={state.errorMessage()}>
               {(err) => (
-                <div class="rounded-md border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
+                <div class="rounded-md border border-rose-200 bg-rose-50 p-2.5 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
                   {err()}
                 </div>
               )}
             </Show>
 
             <div class="space-y-1">
-              <Label for="cipher-share-org-id" class="text-xs font-medium">
+              <Label for="cipher-share-org-id" class="text-sm font-medium">
                 Organization ID <LabelAsterix />
               </Label>
               <InputS
@@ -55,14 +56,14 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
                 type="text"
                 placeholder="e.g. org-123456"
                 valueSignal={state.organizationId}
-                class="h-9 w-full text-xs"
+                class="h-9 w-full text-sm"
                 required
                 disabled={state.isAlreadyShared()}
               />
             </div>
 
             <div class="space-y-1">
-              <Label for="cipher-share-collections" class="text-xs font-medium">
+              <Label for="cipher-share-collections" class="text-sm font-medium">
                 Collection IDs (comma-separated)
               </Label>
               <InputS
@@ -70,9 +71,9 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
                 type="text"
                 placeholder="e.g. col-dev, col-general"
                 valueSignal={state.collectionIdsText}
-                class="h-9 w-full text-xs"
+                class="h-9 w-full text-sm"
               />
-              <p class="text-[11px] text-slate-600 dark:text-slate-400">
+              <p class="text-sm text-slate-600 dark:text-slate-400">
                 Specify one or more collection IDs that members of your organization can access.
               </p>
             </div>
@@ -82,19 +83,21 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
                 type="button"
                 variant="outline"
                 size="sm"
-                class="text-xs"
+                class="h-8 text-sm"
                 onClick={state.handleClose}
                 disabled={state.isSharing()}
               >
+                <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="filledBlue"
                 size="sm"
-                class="text-xs font-semibold"
+                class="h-8 text-sm font-semibold"
                 disabled={state.isSharing()}
               >
+                <Icon path={vaultSvgIcons.share} class="mr-1.5 size-3.5" />
                 {state.isSharing() ? "Saving..." : state.isAlreadyShared() ? "Update Collections" : "Share Item"}
               </Button>
             </div>

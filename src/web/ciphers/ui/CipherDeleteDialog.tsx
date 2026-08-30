@@ -6,6 +6,7 @@ import { buttonCvaIconOnly, buttonVariant } from "#ui/interactive/button/buttonC
 import { buttonIconCva } from "#ui/interactive/button/buttonIconCva.js"
 import { classesDialogContentMerge, classesDialogOverlayMerge } from "#ui/interactive/dialog/classesDialogContent.js"
 import { Icon } from "#ui/static/icon/Icon.jsx"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { type CipherDeleteDialogStateProps, cipherDeleteDialogStateCreate } from "./cipherDeleteDialogStateCreate.js"
 
 export function CipherDeleteDialog(props: CipherDeleteDialogStateProps): JSX.Element {
@@ -35,13 +36,13 @@ export function CipherDeleteDialog(props: CipherDeleteDialogStateProps): JSX.Ele
           <div class="space-y-4 p-5">
             <Show when={state.errorMessage()}>
               {(err) => (
-                <div class="rounded-md border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
+                <div class="rounded-md border border-rose-200 bg-rose-50 p-2.5 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300">
                   {err()}
                 </div>
               )}
             </Show>
 
-            <p class="text-xs text-slate-700 dark:text-slate-300">
+            <p class="text-sm text-slate-700 dark:text-slate-300">
               {state.isHard() ? (
                 <>
                   Are you sure you want to permanently delete <strong>{state.itemName()}</strong>? All credentials,
@@ -59,20 +60,22 @@ export function CipherDeleteDialog(props: CipherDeleteDialogStateProps): JSX.Ele
                 type="button"
                 variant="outline"
                 size="sm"
-                class="text-xs"
+                class="h-8 text-sm"
                 onClick={state.handleClose}
                 disabled={state.isDeleting()}
               >
+                <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="filledRed"
                 size="sm"
-                class="text-xs font-semibold"
+                class="h-8 text-sm font-semibold"
                 onClick={state.handleConfirm}
                 disabled={state.isDeleting()}
               >
+                <Icon path={vaultSvgIcons.trash} class="mr-1.5 size-3.5" />
                 {state.isDeleting() ? "Deleting..." : state.isHard() ? "Delete Permanently" : "Move to Trash"}
               </Button>
             </div>
