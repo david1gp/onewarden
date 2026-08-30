@@ -1,24 +1,28 @@
 import { afterEach, expect, test } from "bun:test"
 import { SignJWT } from "jose"
 import * as v from "valibot"
+import type { Result } from "#result"
 import { identityAccessTokenClaimsDecode } from "../../../src/server/contexts/identity/identityAccessTokenClaimsDecode.js"
+import type { IdentityAuthRequest } from "../../../src/server/contexts/identity/identityAuthRequest.js"
+import { identityAuthRequestSave } from "../../../src/server/contexts/identity/identityAuthRequestSave.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import { identityDeviceRefreshTokensRotateByUser } from "../../../src/server/contexts/identity/identityDeviceRefreshTokensRotateByUser.js"
 import type { IdentityMailAdapter } from "../../../src/server/contexts/identity/identityMailAdapter.js"
 import { identityPasswordTokenResponseSchema } from "../../../src/server/contexts/identity/identityPasswordTokenResponseSchema.js"
 import { identityRefreshTokenClaimsDecode } from "../../../src/server/contexts/identity/identityRefreshTokenClaimsDecode.js"
 import { identityRefreshTokenResponseSchema } from "../../../src/server/contexts/identity/identityRefreshTokenResponseSchema.js"
-import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
+import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import { twoFactorProviderType } from "../../../src/server/contexts/twoFactor/twoFactorProviderType.js"
+import { twoFactorRecordSave } from "../../../src/server/contexts/twoFactor/twoFactorRecordSave.js"
+import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import type { Clock } from "../../../src/shared/clock/clock.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
-import type { DatabaseConnection } from "../../../src/server/database/database.js"
-import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
-import type { Result } from "#result"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -122,12 +126,14 @@ async function requestForm(
   app: ReturnType<typeof serverAppCreate>,
   values: Record<string, string>,
   headers?: Record<string, string>,
+  remoteIpAddress?: string,
 ): Promise<Response> {
-  return app.request("https://vault.example/identity/connect/token", {
+  const request = new Request("https://vault.example/identity/connect/token", {
     body: new URLSearchParams(values).toString(),
     headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
     method: "POST",
   })
+  return app.fetch(request, remoteIpAddress === undefined ? undefined : { remoteIpAddress })
 }
 
 function passwordForm(overrides: Record<string, string> = {}): Record<string, string> {
@@ -142,6 +148,32 @@ function passwordForm(overrides: Record<string, string> = {}): Record<string, st
     device_type: "6",
     ...overrides,
   }
+}
+
+function authRequestRecordCreate(overrides: Partial<IdentityAuthRequest> = {}): IdentityAuthRequest {
+  return {
+    uuid: "token-auth-request",
+    userUuid: "00000000-0000-4000-8000-000000000010",
+    organizationUuid: null,
+    requestDeviceIdentifier: "request-device",
+    deviceType: 7,
+    requestIp: "192.0.2.10",
+    responseDeviceId: null,
+    accessCode: "auth-request-access-code",
+    publicKey: "public-key",
+    encKey: null,
+    masterPasswordHash: null,
+    approved: true,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    responseDate: null,
+    authenticationDate: null,
+    ...overrides,
+  }
+}
+
+function authRequestPersist(context: IdentityTestContext, request: IdentityAuthRequest): void {
+  const result = identityAuthRequestSave(context.database, request)
+  if (!result.success) throw new Error(result.errorMessage)
 }
 
 function expectInvalidGrant(response: Response): Promise<void> {
@@ -304,6 +336,144 @@ test("password grant blocks unverified users and records the verification remind
       .get(context.user.uuid),
   ).toEqual({ last_verifying_at: "2026-08-28T00:00:00.000Z", login_verify_count: 1 })
   expect(context.database.query("SELECT COUNT(*) AS count FROM devices").get()).toEqual({ count: 0 })
+})
+
+test("password grant accepts an approved auth request without checking or upgrading the account password", async () => {
+  const context = await identityTestContext({ config: { PASSWORD_ITERATIONS: 200_000 } })
+  const authRequest = authRequestRecordCreate()
+  authRequestPersist(context, authRequest)
+
+  const response = await requestForm(
+    context.app,
+    passwordForm({
+      auth_request: authRequest.uuid,
+      password: authRequest.accessCode,
+    }),
+    { "x-real-ip": authRequest.requestIp },
+    "127.0.0.1",
+  )
+
+  expect(response.status).toBe(200)
+  const bodyResult = v.safeParse(identityPasswordTokenResponseSchema, await response.json())
+  expect(bodyResult.success).toBe(true)
+  expect(context.database.query("SELECT password_iterations FROM users WHERE uuid = ?").get(context.user.uuid)).toEqual(
+    { password_iterations: 100_000 },
+  )
+  expect(
+    context.database.query("SELECT authentication_date FROM auth_requests WHERE uuid = ?").get(authRequest.uuid),
+  ).toEqual({ authentication_date: null })
+  expect(context.database.query("SELECT uuid, user_uuid, name, atype FROM devices").all()).toEqual([
+    {
+      uuid: "desktop-device",
+      user_uuid: context.user.uuid,
+      name: "Alice Desktop",
+      atype: 6,
+    },
+  ])
+})
+
+test("auth-request password grants reuse device resolution and the two-factor challenge response", async () => {
+  const context = await identityTestContext()
+  const authRequest = authRequestRecordCreate({ uuid: "two-factor-auth-request" })
+  authRequestPersist(context, authRequest)
+  const twoFactorSaveResult = twoFactorRecordSave(context.database, {
+    uuid: "auth-request-authenticator",
+    userUuid: context.user.uuid,
+    type: twoFactorProviderType.authenticator,
+    enabled: true,
+    data: "SECRET",
+    lastUsed: 0,
+  })
+  expect(twoFactorSaveResult.success).toBe(true)
+
+  const response = await requestForm(
+    context.app,
+    passwordForm({
+      authrequest: authRequest.uuid,
+      password: authRequest.accessCode,
+    }),
+    { "x-real-ip": authRequest.requestIp },
+    "127.0.0.1",
+  )
+
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({
+    error: "invalid_grant",
+    error_description: "Two factor required.",
+    TwoFactorProviders: [String(twoFactorProviderType.authenticator)],
+    TwoFactorProviders2: { [String(twoFactorProviderType.authenticator)]: null },
+  })
+  expect(context.database.query("SELECT uuid, user_uuid, name, atype FROM devices").all()).toEqual([
+    {
+      uuid: "desktop-device",
+      user_uuid: context.user.uuid,
+      name: "Alice Desktop",
+      atype: 6,
+    },
+  ])
+})
+
+test("password grant distinguishes missing auth requests from invalid requests and keeps trusted IP checks", async () => {
+  const context = await identityTestContext()
+  const otherUser = {
+    ...context.user,
+    email: "other@example.com",
+    securityStamp: "other-security-stamp",
+    uuid: "other-user",
+  }
+  const otherUserSaveResult = identityUserSave(context.database, otherUser)
+  expect(otherUserSaveResult.success).toBe(true)
+  const crossUser = authRequestRecordCreate({ uuid: "cross-user-auth-request", userUuid: "other-user" })
+  const unapproved = authRequestRecordCreate({ uuid: "unapproved-auth-request", approved: false })
+  const expired = authRequestRecordCreate({
+    uuid: "boundary-auth-request",
+    creationDate: "2026-08-27T23:55:00.000Z",
+  })
+  const wrongIp = authRequestRecordCreate({ uuid: "wrong-ip-auth-request" })
+  const wrongCode = authRequestRecordCreate({ uuid: "wrong-code-auth-request" })
+  for (const request of [crossUser, unapproved, expired, wrongIp, wrongCode]) authRequestPersist(context, request)
+
+  const requestFailure = async (
+    authRequest: string,
+    password = "auth-request-access-code",
+    headers: Record<string, string> = { "x-real-ip": "192.0.2.10" },
+    remoteIpAddress = "127.0.0.1",
+  ): Promise<Record<string, unknown>> => {
+    const response = await requestForm(
+      context.app,
+      passwordForm({ authrequest: authRequest, password }),
+      headers,
+      remoteIpAddress,
+    )
+    expect(response.status).toBe(400)
+    return (await response.json()) as Record<string, unknown>
+  }
+
+  expect(await requestFailure("missing-auth-request")).toMatchObject({
+    message: "Auth request not found. Try again.",
+  })
+  expect(await requestFailure(crossUser.uuid)).toMatchObject({
+    message: "Auth request not found. Try again.",
+  })
+  for (const request of [unapproved, expired, wrongIp, wrongCode]) {
+    const headers = request.uuid === wrongIp.uuid ? { "x-real-ip": "192.0.2.10" } : undefined
+    const remoteIpAddress = request.uuid === wrongIp.uuid ? "8.8.8.8" : undefined
+    expect(
+      await requestFailure(
+        request.uuid,
+        request.uuid === wrongCode.uuid ? "wrong-code" : undefined,
+        headers,
+        remoteIpAddress,
+      ),
+    ).toMatchObject({
+      message: "Username or access code is incorrect. Try again",
+    })
+  }
+
+  context.database.run("UPDATE users SET enabled = 0 WHERE uuid = ?", [context.user.uuid])
+  expect(await requestFailure("missing-disabled-auth-request")).toMatchObject({
+    message: "This user has been disabled",
+  })
 })
 
 test("password grant applies the unauthenticated rate limit to the resolved client IP", async () => {

@@ -207,11 +207,15 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   identityRoutesRegister(app, {
     clock: identityClock,
     config: identityConfig,
+    clientIp: identityOptions?.clientIp,
     database: identityDatabase,
+    anonymousAuthRequestResponseSend:
+      identityOptions?.anonymousAuthRequestResponseSend ?? notificationHub.sendAnonymousAuthResponse,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     event: eventAdapter,
     identifier: identityIdentifier,
     mail: identityMail,
+    notification: identityOptions?.notification ?? notificationHub.adapter,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,
     publicOrigin: identityOptions?.publicOrigin,
@@ -277,6 +281,7 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   cipherRoutesRegister(app, {
     attachmentStorage,
     clock: identityClock,
+    config: identityConfig,
     database: identityDatabase,
     groupsEnabled: options?.organizations?.groupsEnabled ?? false,
     event: eventAdapter,

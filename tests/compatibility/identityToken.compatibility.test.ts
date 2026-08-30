@@ -1,18 +1,20 @@
 import { afterEach, expect, test } from "bun:test"
 import * as v from "valibot"
+import type { IdentityAuthRequest } from "../../src/server/contexts/identity/identityAuthRequest.js"
+import { identityAuthRequestSave } from "../../src/server/contexts/identity/identityAuthRequestSave.js"
 import { identityConfigCreate } from "../../src/server/contexts/identity/identityConfigCreate.js"
 import type { IdentityMailAdapter } from "../../src/server/contexts/identity/identityMailAdapter.js"
 import { identityPasswordTokenResponseSchema } from "../../src/server/contexts/identity/identityPasswordTokenResponseSchema.js"
-import { identityUserSave } from "../../src/server/contexts/identity/identityUserSave.js"
 import type { IdentityUser } from "../../src/server/contexts/identity/identityUser.js"
+import { identityUserSave } from "../../src/server/contexts/identity/identityUserSave.js"
+import type { DatabaseConnection } from "../../src/server/database/database.js"
+import { databaseClose } from "../../src/server/database/databaseClose.js"
+import { databaseTestCreate } from "../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../src/shared/clock/clockTestCreate.js"
-import { databaseClose } from "../../src/server/database/databaseClose.js"
-import type { DatabaseConnection } from "../../src/server/database/database.js"
-import { databaseTestCreate } from "../../src/server/database/databaseTestCreate.js"
 import { passwordHashCreate } from "../../src/shared/crypto/passwordHashCreate.js"
-import { resultCreate } from "../../src/shared/result/resultCreate.js"
 import { rsaKeyPairGenerate } from "../../src/shared/crypto/rsaKeyPairGenerate.js"
+import { resultCreate } from "../../src/shared/result/resultCreate.js"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -155,6 +157,55 @@ test("connect/token remains compatible with Bitwarden form aliases and response 
     name: "Compatibility Browser",
     atype: 9,
   })
+})
+
+test("connect/token accepts auth_request and compact authrequest credential aliases", async () => {
+  const context = await compatibilityAppCreate()
+  const authRequest: IdentityAuthRequest = {
+    uuid: "compatibility-auth-request",
+    userUuid: "compatibility-user",
+    organizationUuid: null,
+    requestDeviceIdentifier: "request-device",
+    deviceType: 9,
+    requestIp: "0.0.0.0",
+    responseDeviceId: null,
+    accessCode: "auth-request-code",
+    publicKey: "public-key",
+    encKey: null,
+    masterPasswordHash: null,
+    approved: true,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    responseDate: null,
+    authenticationDate: null,
+  }
+  const saveResult = identityAuthRequestSave(context.database, authRequest)
+  expect(saveResult.success).toBe(true)
+
+  const snakeCase = await requestForm(context.app, {
+    grant_type: "password",
+    client_id: "web",
+    password: authRequest.accessCode,
+    scope: "api offline_access",
+    username: "compatibility@example.com",
+    device_identifier: "compatibility-auth-device",
+    device_name: "Auth Request Browser",
+    device_type: "9",
+    auth_request: authRequest.uuid,
+  })
+  expect(snakeCase.status).toBe(200)
+
+  const compact = await requestForm(context.app, {
+    grant_type: "password",
+    client_id: "web",
+    password: authRequest.accessCode,
+    scope: "api offline_access",
+    username: "compatibility@example.com",
+    device_identifier: "compatibility-auth-device-2",
+    device_name: "Auth Request Browser 2",
+    device_type: "9",
+    authrequest: authRequest.uuid,
+  })
+  expect(compact.status).toBe(200)
 })
 
 test("connect/token preserves exact missing-field and invalid-type errors", async () => {

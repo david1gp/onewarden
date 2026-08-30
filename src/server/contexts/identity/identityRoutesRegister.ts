@@ -3,30 +3,32 @@ import * as v from "valibot"
 import type { ResultErr } from "#result"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
-import { identityOriginResolve } from "./identityOriginResolve.js"
+import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
+import { twoFactorRoutesRegister } from "../twoFactor/twoFactorRoutesRegister.js"
+import { identityAccountRegisterVerificationDataSchema } from "./identityAccountRegisterVerificationDataSchema.js"
+import { identityAccountRoutesRegister } from "./identityAccountRoutesRegister.js"
 import { identityApiKeyLogin } from "./identityApiKeyLogin.js"
+import { identityAuthRequestRoutesRegister } from "./identityAuthRequestRoutesRegister.js"
+import { identityClientIpResolve as identityTrustedClientIpResolve } from "./identityClientIpResolve.js"
+import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
+import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
+import { identityOriginResolve } from "./identityOriginResolve.js"
+import { identityPasswordLogin } from "./identityPasswordLogin.js"
 import { identityPrelogin } from "./identityPrelogin.js"
 import { identityPreloginDataSchema } from "./identityPreloginDataSchema.js"
+import { identityRefreshLogin } from "./identityRefreshLogin.js"
 import { identityRegistration } from "./identityRegistration.js"
 import { identityRegistrationDataSchema } from "./identityRegistrationDataSchema.js"
-import { identityAccountRegisterVerificationDataSchema } from "./identityAccountRegisterVerificationDataSchema.js"
 import { identityRegistrationVerificationEmail } from "./identityRegistrationVerificationEmail.js"
-import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
-import { identityPasswordLogin } from "./identityPasswordLogin.js"
-import { identityRefreshLogin } from "./identityRefreshLogin.js"
 import type { IdentityRouteOptions } from "./identityRouteOptions.js"
-import { identityAccountRoutesRegister } from "./identityAccountRoutesRegister.js"
+import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
 import { identitySsoAuthorize } from "./identitySsoAuthorize.js"
 import { identitySsoAuthorizeDataSchema } from "./identitySsoAuthorizeDataSchema.js"
 import { identitySsoCallback } from "./identitySsoCallback.js"
 import { identitySsoLogin } from "./identitySsoLogin.js"
 import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateTokenCreate.js"
-import { identitySsoAdapterCreate } from "./identitySsoAdapterCreate.js"
-import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
-import { identityDevicePushRoutesRegister } from "./identityDevicePushRoutesRegister.js"
 import { identityTasksRoutesRegister } from "./identityTasksRoutesRegister.js"
-import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
-import { twoFactorRoutesRegister } from "../twoFactor/twoFactorRoutesRegister.js"
+import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 
 export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
   const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
@@ -65,7 +67,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         options.database,
         data.sendId,
         data.passwordHashB64,
-        identityClientIpResolve(context),
+        identityLegacyClientIpResolve(context),
         options.privateKey,
         issuer,
         options.clock,
@@ -99,7 +101,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         issuer,
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
-        clientIp: identityClientIpResolve(context),
+        clientIp: identityLegacyClientIpResolve(context),
         event: options.event,
       })
       if (!result.success) return apiErrorResponseCreate(result)
@@ -128,7 +130,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         issuer,
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
-        clientIp: identityClientIpResolve(context),
+        clientIp: identityLegacyClientIpResolve(context),
         sso,
         event: options.event,
         push: options.push,
@@ -152,6 +154,10 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         if (value === undefined)
           return apiErrorResponseCreate(identityDomainErrorCreate("identityPasswordLogin", `${field} cannot be blank`))
       }
+      const clientIp =
+        data.authRequest === undefined
+          ? identityLegacyClientIpResolve(context)
+          : identityTrustedClientIpResolve(context, options.clientIp)
       const result = await identityPasswordLogin(data, {
         clock: options.clock,
         config: options.config,
@@ -161,7 +167,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         mail: options.mail,
         privateKey: options.privateKey,
         rateLimiter: options.rateLimiter,
-        clientIp: identityClientIpResolve(context),
+        clientIp,
         push: options.push,
         publicKey: options.publicKey,
         publicOrigin: options.publicOrigin,
@@ -300,7 +306,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
   app.post("/identity/accounts/register", (context) => register(context, false))
   app.post("/identity/accounts/register/finish", (context) => register(context, true))
   app.post("/identity/accounts/register/send-verification-email", async (context) => {
-    const rateLimitResult = options.rateLimiter.check(identityClientIpResolve(context))
+    const rateLimitResult = options.rateLimiter.check(identityLegacyClientIpResolve(context))
     if (!rateLimitResult.success) return apiErrorResponseCreate(rateLimitResult)
     const bodyResult = await requestBodyParse(context, identityAccountRegisterVerificationDataSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
@@ -318,6 +324,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
     return context.json({ token: result.data.token, userId: result.data.userId })
   })
   identityAccountRoutesRegister(app, options)
+  identityAuthRequestRoutesRegister(app, options)
   identityTasksRoutesRegister(app, options)
   twoFactorRoutesRegister(app, options)
   identityDevicePushRoutesRegister(app, options)
@@ -385,6 +392,6 @@ function identitySendAccessErrorResponse(message: string, sendAccessErrorType: s
   )
 }
 
-function identityClientIpResolve(context: Context): string {
+function identityLegacyClientIpResolve(context: Context): string {
   return context.req.header("x-real-ip") ?? context.req.header("x-forwarded-for")?.split(",", 1)[0]?.trim() ?? "unknown"
 }

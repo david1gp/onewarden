@@ -1,5 +1,5 @@
-import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { Clock } from "../../../shared/clock/clock.js"
+import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { IdentityMailAdapter } from "./identityMailAdapter.js"
 import type { IdentityMailMessage } from "./identityMailMessage.js"
 
@@ -13,6 +13,8 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
     userId: string | null = null,
     targetEmail: string | null = null,
     actingEmail?: string,
+    userName?: string,
+    organizationName?: string,
   ): void => {
     messages.push({
       recipient,
@@ -22,6 +24,8 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
       targetEmail,
       timestamp: timestamp(),
       ...(actingEmail === undefined ? {} : { actingEmail }),
+      ...(userName === undefined ? {} : { userName }),
+      ...(organizationName === undefined ? {} : { organizationName }),
     })
   }
   return {
@@ -95,6 +99,10 @@ export function identityMailAdapterCreate(clock?: Clock): IdentityMailAdapter & 
     },
     sendInviteConfirmed: async (address, _organizationName) => {
       record("inviteConfirmed", address)
+      return resultCreate(undefined)
+    },
+    sendAdminResetPassword: async (email, userName, organizationName) => {
+      record("adminResetPassword", email, null, null, null, undefined, userName, organizationName)
       return resultCreate(undefined)
     },
     sendTest: async () => resultCreate(undefined),

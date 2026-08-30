@@ -18,6 +18,8 @@ const serverConfigProxySchema = v.pipe(
   v.picklist(["false", "true"]),
   v.transform((value) => value === "true"),
 )
+const serverConfigIpHeaderSchema = v.pipe(v.string(), v.trim())
+const serverConfigIpHeaderTrustedProxiesSchema = v.pipe(v.string(), v.trim())
 const serverConfigPublicOriginSchema = v.pipe(v.string(), v.trim(), v.url())
 const serverConfigPushEnabledSchema = v.pipe(
   v.string(),
@@ -60,6 +62,8 @@ export const serverConfigSchema = v.object({
   INCREASE_NOTE_SIZE_LIMIT: v.optional(serverConfigProxySchema, "false"),
   LOG_LEVEL: v.optional(serverConfigLogLevelSchema, "info"),
   PROXY: v.optional(serverConfigProxySchema, "false"),
+  IP_HEADER: v.optional(serverConfigIpHeaderSchema, "X-Real-IP"),
+  IP_HEADER_TRUSTED_PROXIES: v.optional(serverConfigIpHeaderTrustedProxiesSchema, "local"),
   ENABLE_WEBSOCKET: v.optional(serverConfigProxySchema, "true"),
   PUBLIC_ORIGIN: v.optional(serverConfigPublicOriginSchema),
   PUSH_ENABLED: v.optional(serverConfigPushEnabledSchema, "false"),

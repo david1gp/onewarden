@@ -4,6 +4,7 @@ export type IdentityMailMessage = {
     | "invite"
     | "inviteAccepted"
     | "inviteConfirmed"
+    | "adminResetPassword"
     | "registerVerify"
     | "welcome"
     | "welcomeMustVerify"
@@ -33,4 +34,6 @@ export type IdentityMailMessage = {
   deviceName?: string
   deviceType?: number
   actingEmail?: string
+  userName?: string
+  organizationName?: string
 }

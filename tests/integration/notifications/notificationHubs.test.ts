@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
+import { notificationHubCreate } from "../../../src/server/contexts/notifications/notificationHubCreate.js"
+import type { NotificationWebSocketData } from "../../../src/server/contexts/notifications/notificationWebSocketData.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { jwtSign } from "../../../src/shared/crypto/jwtSign.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
-import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
-import type { NotificationWebSocketData } from "../../../src/server/contexts/notifications/notificationWebSocketData.js"
-import { notificationHubCreate } from "../../../src/server/contexts/notifications/notificationHubCreate.js"
 
 const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
 const keyPairResult = rsaKeyPairGenerate()
@@ -129,6 +129,45 @@ test("anonymous hub enforces per-IP limits, fans out responses, handshakes, echo
   expect(hub.anonymous.countByIp("192.0.2.20")).toBe(0)
   for (let index = 0; index < 25; index += 1) expect(await hub.upgrade(request(), server)).toBeUndefined()
   expect((await hub.upgrade(request(), server))?.status).toBe(429)
+})
+
+test("auth-request response notifications use the anonymous and authenticated upstream frames", () => {
+  const hub = notificationHubCreate()
+  const anonymousFrames: Uint8Array[] = []
+  const authenticatedFrames: Uint8Array[] = []
+  hub.anonymous.add("auth-request", "anonymous-connection", {
+    close: () => undefined,
+    send: (data) => {
+      anonymousFrames.push(data)
+      return true
+    },
+  })
+  hub.authenticated.add("user-id", "authenticated-connection", {
+    close: () => undefined,
+    send: (data) => {
+      authenticatedFrames.push(data)
+      return true
+    },
+  })
+
+  hub.sendAnonymousAuthResponse("user-id", "auth-request")
+  hub.adapter.sendUpdate(["user-id"], {
+    contextId: "response-device",
+    payload: { Id: "auth-request", UserId: "user-id" },
+    type: 16,
+  })
+
+  expect(anonymousFrames).toHaveLength(1)
+  const anonymousFrame = anonymousFrames[0] ?? new Uint8Array()
+  expect(new TextDecoder().decode(anonymousFrame)).toContain("AuthRequestResponseRecieved")
+  expect(new TextDecoder().decode(anonymousFrame)).toContain("auth-request")
+  expect(new TextDecoder().decode(anonymousFrame)).toContain("user-id")
+  expect(authenticatedFrames).toHaveLength(1)
+  const authenticatedFrame = authenticatedFrames[0] ?? new Uint8Array()
+  expect(new TextDecoder().decode(authenticatedFrame)).toContain("ReceiveMessage")
+  expect(new TextDecoder().decode(authenticatedFrame)).toContain("response-device")
+  expect(new TextDecoder().decode(authenticatedFrame)).toContain("auth-request")
+  expect(new TextDecoder().decode(authenticatedFrame)).toContain("user-id")
 })
 
 test("anonymous hub releases a reserved slot when a connection closes before open", async () => {

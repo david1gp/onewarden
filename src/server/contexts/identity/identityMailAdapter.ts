@@ -24,6 +24,7 @@ export type IdentityMailAdapter = {
   sendInvite?: (email: string, organizationName: string, memberId: string, token?: string) => Promise<Result<void>>
   sendInviteAccepted?: (newUserEmail: string, address: string, organizationName: string) => Promise<Result<void>>
   sendInviteConfirmed?: (address: string, organizationName: string) => Promise<Result<void>>
+  sendAdminResetPassword?: (email: string, userName: string, organizationName: string) => Promise<Result<void>>
   sendTest?: (email: string) => Promise<Result<void>>
   sendEmergencyAccessInvite?: (
     email: string,

@@ -16,9 +16,9 @@ import { identityTokenBundleCreate } from "../../../src/server/contexts/identity
 import { identityTokenRequestParse } from "../../../src/server/contexts/identity/identityTokenRequestParse.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 
 const keyPairResult = rsaKeyPairGenerate()
@@ -138,6 +138,17 @@ test("identityTokenRequestParse accepts upstream case-insensitive aliases", () =
       sendId: undefined,
       passwordHashB64: undefined,
     },
+  })
+})
+
+test("identityTokenRequestParse accepts the auth request snake-case and compact aliases", () => {
+  expect(identityTokenRequestParse({ auth_request: "snake-case-request" })).toMatchObject({
+    success: true,
+    data: { authRequest: "snake-case-request" },
+  })
+  expect(identityTokenRequestParse({ AUTHREQUEST: "compact-request" })).toMatchObject({
+    success: true,
+    data: { authRequest: "compact-request" },
   })
 })
 

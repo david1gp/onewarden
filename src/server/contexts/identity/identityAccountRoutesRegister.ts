@@ -11,8 +11,14 @@ import type { AuthenticationContext } from "../authentication/authenticationCont
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderUpdate } from "../folders/folderUpdate.js"
+import { organizationMembershipFromRow } from "../organizations/organizationMembershipFromRow.js"
+import type { OrganizationMembershipRow } from "../organizations/organizationMembershipRow.js"
+import { organizationPolicyCheckUserAllowed } from "../organizations/organizationPolicyCheckUserAllowed.js"
+import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
 import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
 import { identityAccountChangeEmailDataSchema } from "./identityAccountChangeEmailDataSchema.js"
 import { identityAccountDeleteRecover } from "./identityAccountDeleteRecover.js"
@@ -33,6 +39,7 @@ import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswo
 import { identityAccountVerifyEmailTokenDataSchema } from "./identityAccountVerifyEmailTokenDataSchema.js"
 import { identityAccountVerifyPasswordDataSchema } from "./identityAccountVerifyPasswordDataSchema.js"
 import { identityApiKeyCreate } from "./identityApiKeyCreate.js"
+import { identityAuthRequestFindPendingByUserAndDevice } from "./identityAuthRequestFindPendingByUserAndDevice.js"
 import { identityDeleteAccountTokenDecode } from "./identityDeleteAccountTokenDecode.js"
 import { identityDeviceDeleteAllByUser } from "./identityDeviceDeleteAllByUser.js"
 import { identityDeviceFindByUser } from "./identityDeviceFindByUser.js"
@@ -54,12 +61,6 @@ import { identityUserPasswordSet } from "./identityUserPasswordSet.js"
 import { identityUserProfileToJson } from "./identityUserProfileToJson.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityVerifyEmailTokenDecode } from "./identityVerifyEmailTokenDecode.js"
-import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
-import { organizationMembershipFromRow } from "../organizations/organizationMembershipFromRow.js"
-import type { OrganizationMembershipRow } from "../organizations/organizationMembershipRow.js"
-import { organizationPolicyCheckUserAllowed } from "../organizations/organizationPolicyCheckUserAllowed.js"
-import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
-import { eventType } from "../events/eventType.js"
 
 export function identityAccountRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -747,8 +748,18 @@ export function identityAccountRoutesRegister(
       requestContext.data.authentication.user.uuid,
     )
     if (!devicesResult.success) return apiErrorResponseCreate(devicesResult)
+    const data = []
+    for (const device of devicesResult.data) {
+      const pendingAuthRequestResult = identityAuthRequestFindPendingByUserAndDevice(
+        requestContext.data.database,
+        requestContext.data.authentication.user.uuid,
+        device.uuid,
+      )
+      if (!pendingAuthRequestResult.success) return apiErrorResponseCreate(pendingAuthRequestResult)
+      data.push(identityDeviceWithAuthRequestToJson(device, pendingAuthRequestResult.data))
+    }
     return context.json({
-      data: devicesResult.data.map(identityDeviceWithAuthRequestToJson),
+      data,
       continuationToken: null,
       object: "list" as const,
     })

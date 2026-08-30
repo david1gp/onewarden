@@ -1,8 +1,8 @@
-import { type Result } from "#result"
 import * as v from "valibot"
+import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import { identityTokenRequestSchema, type IdentityTokenRequest } from "./identityTokenRequestSchema.js"
+import { type IdentityTokenRequest, identityTokenRequestSchema } from "./identityTokenRequestSchema.js"
 
 const identityTokenRequestAliases: Record<string, keyof IdentityTokenRequest> = {
   grant_type: "grantType",
@@ -30,6 +30,7 @@ const identityTokenRequestAliases: Record<string, keyof IdentityTokenRequest> = 
   twofactortoken: "twoFactorToken",
   two_factor_remember: "twoFactorRemember",
   twofactorremember: "twoFactorRemember",
+  auth_request: "authRequest",
   authrequest: "authRequest",
   codeverifier: "codeVerifier",
   code: "code",

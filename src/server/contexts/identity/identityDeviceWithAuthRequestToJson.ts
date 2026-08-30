@@ -1,10 +1,16 @@
+import type { IdentityAuthRequest } from "./identityAuthRequest.js"
+import { identityAuthRequestPendingDeviceToJson } from "./identityAuthRequestPendingDeviceToJson.js"
 import type { IdentityDevice } from "./identityDevice.js"
 import { identityDeviceCommonToJson } from "./identityDeviceCommonToJson.js"
 
-export function identityDeviceWithAuthRequestToJson(device: IdentityDevice) {
+export function identityDeviceWithAuthRequestToJson(
+  device: IdentityDevice,
+  pendingAuthRequest: IdentityAuthRequest | null,
+) {
   return {
     ...identityDeviceCommonToJson(device),
-    devicePendingAuthRequest: null,
+    devicePendingAuthRequest:
+      pendingAuthRequest === null ? null : identityAuthRequestPendingDeviceToJson(pendingAuthRequest),
     isTrusted: false,
     encryptedPublicKey: null,
     encryptedUserKey: null,

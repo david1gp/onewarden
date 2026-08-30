@@ -1,24 +1,24 @@
+import { clockCreate } from "../shared/clock/clockCreate.js"
 import { loggerCreate } from "../shared/logging/loggerCreate.js"
 import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
+import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
+import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
+import { eventPurge } from "./contexts/events/eventPurge.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
+import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { sendFileStorageAdapterCreate } from "./contexts/sends/sendFileStorageAdapterCreate.js"
 import { sendPurge } from "./contexts/sends/sendPurge.js"
-import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
-import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
-import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { twoFactorIncompleteNotificationRun } from "./contexts/twoFactor/twoFactorIncompleteNotificationRun.js"
 import { twoFactorWebAuthnU2fMigrate } from "./contexts/twoFactor/twoFactorWebAuthnU2fMigrate.js"
-import { eventPurge } from "./contexts/events/eventPurge.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
 import { serverAppCreate } from "./serverAppCreate.js"
-import { clockCreate } from "../shared/clock/clockCreate.js"
 
 const defaultLogger = loggerCreate()
 const configResult = serverConfigLoad()
@@ -101,6 +101,10 @@ const app = serverAppCreate({
     apiKey: configResult.data.HIBP_API_KEY,
   },
   identity: {
+    clientIp: {
+      header: configResult.data.IP_HEADER,
+      trustedProxies: configResult.data.IP_HEADER_TRUSTED_PROXIES,
+    },
     config: identityConfigResult.data,
     privateKey: tokenKeyPair.privateKey,
     publicKey: tokenKeyPair.publicKey,
@@ -133,7 +137,8 @@ try {
     fetch: async (request, bunServer) => {
       const upgradeResult = await notificationHub.upgrade(request, bunServer)
       if (upgradeResult !== undefined) return upgradeResult
-      return app.fetch(request)
+      const remoteIpAddress = bunServer.requestIP(request)?.address
+      return app.fetch(request, remoteIpAddress === undefined ? undefined : { remoteIpAddress })
     },
     hostname: configResult.data.HOST,
     port: configResult.data.PORT,

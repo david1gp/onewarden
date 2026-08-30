@@ -1,24 +1,26 @@
 import { afterEach, expect, test } from "bun:test"
 import * as v from "valibot"
+import type { IdentityAuthRequest } from "../../../src/server/contexts/identity/identityAuthRequest.js"
+import { identityAuthRequestSave } from "../../../src/server/contexts/identity/identityAuthRequestSave.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
-import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
-import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
+import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityPasswordTokenResponseSchema } from "../../../src/server/contexts/identity/identityPasswordTokenResponseSchema.js"
+import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
+import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import { organizationMembershipStatus } from "../../../src/server/contexts/organizations/organizationMembershipStatus.js"
 import { organizationMembershipType } from "../../../src/server/contexts/organizations/organizationMembershipType.js"
-import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import type { Clock } from "../../../src/shared/clock/clock.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { base64UrlEncode } from "../../../src/shared/crypto/base64UrlEncode.js"
 import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
 import { passwordHashVerify } from "../../../src/shared/crypto/passwordHashVerify.js"
-import { base64UrlEncode } from "../../../src/shared/crypto/base64UrlEncode.js"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 type MutableClock = Clock & { advance: (seconds: number) => void }
 
@@ -197,6 +199,32 @@ function deviceCreate(userUuid: string, uuid: string, type = 7): IdentityDevice 
     pushToken: null,
     refreshToken: `${uuid}-refresh`,
     twoFactorRemember: null,
+  }
+}
+
+function authRequestCreate(
+  userUuid: string,
+  uuid: string,
+  requestDeviceIdentifier: string,
+  overrides: Partial<IdentityAuthRequest> = {},
+): IdentityAuthRequest {
+  return {
+    uuid,
+    userUuid,
+    organizationUuid: null,
+    requestDeviceIdentifier,
+    deviceType: 7,
+    requestIp: "192.0.2.20",
+    responseDeviceId: null,
+    accessCode: `${uuid}-access-code`,
+    publicKey: `${uuid}-public-key`,
+    encKey: null,
+    masterPasswordHash: null,
+    approved: null,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    responseDate: null,
+    authenticationDate: null,
+    ...overrides,
   }
 }
 
@@ -717,6 +745,37 @@ test("device list/get/update/clear-token and known-device aliases preserve owner
     device_name: "Second device",
     device_type: "iOS",
   })
+  const foreignUser = await userCreate({ uuid: "foreign-user", email: "foreign@example.com" })
+  expect(identityUserSave(context.database, foreignUser).success).toBe(true)
+  const authRequests = [
+    authRequestCreate("task10-user", "older-pending", "task10-device", {
+      creationDate: "2026-08-28T00:01:00.000Z",
+    }),
+    authRequestCreate("task10-user", "newest-pending", "task10-device", {
+      creationDate: "2026-08-28T00:02:00.000Z",
+    }),
+    authRequestCreate("task10-user", "approved-request", "task10-device", {
+      approved: true,
+      creationDate: "2026-08-28T00:03:00.000Z",
+    }),
+    authRequestCreate("task10-user", "rejected-request", "task10-device", {
+      approved: false,
+      creationDate: "2026-08-28T00:04:00.000Z",
+    }),
+    authRequestCreate("task10-user", "other-device-request", "other-device", {
+      creationDate: "2026-08-28T00:05:00.000Z",
+    }),
+    authRequestCreate("foreign-user", "other-user-request", "task10-device", {
+      creationDate: "2026-08-28T00:06:00.000Z",
+    }),
+    authRequestCreate("task10-user", "deleted-request", "task10-device", {
+      creationDate: "2026-08-28T00:07:00.000Z",
+    }),
+  ]
+  for (const request of authRequests) {
+    expect(identityAuthRequestSave(context.database, request)).toEqual({ success: true, data: undefined })
+  }
+  context.database.run("DELETE FROM auth_requests WHERE uuid = ?", ["deleted-request"])
 
   const devices = await context.app.request("https://vault.example/api/devices", { headers: authHeaders(token) })
   expect(await devices.json()).toEqual({
@@ -727,7 +786,10 @@ test("device list/get/update/clear-token and known-device aliases preserve owner
         type: 7,
         identifier: "task10-device",
         creationDate: "2026-08-28T00:00:00.000Z",
-        devicePendingAuthRequest: null,
+        devicePendingAuthRequest: {
+          id: "newest-pending",
+          creationDate: "2026-08-28T00:02:00.000Z",
+        },
         isTrusted: false,
         encryptedPublicKey: null,
         encryptedUserKey: null,
@@ -764,8 +826,6 @@ test("device list/get/update/clear-token and known-device aliases preserve owner
     isTrusted: false,
     object: "device",
   })
-  const foreignUser = await userCreate({ uuid: "foreign-user", email: "foreign@example.com" })
-  expect(identityUserSave(context.database, foreignUser).success).toBe(true)
   expect(
     identityDeviceSave(context.database, deviceCreate("foreign-user", "foreign-device"), context.clock, false),
   ).toEqual({ success: true, data: undefined })

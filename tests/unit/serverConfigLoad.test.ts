@@ -16,6 +16,8 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       INCREASE_NOTE_SIZE_LIMIT: false,
       LOG_LEVEL: "info",
       PROXY: false,
+      IP_HEADER: "X-Real-IP",
+      IP_HEADER_TRUSTED_PROXIES: "local",
       ENABLE_WEBSOCKET: true,
       PUSH_ENABLED: false,
       PUSH_RELAY_URI: "https://push.bitwarden.com",
@@ -39,6 +41,8 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
     LOG_LEVEL: "debug",
     PORT: "8080",
     PROXY: "true",
+    IP_HEADER: "CF-Connecting-IP",
+    IP_HEADER_TRUSTED_PROXIES: "10.0.0.0/8, 2001:db8::/32",
     PUBLIC_ORIGIN: "https://vault.example.com",
   })
 
@@ -50,6 +54,8 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       LOG_LEVEL: "debug",
       PORT: 8080,
       PROXY: true,
+      IP_HEADER: "CF-Connecting-IP",
+      IP_HEADER_TRUSTED_PROXIES: "10.0.0.0/8, 2001:db8::/32",
       SENDS_FOLDER: "./data/sends",
       SENDS_ALLOWED: true,
       USER_SEND_LIMIT: undefined,
@@ -70,11 +76,12 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
   })
 })
 
-test("serverConfigLoad rejects invalid log level, proxy, and public origin", () => {
+test("serverConfigLoad rejects invalid log level, proxy, public origin, and trusted proxy", () => {
   const result = serverConfigLoad({ LOG_LEVEL: "trace", PROXY: "yes", PUBLIC_ORIGIN: "not a URL" })
 
   expect(result.success).toBe(false)
   expect(result).toMatchObject({ op: "serverConfigLoad", success: false })
+  expect(serverConfigLoad({ IP_HEADER_TRUSTED_PROXIES: "not-an-ip" }).success).toBe(false)
 })
 
 test("serverConfigLoad validates enabled push relay credentials and HTTPS endpoints", () => {
