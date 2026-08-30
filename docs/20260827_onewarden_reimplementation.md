@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 cipher purge and the complete managed-account recovery/details/enrollment route group are implemented, reviewed, and locally verified without end-to-end testing; prior compatibility work through organization cipher import and SSO auto-enrollment is committed and pushed. Auth-request persistence, routes, polling, and password-grant integration are implemented and locally verified, including the exact five-minute rejection boundary. Remaining auth-request work is device-list composition and expiry cleanup. Task 39 has not started.
+- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 implementation is complete, route coverage matches the upstream compatibility surface, focused tests pass, and the deferred browser suite passes all 50 tests after repairing three stale Task 34/35 assertions. Task 38 is ready to commit, push, and deploy. Task 39 has not started.
 
 # Tasks
 
@@ -65,7 +65,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - [x] 35. Build cipher view/edit/create flows for login, secure note, card, identity, fields, attachments, history, sharing, and deletion with browser tests.
 - [x] 36. Build organization, members, collections, groups, policies, events, and settings UI flows with browser tests.
 - [x] 37. Build Send, emergency access, security, devices, import/export, account, and admin UI flows with browser tests.
-- [ ] 38. Port and run the complete upstream-compatible behavior matrix, add protocol fixtures for uncovered APIs, and close every compatibility-manifest gap.
+- [x] 38. Port and run the complete upstream-compatible behavior matrix, add protocol fixtures for uncovered APIs, and close every compatibility-manifest gap.
 - [ ] 39. Add production build, Caddy/systemd deployment, migrations, backup/restore, observability, security headers, and release verification.
 
 # Paths
