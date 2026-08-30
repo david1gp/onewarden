@@ -1189,11 +1189,11 @@ export function AdminSettingsView(p: { state: AdminShellState }) {
         </Details>
 
         <div class="flex flex-wrap items-center justify-end gap-3">
-          <Button type="button" variant="outlineRed" onClick={state.reset}>
+          <Button type="button" variant="outlineRed" size="sm" class="h-8 text-sm" onClick={state.reset}>
             <Icon path={vaultSvgIcons.restore} class="mr-1.5 size-3.5" />
             Reset overrides
           </Button>
-          <Button type="submit" variant="filledBlue" disabled={!p.state.settingsDirty()}>
+          <Button type="submit" variant="filledBlue" size="sm" class="h-8 text-sm" disabled={!p.state.settingsDirty()}>
             <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
             Save configuration
           </Button>

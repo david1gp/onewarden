@@ -27,6 +27,8 @@ test("webAppRouteResolve resolves Send, Emergency Access, and Admin routes accur
   expect(webAppRouteResolve("/admin-ui/config")).toBe("admin")
   expect(webAppRouteResolve("/admin-ui/tools")).toBe("admin")
   expect(webAppRouteResolve("/admin-ui/login")).toBe("admin-login")
+  expect(webAppRouteResolve("/demo/admin")).toBe("admin")
+  expect(webAppRouteResolve("/demo/admin/login")).toBe("admin")
 
   // Existing routes preserved
   expect(webAppRouteResolve("/")).toBe("root")

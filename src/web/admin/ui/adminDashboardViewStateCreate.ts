@@ -1,14 +1,17 @@
 import { onCleanup, onMount } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { webAdminApiClientCreate } from "../model/webAdminApiClientCreate.js"
+import type { AdminDashboardTab } from "./AdminDashboardTab.js"
+import type { AdminDashboardViewProps } from "./AdminDashboardViewProps.js"
 
-export type AdminDashboardTab = "users" | "organizations" | "diagnostics" | "config" | "tools"
-
-export interface AdminDashboardViewProps {
-  apiClient?: ReturnType<typeof webAdminApiClientCreate>
-  onLogout: () => void
-  onNavigateHome?: () => void
-}
+const sections: readonly { id: AdminDashboardTab; label: string; icon: string }[] = [
+  { id: "users", label: "Users", icon: vaultSvgIcons.users },
+  { id: "organizations", label: "Organizations", icon: vaultSvgIcons.workVault },
+  { id: "diagnostics", label: "Diagnostics", icon: vaultSvgIcons.shieldCheck },
+  { id: "config", label: "Configuration", icon: vaultSvgIcons.cog },
+  { id: "tools", label: "Mail & Backup", icon: vaultSvgIcons.server },
+]
 
 function adminDashboardTabResolve(): AdminDashboardTab {
   if (typeof window === "undefined") return "users"
@@ -61,6 +64,7 @@ export function adminDashboardViewStateCreate(props: AdminDashboardViewProps) {
   }
 
   return {
+    sections,
     currentTab: currentTab.get,
     setCurrentTab: handleTabChange,
     successMessage: successMessage.get,

@@ -11,6 +11,8 @@ test("DemoAdmin renders the admin route shell and accessible navigation", () => 
   expect(screen.getByRole("main")).toBeDefined()
   expect(screen.getByRole("heading", { level: 2, name: "Settings" }).textContent).toBe("Settings")
   expect(screen.getByText("Demo mode")).toBeDefined()
+  expect(screen.getByRole("group", { name: "Admin color theme" })).toBeDefined()
+  expect(screen.getByRole("button", { name: "Preview admin login" })).toBeDefined()
 
   screen.unmount()
 })

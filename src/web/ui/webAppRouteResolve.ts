@@ -114,7 +114,7 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   if (routePath === "/demo") {
     return "directory"
   }
-  if (routePath === "/demo/admin") {
+  if (routePath === "/demo/admin" || routePath === "/demo/admin/login") {
     return "admin"
   }
   if (routePath === "/demo/all" || routePath === "/demo/all-items" || routePath === "/demo/vault") {

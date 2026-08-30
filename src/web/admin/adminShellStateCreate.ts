@@ -1,14 +1,15 @@
 import * as v from "valibot"
 import type { ButtonVariant } from "#ui/interactive/button/buttonCva.js"
-import { adminUserOrganizationRoleSchema } from "./adminUserOrganizationRoleSchema.js"
-import type { AdminSection } from "./adminSectionSchema.js"
+import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import type { AdminShellState } from "./AdminShellState.js"
+import type { AdminSection } from "./adminSectionSchema.js"
+import { adminUserOrganizationRoleSchema } from "./adminUserOrganizationRoleSchema.js"
 
-const sections: readonly { id: AdminSection; label: string }[] = [
-  { id: "settings", label: "Settings" },
-  { id: "users", label: "Users" },
-  { id: "organizations", label: "Organizations" },
-  { id: "diagnostics", label: "Diagnostics" },
+const sections: readonly { id: AdminSection; label: string; icon: string }[] = [
+  { id: "settings", label: "Settings", icon: vaultSvgIcons.cog },
+  { id: "users", label: "Users", icon: vaultSvgIcons.users },
+  { id: "organizations", label: "Organizations", icon: vaultSvgIcons.workVault },
+  { id: "diagnostics", label: "Diagnostics", icon: vaultSvgIcons.shieldCheck },
 ]
 
 export function adminShellStateCreate(state: AdminShellState) {
