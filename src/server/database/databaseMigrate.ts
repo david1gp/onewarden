@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { type Result } from "#result"
@@ -44,12 +44,20 @@ function databaseMigrationsRead(migrationsPath: string): DatabaseMigration[] {
   return migrations
 }
 
+function databaseMigrationsPathResolve(): string {
+  const workingDirectoryPath = join(process.cwd(), "migrations")
+  return existsSync(workingDirectoryPath) ? workingDirectoryPath : databaseMigrationsPath
+}
+
 function databaseMigrationVersionsRead(database: DatabaseConnection): Set<number> {
   const rows = database.query<{ version: number }, []>("SELECT version FROM schema_version").all()
   return new Set(rows.map((row) => row.version))
 }
 
-export function databaseMigrate(database: DatabaseConnection, migrationsPath = databaseMigrationsPath): Result<void> {
+export function databaseMigrate(
+  database: DatabaseConnection,
+  migrationsPath = databaseMigrationsPathResolve(),
+): Result<void> {
   const op = "databaseMigrate"
   try {
     database.exec(databaseSchemaVersionTableSql)
