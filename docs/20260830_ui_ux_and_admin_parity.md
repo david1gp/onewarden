@@ -29,5 +29,5 @@ Fix the reported demo UI/UX issues and expand `/demo/admin` to represent the loc
 - [x] Phase 2 release: Run non-e2e verification, create conventional commits with the `commits` skill, and deploy.
 - [x] Phase 3: Add grouped editable/read-only server configuration, override states, password visibility, admin-token warning, SMTP testing, backup, save, and reset workflows.
 - [x] Phase 3 release: Run non-e2e verification, create conventional commits with the `commits` skill, and deploy.
-- [ ] Phase 4: Add detailed diagnostics, generated support information with copy action, theme selection, admin login presentation, and reconcile the admin compositions.
-- [ ] Phase 4 release: Run non-e2e verification, create conventional commits with the `commits` skill, and deploy.
+- [x] Phase 4: Add detailed diagnostics, generated support information with copy action, theme selection, admin login presentation, and reconcile the admin compositions.
+- [x] Phase 4 release: Run non-e2e verification, create conventional commits with the `commits` skill, and deploy.
