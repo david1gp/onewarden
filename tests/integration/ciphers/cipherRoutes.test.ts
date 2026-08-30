@@ -1,4 +1,6 @@
 import { afterEach, expect, test } from "bun:test"
+import type { AttachmentFileStorageAdapter } from "../../../src/server/contexts/attachments/attachmentFileStorageAdapter.js"
+import { attachmentFileStorageAdapterCreate } from "../../../src/server/contexts/attachments/attachmentFileStorageAdapterCreate.js"
 import { cipherFindByUuid } from "../../../src/server/contexts/ciphers/cipherFindByUuid.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
@@ -11,8 +13,10 @@ import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { identityTestDeviceCreate } from "../../helpers/identityTestDeviceCreate.js"
 import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
 
@@ -22,7 +26,9 @@ const keyPair = keyPairResult.data
 const databases: DatabaseConnection[] = []
 const date = "2026-08-28T00:00:00.000Z"
 
-async function contextCreate(): Promise<{
+async function contextCreate(
+  options: { attachmentStorage?: AttachmentFileStorageAdapter; password?: string; orgEventsEnabled?: boolean } = {},
+): Promise<{
   app: ReturnType<typeof serverAppCreate>
   database: DatabaseConnection
   token: string
@@ -33,6 +39,11 @@ async function contextCreate(): Promise<{
   const database = databaseResult.data
   databases.push(database)
   const user = identityTestUserCreate("cipher-user", { name: "cipher-user", passwordIterations: 600_000 })
+  if (options.password !== undefined) {
+    const passwordResult = await passwordHashCreate(options.password, user.salt, user.passwordIterations)
+    if (!passwordResult.success) throw new Error(passwordResult.errorMessage)
+    user.passwordHash = passwordResult.data
+  }
   const device = identityTestDeviceCreate(user.uuid, {
     uuid: "cipher-device",
     name: "Cipher Device",
@@ -42,6 +53,7 @@ async function contextCreate(): Promise<{
   expect(identityUserSave(database, user).success).toBe(true)
   expect(identityDeviceSave(database, device, clockTestCreate(date), false).success).toBe(true)
   const clock = clockTestCreate(date)
+  const config = identityConfigCreate({ ORG_EVENTS_ENABLED: options.orgEventsEnabled ?? false })
   const bundleResult = await identityTokenBundleCreate(
     user,
     device,
@@ -49,7 +61,7 @@ async function contextCreate(): Promise<{
     "https://vault.example",
     keyPair.privateKey,
     clock,
-    identityConfigCreate(),
+    config,
   )
   if (!bundleResult.success) throw new Error(bundleResult.errorMessage)
   const notifications: unknown[] = []
@@ -66,9 +78,10 @@ async function contextCreate(): Promise<{
         },
       },
     },
+    attachments: { storage: options.attachmentStorage },
     identity: {
       clock,
-      config: identityConfigCreate(),
+      config,
       database,
       privateKey: keyPair.privateKey,
       publicKey: keyPair.publicKey,
@@ -77,6 +90,14 @@ async function contextCreate(): Promise<{
     },
   })
   return { app, database, notifications, token: bundleResult.data.accessToken }
+}
+
+function attachmentStorageFailureCreate(): AttachmentFileStorageAdapter {
+  const storage = attachmentFileStorageAdapterCreate()
+  return {
+    ...storage,
+    delete: async () => resultErrorCreate("attachmentFileStorageDelete", "Attachment file deletion failed."),
+  }
 }
 
 function jsonHeaders(token: string): HeadersInit {
@@ -360,6 +381,155 @@ test("cipher sharing and collection routes support organization ownership and al
     type: 1,
     userIds: ["cipher-user"],
   })
+})
+
+test("personal cipher purge validates the password, removes folders and dependencies, and syncs the vault", async () => {
+  const context = await contextCreate({ password: "current-password" })
+  const folderResponse = await context.app.request("https://vault.example/api/folders", {
+    body: JSON.stringify({ name: "Purge" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(folderResponse.status).toBe(200)
+  const folder = await folderResponse.json()
+  const cipherResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify({ ...loginData("Purge"), favorite: true, folderId: folder.id }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(cipherResponse.status).toBe(200)
+  context.notifications.length = 0
+
+  const invalidResponse = await context.app.request("https://vault.example/api/ciphers/purge", {
+    body: JSON.stringify({ masterPasswordHash: "wrong-password" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(invalidResponse.status).toBe(400)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM ciphers").get()).toEqual({ count: 1 })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM folders").get()).toEqual({ count: 1 })
+  expect(context.notifications).toEqual([])
+
+  const purgeResponse = await context.app.request("https://vault.example/api/ciphers/purge", {
+    body: JSON.stringify({ masterPasswordHash: "current-password" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(purgeResponse.status).toBe(200)
+  expect(await purgeResponse.text()).toBe("")
+  expect(context.database.query("SELECT COUNT(*) AS count FROM ciphers").get()).toEqual({ count: 0 })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM folders").get()).toEqual({ count: 0 })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM favorites").get()).toEqual({ count: 0 })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM folders_ciphers").get()).toEqual({ count: 0 })
+  expect(context.notifications).toEqual([
+    {
+      contextId: "cipher-device",
+      payload: { Date: date, UserId: "cipher-user" },
+      type: 5,
+    },
+  ])
+})
+
+test("cipher purge reports storage failure before removing cipher metadata or sending updates", async () => {
+  const context = await contextCreate({
+    attachmentStorage: attachmentStorageFailureCreate(),
+    password: "current-password",
+  })
+  const cipherResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Storage failure")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(cipherResponse.status).toBe(200)
+  const cipher = await cipherResponse.json()
+  context.database.run("INSERT INTO attachments (id, cipher_uuid, file_name, file_size, akey) VALUES (?, ?, ?, ?, ?)", [
+    "attachment-failure",
+    cipher.id,
+    "failure.txt",
+    1,
+    "attachment-key",
+  ])
+  context.notifications.length = 0
+
+  const purgeResponse = await context.app.request("https://vault.example/api/ciphers/purge", {
+    body: JSON.stringify({ masterPasswordHash: "current-password" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(purgeResponse.status).toBe(500)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM ciphers").get()).toEqual({ count: 1 })
+  expect(context.database.query("SELECT id, cipher_uuid FROM attachments").all()).toEqual([
+    { cipher_uuid: cipher.id, id: "attachment-failure" },
+  ])
+  expect(context.notifications).toEqual([])
+})
+
+test("organization cipher purge removes only organization ciphers and records the vault purge event", async () => {
+  const context = await contextCreate({ orgEventsEnabled: true, password: "current-password" })
+  const organizationUuid = "00000000-0000-4000-8000-000000000631"
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    organizationUuid,
+    "Purge organization",
+    "purge@example.com",
+  ])
+  context.database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "00000000-0000-4000-8000-000000000632",
+      "cipher-user",
+      organizationUuid,
+      1,
+      "purge-key",
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.owner,
+    ],
+  )
+  const personalResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Personal")),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  const organizationResponse = await context.app.request("https://vault.example/api/ciphers/create", {
+    body: JSON.stringify({
+      Cipher: { ...loginData("Organization"), organizationId: organizationUuid },
+      CollectionIds: [],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(personalResponse.status).toBe(200)
+  expect(organizationResponse.status).toBe(200)
+  context.notifications.length = 0
+
+  const purgeResponse = await context.app.request(
+    `https://vault.example/api/ciphers/purge?organizationId=${organizationUuid}`,
+    {
+      body: JSON.stringify({ masterPasswordHash: "current-password" }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    },
+  )
+  expect(purgeResponse.status).toBe(200)
+  expect(await purgeResponse.text()).toBe("")
+  expect(context.database.query("SELECT uuid, organization_uuid FROM ciphers ORDER BY uuid").all()).toEqual([
+    { organization_uuid: null, uuid: "cipher-one" },
+  ])
+  expect(context.notifications).toEqual([
+    {
+      contextId: "cipher-device",
+      payload: { Date: date, UserId: "cipher-user" },
+      type: 5,
+    },
+  ])
+  expect(context.database.query("SELECT event_type, org_uuid, act_user_uuid, event_date FROM event").all()).toEqual([
+    {
+      act_user_uuid: "cipher-user",
+      event_date: date,
+      event_type: 1601,
+      org_uuid: organizationUuid,
+    },
+  ])
 })
 
 test("bulk cipher sharing is atomic and sends one vault sync notification", async () => {

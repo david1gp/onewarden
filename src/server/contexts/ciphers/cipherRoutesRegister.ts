@@ -45,6 +45,7 @@ import { cipherShareSelectedDataSchema } from "./cipherShareSelectedDataSchema.j
 import { cipherToJson } from "./cipherToJson.js"
 import { cipherOrganizationDetailsQuerySchema } from "./cipherOrganizationDetailsQuerySchema.js"
 import { cipherOrganizationToJson } from "./cipherOrganizationToJson.js"
+import { cipherPurge } from "./cipherPurge.js"
 import { cipherUpdate } from "./cipherUpdate.js"
 import { cipherUpdateType } from "./cipherUpdateType.js"
 import { cipherUserNotificationSend } from "./cipherUserNotificationSend.js"
@@ -57,6 +58,9 @@ import { organizationManagerLooseMiddleware } from "../organizations/organizatio
 import { organizationMemberMiddleware } from "../organizations/organizationMemberMiddleware.js"
 import { organizationMembershipHasFullAccess } from "../organizations/organizationMembershipHasFullAccess.js"
 import { organizationErrorCreate } from "../organizations/organizationErrorCreate.js"
+import { organizationOwnerMiddleware } from "../organizations/organizationOwnerMiddleware.js"
+import { identityAccountPasswordOrOtpDataSchema } from "../identity/identityAccountPasswordOrOtpDataSchema.js"
+import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
 
 const cipherPathSchema = v.object({ cipher_id: v.string() })
 
@@ -80,6 +84,21 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     publicKey: options.publicKey,
     publicOrigin: options.publicOrigin,
   })
+  const organizationOwner = organizationOwnerMiddleware({
+    clock: options.clock,
+    database: options.database,
+    publicKey: options.publicKey,
+    publicOrigin: options.publicOrigin,
+  })
+
+  const purgeAuthenticate = async (context: Context<AuthenticationEnvironment>, next: () => Promise<void>) => {
+    const routeName = context.req.query("organizationId") === undefined ? "purge_personal_vault" : "purge_org_vault"
+    return authenticate(routeName)(context, next)
+  }
+  const purgeOrganizationOwner = async (context: Context<AuthenticationEnvironment>, next: () => Promise<void>) => {
+    if (context.req.query("organizationId") === undefined) return next()
+    return organizationOwner(context, next)
+  }
 
   const list = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = cipherRequestContextResolve(context, options)
@@ -265,6 +284,9 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     }
     return new Response(null, { status: 200 })
   }
+
+  const purge = (context: Context<AuthenticationEnvironment>) =>
+    cipherPurgeResponse(context, options, context.get("organizationId"), notification)
 
   const update = async (context: Context<AuthenticationEnvironment>) => {
     const requestContext = cipherRequestContextResolve(context, options)
@@ -493,6 +515,10 @@ export function cipherRoutesRegister(app: Hono<AuthenticationEnvironment>, optio
     authenticate("post_org_import"),
     organizationMember,
     importOrganizationCiphers,
+  )
+  app.post("/api/ciphers/purge", purgeAuthenticate, purgeOrganizationOwner, purge)
+  app.post("/api/ciphers/purge", authenticate("purge_personal_vault"), (context) =>
+    cipherPurgeResponse(context, options, undefined, notification),
   )
   app.delete("/api/ciphers", authenticate("delete_cipher_selected"), (context) => bulkDelete(context, false))
   app.post("/api/ciphers/delete", authenticate("delete_cipher_selected_post"), (context) => bulkDelete(context, false))
@@ -819,6 +845,55 @@ async function cipherDeleteResponse(
   return new Response(null, { status: 200 })
 }
 
+async function cipherPurgeResponse(
+  context: Context<AuthenticationEnvironment>,
+  options: CipherRouteOptions,
+  organizationUuid: string | undefined,
+  notification: ReturnType<typeof cipherNotificationAdapterCreate>,
+): Promise<Response> {
+  const requestContext = cipherRequestContextResolve(context, options)
+  if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+  const bodyResult = await requestBodyParse(context, identityAccountPasswordOrOtpDataSchema)
+  if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+  const validationResult = await twoFactorPasswordOrOtpValidate(
+    requestContext.data.database,
+    requestContext.data.user,
+    bodyResult.data,
+    options.clock,
+    options.config,
+    true,
+  )
+  if (!validationResult.success) return apiErrorResponseCreate(validationResult)
+  const purgeResult = await cipherPurge(
+    requestContext.data.database,
+    requestContext.data.userUuid,
+    organizationUuid,
+    options.clock,
+    options.groupsEnabled,
+    options.attachmentStorage,
+  )
+  if (!purgeResult.success) return apiErrorResponseCreate(purgeResult)
+  await cipherUserNotificationSend(
+    notification,
+    cipherUpdateType.syncVault,
+    requestContext.data.userUuid,
+    options.clock.now().toISOString(),
+    requestContext.data.device,
+  )
+  if (organizationUuid !== undefined)
+    options.event?.organizationEventCreate(
+      eventType.organizationPurgedVault,
+      organizationUuid,
+      organizationUuid,
+      requestContext.data.userUuid,
+      {
+        deviceType: requestContext.data.device.type,
+        ipAddress: requestContext.data.ipAddress,
+      },
+    )
+  return new Response(null, { status: 200 })
+}
+
 async function cipherRestoreResponse(
   context: Context<AuthenticationEnvironment>,
   options: CipherRouteOptions,
@@ -918,7 +993,13 @@ function cipherRequestContextResolve(
   const { authentication, database } = requestContext.data
   return {
     success: true,
-    data: { database, device: authentication.device, ipAddress: authentication.ip, userUuid: authentication.user.uuid },
+    data: {
+      database,
+      device: authentication.device,
+      ipAddress: authentication.ip,
+      user: authentication.user,
+      userUuid: authentication.user.uuid,
+    },
   }
 }
 
@@ -939,6 +1020,7 @@ type CipherRequestContext = {
   database: NonNullable<CipherRouteOptions["database"]>
   device: NonNullable<AuthenticationContext>["device"]
   ipAddress: string
+  user: NonNullable<AuthenticationContext>["user"]
   userUuid: string
 }
 
