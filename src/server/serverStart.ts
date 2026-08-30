@@ -7,6 +7,7 @@ import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyA
 import { eventPurge } from "./contexts/events/eventPurge.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
+import { identityAuthRequestPurge } from "./contexts/identity/identityAuthRequestPurge.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
 import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
@@ -157,6 +158,10 @@ try {
     const result = eventPurge(database, serverClock, identityConfigResult.data.EVENTS_DAYS_RETAIN)
     if (!result.success) logger.error("event.purge-failed", { errorMessage: result.errorMessage })
   }
+  const purgeAuthRequests = async (): Promise<void> => {
+    const result = identityAuthRequestPurge(database, serverClock)
+    if (!result.success) logger.error("auth-request.purge-failed", { errorMessage: result.errorMessage })
+  }
   const runEmergencyAccessTimeout = async (): Promise<void> => {
     const result = await emergencyAccessTimeoutRun({
       clock: serverClock,
@@ -186,6 +191,7 @@ try {
       logger.error("two-factor.incomplete-notification-failed", { errorMessage: result.errorMessage })
   }
   const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
+  const authRequestPurgeInterval = setInterval(() => void purgeAuthRequests(), 60 * 60 * 1_000)
   const eventPurgeInterval =
     identityConfigResult.data.ORG_EVENTS_ENABLED && identityConfigResult.data.EVENTS_DAYS_RETAIN !== undefined
       ? setInterval(() => void purgeEvents(), 60 * 60 * 1_000)
@@ -197,6 +203,7 @@ try {
     60 * 1_000,
   )
   void purgeSends()
+  void purgeAuthRequests()
   if (eventPurgeInterval !== undefined) void purgeEvents()
   void runEmergencyAccessTimeout()
   void runEmergencyAccessReminder()
@@ -212,6 +219,7 @@ try {
         logger.error("server.stop-failed", { error: "stop-failed" })
       }
       clearInterval(purgeInterval)
+      clearInterval(authRequestPurgeInterval)
       if (eventPurgeInterval !== undefined) clearInterval(eventPurgeInterval)
       clearInterval(emergencyAccessTimeoutInterval)
       clearInterval(emergencyAccessReminderInterval)

@@ -5,12 +5,17 @@ import { identityAuthRequestFindByUserAndRequestedDevice } from "../../../src/se
 import { identityAuthRequestFindByUuid } from "../../../src/server/contexts/identity/identityAuthRequestFindByUuid.js"
 import { identityAuthRequestFindByUuidAndUser } from "../../../src/server/contexts/identity/identityAuthRequestFindByUuidAndUser.js"
 import { identityAuthRequestFindPendingByUserAndDevice } from "../../../src/server/contexts/identity/identityAuthRequestFindPendingByUserAndDevice.js"
+import { identityAuthRequestPurge } from "../../../src/server/contexts/identity/identityAuthRequestPurge.js"
 import type { IdentityAuthRequest } from "../../../src/server/contexts/identity/identityAuthRequest.js"
 import { identityAuthRequestSave } from "../../../src/server/contexts/identity/identityAuthRequestSave.js"
+import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
+import { identityDeviceFindWithAuthRequestByUser } from "../../../src/server/contexts/identity/identityDeviceFindWithAuthRequestByUser.js"
+import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
 
 const databases: DatabaseConnection[] = []
@@ -40,6 +45,21 @@ function authRequestCreate(overrides: Partial<IdentityAuthRequest> = {}): Identi
     responseDate: null,
     authenticationDate: null,
     ...overrides,
+  }
+}
+
+function deviceCreate(userUuid: string, uuid: string): IdentityDevice {
+  return {
+    uuid,
+    createdAt: "2026-08-28T00:00:00.000Z",
+    updatedAt: "2026-08-28T00:00:00.000Z",
+    userUuid,
+    name: `${uuid} name`,
+    type: 7,
+    pushUuid: null,
+    pushToken: null,
+    refreshToken: `${uuid}-refresh`,
+    twoFactorRemember: null,
   }
 }
 
@@ -196,4 +216,92 @@ test("pending auth request lookup filters approved requests and returns the newe
     success: true,
     data: null,
   })
+})
+
+test("device lookup composes each device with its newest pending auth request", () => {
+  const database = databaseCreate()
+  const user = identityTestUserCreate("composed-device-user", {
+    name: "Composed device user",
+    passwordIterations: 100_000,
+  })
+  expect(identityUserSave(database, user)).toEqual({ success: true, data: undefined })
+  const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
+  const device = deviceCreate(user.uuid, "composed-device")
+  const otherDevice = deviceCreate(user.uuid, "composed-other-device")
+  expect(identityDeviceSave(database, device, clock, false)).toEqual({ success: true, data: undefined })
+  expect(identityDeviceSave(database, otherDevice, clock, false)).toEqual({ success: true, data: undefined })
+
+  const older = authRequestCreate({
+    uuid: "composed-older",
+    userUuid: user.uuid,
+    requestDeviceIdentifier: device.uuid,
+    creationDate: "2026-08-28T00:01:00.000Z",
+  })
+  const newer = authRequestCreate({
+    uuid: "composed-newer",
+    userUuid: user.uuid,
+    requestDeviceIdentifier: device.uuid,
+    creationDate: "2026-08-28T00:02:00.000Z",
+  })
+  const approved = authRequestCreate({
+    uuid: "composed-approved",
+    userUuid: user.uuid,
+    requestDeviceIdentifier: device.uuid,
+    approved: true,
+    creationDate: "2026-08-28T00:03:00.000Z",
+  })
+  for (const request of [older, newer, approved])
+    expect(identityAuthRequestSave(database, request)).toEqual({ success: true, data: undefined })
+
+  expect(identityDeviceFindWithAuthRequestByUser(database, user.uuid)).toEqual({
+    success: true,
+    data: [
+      { device, pendingAuthRequest: newer },
+      { device: otherDevice, pendingAuthRequest: null },
+    ],
+  })
+})
+
+test("auth request purge removes all requests older than fifteen minutes and preserves the boundary", () => {
+  const database = databaseCreate()
+  const user = identityTestUserCreate("purge-auth-user", { name: "Purge auth user", passwordIterations: 100_000 })
+  expect(identityUserSave(database, user)).toEqual({ success: true, data: undefined })
+  const expiredPending = authRequestCreate({
+    uuid: "expired-pending",
+    userUuid: user.uuid,
+    creationDate: "2026-08-27T23:59:59.999Z",
+  })
+  const expiredApproved = authRequestCreate({
+    uuid: "expired-approved",
+    userUuid: user.uuid,
+    approved: true,
+    creationDate: "2026-08-27T23:59:59.999Z",
+  })
+  const expiredRejected = authRequestCreate({
+    uuid: "expired-rejected",
+    userUuid: user.uuid,
+    approved: false,
+    creationDate: "2026-08-27T23:59:59.999Z",
+  })
+  const boundary = authRequestCreate({
+    uuid: "boundary-request",
+    userUuid: user.uuid,
+    creationDate: "2026-08-28T00:00:00.000Z",
+  })
+  const newer = authRequestCreate({
+    uuid: "newer-request",
+    userUuid: user.uuid,
+    creationDate: "2026-08-28T00:01:00.000Z",
+  })
+  for (const request of [expiredPending, expiredApproved, expiredRejected, boundary, newer])
+    expect(identityAuthRequestSave(database, request)).toEqual({ success: true, data: undefined })
+
+  expect(identityAuthRequestPurge(database, clockTestCreate("2026-08-28T00:15:00.000Z"))).toEqual({
+    success: true,
+    data: 3,
+  })
+  expect(database.query<{ uuid: string }, []>("SELECT uuid FROM auth_requests ORDER BY uuid").all()).toEqual([
+    { uuid: "boundary-request" },
+    { uuid: "newer-request" },
+  ])
 })

@@ -39,11 +39,10 @@ import { identityAccountSetPasswordDataSchema } from "./identityAccountSetPasswo
 import { identityAccountVerifyEmailTokenDataSchema } from "./identityAccountVerifyEmailTokenDataSchema.js"
 import { identityAccountVerifyPasswordDataSchema } from "./identityAccountVerifyPasswordDataSchema.js"
 import { identityApiKeyCreate } from "./identityApiKeyCreate.js"
-import { identityAuthRequestFindPendingByUserAndDevice } from "./identityAuthRequestFindPendingByUserAndDevice.js"
 import { identityDeleteAccountTokenDecode } from "./identityDeleteAccountTokenDecode.js"
 import { identityDeviceDeleteAllByUser } from "./identityDeviceDeleteAllByUser.js"
-import { identityDeviceFindByUser } from "./identityDeviceFindByUser.js"
 import { identityDeviceFindByUuidAndUser } from "./identityDeviceFindByUuidAndUser.js"
+import { identityDeviceFindWithAuthRequestByUser } from "./identityDeviceFindWithAuthRequestByUser.js"
 import { identityDeviceRefreshTokensRotateByUser } from "./identityDeviceRefreshTokensRotateByUser.js"
 import { identityDeviceToJson } from "./identityDeviceToJson.js"
 import { identityDeviceWithAuthRequestToJson } from "./identityDeviceWithAuthRequestToJson.js"
@@ -743,21 +742,14 @@ export function identityAccountRoutesRegister(
   const devices = (context: Context<AuthenticationEnvironment>) => {
     const requestContext = identityAccountRequestContextResolve(context, options)
     if (!requestContext.success) return apiErrorResponseCreate(requestContext)
-    const devicesResult = identityDeviceFindByUser(
+    const devicesResult = identityDeviceFindWithAuthRequestByUser(
       requestContext.data.database,
       requestContext.data.authentication.user.uuid,
     )
     if (!devicesResult.success) return apiErrorResponseCreate(devicesResult)
     const data = []
-    for (const device of devicesResult.data) {
-      const pendingAuthRequestResult = identityAuthRequestFindPendingByUserAndDevice(
-        requestContext.data.database,
-        requestContext.data.authentication.user.uuid,
-        device.uuid,
-      )
-      if (!pendingAuthRequestResult.success) return apiErrorResponseCreate(pendingAuthRequestResult)
-      data.push(identityDeviceWithAuthRequestToJson(device, pendingAuthRequestResult.data))
-    }
+    for (const device of devicesResult.data)
+      data.push(identityDeviceWithAuthRequestToJson(device.device, device.pendingAuthRequest))
     return context.json({
       data,
       continuationToken: null,
