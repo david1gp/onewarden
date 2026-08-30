@@ -496,8 +496,8 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     return adminEmptyResponse()
   }
 
-  const backup = (_context: Context<any>): Response => {
-    const backupResult = options.backup.create()
+  const backup = async (_context: Context<any>): Promise<Response> => {
+    const backupResult = await options.backup.create()
     if (!backupResult.success) return apiErrorResponseCreate(backupResult)
     return new Response(`Backup to '${backupResult.data}' was successful`, {
       headers: { "content-type": "text/plain; charset=UTF-8" },
@@ -546,7 +546,7 @@ function adminRouteOptionsNormalize(options: AdminRouteOptions): AdminRouteOptio
 } {
   return {
     ...options,
-    backup: options.backup ?? adminBackupAdapterCreate(options.databasePath),
+    backup: options.backup ?? adminBackupAdapterCreate({ databasePath: options.databasePath }),
     configuration: options.configuration ?? adminConfigurationAdapterCreate(options.config, options.identityConfig),
     diagnostics: options.diagnostics ?? adminDiagnosticsAdapterCreate(),
   }

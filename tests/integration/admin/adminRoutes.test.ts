@@ -1,4 +1,8 @@
 import { afterEach, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { adminBackupAdapterCreate } from "../../../src/server/contexts/admin/adminBackupAdapterCreate.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
@@ -11,6 +15,8 @@ import { organizationMembershipType } from "../../../src/server/contexts/organiz
 import type { PushRelayAdapter } from "../../../src/server/contexts/push/pushRelayAdapter.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { databaseMigrate } from "../../../src/server/database/databaseMigrate.js"
+import { databaseOpen } from "../../../src/server/database/databaseOpen.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
@@ -19,12 +25,25 @@ import type { RsaKeyPair } from "../../../src/shared/crypto/rsaKeyPair.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const databases: DatabaseConnection[] = []
+const temporaryDirectories: string[] = []
 
 function databaseCreate(): DatabaseConnection {
   const result = databaseTestCreate()
   if (!result.success) throw new Error(result.errorMessage)
   databases.push(result.data)
   return result.data
+}
+
+function databaseFileCreate(): { database: DatabaseConnection; directory: string; path: string } {
+  const directory = mkdtempSync(join(tmpdir(), "onewarden-admin-backup-integration-"))
+  temporaryDirectories.push(directory)
+  const path = join(directory, "onewarden.sqlite3")
+  const result = databaseOpen(path)
+  if (!result.success) throw new Error(result.errorMessage)
+  const migrationResult = databaseMigrate(result.data)
+  if (!migrationResult.success) throw new Error(migrationResult.errorMessage)
+  databases.push(result.data)
+  return { database: result.data, directory, path }
 }
 
 function userCreate(uuid: string, email: string): IdentityUser {
@@ -136,6 +155,7 @@ async function request(
 
 afterEach(() => {
   for (const database of databases.splice(0)) databaseClose(database)
+  for (const directory of temporaryDirectories.splice(0)) rmSync(directory, { force: true, recursive: true })
 })
 
 test("admin disabled and enabled authentication preserve the upstream boundary", async () => {
@@ -235,6 +255,46 @@ test("admin invite, user listing, diagnostics, configuration, SMTP test, and bac
   const backup = await request(backupApp, "/admin/config/backup_db", "POST", backupCookie)
   expect(backup.status).toBe(200)
   expect(await backup.text()).toBe("Backup to '/tmp/onewarden-backup.sqlite3' was successful")
+})
+
+test("admin backup endpoint creates the configured operational backup bundle", async () => {
+  const { database, directory, path } = databaseFileCreate()
+  const sendsFolder = join(directory, "sends")
+  const attachmentsFolder = join(directory, "attachments")
+  const destinationRoot = join(directory, "backups")
+  mkdirSync(sendsFolder, { recursive: true })
+  mkdirSync(attachmentsFolder, { recursive: true })
+  writeFileSync(join(sendsFolder, "send.txt"), "send payload")
+  writeFileSync(join(attachmentsFolder, "attachment.bin"), Buffer.from([4, 5, 6]))
+
+  const app = serverAppCreate({
+    database,
+    admin: {
+      backup: adminBackupAdapterCreate({
+        attachmentsFolder,
+        databasePath: path,
+        destinationRoot,
+        sendsFolder,
+      }),
+      config: { ADMIN_TOKEN: "admin-secret" },
+    },
+  })
+  const cookie = await adminLogin(app)
+  const response = await request(app, "/admin/config/backup_db", "POST", cookie)
+
+  expect(response.status).toBe(200)
+  expect(response.headers.get("content-type")).toBe("text/plain; charset=UTF-8")
+  const body = await response.text()
+  expect(body).toMatch(/^Backup to '.+' was successful$/)
+  const backupPath = body.slice("Backup to '".length, -"' was successful".length)
+  const manifest = JSON.parse(readFileSync(join(backupPath, "manifest.json"), "utf8")) as {
+    files: Array<{ path: string }>
+  }
+  expect(manifest.files.map((file) => file.path)).toEqual([
+    "attachments/attachment.bin",
+    "database.sqlite3",
+    "sends/send.txt",
+  ])
 })
 
 test("admin deauthorization, membership compatibility, and organization deletion clean current foundations", async () => {

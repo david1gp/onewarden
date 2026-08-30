@@ -1,5 +1,5 @@
 import type { Result } from "#result"
 
 export type AdminBackupAdapter = {
-  create: () => Result<string>
+  create: () => Result<string> | Promise<Result<string>>
 }

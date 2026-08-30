@@ -11,6 +11,8 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       PORT: 3000,
       DATABASE_PATH: "./data/onewarden.sqlite3",
       SENDS_FOLDER: "./data/sends",
+      ATTACHMENTS_FOLDER: "./data/attachments",
+      BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
       USER_SEND_LIMIT: undefined,
       INCREASE_NOTE_SIZE_LIMIT: false,
@@ -56,7 +58,9 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       PROXY: true,
       IP_HEADER: "CF-Connecting-IP",
       IP_HEADER_TRUSTED_PROXIES: "10.0.0.0/8, 2001:db8::/32",
+      ATTACHMENTS_FOLDER: "./data/attachments",
       SENDS_FOLDER: "./data/sends",
+      BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
       USER_SEND_LIMIT: undefined,
       INCREASE_NOTE_SIZE_LIMIT: true,
@@ -135,4 +139,11 @@ test("serverConfigLoad parses the global sends policy", () => {
   const result = serverConfigLoad({ SENDS_ALLOWED: "false" })
 
   expect(result).toMatchObject({ success: true, data: { SENDS_ALLOWED: false } })
+})
+
+test("serverConfigLoad trims a custom attachment folder", () => {
+  expect(serverConfigLoad({ ATTACHMENTS_FOLDER: " /var/lib/onewarden/attachments " })).toMatchObject({
+    success: true,
+    data: { ATTACHMENTS_FOLDER: "/var/lib/onewarden/attachments" },
+  })
 })

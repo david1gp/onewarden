@@ -11,6 +11,7 @@ const serverConfigPortSchema = v.pipe(
   v.maxValue(65535),
 )
 const serverConfigDatabasePathSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
+const serverConfigBackupFolderSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
 const serverConfigLogLevelSchema = v.picklist(["debug", "info", "warn", "error"])
 const serverConfigProxySchema = v.pipe(
   v.string(),
@@ -57,6 +58,8 @@ export const serverConfigSchema = v.object({
   PORT: v.optional(serverConfigPortSchema, "3000"),
   DATABASE_PATH: v.optional(serverConfigDatabasePathSchema, "./data/onewarden.sqlite3"),
   SENDS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/sends"),
+  ATTACHMENTS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/attachments"),
+  BACKUP_FOLDER: v.optional(serverConfigBackupFolderSchema, "./data/backups"),
   SENDS_ALLOWED: v.optional(serverConfigProxySchema, "true"),
   USER_SEND_LIMIT: serverConfigOptionalNonNegativeIntegerSchema,
   INCREASE_NOTE_SIZE_LIMIT: v.optional(serverConfigProxySchema, "false"),
