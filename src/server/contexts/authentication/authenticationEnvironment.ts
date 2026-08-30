@@ -13,5 +13,7 @@ export type AuthenticationEnvironment = {
     database?: DatabaseConnection
     organizationId?: string
     organizationMembership?: OrganizationMembership
+    requestId?: string
+    securityHeadersSpaDocument?: boolean
   }
 }

@@ -7,6 +7,7 @@ import { clockCreate } from "../shared/clock/clockCreate.js"
 import type { Identifier } from "../shared/identifier/identifier.js"
 import { identifierCreate } from "../shared/identifier/identifierCreate.js"
 import type { Logger } from "../shared/logging/logger.js"
+import { loggerCreate } from "../shared/logging/loggerCreate.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
 import type { AdminRouteOptions } from "./contexts/admin/adminRouteOptions.js"
 import { adminRoutesRegister } from "./contexts/admin/adminRoutesRegister.js"
@@ -56,9 +57,14 @@ import { syncRoutesRegister } from "./contexts/sync/syncRoutesRegister.js"
 import type { WebRouteOptions } from "./contexts/web/webRouteOptions.js"
 import { webRoutesRegister } from "./contexts/web/webRoutesRegister.js"
 import type { DatabaseConnection } from "./database/database.js"
+import { databaseSchemaTablesValidate } from "./database/databaseSchemaTablesValidate.js"
+import type { ReleaseManifest } from "./release/releaseManifestSchema.js"
 import { requestLoggingMiddleware } from "./requestLoggingMiddleware.js"
+import { securityHeadersMiddleware } from "./securityHeadersMiddleware.js"
 
 type ServerAppEnvironment = AuthenticationEnvironment
+
+type ServerReleaseIdentity = Pick<ReleaseManifest, "artifactSha256" | "gitHead" | "schemaIdentity" | "schemaVersion">
 
 type ServerAppOptions = {
   clock?: Clock
@@ -72,6 +78,7 @@ type ServerAppOptions = {
   identity?: Partial<IdentityRouteOptions>
   identifier?: Identifier
   logger?: Logger
+  release?: ServerReleaseIdentity
   notifications?: { enabled?: boolean; hub?: NotificationHub; proxy?: boolean }
   organizations?: {
     domainDnsResolve?: OrganizationRouteOptions["domainDnsResolve"]
@@ -102,42 +109,100 @@ type ServerAppOptions = {
   }
 }
 
+const serverSafeErrorNames = new Set([
+  "AggregateError",
+  "Error",
+  "EvalError",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "TypeError",
+  "URIError",
+])
+
+function serverHealthResponseCreate(
+  status: "ok" | "unavailable",
+  statusCode: 200 | 503,
+  release: ServerReleaseIdentity | undefined,
+): Response {
+  const headers = new Headers({ "cache-control": "no-store", "content-type": "application/json" })
+  if (release !== undefined) {
+    headers.set("x-onewarden-release-artifact", release.artifactSha256)
+    headers.set("x-onewarden-release-commit", release.gitHead)
+    headers.set("x-onewarden-schema-identity", release.schemaIdentity)
+    headers.set("x-onewarden-schema-version", String(release.schemaVersion))
+  }
+  return new Response(JSON.stringify({ status }), {
+    headers,
+    status: statusCode,
+  })
+}
+
+function serverHealthReadyResponseCreate(
+  database: DatabaseConnection | undefined,
+  release: ServerReleaseIdentity | undefined,
+): Response {
+  if (database !== undefined && databaseSchemaTablesValidate(database).success)
+    return serverHealthResponseCreate("ok", 200, release)
+  return serverHealthResponseCreate("unavailable", 503, release)
+}
+
+function serverErrorIdentityRead(error: unknown): Readonly<{ name: string }> {
+  if (!(error instanceof Error)) return { name: typeof error }
+  if (error instanceof HTTPException) return { name: "HTTPException" }
+  return { name: serverSafeErrorNames.has(error.name) ? error.name : "Error" }
+}
+
 export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvironment> {
   const app = new Hono<ServerAppEnvironment>()
   const serverClock = options?.clock ?? clockCreate()
+  const logger = options?.logger ?? loggerCreate({ clock: serverClock })
   const database = options?.database
+  const release = options?.release
   if (database !== undefined) {
     app.use("*", async (context, next) => {
       context.set("database", database)
       await next()
     })
   }
-  app.use("*", requestLoggingMiddleware(options))
+  app.use("*", securityHeadersMiddleware())
+  app.use("*", requestLoggingMiddleware({ ...options, clock: serverClock, logger }))
   app.onError((error, context) => {
-    if (error instanceof HTTPException) {
-      const code =
-        error.status === 400
-          ? "platform.invalid-request"
-          : error.status === 401
-            ? "platform.unauthorized"
-            : error.status === 403
-              ? "platform.forbidden"
-              : error.status === 404
-                ? "platform.not-found"
-                : error.status === 409
-                  ? "platform.conflict"
-                  : error.status === 429
-                    ? "platform.rate-limited"
-                    : error.status === 503
-                      ? "platform.unavailable"
-                      : "platform.internal"
-      return apiErrorResponseCreate(apiErrorCreate("serverAppError", code, error.message))
-    }
-    void context
-    return apiErrorResponseCreate(apiErrorCreate("serverAppError", "platform.internal", "Internal server error."))
+    const response = (() => {
+      if (error instanceof HTTPException) {
+        const code =
+          error.status === 400
+            ? "platform.invalid-request"
+            : error.status === 401
+              ? "platform.unauthorized"
+              : error.status === 403
+                ? "platform.forbidden"
+                : error.status === 404
+                  ? "platform.not-found"
+                  : error.status === 409
+                    ? "platform.conflict"
+                    : error.status === 429
+                      ? "platform.rate-limited"
+                      : error.status === 503
+                        ? "platform.unavailable"
+                        : "platform.internal"
+        return apiErrorResponseCreate(apiErrorCreate("serverAppError", code, error.message))
+      }
+      return apiErrorResponseCreate(apiErrorCreate("serverAppError", "platform.internal", "Internal server error."))
+    })()
+    logger.error("request.failed", {
+      error: serverErrorIdentityRead(error),
+      method: context.req.method,
+      path: context.req.path,
+      requestId: context.get("requestId"),
+      status: response.status,
+    })
+    return response
   })
   app.notFound(() => apiErrorResponseCreate(apiErrorCreate("serverAppNotFound", "platform.not-found", "Not found.")))
-  app.get("/health", (context) => context.json({ status: "ok" }))
+  app.get("/health/live", () => serverHealthResponseCreate("ok", 200, release))
+  app.get("/health/ready", () => serverHealthReadyResponseCreate(database, release))
+  app.get("/health", () => serverHealthReadyResponseCreate(database, release))
 
   const identityOptions = options?.identity
   const hasCustomTokenKey = identityOptions?.privateKey !== undefined || identityOptions?.publicKey !== undefined

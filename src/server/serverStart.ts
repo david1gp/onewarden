@@ -1,7 +1,9 @@
 import { clockCreate } from "../shared/clock/clockCreate.js"
 import { loggerCreate } from "../shared/logging/loggerCreate.js"
 import { serverConfigLoad } from "./config/serverConfigLoad.js"
+import { adminBackupAdapterCreate } from "./contexts/admin/adminBackupAdapterCreate.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
+import { attachmentFileStorageAdapterCreate } from "./contexts/attachments/attachmentFileStorageAdapterCreate.js"
 import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
 import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
 import { eventPurge } from "./contexts/events/eventPurge.js"
@@ -19,6 +21,8 @@ import { twoFactorWebAuthnU2fMigrate } from "./contexts/twoFactor/twoFactorWebAu
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
+import { responseSecurityHeadersApply } from "./responseSecurityHeadersApply.js"
+import { releaseManifestRead } from "./release/releaseManifestRead.js"
 import { serverAppCreate } from "./serverAppCreate.js"
 
 const defaultLogger = loggerCreate()
@@ -29,6 +33,11 @@ if (!configResult.success) {
 }
 
 const logger = loggerCreate({ level: configResult.data.LOG_LEVEL })
+const releaseResult = await releaseManifestRead()
+if (!releaseResult.success) {
+  logger.error("server.release.invalid", { errorMessage: releaseResult.errorMessage })
+  process.exit(1)
+}
 const iconConfigResult = iconConfigLoad()
 if (!iconConfigResult.success) {
   logger.error("server.icon-configuration.invalid", { errorMessage: iconConfigResult.errorMessage })
@@ -70,6 +79,7 @@ if (!tokenKeyPairResult.success) {
 }
 const tokenKeyPair = tokenKeyPairResult.data
 const sendStorage = sendFileStorageAdapterCreate({ directory: configResult.data.SENDS_FOLDER })
+const attachmentStorage = attachmentFileStorageAdapterCreate({ directory: configResult.data.ATTACHMENTS_FOLDER })
 const notificationHub = notificationHubCreate({
   enabled: configResult.data.ENABLE_WEBSOCKET,
   proxy: configResult.data.PROXY,
@@ -92,6 +102,12 @@ const app = serverAppCreate({
       ADMIN_SESSION_LIFETIME: configResult.data.ADMIN_SESSION_LIFETIME,
       INVITATION_ORG_NAME: configResult.data.INVITATION_ORG_NAME,
     }),
+    backup: adminBackupAdapterCreate({
+      attachmentsFolder: configResult.data.ATTACHMENTS_FOLDER,
+      databasePath: configResult.data.DATABASE_PATH,
+      destinationRoot: configResult.data.BACKUP_FOLDER,
+      sendsFolder: configResult.data.SENDS_FOLDER,
+    }),
     databasePath: configResult.data.DATABASE_PATH,
   },
   icons: {
@@ -113,6 +129,7 @@ const app = serverAppCreate({
     mail,
   },
   logger,
+  release: releaseResult.data,
   notifications: { hub: notificationHub },
   push: {
     configuration: {
@@ -122,6 +139,9 @@ const app = serverAppCreate({
       installationId: configResult.data.PUSH_INSTALLATION_ID,
       installationKey: configResult.data.PUSH_INSTALLATION_KEY,
     },
+  },
+  attachments: {
+    storage: attachmentStorage,
   },
   sends: {
     quotaBytes: configResult.data.USER_SEND_LIMIT === undefined ? undefined : configResult.data.USER_SEND_LIMIT * 1_024,
@@ -137,7 +157,7 @@ try {
   const server = Bun.serve({
     fetch: async (request, bunServer) => {
       const upgradeResult = await notificationHub.upgrade(request, bunServer)
-      if (upgradeResult !== undefined) return upgradeResult
+      if (upgradeResult !== undefined) return responseSecurityHeadersApply(upgradeResult)
       const remoteIpAddress = bunServer.requestIP(request)?.address
       return app.fetch(request, remoteIpAddress === undefined ? undefined : { remoteIpAddress })
     },

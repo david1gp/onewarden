@@ -31,16 +31,22 @@ export function requestLoggingMiddleware(options?: {
       requestId,
     })
 
-    await next()
-
-    const durationMs = Math.max(0, clock.now().getTime() - startedAt.getTime())
-    context.res.headers.set("x-request-id", requestId)
-    logger.info("request.completed", {
-      durationMs,
-      method: context.req.method,
-      path: context.req.path,
-      requestId,
-      status: context.res.status,
-    })
+    let requestThrew = false
+    try {
+      await next()
+    } catch (error) {
+      requestThrew = true
+      throw error
+    } finally {
+      const durationMs = Math.max(0, clock.now().getTime() - startedAt.getTime())
+      context.res.headers.set("x-request-id", requestId)
+      logger.info("request.completed", {
+        durationMs,
+        method: context.req.method,
+        path: context.req.path,
+        requestId,
+        status: requestThrew ? 500 : context.res.status,
+      })
+    }
   }
 }

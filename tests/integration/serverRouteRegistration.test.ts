@@ -280,6 +280,8 @@ const currentRouteRegistrations = [
   { basePath: "/", method: "GET", path: "/attachments/:cipher_id/:file_id" },
   { basePath: "/", method: "GET", path: "/css/vaultwarden.css" },
   { basePath: "/", method: "GET", path: "/health" },
+  { basePath: "/", method: "GET", path: "/health/live" },
+  { basePath: "/", method: "GET", path: "/health/ready" },
   { basePath: "/", method: "GET", path: "/icons/:host/icon.png" },
   { basePath: "/", method: "GET", path: "/identity/connect/authorize" },
   { basePath: "/", method: "GET", path: "/identity/connect/oidc-signin" },

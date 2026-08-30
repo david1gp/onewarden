@@ -1,22 +1,49 @@
 import { expect, test } from "bun:test"
 import { HTTPException } from "hono/http-exception"
 import * as v from "valibot"
+import { databaseClose } from "../../src/server/database/databaseClose.js"
+import { databaseTestCreate } from "../../src/server/database/databaseTestCreate.js"
+import { serverAppCreate } from "../../src/server/serverAppCreate.js"
+import { apiErrorResponseCreate } from "../../src/shared/api/apiErrorResponseCreate.js"
 import { clockTestCreate } from "../../src/shared/clock/clockTestCreate.js"
 import { identifierTestCreate } from "../../src/shared/identifier/identifierTestCreate.js"
 import { loggerCreate } from "../../src/shared/logging/loggerCreate.js"
-import { serverAppCreate } from "../../src/server/serverAppCreate.js"
-import { apiErrorResponseCreate } from "../../src/shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../src/shared/validation/requestBodyParse.js"
 import { requestHeaderParse } from "../../src/shared/validation/requestHeaderParse.js"
 import { requestPathParse } from "../../src/shared/validation/requestPathParse.js"
 import { requestQueryParse } from "../../src/shared/validation/requestQueryParse.js"
 
-test("serverAppCreate serves the health response", async () => {
+test("serverAppCreate serves liveness and readiness responses", async () => {
   const app = serverAppCreate()
-  const response = await app.request("http://localhost/health")
+  const liveResponse = await app.request("http://localhost/health/live")
+  expect(liveResponse.status).toBe(200)
+  expect(await liveResponse.json()).toEqual({ status: "ok" })
+  expect(liveResponse.headers.get("cache-control")).toBe("no-store")
 
-  expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ status: "ok" })
+  for (const path of ["/health/ready", "/health"]) {
+    const response = await app.request(`http://localhost${path}`)
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ status: "unavailable" })
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  }
+
+  const databaseResult = databaseTestCreate()
+  if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
+  const databaseApp = serverAppCreate({ database: databaseResult.data })
+  const readyResponse = await databaseApp.request("http://localhost/health/ready")
+  const healthResponse = await databaseApp.request("http://localhost/health")
+  expect(readyResponse.status).toBe(200)
+  expect(await readyResponse.json()).toEqual({ status: "ok" })
+  expect(healthResponse.status).toBe(200)
+  expect(await healthResponse.json()).toEqual({ status: "ok" })
+  expect(readyResponse.headers.get("cache-control")).toBe("no-store")
+  expect(healthResponse.headers.get("cache-control")).toBe("no-store")
+
+  databaseResult.data.run("DROP TABLE schema_version")
+  const incompleteResponse = await databaseApp.request("http://localhost/health/ready")
+  expect(incompleteResponse.status).toBe(503)
+  expect(await incompleteResponse.json()).toEqual({ status: "unavailable" })
+  expect(databaseClose(databaseResult.data).success).toBe(true)
 })
 
 test("serverAppCreate correlates requests and logs only safe request metadata", async () => {
@@ -28,7 +55,7 @@ test("serverAppCreate correlates requests and logs only safe request metadata", 
     logger: loggerCreate({ clock, sink: (entry) => entries.push(entry) }),
   })
 
-  const response = await app.request("http://localhost/health?access_token=do-not-log", {
+  const response = await app.request("http://localhost/health/live?access_token=do-not-log", {
     headers: { "x-request-id": "incoming-request" },
   })
 
@@ -38,16 +65,31 @@ test("serverAppCreate correlates requests and logs only safe request metadata", 
       timestamp: "2026-08-27T12:00:00.000Z",
       level: "info",
       message: "request.started",
-      fields: { method: "GET", path: "/health", requestId: "incoming-request" },
+      fields: { method: "GET", path: "/health/live", requestId: "incoming-request" },
     },
     {
       timestamp: "2026-08-27T12:00:00.000Z",
       level: "info",
       message: "request.completed",
-      fields: { durationMs: 0, method: "GET", path: "/health", requestId: "incoming-request", status: 200 },
+      fields: { durationMs: 0, method: "GET", path: "/health/live", requestId: "incoming-request", status: 200 },
     },
   ])
   expect(JSON.stringify(entries)).not.toContain("do-not-log")
+})
+
+test("serverAppCreate keeps liveness available when the database is unavailable", async () => {
+  const databaseResult = databaseTestCreate()
+  if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
+  const app = serverAppCreate({ database: databaseResult.data })
+  expect(databaseClose(databaseResult.data).success).toBe(true)
+
+  const liveResponse = await app.request("http://localhost/health/live")
+  const readyResponse = await app.request("http://localhost/health/ready")
+
+  expect(liveResponse.status).toBe(200)
+  expect(await liveResponse.json()).toEqual({ status: "ok" })
+  expect(readyResponse.status).toBe(503)
+  expect(await readyResponse.json()).toEqual({ status: "unavailable" })
 })
 
 test("serverAppCreate maps not-found and thrown errors to API errors", async () => {
@@ -70,6 +112,54 @@ test("serverAppCreate maps not-found and thrown errors to API errors", async () 
   const brokenResponse = await app.request("http://localhost/broken")
   expect(brokenResponse.status).toBe(500)
   expect(await brokenResponse.json()).toMatchObject({ message: "Internal server error." })
+})
+
+test("serverAppCreate logs one safe completion and failure for thrown requests", async () => {
+  const entries: unknown[] = []
+  const clock = clockTestCreate("2026-08-27T12:00:00.000Z")
+  const app = serverAppCreate({
+    clock,
+    identifier: identifierTestCreate(["generated-request"]),
+    logger: loggerCreate({ clock, sink: (entry) => entries.push(entry) }),
+  })
+  app.get("/broken-request", () => {
+    throw new Error("/srv/onewarden/secret?access_token=do-not-log")
+  })
+
+  const response = await app.request("http://localhost/broken-request?password=do-not-log", {
+    headers: { "x-request-id": "thrown-request" },
+  })
+
+  expect(response.status).toBe(500)
+  expect(entries).toEqual([
+    {
+      timestamp: "2026-08-27T12:00:00.000Z",
+      level: "info",
+      message: "request.started",
+      fields: { method: "GET", path: "/broken-request", requestId: "thrown-request" },
+    },
+    {
+      timestamp: "2026-08-27T12:00:00.000Z",
+      level: "error",
+      message: "request.failed",
+      fields: {
+        error: { name: "Error" },
+        method: "GET",
+        path: "/broken-request",
+        requestId: "thrown-request",
+        status: 500,
+      },
+    },
+    {
+      timestamp: "2026-08-27T12:00:00.000Z",
+      level: "info",
+      message: "request.completed",
+      fields: { durationMs: 0, method: "GET", path: "/broken-request", requestId: "thrown-request", status: 500 },
+    },
+  ])
+  expect(response.headers.get("x-request-id")).toBe("thrown-request")
+  expect(JSON.stringify(entries)).not.toContain("do-not-log")
+  expect(JSON.stringify(entries)).not.toContain("/srv/onewarden")
 })
 
 test("request parsers map body, path, query, and header failures without throwing", async () => {

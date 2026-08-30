@@ -65,7 +65,10 @@ export function webRoutesRegister(app: Hono<AuthenticationEnvironment>, options:
         const indexResponse = await webFileResponseCreate(webVaultFolders, "index.html", {
           cacheControl: webCacheShort,
         })
-        if (indexResponse !== undefined) return indexResponse
+        if (indexResponse !== undefined) {
+          if (!webPathIsSend(context.req.path)) context.set("securityHeadersSpaDocument", true)
+          return indexResponse
+        }
       }
       return webNotFoundResponseCreate()
     })
@@ -111,11 +114,17 @@ export function webRoutesRegister(app: Hono<AuthenticationEnvironment>, options:
     const response = await webFileResponseCreate(webVaultFolders, "index.html", {
       cacheControl: webCacheShort,
     })
-    if (response !== undefined) return response
+    if (response !== undefined) {
+      context.set("securityHeadersSpaDocument", true)
+      return response
+    }
     return context.notFound()
   })
   app.get("/index.html", () => new Response(null, { headers: { location: "/" }, status: 303 }))
-  app.on("HEAD", "/", () => new Response(null, { status: 200 }))
+  app.on("HEAD", "/", (context) => {
+    context.set("securityHeadersSpaDocument", true)
+    return new Response(null, { status: 200 })
+  })
   app.get("/app-id.json", (context) => webAppIdResponse(options.publicOrigin, context.req.url))
   app.get("/.well-known/apple-app-site-association", () => webAppleAppSiteAssociationResponse())
   app.get("/css/vaultwarden.css", async () => {
@@ -271,6 +280,17 @@ function webPathIsSpaRoute(path: string): boolean {
     normalized.startsWith("/vault/") ||
     normalized.startsWith("/send/") ||
     normalized.startsWith("/sends/access/")
+  )
+}
+
+function webPathIsSend(path: string): boolean {
+  const normalized = path.replace(/\/+$/, "").toLowerCase()
+  return (
+    normalized === "/send" ||
+    normalized.startsWith("/send/") ||
+    normalized === "/send-access" ||
+    normalized === "/sends" ||
+    normalized.startsWith("/sends/")
   )
 }
 
