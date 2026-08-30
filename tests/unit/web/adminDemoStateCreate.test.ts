@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { createRoot } from "solid-js"
 import { adminShellStateCreate } from "../../../src/web/admin/adminShellStateCreate.js"
+import { adminSettingsViewStateCreate } from "../../../src/web/admin/adminSettingsViewStateCreate.js"
 import { adminSettingsDemoData } from "../../../src/web/demo/adminSettingsDemoData.js"
 import { adminDemoStateCreate } from "../../../src/web/demo/adminDemoStateCreate.js"
 
@@ -48,6 +49,68 @@ test("admin demo state tracks setting overrides and feedback lifecycle", () => {
       state.clearFeedback()
 
       expect(state.feedback()).toBeNull()
+    } finally {
+      dispose()
+    }
+  })
+})
+
+test("admin demo grouped settings update derived values and disable dependent fields", () => {
+  createRoot((dispose) => {
+    const state = adminDemoStateCreate()
+
+    try {
+      expect(state.settingDisabled("ssoClientId")).toBe(true)
+      state.toggleSetting("ssoEnabled")
+      expect(state.settingDisabled("ssoClientId")).toBe(false)
+
+      state.updateTextSetting("domain", "https://vault.demo.internal/team/")
+      expect(state.settings().readOnly.domainOrigin).toBe("https://vault.demo.internal")
+      expect(state.settings().readOnly.domainPath).toBe("/team")
+      expect(state.settings().readOnly.ssoCallbackPath).toBe(
+        "https://vault.demo.internal/team/identity/connect/oidc-signin",
+      )
+
+      state.toggleSetting("mailEnabled")
+      expect(state.settingDisabled("smtpFrom")).toBe(true)
+      expect(state.settingDisabled("emailTokenSize")).toBe(true)
+      state.toggleSetting("mailEnabled")
+      expect(state.settingDisabled("emailTokenSize")).toBe(false)
+
+      state.toggleSetting("useSendmail")
+      expect(state.settingDisabled("smtpHost")).toBe(true)
+      expect(state.settings().readOnly.email2faEnabled).toBe(true)
+    } finally {
+      dispose()
+    }
+  })
+})
+
+test("admin demo settings supports password visibility, save state, warnings, and guarded submit", () => {
+  createRoot((dispose) => {
+    const state = adminDemoStateCreate()
+    const settingsViewState = adminSettingsViewStateCreate(state)
+
+    try {
+      expect(state.adminTokenWarning()).toBe(true)
+      expect(settingsViewState.passwordType("adminToken")).toBe("password")
+      settingsViewState.togglePasswordVisibility("adminToken")()
+      expect(settingsViewState.passwordType("adminToken")).toBe("text")
+
+      state.updateTextSetting("adminToken", "$argon2id$v=19$demo")
+      expect(state.adminTokenWarning()).toBe(false)
+      state.updateTextSetting("domain", "https://saved.demo.internal")
+      expect(state.settingsDirty()).toBe(true)
+      state.saveSettings()
+      expect(state.settingsDirty()).toBe(false)
+      expect(state.feedback()).toEqual({ kind: "success", message: "Configuration saved in demo state." })
+
+      let prevented = false
+      settingsViewState.preventEnter({
+        key: "Enter",
+        preventDefault: () => (prevented = true),
+      } as unknown as KeyboardEvent)
+      expect(prevented).toBe(true)
     } finally {
       dispose()
     }

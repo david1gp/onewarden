@@ -6,7 +6,13 @@ import type { AdminFeedback } from "./adminFeedbackSchema.js"
 import type { AdminOrganization } from "./adminOrganizationSchema.js"
 import type { AdminSearch } from "./adminSearchSchema.js"
 import type { AdminSection } from "./adminSectionSchema.js"
-import type { AdminSettings, AdminSettingsOverride } from "./adminSettingsSchema.js"
+import type {
+  AdminSettings,
+  AdminSettingsBooleanKey,
+  AdminSettingsNumberKey,
+  AdminSettingsOverride,
+  AdminSettingsTextKey,
+} from "./adminSettingsSchema.js"
 import type { AdminUser } from "./adminUserSchema.js"
 import type { AdminUserOrganizationMembership } from "./adminUserOrganizationMembershipSchema.js"
 import type { AdminUserOrganizationRole } from "./adminUserOrganizationRoleSchema.js"
@@ -30,6 +36,8 @@ export interface AdminShellState {
   lastUsersReloadedAt: Accessor<string | null>
   lastClientResyncAt: Accessor<string | null>
   lastOrganizationsReloadedAt: Accessor<string | null>
+  settingsDirty: Accessor<boolean>
+  adminTokenWarning: Accessor<boolean>
   dialog: Accessor<AdminDialog | null>
   confirmation: Accessor<AdminConfirmation | null>
   feedback: Accessor<AdminFeedback | null>
@@ -46,8 +54,14 @@ export interface AdminShellState {
   closeConfirmation: () => void
   showFeedback: (feedback: AdminFeedback) => void
   clearFeedback: () => void
-  toggleSetting: (key: AdminSettingsOverride) => void
+  toggleSetting: (key: AdminSettingsBooleanKey) => void
+  updateTextSetting: (key: AdminSettingsTextKey, value: string) => void
+  updateNumberSetting: (key: AdminSettingsNumberKey, value: number) => void
+  settingDisabled: (key: AdminSettingsOverride) => boolean
+  settingConfigOverridden: (key: AdminSettingsOverride) => boolean
+  settingEnvironmentOverridden: (key: AdminSettingsOverride) => boolean
   resetSettings: () => void
+  saveSettings: () => void
   userRemove2fa: (userId: string) => void
   userDeauthorizeSessions: (userId: string) => void
   userRemoveSsoAssociation: (userId: string) => void

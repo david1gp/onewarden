@@ -8,7 +8,14 @@ import type { AdminFeedback } from "../admin/adminFeedbackSchema.js"
 import type { AdminOrganization } from "../admin/adminOrganizationSchema.js"
 import type { AdminSearch } from "../admin/adminSearchSchema.js"
 import type { AdminSection } from "../admin/adminSectionSchema.js"
-import type { AdminSettings, AdminSettingsOverride } from "../admin/adminSettingsSchema.js"
+import type {
+  AdminReadOnlySettings,
+  AdminSettings,
+  AdminSettingsBooleanKey,
+  AdminSettingsNumberKey,
+  AdminSettingsOverride,
+  AdminSettingsTextKey,
+} from "../admin/adminSettingsSchema.js"
 import type { AdminUser } from "../admin/adminUserSchema.js"
 import { adminDiagnosticsDemoData } from "./adminDiagnosticsDemoData.js"
 import { adminOrganizationsDemoData } from "./adminOrganizationsDemoData.js"
@@ -22,14 +29,134 @@ type AdminDemoStateProps = {
   diagnostics?: AdminDiagnostics
 }
 
-const adminBooleanSettingKeys: readonly AdminSettingsOverride[] = [
+const adminBooleanSettingKeys: readonly AdminSettingsBooleanKey[] = [
+  "webVaultEnabled",
+  "sendsAllowed",
   "signupsAllowed",
+  "signupsVerify",
   "invitationsAllowed",
-  "mailEnabled",
-  "ssoEnabled",
+  "emergencyAccessAllowed",
+  "emailChangeAllowed",
+  "passwordHintsAllowed",
+  "showPasswordHint",
   "twoFactorEnabled",
   "adminTokenDisabled",
+  "disableIconDownload",
+  "disable2faRemember",
+  "requireDeviceEmail",
+  "reloadTemplates",
+  "increaseNoteSizeLimit",
+  "ssoEnabled",
+  "ssoOnly",
+  "ssoSignupsMatchEmail",
+  "ssoAllowUnknownEmailVerification",
+  "ssoPkce",
+  "ssoDebugTokens",
+  "mailEnabled",
+  "useSendmail",
+  "smtpEmbedImages",
+  "smtpAcceptInvalidCerts",
+  "smtpAcceptInvalidHostnames",
+  "email2faEnforceOnInvite",
+  "email2faAutoFallback",
+  "yubicoEnabled",
+  "duoEnabled",
 ]
+
+const adminTextSettingKeys: readonly AdminSettingsTextKey[] = [
+  "domain",
+  "invitationOrgName",
+  "signupsDomainsWhitelist",
+  "orgCreationUsers",
+  "adminToken",
+  "ipHeader",
+  "ipHeaderTrustedProxies",
+  "iconService",
+  "httpRequestBlockRegex",
+  "allowedIframeAncestors",
+  "allowedConnectSrc",
+  "logTimestampFormat",
+  "logLevel",
+  "ssoClientId",
+  "ssoClientSecret",
+  "ssoAuthority",
+  "ssoScopes",
+  "ssoAuthorizeExtraParams",
+  "ssoAudienceTrusted",
+  "smtpHost",
+  "smtpFrom",
+  "smtpFromName",
+  "smtpUsername",
+  "smtpPassword",
+  "smtpAuthMechanism",
+  "heloName",
+  "yubicoClientId",
+  "yubicoSecretKey",
+  "yubicoServer",
+  "duoIkey",
+  "duoSkey",
+  "duoHost",
+]
+
+const adminNumberSettingKeys: readonly AdminSettingsNumberKey[] = [
+  "userAttachmentLimit",
+  "orgAttachmentLimit",
+  "userSendLimit",
+  "trashAutoDeleteDays",
+  "incomplete2faTimeLimit",
+  "signupsVerifyResendTime",
+  "signupsVerifyResendLimit",
+  "invitationExpirationHours",
+  "passwordIterations",
+  "iconRedirectCode",
+  "iconCacheTtl",
+  "iconCacheNegttl",
+  "iconDownloadTimeout",
+  "loginRatelimitSeconds",
+  "loginRatelimitMaxBurst",
+  "adminSessionLifetime",
+  "smtpTimeout",
+  "emailTokenSize",
+  "emailExpirationTime",
+  "emailAttemptsLimit",
+]
+
+const ssoDependentKeys: readonly AdminSettingsOverride[] = [
+  "ssoOnly",
+  "ssoSignupsMatchEmail",
+  "ssoAllowUnknownEmailVerification",
+  "ssoClientId",
+  "ssoClientSecret",
+  "ssoAuthority",
+  "ssoScopes",
+  "ssoAuthorizeExtraParams",
+  "ssoAudienceTrusted",
+  "ssoPkce",
+  "ssoDebugTokens",
+]
+const smtpDependentKeys: readonly AdminSettingsOverride[] = [
+  "useSendmail",
+  "smtpHost",
+  "smtpFrom",
+  "smtpFromName",
+  "smtpUsername",
+  "smtpPassword",
+  "smtpAuthMechanism",
+  "smtpTimeout",
+  "heloName",
+  "smtpEmbedImages",
+  "smtpAcceptInvalidCerts",
+  "smtpAcceptInvalidHostnames",
+]
+const email2faDependentKeys: readonly AdminSettingsOverride[] = [
+  "emailTokenSize",
+  "emailExpirationTime",
+  "emailAttemptsLimit",
+  "email2faEnforceOnInvite",
+  "email2faAutoFallback",
+]
+const yubicoDependentKeys: readonly AdminSettingsOverride[] = ["yubicoClientId", "yubicoSecretKey", "yubicoServer"]
+const duoDependentKeys: readonly AdminSettingsOverride[] = ["duoIkey", "duoSkey", "duoHost"]
 
 const organizationRoleOptions: string[] = ["user", "manager", "admin", "owner"]
 const organizationRoleLabels: Record<AdminUserOrganizationRole, string> = {
@@ -58,9 +185,51 @@ function adminAttachmentSizeFormat(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`
 }
 
+function adminDomainParts(domain: string) {
+  const protocolEnd = domain.indexOf("://")
+  if (protocolEnd < 0) return { origin: "", path: "" }
+  const pathStart = domain.indexOf("/", protocolEnd + 3)
+  if (pathStart < 0) return { origin: domain.replace(/\/+$/, ""), path: "" }
+  return {
+    origin: domain.slice(0, pathStart).replace(/\/+$/, ""),
+    path: domain.slice(pathStart).replace(/\/+$/, ""),
+  }
+}
+
+function adminIconServiceUrl(iconService: string) {
+  if (iconService === "internal") return ""
+  if (iconService === "bitwarden") return "https://icons.bitwarden.net/{}/icon.png"
+  if (iconService === "duckduckgo") return "https://icons.duckduckgo.com/ip3/{}.ico"
+  if (iconService === "google") return "https://www.google.com/s2/favicons?domain={}&sz=32"
+  return iconService
+}
+
+function adminSettingsReadOnlyDerive(settings: AdminSettings): AdminSettings {
+  const domainParts = adminDomainParts(settings.domain)
+  const domainBase = settings.domain.replace(/\/+$/, "")
+  const smtpPort =
+    settings.readOnly.smtpSecurity === "force_tls" ? 465 : settings.readOnly.smtpSecurity === "off" ? 25 : 587
+  const readOnly: AdminReadOnlySettings = {
+    ...settings.readOnly,
+    domainOrigin: domainParts.origin,
+    domainPath: domainParts.path,
+    iconServiceUrl: adminIconServiceUrl(settings.iconService),
+    ssoCallbackPath: domainBase.length > 0 ? `${domainBase}/identity/connect/oidc-signin` : "",
+    smtpPort,
+    smtpImageSource: settings.smtpEmbedImages ? "cid:" : `${domainBase}/vw_static/`,
+    email2faEnabled: settings.mailEnabled && (settings.smtpHost.trim().length > 0 || settings.useSendmail),
+  }
+  return { ...settings, readOnly }
+}
+
 export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
-  const settings = createSignalObject(props.settings ?? adminSettingsDemoData)
-  const defaultSettings: AdminSettings = { ...adminSettingsDemoData, overrides: [] }
+  const initialSettings = adminSettingsReadOnlyDerive(props.settings ?? adminSettingsDemoData)
+  const settings = createSignalObject(initialSettings)
+  const defaultSettings: AdminSettings = adminSettingsReadOnlyDerive({
+    ...adminSettingsDemoData,
+    overrides: [],
+  })
+  const savedSettings = createSignalObject(initialSettings)
   const users = createSignalObject<readonly AdminUser[]>(props.users ?? adminUsersDemoData)
   const organizations = createSignalObject<readonly AdminOrganization[]>(
     props.organizations ?? adminOrganizationsDemoData,
@@ -79,6 +248,13 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
   const lastUsersReloadedAt = createSignalObject<string | null>(null)
   const lastClientResyncAt = createSignalObject<string | null>(null)
   const lastOrganizationsReloadedAt = createSignalObject<string | null>(null)
+  const settingsDirty = createMemo(() => JSON.stringify(settings.get()) !== JSON.stringify(savedSettings.get()))
+  const adminTokenWarning = createMemo(
+    () =>
+      !settings.get().adminTokenDisabled &&
+      !settings.get().readOnly.adminPageSecurityBypass &&
+      !settings.get().adminToken.startsWith("$argon2"),
+  )
 
   const filteredUsers = createMemo(() => {
     const query = search.get().query.trim().toLowerCase()
@@ -181,18 +357,77 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     feedback.set(null)
   }
 
-  const toggleSetting = (key: AdminSettingsOverride) => {
+  const settingOverrideAdd = (settingsValue: AdminSettings, key: AdminSettingsOverride) => {
+    if (settingsValue.overrides.includes(key)) return settingsValue.overrides
+    return [...settingsValue.overrides, key]
+  }
+
+  const toggleSetting = (key: AdminSettingsBooleanKey) => {
     if (!adminBooleanSettingKeys.includes(key)) return
     const currentSettings = settings.get()
     const nextSettings = { ...currentSettings, [key]: !currentSettings[key] }
-    const overrides = currentSettings.overrides.includes(key)
-      ? currentSettings.overrides
-      : [...currentSettings.overrides, key]
-    settings.set({ ...nextSettings, overrides })
+    settings.set(
+      adminSettingsReadOnlyDerive({
+        ...nextSettings,
+        overrides: settingOverrideAdd(currentSettings, key),
+      }),
+    )
   }
 
+  const updateTextSetting = (key: AdminSettingsTextKey, value: string) => {
+    if (!adminTextSettingKeys.includes(key)) return
+    const currentSettings = settings.get()
+    settings.set(
+      adminSettingsReadOnlyDerive({
+        ...currentSettings,
+        [key]: value,
+        overrides: settingOverrideAdd(currentSettings, key),
+      }),
+    )
+  }
+
+  const updateNumberSetting = (key: AdminSettingsNumberKey, value: number) => {
+    if (!adminNumberSettingKeys.includes(key) || !Number.isInteger(value) || value < 0) return
+    if (key === "invitationExpirationHours" && value < 1) return
+    if (key === "passwordIterations" && value < 100_000) return
+    if (key === "emailTokenSize" && value < 6) return
+    const currentSettings = settings.get()
+    settings.set(
+      adminSettingsReadOnlyDerive({
+        ...currentSettings,
+        [key]: value,
+        overrides: settingOverrideAdd(currentSettings, key),
+      }),
+    )
+  }
+
+  const settingDisabled = (key: AdminSettingsOverride) => {
+    if (ssoDependentKeys.includes(key)) return !settings.get().ssoEnabled
+    if (smtpDependentKeys.includes(key)) {
+      const currentSettings = settings.get()
+      if (!currentSettings.mailEnabled) return true
+      return (
+        currentSettings.useSendmail && ["smtpHost", "smtpUsername", "smtpPassword", "smtpAuthMechanism"].includes(key)
+      )
+    }
+    if (email2faDependentKeys.includes(key)) return !settings.get().readOnly.email2faEnabled
+    if (yubicoDependentKeys.includes(key)) return !settings.get().yubicoEnabled
+    if (duoDependentKeys.includes(key)) return !settings.get().duoEnabled
+    return false
+  }
+
+  const settingConfigOverridden = (key: AdminSettingsOverride) => settings.get().overrides.includes(key)
+  const settingEnvironmentOverridden = (key: AdminSettingsOverride) => settings.get().environmentOverrides.includes(key)
+
   const resetSettings = () => {
-    settings.set({ ...defaultSettings })
+    settings.set({ ...defaultSettings, readOnly: { ...defaultSettings.readOnly } })
+    savedSettings.set({ ...defaultSettings, readOnly: { ...defaultSettings.readOnly } })
+  }
+
+  const saveSettings = () => {
+    const currentSettings = settings.get()
+    savedSettings.set({ ...currentSettings, readOnly: { ...currentSettings.readOnly } })
+    showFeedback({ kind: "success", message: "Configuration saved in demo state." })
   }
 
   const updateUser = (id: string, update: (user: AdminUser) => AdminUser) => {
@@ -301,6 +536,8 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     lastUsersReloadedAt: lastUsersReloadedAt.get,
     lastClientResyncAt: lastClientResyncAt.get,
     lastOrganizationsReloadedAt: lastOrganizationsReloadedAt.get,
+    settingsDirty,
+    adminTokenWarning,
     dialog: dialog.get,
     confirmation: confirmation.get,
     feedback: feedback.get,
@@ -318,7 +555,13 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     showFeedback,
     clearFeedback,
     toggleSetting,
+    updateTextSetting,
+    updateNumberSetting,
+    settingDisabled,
+    settingConfigOverridden,
+    settingEnvironmentOverridden,
     resetSettings,
+    saveSettings,
     userRemove2fa,
     userDeauthorizeSessions,
     userRemoveSsoAssociation,
