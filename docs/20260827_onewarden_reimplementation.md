@@ -13,7 +13,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Port behavior tests feature-by-feature; every feature task includes focused unit, integration, and compatibility tests before it is complete.
 - Build the UI against the same public API; do not introduce private shortcuts around authentication, authorization, or encryption behavior.
 - Implement each feature increment before running or editing its tests; repair every failing test without dismissing failures as unrelated.
-- Run and repair end-to-end tests only after the corresponding feature implementation is complete.
+- Increment subagents must not run, edit, or debug end-to-end tests. Run and repair end-to-end tests only once the full phase implementation is complete, immediately before committing, pushing, and deploying that phase.
 - When a phase is complete and all tests pass, use a fresh Luna subagent with the `commits` skill to commit, push, and deploy it before continuing to the next phase.
 - Reuse existing demo pages and components, extracting shared behavior where needed; keep UI implementation DRY and import reusable primitives from `./ui` via `#ui/...`.
 
@@ -24,7 +24,7 @@ Build OneWarden as an independent TypeScript reimplementation of Vaultwarden wit
 - Build protocol foundations, then port API features in dependency order as independently verifiable increments.
 - Add the improved UI as bounded features after their APIs stabilize.
 - Maintain a mechanical compatibility manifest against the read-only upstream route registrations and behavior fixtures.
-- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 Wave 1 is integrated and fully verified: explicit HEAD route introspection, `/api/tasks`, HIBP breach lookup, and cipher organization-details compatibility are complete; the wave awaits commit, push, and deployment. Remaining Task 38 groups are cipher purge/bulk/import, SSO enrollment, managed-account recovery, and auth requests. Task 39 has not started.
+- Current context: tasks 34-37 are committed, pushed, deployed, and healthy on `main`. Task 38 cipher purge and the complete managed-account recovery/details/enrollment route group are implemented, reviewed, and locally verified without end-to-end testing; prior compatibility work through organization cipher import and SSO auto-enrollment is committed and pushed. Auth-request persistence, routes, polling, and password-grant integration are implemented and locally verified, including the exact five-minute rejection boundary. Remaining auth-request work is device-list composition and expiry cleanup. Task 39 has not started.
 
 # Tasks
 
