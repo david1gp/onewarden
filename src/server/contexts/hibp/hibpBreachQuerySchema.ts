@@ -1,7 +1,7 @@
 import * as v from "valibot"
 
 export const hibpBreachQuerySchema = v.object({
-  username: v.pipe(v.string(), v.minLength(1)),
+  username: v.string(),
 })
 
 export type HibpBreachQuery = v.InferOutput<typeof hibpBreachQuerySchema>

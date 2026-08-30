@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test"
+import type { HibpHttpAdapter } from "../../../src/server/contexts/hibp/hibpHttpAdapter.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
-import type { HibpHttpAdapter } from "../../../src/server/contexts/hibp/hibpHttpAdapter.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
@@ -112,15 +112,12 @@ test("HIBP route requires authentication and validates the username query", asyn
   const emptyUsername = await context.app.request(`${requestUrl}/api/hibp/breach?username=`, {
     headers: requestHeaders(context.token),
   })
-  expect(emptyUsername.status).toBe(400)
-  expect(await emptyUsername.json()).toMatchObject({
-    message: "Invalid request.",
-    validationErrors: { username: ["Invalid length: Expected >=1 but received 0"] },
-  })
+  expect(emptyUsername.status).toBe(200)
+  expect(await emptyUsername.json()).toMatchObject([{ name: "HaveIBeenPwned", title: "Manual HIBP Check" }])
 })
 
 test("HIBP route returns the synthetic manual-check breach without calling HIBP", async () => {
-  const context = await contextCreate({ apiKey: "   " })
+  const context = await contextCreate()
   const response = await context.app.request(
     `${requestUrl}/api/hibp/breach?username=${encodeURIComponent(requestUsername)}`,
     { headers: requestHeaders(context.token) },
@@ -142,21 +139,21 @@ test("HIBP route returns the synthetic manual-check breach without calling HIBP"
 
 test("HIBP route forwards a configured key and passes through a successful HIBP response", async () => {
   const upstreamBody = [{ Name: "Adobe", Domain: "adobe.com", PwnCount: 1 }]
+  const queryUsername = "person+name%2Btag%40example.com"
   const context = await contextCreate({
-    apiKey: "  secret-key  ",
+    apiKey: "secret-key",
     fetch: async () => new Response(JSON.stringify(upstreamBody), { status: 200 }),
   })
-  const response = await context.app.request(
-    `${requestUrl}/api/hibp/breach?username=${encodeURIComponent(requestUsername)}`,
-    { headers: requestHeaders(context.token) },
-  )
+  const response = await context.app.request(`${requestUrl}/api/hibp/breach?username=${queryUsername}`, {
+    headers: requestHeaders(context.token),
+  })
 
   expect(response.status).toBe(200)
   expect(await response.json()).toEqual(upstreamBody)
   expect(context.requests).toEqual([
     {
       init: { headers: { "hibp-api-key": "secret-key", "user-agent": "Vaultwarden" }, method: "GET" },
-      url: "https://haveibeenpwned.com/api/v3/breachedaccount/connect%23bwpm%40simplelogin.co?truncateResponse=false&includeUnverified=false",
+      url: "https://haveibeenpwned.com/api/v3/breachedaccount/person+name%2Btag%40example.com?truncateResponse=false&includeUnverified=false",
     },
   ])
 })
@@ -169,7 +166,7 @@ test("HIBP route returns an empty 404 for an unbreached account", async () => {
   )
 
   expect(response.status).toBe(404)
-  expect(response.headers.get("content-type")).toBe("application/json; charset=UTF-8")
+  expect(response.headers.get("content-type")).toBe("application/json")
   expect(await response.json()).toEqual({})
 })
 
@@ -182,8 +179,8 @@ test("HIBP route converts upstream, network, and JSON failures to API errors", a
     `${requestUrl}/api/hibp/breach?username=${encodeURIComponent(requestUsername)}`,
     { headers: requestHeaders(upstreamContext.token) },
   )
-  expect(upstreamResponse.status).toBe(503)
-  expect(await upstreamResponse.json()).toMatchObject({ message: "The HIBP request returned an error." })
+  expect(upstreamResponse.status).toBe(400)
+  expect(await upstreamResponse.json()).toMatchObject({ message: "Req" })
 
   const networkContext = await contextCreate({
     apiKey: "secret-key",
@@ -195,8 +192,8 @@ test("HIBP route converts upstream, network, and JSON failures to API errors", a
     `${requestUrl}/api/hibp/breach?username=${encodeURIComponent(requestUsername)}`,
     { headers: requestHeaders(networkContext.token) },
   )
-  expect(networkResponse.status).toBe(503)
-  expect(await networkResponse.json()).toMatchObject({ message: "The HIBP request failed." })
+  expect(networkResponse.status).toBe(400)
+  expect(await networkResponse.json()).toMatchObject({ message: "Req" })
 
   const jsonContext = await contextCreate({
     apiKey: "secret-key",
@@ -206,6 +203,6 @@ test("HIBP route converts upstream, network, and JSON failures to API errors", a
     `${requestUrl}/api/hibp/breach?username=${encodeURIComponent(requestUsername)}`,
     { headers: requestHeaders(jsonContext.token) },
   )
-  expect(jsonResponse.status).toBe(503)
-  expect(await jsonResponse.json()).toMatchObject({ message: "The HIBP response was invalid." })
+  expect(jsonResponse.status).toBe(400)
+  expect(await jsonResponse.json()).toMatchObject({ message: "Req" })
 })

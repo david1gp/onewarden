@@ -1,0 +1,34 @@
+{
+  "username": {
+    "raw": "person name+tag@example.com",
+    "encoded": "person+name%2Btag%40example.com"
+  },
+  "request": {
+    "url": "https://haveibeenpwned.com/api/v3/breachedaccount/person+name%2Btag%40example.com?truncateResponse=false&includeUnverified=false",
+    "init": {
+      "method": "GET",
+      "headers": {
+        "hibp-api-key": "secret-key",
+        "user-agent": "Vaultwarden"
+      }
+    }
+  },
+  "success": [
+    {
+      "Name": "Adobe",
+      "Domain": "adobe.com",
+      "PwnCount": 1
+    }
+  ],
+  "synthetic": {
+    "name": "HaveIBeenPwned",
+    "title": "Manual HIBP Check",
+    "domain": "haveibeenpwned.com",
+    "breachDate": "2019-08-18T00:00:00Z",
+    "addedDate": "2019-08-18T00:00:00Z",
+    "description": "Go to: <a href=\"https://haveibeenpwned.com/account/person+name%2Btag%40example.com\" target=\"_blank\" rel=\"noreferrer\">https://haveibeenpwned.com/account/person+name%2Btag%40example.com</a> for a manual check.<br/><br/>HaveIBeenPwned API key not set!<br/>Go to <a href=\"https://haveibeenpwned.com/API/Key\" target=\"_blank\" rel=\"noreferrer\">https://haveibeenpwned.com/API/Key</a> to purchase an API key from HaveIBeenPwned.<br/><br/>",
+    "logoPath": "vw_static/hibp.png",
+    "pwnCount": 0,
+    "dataClasses": ["Error - No API key set!"]
+  }
+}

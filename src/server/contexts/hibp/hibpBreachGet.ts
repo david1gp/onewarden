@@ -1,16 +1,23 @@
 import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import type { HibpRouteOptions } from "./hibpRouteOptions.js"
 import { hibpBreachSyntheticResponseCreate } from "./hibpBreachSyntheticResponseCreate.js"
 import { hibpBreachUrlCreate } from "./hibpBreachUrlCreate.js"
+import type { HibpRouteOptions } from "./hibpRouteOptions.js"
 
 export async function hibpBreachGet(
   username: string,
   options: Pick<HibpRouteOptions, "apiKey" | "http">,
 ): Promise<Result<unknown>> {
+  const op = "hibpBreachGet"
   const apiKey = options.apiKey?.trim()
   if (apiKey === undefined || apiKey === "") return resultCreate(hibpBreachSyntheticResponseCreate(username))
+
+  const upstreamError = () =>
+    resultErrorCreate(op, "Req", {
+      code: "platform.invalid-request",
+      statusCode: 400,
+    })
 
   let response: Response
   try {
@@ -19,29 +26,19 @@ export async function hibpBreachGet(
       method: "GET",
     })
   } catch {
-    return resultErrorCreate("hibpBreachGet", "The HIBP request failed.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
+    return upstreamError()
   }
 
   if (response.status === 404)
-    return resultErrorCreate("hibpBreachGet", "The HIBP account was not found.", {
+    return resultErrorCreate(op, "", {
       code: "platform.not-found",
       statusCode: 404,
     })
-  if (!response.ok)
-    return resultErrorCreate("hibpBreachGet", "The HIBP request returned an error.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
+  if (!response.ok) return upstreamError()
 
   try {
     return resultCreate(await response.json())
   } catch {
-    return resultErrorCreate("hibpBreachGet", "The HIBP response was invalid.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
+    return upstreamError()
   }
 }

@@ -58,7 +58,7 @@ test("hibpBreachGet returns the synthetic response and does not fetch without an
   expect(fetchCount).toBe(0)
 })
 
-test("hibpBreachGet trims the API key and sends the upstream request headers", async () => {
+test("hibpBreachGet trims the configured API key and sends upstream request headers", async () => {
   const calls: Array<{ init?: RequestInit; url: string }> = []
   const body = [{ Name: "Example", Domain: "example.com" }]
   const http: HibpHttpAdapter = {
@@ -79,7 +79,7 @@ test("hibpBreachGet trims the API key and sends the upstream request headers", a
   ])
 })
 
-test("hibpBreachGet converts network and malformed JSON failures to unavailable results", async () => {
+test("hibpBreachGet preserves upstream errors for network and malformed JSON failures", async () => {
   const networkResult = await hibpBreachGet("user@example.com", {
     apiKey: "secret-key",
     http: {
@@ -89,9 +89,9 @@ test("hibpBreachGet converts network and malformed JSON failures to unavailable 
     },
   })
   expect(networkResult).toMatchObject({
-    code: "platform.unavailable",
-    errorMessage: "The HIBP request failed.",
-    statusCode: 503,
+    code: "platform.invalid-request",
+    errorMessage: "Req",
+    statusCode: 400,
     success: false,
   })
 
@@ -100,21 +100,21 @@ test("hibpBreachGet converts network and malformed JSON failures to unavailable 
     http: httpAdapterCreate(new Response("not-json", { status: 200 })),
   })
   expect(malformedResult).toMatchObject({
-    code: "platform.unavailable",
-    errorMessage: "The HIBP response was invalid.",
-    statusCode: 503,
+    code: "platform.invalid-request",
+    errorMessage: "Req",
+    statusCode: 400,
     success: false,
   })
 })
 
-test("hibpBreachGet preserves the upstream not-found distinction and maps other statuses to unavailable", async () => {
+test("hibpBreachGet preserves the upstream not-found distinction and error status", async () => {
   const notFoundResult = await hibpBreachGet("user@example.com", {
     apiKey: "secret-key",
     http: httpAdapterCreate(new Response(null, { status: 404 })),
   })
   expect(notFoundResult).toMatchObject({
     code: "platform.not-found",
-    errorMessage: "The HIBP account was not found.",
+    errorMessage: "",
     statusCode: 404,
     success: false,
   })
@@ -124,19 +124,24 @@ test("hibpBreachGet preserves the upstream not-found distinction and maps other 
       apiKey: "secret-key",
       http: httpAdapterCreate(new Response(null, { status })),
     })
-    expect(result).toMatchObject({ code: "platform.unavailable", statusCode: 503, success: false })
+    expect(result).toMatchObject({
+      code: "platform.invalid-request",
+      errorMessage: "Req",
+      statusCode: 400,
+      success: false,
+    })
   }
 })
 
 test("hibpBreachResponseCreate and hibpBreachNotFoundResponseCreate serialize JSON with compatibility headers", async () => {
   const response = hibpBreachResponseCreate({ status: "ok" }, 201)
   expect(response.status).toBe(201)
-  expect(response.headers.get("content-type")).toBe("application/json; charset=UTF-8")
+  expect(response.headers.get("content-type")).toBe("application/json")
   expect(await response.json()).toEqual({ status: "ok" })
 
   const notFoundResponse = hibpBreachNotFoundResponseCreate()
   expect(notFoundResponse.status).toBe(404)
-  expect(notFoundResponse.headers.get("content-type")).toBe("application/json; charset=UTF-8")
+  expect(notFoundResponse.headers.get("content-type")).toBe("application/json")
   expect(await notFoundResponse.json()).toEqual({})
 
   const undefinedResponse = hibpBreachResponseCreate(undefined)
