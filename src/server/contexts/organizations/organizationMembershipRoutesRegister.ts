@@ -12,6 +12,7 @@ import { notificationUpdateType } from "../notifications/notificationUpdateType.
 import { organizationAdminMiddleware } from "./organizationAdminMiddleware.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import { organizationManagerLooseMiddleware } from "./organizationManagerLooseMiddleware.js"
+import { organizationMemberMiddleware } from "./organizationMemberMiddleware.js"
 import { organizationMembershipBulkConfirmDataSchema } from "./organizationMembershipBulkConfirmDataSchema.js"
 import { organizationMembershipBulkIdsDataSchema } from "./organizationMembershipBulkIdsDataSchema.js"
 import { organizationMembershipBulkRevokeDataSchema } from "./organizationMembershipBulkRevokeDataSchema.js"
@@ -24,15 +25,21 @@ import { organizationMembershipRemove } from "./organizationMembershipRemove.js"
 import { organizationMembershipResend } from "./organizationMembershipResend.js"
 import { organizationMembershipRestore } from "./organizationMembershipRestore.js"
 import { organizationMembershipRevoke } from "./organizationMembershipRevoke.js"
+import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
 import { organizationMembershipTwoFactorEnabledFind } from "./organizationMembershipTwoFactorEnabledFind.js"
+import { organizationMembershipType } from "./organizationMembershipType.js"
 import { organizationMembershipUpdate } from "./organizationMembershipUpdate.js"
 import { organizationMembershipUpdateDataSchema } from "./organizationMembershipUpdateDataSchema.js"
 import { organizationMembershipUserDetailsFind } from "./organizationMembershipUserDetailsFind.js"
 import { organizationMembershipUserDetailsToJson } from "./organizationMembershipUserDetailsToJson.js"
 import { organizationMembershipUserMiniDetailsToJson } from "./organizationMembershipUserMiniDetailsToJson.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
-import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
-import { organizationMembershipType } from "./organizationMembershipType.js"
+import { organizationUserRecoverAccount } from "./organizationUserRecoverAccount.js"
+import { organizationUserRecoverAccountDataSchema } from "./organizationUserRecoverAccountDataSchema.js"
+import { organizationUserResetPasswordDetailsFind } from "./organizationUserResetPasswordDetailsFind.js"
+import { organizationUserResetPasswordEnrollment } from "./organizationUserResetPasswordEnrollment.js"
+import { organizationUserResetPasswordEnrollmentDataSchema } from "./organizationUserResetPasswordEnrollmentDataSchema.js"
+import { organizationUserResetPasswordEnrollmentPathSchema } from "./organizationUserResetPasswordEnrollmentPathSchema.js"
 
 const organizationMembershipQueryBooleanSchema = v.union([v.literal("true"), v.literal("false")])
 
@@ -54,6 +61,7 @@ export function organizationMembershipRoutesRegister(
   }
   const admin = organizationAdminMiddleware(organizationAuthentication)
   const managerLoose = organizationManagerLooseMiddleware(organizationAuthentication)
+  const member = organizationMemberMiddleware(organizationAuthentication)
 
   const listMembers = (context: Context<AuthenticationEnvironment>) => {
     const database = databaseResolve(context, options)
@@ -425,6 +433,103 @@ export function organizationMembershipRoutesRegister(
     return context.json({ continuationToken: null, data: bulkResponse, object: "list" })
   }
 
+  const recoverAccount = async (context: Context<AuthenticationEnvironment>, requireMasterPasswordReset: boolean) => {
+    const database = databaseResolve(context, options)
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesRecoverAccount", "Database unavailable."),
+      )
+    const authentication = authenticationContextGet(context)
+    const actorMembership = context.get("organizationMembership")
+    if (authentication === undefined || actorMembership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesRecoverAccount", "Organization not found", 404),
+      )
+    const pathResult = requestPathParse(context, organizationMembershipPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const bodyResult = await requestBodyParse(context, organizationUserRecoverAccountDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    if (requireMasterPasswordReset && (!bodyResult.data.resetMasterPassword || bodyResult.data.resetTwoFactor))
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesRecoverAccount", "Unsupported operation"),
+      )
+    const result = await organizationUserRecoverAccount(
+      database,
+      pathResult.data.org_id,
+      pathResult.data.member_id,
+      bodyResult.data,
+      {
+        actor: authentication,
+        actorMembership,
+        clock: options.clock,
+        config: options.config,
+        event: options.event,
+        identifier: options.identifier,
+        mail: options.mail,
+        notification: options.notification,
+      },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
+  const getResetPasswordDetails = (context: Context<AuthenticationEnvironment>) => {
+    const database = databaseResolve(context, options)
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesResetPasswordDetails", "Database unavailable."),
+      )
+    const actorMembership = context.get("organizationMembership")
+    if (actorMembership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesResetPasswordDetails", "Organization not found", 404),
+      )
+    const pathResult = requestPathParse(context, organizationMembershipPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const result = organizationUserResetPasswordDetailsFind(
+      database,
+      pathResult.data.org_id,
+      pathResult.data.member_id,
+      actorMembership,
+      options.config,
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return context.json(result.data)
+  }
+
+  const resetPasswordEnrollment = async (context: Context<AuthenticationEnvironment>) => {
+    const database = databaseResolve(context, options)
+    if (database === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesResetPasswordEnrollment", "Database unavailable."),
+      )
+    const authentication = authenticationContextGet(context)
+    const actorMembership = context.get("organizationMembership")
+    if (authentication === undefined || actorMembership === undefined)
+      return apiErrorResponseCreate(
+        organizationErrorCreate("organizationMembershipRoutesResetPasswordEnrollment", "Organization not found", 404),
+      )
+    const pathResult = requestPathParse(context, organizationUserResetPasswordEnrollmentPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const bodyResult = await requestBodyParse(context, organizationUserResetPasswordEnrollmentDataSchema)
+    if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
+    const result = await organizationUserResetPasswordEnrollment(
+      database,
+      pathResult.data.org_id,
+      pathResult.data.user_id,
+      bodyResult.data,
+      {
+        actor: authentication,
+        actorMembership,
+        clock: options.clock,
+        config: options.config,
+        event: options.event,
+      },
+    )
+    if (!result.success) return apiErrorResponseCreate(result)
+    return new Response(null, { status: 200 })
+  }
+
   app.get("/api/organizations/:org_id/users", authenticate("get_members"), managerLoose, listMembers)
   app.get(
     "/api/organizations/:org_id/users/mini-details",
@@ -442,6 +547,18 @@ export function organizationMembershipRoutesRegister(
   app.put("/api/organizations/:org_id/users/revoke", authenticate("bulk_revoke_members"), admin, bulkRevokeMembers)
   app.put("/api/organizations/:org_id/users/restore", authenticate("bulk_restore_members"), admin, bulkRestoreMembers)
   app.get("/api/organizations/:org_id/users/:member_id", authenticate("get_user"), admin, getMember)
+  app.get(
+    "/api/organizations/:org_id/users/:member_id/reset-password-details",
+    authenticate("get_reset_password_details"),
+    admin,
+    getResetPasswordDetails,
+  )
+  app.put(
+    "/api/organizations/:org_id/users/:user_id/reset-password-enrollment",
+    authenticate("put_reset_password_enrollment"),
+    member,
+    resetPasswordEnrollment,
+  )
   app.put("/api/organizations/:org_id/users/:member_id", authenticate("put_member"), admin, updateMember)
   app.post("/api/organizations/:org_id/users/:member_id", authenticate("edit_member"), admin, updateMember)
   app.delete("/api/organizations/:org_id/users", authenticate("bulk_delete_member"), admin, bulkRemoveMembers)
@@ -454,6 +571,18 @@ export function organizationMembershipRoutesRegister(
     restoreMember,
   )
   app.put("/api/organizations/:org_id/users/:member_id/restore", authenticate("restore_member"), admin, restoreMember)
+  app.put(
+    "/api/organizations/:org_id/users/:member_id/recover-account",
+    authenticate("put_recover_account"),
+    admin,
+    (context) => recoverAccount(context, true),
+  )
+  app.put(
+    "/api/organizations/:org_id/users/:member_id/reset-password",
+    authenticate("put_reset_password"),
+    admin,
+    (context) => recoverAccount(context, false),
+  )
 }
 
 function databaseResolve(
