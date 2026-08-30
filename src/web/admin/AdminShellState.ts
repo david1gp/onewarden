@@ -1,4 +1,5 @@
 import type { Accessor } from "solid-js"
+import type { SignalObject } from "#ui/utils/createSignalObject.js"
 import type { AdminConfirmation } from "./adminConfirmationSchema.js"
 import type { AdminDiagnostics } from "./adminDiagnosticsSchema.js"
 import type { AdminDialog } from "./adminDialogSchema.js"
@@ -13,15 +14,15 @@ import type {
   AdminSettingsOverride,
   AdminSettingsTextKey,
 } from "./adminSettingsSchema.js"
-import type { AdminUser } from "./adminUserSchema.js"
 import type { AdminUserOrganizationMembership } from "./adminUserOrganizationMembershipSchema.js"
 import type { AdminUserOrganizationRole } from "./adminUserOrganizationRoleSchema.js"
-import type { SignalObject } from "#ui/utils/createSignalObject.js"
+import type { AdminUser } from "./adminUserSchema.js"
 
 export interface AdminShellState {
   settings: Accessor<AdminSettings>
   users: Accessor<readonly AdminUser[]>
   diagnostics: Accessor<AdminDiagnostics>
+  supportInformation: Accessor<string | null>
   activeSection: Accessor<AdminSection>
   search: Accessor<AdminSearch>
   filteredUsers: Accessor<readonly AdminUser[]>
@@ -74,6 +75,8 @@ export interface AdminShellState {
   organizationSetStatus: (organizationId: string, status: AdminOrganization["status"]) => void
   organizationDelete: (organizationId: string) => void
   organizationsReload: () => void
+  generateSupportInformation: () => void
+  copySupportInformation: () => Promise<void>
   formatDateTime: (value: string | null | undefined) => string
   formatAttachmentSize: (bytes: number) => string
 }

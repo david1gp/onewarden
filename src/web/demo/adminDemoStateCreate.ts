@@ -1,8 +1,8 @@
 import { createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { AdminUserOrganizationRole } from "../admin/adminUserOrganizationRoleSchema.js"
 import type { AdminConfirmation } from "../admin/adminConfirmationSchema.js"
 import type { AdminDiagnostics } from "../admin/adminDiagnosticsSchema.js"
+import { adminDiagnosticsSupportInformationCreate } from "../admin/adminDiagnosticsSupportInformationCreate.js"
 import type { AdminDialog } from "../admin/adminDialogSchema.js"
 import type { AdminFeedback } from "../admin/adminFeedbackSchema.js"
 import type { AdminOrganization } from "../admin/adminOrganizationSchema.js"
@@ -16,6 +16,7 @@ import type {
   AdminSettingsOverride,
   AdminSettingsTextKey,
 } from "../admin/adminSettingsSchema.js"
+import type { AdminUserOrganizationRole } from "../admin/adminUserOrganizationRoleSchema.js"
 import type { AdminUser } from "../admin/adminUserSchema.js"
 import { adminDiagnosticsDemoData } from "./adminDiagnosticsDemoData.js"
 import { adminOrganizationsDemoData } from "./adminOrganizationsDemoData.js"
@@ -27,6 +28,7 @@ type AdminDemoStateProps = {
   users?: readonly AdminUser[]
   organizations?: readonly AdminOrganization[]
   diagnostics?: AdminDiagnostics
+  clipboard?: Pick<Clipboard, "writeText">
 }
 
 const adminBooleanSettingKeys: readonly AdminSettingsBooleanKey[] = [
@@ -235,6 +237,8 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     props.organizations ?? adminOrganizationsDemoData,
   )
   const diagnostics = createSignalObject(props.diagnostics ?? adminDiagnosticsDemoData)
+  const supportInformation = createSignalObject<string | null>(null)
+  const clipboard = props.clipboard ?? (typeof navigator !== "undefined" ? navigator.clipboard : undefined)
   const activeSection = createSignalObject<AdminSection>("settings")
   const search = createSignalObject<AdminSearch>({ query: "", scope: "users" })
   const selectedUserId = createSignalObject<string | null>(null)
@@ -355,6 +359,29 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
 
   const clearFeedback = () => {
     feedback.set(null)
+  }
+
+  const generateSupportInformation = () => {
+    supportInformation.set(adminDiagnosticsSupportInformationCreate(diagnostics.get(), settings.get()))
+  }
+
+  const copySupportInformation = async () => {
+    const value = supportInformation.get()
+    if (!value) {
+      showFeedback({ kind: "warning", message: "Generate support information before copying." })
+      return
+    }
+    if (!clipboard) {
+      showFeedback({ kind: "error", message: "Clipboard access is unavailable." })
+      return
+    }
+
+    try {
+      await clipboard.writeText(value)
+      showFeedback({ kind: "success", message: "Support information copied to clipboard." })
+    } catch {
+      showFeedback({ kind: "error", message: "Support information could not be copied." })
+    }
   }
 
   const settingOverrideAdd = (settingsValue: AdminSettings, key: AdminSettingsOverride) => {
@@ -520,6 +547,7 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     users: users.get,
     organizations: organizations.get,
     diagnostics: diagnostics.get,
+    supportInformation: supportInformation.get,
     activeSection: activeSection.get,
     search: search.get,
     filteredUsers,
@@ -574,6 +602,8 @@ export function adminDemoStateCreate(props: AdminDemoStateProps = {}) {
     organizationSetStatus,
     organizationDelete,
     organizationsReload,
+    generateSupportInformation,
+    copySupportInformation,
     formatDateTime: adminDateTimeFormat,
     formatAttachmentSize: adminAttachmentSizeFormat,
   }

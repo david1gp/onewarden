@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import { createRoot } from "solid-js"
-import { adminShellStateCreate } from "../../../src/web/admin/adminShellStateCreate.js"
 import { adminSettingsViewStateCreate } from "../../../src/web/admin/adminSettingsViewStateCreate.js"
-import { adminSettingsDemoData } from "../../../src/web/demo/adminSettingsDemoData.js"
+import { adminShellStateCreate } from "../../../src/web/admin/adminShellStateCreate.js"
 import { adminDemoStateCreate } from "../../../src/web/demo/adminDemoStateCreate.js"
+import { adminSettingsDemoData } from "../../../src/web/demo/adminSettingsDemoData.js"
 
 test("admin demo state filters users and switches search scope with sections", () => {
   createRoot((dispose) => {
@@ -282,4 +282,37 @@ test("admin demo requires an exact organization UUID before destructive deletion
       dispose()
     }
   })
+})
+
+test("admin demo diagnostics generates redacted support information and copies it", async () => {
+  let copied = ""
+  const root = createRoot((dispose) => {
+    const state = adminDemoStateCreate({
+      clipboard: {
+        writeText: async (value) => {
+          copied = value
+        },
+      },
+    })
+    return { dispose, state }
+  })
+
+  try {
+    root.state.updateTextSetting("domain", "https://changed.demo.internal")
+    root.state.generateSupportInformation()
+
+    const supportInformation = root.state.supportInformation()
+    expect(supportInformation).toEqual(expect.any(String))
+    if (supportInformation === null) return
+    expect(supportInformation).toContain("* Web-vault latest: v2025.9.0")
+    expect(supportInformation).toContain('"domain": "https://changed.demo.internal"')
+    expect(supportInformation).toContain('"adminToken": "<redacted>"')
+
+    await root.state.copySupportInformation()
+
+    expect(copied).toBe(supportInformation)
+    expect(root.state.feedback()).toEqual({ kind: "success", message: "Support information copied to clipboard." })
+  } finally {
+    root.dispose()
+  }
 })
