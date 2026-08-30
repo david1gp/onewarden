@@ -51,7 +51,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
         <For
           each={state.filteredCollections()}
           fallback={
-            <div class="p-6 text-center text-slate-400 text-sm">
+            <div class="p-6 text-center text-slate-500 text-sm dark:text-slate-400">
               <p>No collections found.</p>
             </div>
           }
