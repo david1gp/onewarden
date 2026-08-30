@@ -37,39 +37,45 @@ export function WebApp(): JSX.Element {
 
   const navHeaderActions = () => (
     <div class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:gap-2.5">
-      <span class="min-w-0 flex-1 truncate text-xs text-slate-600 dark:text-slate-300 sm:max-w-56 sm:flex-none">
+      <span class="min-w-0 flex-1 truncate text-sm text-slate-600 dark:text-slate-300 sm:max-w-56 sm:flex-none">
         {state.session.session()?.email}
       </span>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={() => state.navigate("/")}>
+      <Button variant="outline" size="sm" class="h-8 shrink-0 text-sm" onClick={() => state.navigate("/")}>
         <Icon path={vaultSvgIcons.personalVault} class="mr-1 size-3.5" />
         Vault
       </Button>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={() => state.navigate("/sends")}>
+      <Button variant="outline" size="sm" class="h-8 shrink-0 text-sm" onClick={() => state.navigate("/sends")}>
         <Icon path={vaultSvgIcons.send} class="mr-1 size-3.5" />
         Send
       </Button>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={() => state.navigate("/emergency-access")}>
+      <Button
+        variant="outline"
+        size="sm"
+        class="h-8 shrink-0 text-sm"
+        onClick={() => state.navigate("/emergency-access")}
+      >
         <Icon path={vaultSvgIcons.lifebuoy} class="mr-1 size-3.5" />
         Emergency
       </Button>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={() => state.navigate("/settings")}>
+      <Button variant="outline" size="sm" class="h-8 shrink-0 text-sm" onClick={() => state.navigate("/settings")}>
         <Icon path={vaultSvgIcons.server} class="mr-1 size-3.5" />
         Settings
       </Button>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={() => state.navigate("/two-factor")}>
+      <Button variant="outline" size="sm" class="h-8 shrink-0 text-sm" onClick={() => state.navigate("/two-factor")}>
         <Icon path={vaultSvgIcons.twoFactor} class="mr-1 size-3.5" />
         2FA
       </Button>
-      <Button variant="outline" size="sm" class="shrink-0 text-xs" onClick={state.handleLockVault}>
+      <Button variant="outline" size="sm" class="h-8 shrink-0 text-sm" onClick={state.handleLockVault}>
         <Icon path={vaultSvgIcons.lock} class="mr-1 size-3.5" />
         Lock
       </Button>
       <Button
         variant="outline"
         size="sm"
-        class="shrink-0 text-xs text-red-600 dark:text-red-400"
+        class="h-8 shrink-0 text-sm text-red-600 dark:text-red-400"
         onClick={state.handleLogout}
       >
+        <Icon path={vaultSvgIcons.login} class="mr-1 size-3.5" />
         Log Out
       </Button>
     </div>

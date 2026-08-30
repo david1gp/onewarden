@@ -40,7 +40,7 @@ export function DemoDirectory(): JSX.Element {
                 vault states, credential types, and zero-modal workflows.
               </p>
             </div>
-            <Badge variant="subtle" class="text-xs px-2.5 py-1">
+            <Badge variant="subtle" class="text-sm px-2.5 py-1">
               Fictional Static Data
             </Badge>
           </div>
@@ -51,7 +51,7 @@ export function DemoDirectory(): JSX.Element {
       <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 focus:outline-none">
         <div class="mb-6 flex items-center justify-between">
           <h2 class="font-semibold text-lg text-slate-900 dark:text-slate-100">Representative Vault Views</h2>
-          <span class="text-xs text-slate-600 dark:text-slate-400">{state.demos.length} Demo Pages</span>
+          <span class="text-sm text-slate-600 dark:text-slate-400">{state.demos.length} Demo Pages</span>
         </div>
 
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -66,18 +66,18 @@ export function DemoDirectory(): JSX.Element {
                 <CardWrapper class="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow duration-150 group-hover:border-blue-500/50 group-hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:group-hover:border-blue-400/50">
                   <div>
                     <div class="flex items-center justify-between gap-2 pb-3">
-                      <span class="font-medium text-xs text-blue-700 dark:text-blue-300">{demo.category}</span>
-                      <Badge variant={demo.badgeVariant ?? "subtle"} class="text-[11px]">
+                      <span class="font-medium text-sm text-blue-700 dark:text-blue-300">{demo.category}</span>
+                      <Badge variant={demo.badgeVariant ?? "subtle"} class="text-sm">
                         {demo.badgeText}
                       </Badge>
                     </div>
                     <h3 class="font-bold text-base text-slate-900 group-hover:text-blue-700 dark:text-slate-50 dark:group-hover:text-blue-300">
                       {demo.title}
                     </h3>
-                    <p class="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{demo.description}</p>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{demo.description}</p>
                   </div>
 
-                  <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-semibold text-blue-700 dark:border-slate-800 dark:text-blue-300">
+                  <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-blue-700 dark:border-slate-800 dark:text-blue-300">
                     <span>Open Demo View</span>
                     <Icon
                       path={vaultSvgIcons.chevronRight}

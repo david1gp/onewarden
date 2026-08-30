@@ -1,10 +1,10 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
-import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
+import { vaultNavFolderIsWide } from "./vaultNavFolderIsWide.js"
 import { type VaultNavStateProps, vaultNavStateCreate } from "./vaultNavStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
@@ -19,22 +19,22 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
       {/* Account / Workspace Switcher Header */}
       <div class="border-b border-slate-200 p-3 dark:border-slate-800">
         <CardWrapper class="flex items-center gap-2.5 rounded-lg border-0 bg-white p-2 shadow-xs ring-1 ring-slate-200/60 dark:border-0 dark:bg-slate-800 dark:ring-slate-700/60">
-          <div class="flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-600 font-semibold text-xs text-white">
+          <div class="flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-600 font-semibold text-sm text-white">
             {state.userInitials()}
           </div>
           <div class="min-w-0 flex-1">
-            <p class="truncate font-semibold text-xs text-slate-900 dark:text-slate-100">{state.userName()}</p>
-            <p class="truncate text-[11px] text-slate-600 dark:text-slate-400">{state.userSubtitle()}</p>
+            <p class="truncate font-semibold text-sm text-slate-900 dark:text-slate-100">{state.userName()}</p>
+            <p class="truncate text-sm text-slate-600 dark:text-slate-400">{state.userSubtitle()}</p>
           </div>
           <Icon path={vaultSvgIcons.chevronDown} class="size-3.5 text-slate-600 dark:text-slate-400" />
         </CardWrapper>
       </div>
 
       {/* Navigation Scrollable Body */}
-      <div class={`flex-1 space-y-5 overflow-y-auto ${classesScrollbar} p-3 text-xs`}>
+      <div class={`flex-1 space-y-5 overflow-y-auto ${classesScrollbar} p-3 text-sm`}>
         {/* Quick Access */}
         <div>
-          <p class="px-2 pb-1 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+          <p class="px-2 pb-1 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
             Navigation
           </p>
           <ul class="space-y-0.5">
@@ -55,7 +55,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">All Items</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.totalCount()}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.totalCount()}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -72,7 +72,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Favorites</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.favoritesCount()}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.favoritesCount()}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -89,7 +89,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Trash</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.trashCount()}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.trashCount()}</span>
               </ButtonIcon>
             </li>
           </ul>
@@ -97,7 +97,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
 
         {/* Vault ownership */}
         <div>
-          <p class="px-2 pb-1 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+          <p class="px-2 pb-1 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
             Vaults
           </p>
           <ul class="space-y-0.5">
@@ -118,7 +118,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">My Vault</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().personal}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.vaultCounts().personal}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -138,7 +138,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Acme Corporation</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.vaultCounts().organization}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.vaultCounts().organization}</span>
               </ButtonIcon>
             </li>
           </ul>
@@ -146,7 +146,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
 
         {/* Categories */}
         <div>
-          <p class="px-2 pb-1 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+          <p class="px-2 pb-1 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
             Categories
           </p>
           <ul class="space-y-0.5">
@@ -164,7 +164,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Logins</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().login}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().login}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -181,7 +181,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Secure Notes</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().secureNote}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().secureNote}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -198,7 +198,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Credit Cards</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().creditCard}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().creditCard}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -215,7 +215,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Identities</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().identity}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().identity}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -232,7 +232,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">Servers</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().server}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().server}</span>
               </ButtonIcon>
             </li>
             <li>
@@ -249,7 +249,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                 }`}
               >
                 <span class="flex-1 text-left">SSH Keys</span>
-                <span class="text-[11px] text-slate-600 dark:text-slate-400">{state.categoryCounts().sshKey}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{state.categoryCounts().sshKey}</span>
               </ButtonIcon>
             </li>
           </ul>
@@ -258,7 +258,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
         {/* Collections */}
         <Show when={state.collections().length > 0}>
           <div>
-            <p class="px-2 pb-1 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+            <p class="px-2 pb-1 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
               Collections
             </p>
             <ul class="space-y-0.5">
@@ -278,7 +278,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
                       }`}
                     >
                       <span class="flex-1 truncate text-left">{col.name}</span>
-                      <span class="text-[11px] text-slate-600 dark:text-slate-400">{col.count}</span>
+                      <span class="text-sm text-slate-600 dark:text-slate-400">{col.count}</span>
                     </ButtonIcon>
                   </li>
                 )}
@@ -290,25 +290,30 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
         {/* Folders */}
         <Show when={state.folders().length > 0}>
           <div>
-            <p class="px-2 pb-1.5 font-semibold text-[11px] text-slate-600 uppercase tracking-wider dark:text-slate-400">
+            <p class="px-2 pb-1.5 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
               Folders
             </p>
-            <div class="flex flex-wrap gap-1 px-1">
+            <div class="grid grid-cols-2 gap-1 px-1">
               <For each={state.folders()}>
                 {([folder, count]) => (
                   <Button
                     variant="ghost"
                     size="none"
+                    title={`${folder} (${count})`}
                     onClick={() => state.selectFolder(folder)}
-                    class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-[11px] transition-colors ${
+                    class={`flex min-w-0 items-center justify-between gap-1 rounded-full px-2 py-0.5 font-medium text-sm transition-colors ${
+                      vaultNavFolderIsWide(folder) ? "col-span-2" : ""
+                    } ${
                       state.selectedFolder() === folder
                         ? "bg-blue-600 text-white"
                         : "bg-slate-200/80 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     }`}
                   >
-                    <span>{folder}</span>
+                    <span class="min-w-0 truncate text-left">{folder}</span>
                     <span
-                      class={state.selectedFolder() === folder ? "text-blue-50" : "text-slate-600 dark:text-slate-400"}
+                      class={`shrink-0 ${
+                        state.selectedFolder() === folder ? "text-blue-50" : "text-slate-600 dark:text-slate-400"
+                      }`}
                     >
                       ({count})
                     </span>
@@ -318,19 +323,6 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
             </div>
           </div>
         </Show>
-      </div>
-
-      {/* Footer / Lock Status */}
-      <div class="border-t border-slate-200 p-3 text-[11px] text-slate-600 dark:border-slate-800 dark:text-slate-400">
-        <div class="flex items-center justify-between">
-          <span class="flex items-center gap-1.5">
-            <Icon path={vaultSvgIcons.shieldCheck} class="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Vault Decrypted</span>
-          </span>
-          <Badge variant="subtle" class="text-[10px] py-0 px-1.5">
-            Active
-          </Badge>
-        </div>
       </div>
     </nav>
   )

@@ -20,7 +20,7 @@ export function WebAppShell(props: { children: JSX.Element; headerAction?: JSX.E
       <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none">
         {props.children}
       </main>
-      <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 sm:px-6">
+      <footer class="border-t border-slate-200 bg-white px-4 py-4 text-center text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 sm:px-6">
         <p>OneWarden Vault</p>
       </footer>
     </div>

@@ -23,7 +23,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
               icon={vaultSvgIcons.arrowLeft}
               onClick={() => state.setMobileTab(state.activeMobileTab() === "detail" ? "list" : "nav")}
               aria-label={state.activeMobileTab() === "detail" ? "Back to items" : "Back to vaults"}
-              class="h-7 gap-1 px-2 text-xs text-blue-600 dark:text-blue-400"
+              class="h-7 gap-1 px-2 text-sm text-blue-600 dark:text-blue-400"
               iconClass="size-3.5 mr-1 text-blue-600 dark:text-blue-400"
             >
               <span>{state.activeMobileTab() === "detail" ? "Items" : "Vaults"}</span>
@@ -34,12 +34,12 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           </Show>
         </div>
 
-        <nav aria-label="Vault sections" class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs dark:bg-slate-800">
+        <nav aria-label="Vault sections" class="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
           <Button
             variant={state.activeMobileTab() === "nav" ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.setMobileTab("nav")}
-            class={`h-7 px-2.5 py-1 text-xs transition-colors ${
+            class={`h-7 px-2.5 py-1 text-sm transition-colors ${
               state.activeMobileTab() === "nav"
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -51,7 +51,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             variant={state.activeMobileTab() === "list" ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.setMobileTab("list")}
-            class={`h-7 px-2.5 py-1 text-xs transition-colors ${
+            class={`h-7 px-2.5 py-1 text-sm transition-colors ${
               state.activeMobileTab() === "list"
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"
@@ -63,7 +63,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             variant={state.activeMobileTab() === "detail" ? "filled" : "ghost"}
             size="sm"
             onClick={() => state.setMobileTab("detail")}
-            class={`h-7 px-2.5 py-1 text-xs transition-colors ${
+            class={`h-7 px-2.5 py-1 text-sm transition-colors ${
               state.activeMobileTab() === "detail"
                 ? "shadow-xs dark:bg-slate-700 dark:text-white"
                 : "text-slate-600 dark:text-slate-400"

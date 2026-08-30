@@ -13,7 +13,7 @@ export function DemoTrash(): JSX.Element {
       <VaultDemoHeader currentDemo="trash" title="Trash & Deleted Items" />
       <section
         aria-label="Trash archive notice"
-        class="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+        class="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
       >
         <Icon path={vaultSvgIcons.trash} class="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <span>

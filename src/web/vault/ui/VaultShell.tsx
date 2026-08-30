@@ -21,22 +21,20 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
       </a>
 
       {/* Top Application Header / Banner */}
-      <header class="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 text-xs dark:border-slate-800 dark:bg-slate-900">
+      <header class="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex min-w-0 items-center gap-2.5">
           <div class="flex size-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
             <Icon path={vaultSvgIcons.shieldCheck} class="size-4" />
           </div>
           <h1 class="font-bold text-sm text-slate-900 tracking-tight dark:text-slate-50">OneWarden</h1>
-          <Badge variant="subtle" class="hidden sm:inline-flex px-1.5 py-0 text-[10px]">
+          <Badge variant="subtle" class="hidden sm:inline-flex px-1.5 py-0 text-sm">
             Vault
           </Badge>
         </div>
 
         <div class="flex max-w-full flex-wrap items-center justify-end gap-2">
           <Show when={state.errorMessage()}>
-            <span class="truncate text-[11px] text-rose-700 font-medium dark:text-rose-400">
-              {state.errorMessage()}
-            </span>
+            <span class="truncate text-sm text-rose-700 font-medium dark:text-rose-400">{state.errorMessage()}</span>
           </Show>
           <Show when={props.onOpenOrganizations}>
             <ButtonIcon
@@ -45,7 +43,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.workVault}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onOpenOrganizations?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Organizations
             </ButtonIcon>
@@ -57,7 +55,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.send}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onOpenSends?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Send
             </ButtonIcon>
@@ -69,7 +67,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.lifebuoy}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onOpenEmergencyAccess?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Emergency
             </ButtonIcon>
@@ -81,7 +79,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.server}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onOpenSettings?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Settings
             </ButtonIcon>
@@ -93,7 +91,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.lock}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onLock?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Lock
             </ButtonIcon>
@@ -105,7 +103,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
               icon={vaultSvgIcons.login}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
               onClick={() => props.onLogout?.()}
-              class="text-xs text-slate-600 dark:text-slate-300"
+              class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Log Out
             </ButtonIcon>
@@ -117,7 +115,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
             iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
             onClick={() => void state.syncVault()}
             disabled={state.isLoading()}
-            class="text-xs text-slate-600 dark:text-slate-300"
+            class="h-8 text-sm text-slate-600 dark:text-slate-300"
           >
             {state.isLoading() ? "Syncing..." : "Sync"}
           </ButtonIcon>
@@ -143,7 +141,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
       </main>
 
       {/* Application Footer */}
-      <footer class="flex h-6 shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-4 text-[10px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
+      <footer class="flex h-6 shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
         <span>OneWarden</span>
         <span class="flex items-center gap-1">
           <span class="size-1.5 rounded-full bg-emerald-500" />

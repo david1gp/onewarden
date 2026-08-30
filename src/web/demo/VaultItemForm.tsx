@@ -27,7 +27,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
             <h2 class="font-bold text-lg text-slate-900 tracking-tight dark:text-slate-50">
               {state.mode === "add" ? "New Vault Item" : "Edit Item"}
             </h2>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
               {state.mode === "add"
                 ? "Add a new credential or secret to your vault."
                 : "Modify credential details, ownership, or custom fields."}
@@ -35,15 +35,17 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
           </div>
 
           <div class="flex items-center gap-2">
-            <Button variant="ghost" size="sm" class="text-xs" onClick={state.cancel}>
+            <Button variant="ghost" size="sm" class="h-8 text-sm" onClick={state.cancel}>
+              <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
               Cancel
             </Button>
             <Button
               variant="filled"
               size="sm"
-              class="bg-blue-600 text-xs text-white hover:bg-blue-700"
+              class="h-8 bg-blue-600 text-sm text-white hover:bg-blue-700"
               onClick={state.save}
             >
+              <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
               Save Item
             </Button>
           </div>
@@ -51,7 +53,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
         {/* Validation Error Banner */}
         <Show when={state.validationError()}>
-          <div class="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-300">
+          <div class="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-300">
             <Icon path={vaultSvgIcons.shieldAlert} class="size-4 shrink-0 text-red-600" />
             <span>{state.validationError()}</span>
           </div>
@@ -60,19 +62,19 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
         <div class="max-w-3xl space-y-5">
           {/* Section: Item Type & Ownership */}
           <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-            <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+            <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
               Type &amp; Ownership
             </h3>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Category / Type Selector */}
               <div>
-                <Label for="item-category" class="mb-1 block font-medium text-xs">
+                <Label for="item-category" class="mb-1 block font-medium text-sm">
                   Type <LabelAsterix />
                 </Label>
                 <select
                   id="item-category"
-                  class={`${classesInput} text-xs`}
+                  class={`${classesInput} text-sm`}
                   value={state.category()}
                   onChange={(e) =>
                     state.setCategory(
@@ -90,12 +92,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
               {/* Ownership Selector */}
               <div>
-                <Label for="item-ownership" class="mb-1 block font-medium text-xs">
+                <Label for="item-ownership" class="mb-1 block font-medium text-sm">
                   Ownership <LabelAsterix />
                 </Label>
                 <select
                   id="item-ownership"
-                  class={`${classesInput} text-xs`}
+                  class={`${classesInput} text-sm`}
                   value={state.ownership()}
                   onChange={(e) => state.setOwnership(e.currentTarget.value as "personal" | "organization")}
                 >
@@ -108,10 +110,10 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
             {/* Organization Collections (Required when Ownership is Organization) */}
             <Show when={state.ownership() === "organization"}>
               <div class="rounded-md border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-950/60 dark:bg-indigo-950/20">
-                <Label class="mb-1.5 block font-medium text-xs text-indigo-950 dark:text-indigo-200">
+                <Label class="mb-1.5 block font-medium text-sm text-indigo-950 dark:text-indigo-200">
                   Collections <LabelAsterix />
                 </Label>
-                <p class="mb-2 text-[11px] text-slate-600 dark:text-slate-400">
+                <p class="mb-2 text-sm text-slate-600 dark:text-slate-400">
                   Organization items must belong to at least one collection.
                 </p>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -121,9 +123,9 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                         id={`col-${col.id}`}
                         checked={state.collectionIds().includes(col.id)}
                         onChange={() => state.toggleCollection(col.id)}
-                        class="text-xs"
+                        class="text-sm"
                       >
-                        <span class="text-xs text-slate-800 dark:text-slate-200">{col.name}</span>
+                        <span class="text-sm text-slate-800 dark:text-slate-200">{col.name}</span>
                       </Checkbox>
                     )}
                   </For>
@@ -134,13 +136,13 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           {/* Section: Primary Metadata */}
           <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-            <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+            <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
               Item Information
             </h3>
 
             {/* Name / Title */}
             <div>
-              <Label for="item-title" class="mb-1 block font-medium text-xs">
+              <Label for="item-title" class="mb-1 block font-medium text-sm">
                 Name <LabelAsterix />
               </Label>
               <Input
@@ -149,19 +151,19 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                 placeholder="e.g. GitHub Enterprise, Personal Visa"
                 value={state.title()}
                 onInput={(e) => state.setTitle(e.currentTarget.value)}
-                class="text-xs"
+                class="text-sm"
               />
             </div>
 
             {/* Folder & Favorite (Favorite only when Personal) */}
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <Label for="item-folder" class="mb-1 block font-medium text-xs">
+                <Label for="item-folder" class="mb-1 block font-medium text-sm">
                   Folder
                 </Label>
                 <select
                   id="item-folder"
-                  class={`${classesInput} text-xs`}
+                  class={`${classesInput} text-sm`}
                   value={state.folder()}
                   onChange={(e) => state.setFolder(e.currentTarget.value)}
                 >
@@ -178,9 +180,9 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     id="item-favorite"
                     checked={state.favorite()}
                     onChange={(checked) => state.setFavorite(checked)}
-                    class="text-xs"
+                    class="text-sm"
                   >
-                    <span class="inline-flex items-center gap-1 text-xs text-slate-800 dark:text-slate-200">
+                    <span class="inline-flex items-center gap-1 text-sm text-slate-800 dark:text-slate-200">
                       <Icon path={vaultSvgIcons.star} class="size-3.5 text-amber-500" />
                       Add to Favorites
                     </span>
@@ -193,12 +195,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
           {/* Section: Category Specific Details */}
           <Show when={state.category() === "login"}>
             <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+              <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
                 Login Credentials
               </h3>
 
               <div>
-                <Label for="login-username" class="mb-1 block font-medium text-xs">
+                <Label for="login-username" class="mb-1 block font-medium text-sm">
                   Username
                 </Label>
                 <Input
@@ -207,12 +209,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                   placeholder="username or email"
                   value={state.username()}
                   onInput={(e) => state.setUsername(e.currentTarget.value)}
-                  class="text-xs"
+                  class="text-sm"
                 />
               </div>
 
               <div>
-                <Label for="login-password" class="mb-1 block font-medium text-xs">
+                <Label for="login-password" class="mb-1 block font-medium text-sm">
                   Password
                 </Label>
                 <div class="relative flex items-center">
@@ -222,7 +224,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="password"
                     value={state.password()}
                     onInput={(e) => state.setPassword(e.currentTarget.value)}
-                    class="pr-9 text-xs font-mono"
+                    class="pr-9 text-sm font-mono"
                   />
                   <ButtonIconOnly
                     variant="ghost"
@@ -238,7 +240,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
               </div>
 
               <div>
-                <Label for="login-totp" class="mb-1 block font-medium text-xs">
+                <Label for="login-totp" class="mb-1 block font-medium text-sm">
                   Authenticator Key (TOTP)
                 </Label>
                 <Input
@@ -247,12 +249,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                   placeholder="TOTP seed key or token"
                   value={state.totp()}
                   onInput={(e) => state.setTotp(e.currentTarget.value)}
-                  class="text-xs font-mono"
+                  class="text-sm font-mono"
                 />
               </div>
 
               <div>
-                <Label for="login-url" class="mb-1 block font-medium text-xs">
+                <Label for="login-url" class="mb-1 block font-medium text-sm">
                   Website URL
                 </Label>
                 <Input
@@ -261,7 +263,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                   placeholder="https://example.com/login"
                   value={state.url()}
                   onInput={(e) => state.setUrl(e.currentTarget.value)}
-                  class="text-xs"
+                  class="text-sm"
                 />
               </div>
             </CardWrapper>
@@ -269,13 +271,13 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           <Show when={state.category() === "creditCard"}>
             <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+              <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
                 Card Information
               </h3>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label for="card-holder" class="mb-1 block font-medium text-xs">
+                  <Label for="card-holder" class="mb-1 block font-medium text-sm">
                     Cardholder Name
                   </Label>
                   <Input
@@ -284,12 +286,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="Full name on card"
                     value={state.cardholderName()}
                     onInput={(e) => state.setCardholderName(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label for="card-number" class="mb-1 block font-medium text-xs">
+                  <Label for="card-number" class="mb-1 block font-medium text-sm">
                     Card Number
                   </Label>
                   <Input
@@ -298,12 +300,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="4111 2222 3333 4444"
                     value={state.cardNumber()}
                     onInput={(e) => state.setCardNumber(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="card-expiration" class="mb-1 block font-medium text-xs">
+                  <Label for="card-expiration" class="mb-1 block font-medium text-sm">
                     Expiration (MM/YY)
                   </Label>
                   <Input
@@ -312,12 +314,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="12/28"
                     value={state.cardExpiration()}
                     onInput={(e) => state.setCardExpiration(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="card-cvv" class="mb-1 block font-medium text-xs">
+                  <Label for="card-cvv" class="mb-1 block font-medium text-sm">
                     Security Code (CVV)
                   </Label>
                   <Input
@@ -326,7 +328,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="123"
                     value={state.cardCvv()}
                     onInput={(e) => state.setCardCvv(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
               </div>
@@ -335,13 +337,13 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           <Show when={state.category() === "identity"}>
             <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+              <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
                 Identity Profile
               </h3>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label for="id-fullname" class="mb-1 block font-medium text-xs">
+                  <Label for="id-fullname" class="mb-1 block font-medium text-sm">
                     Full Name
                   </Label>
                   <Input
@@ -350,12 +352,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="First and last name"
                     value={state.identityFullName()}
                     onInput={(e) => state.setIdentityFullName(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label for="id-title" class="mb-1 block font-medium text-xs">
+                  <Label for="id-title" class="mb-1 block font-medium text-sm">
                     Title / Role
                   </Label>
                   <Input
@@ -364,12 +366,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="Systems Architect, etc."
                     value={state.identityTitle()}
                     onInput={(e) => state.setIdentityTitle(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label for="id-employee-id" class="mb-1 block font-medium text-xs">
+                  <Label for="id-employee-id" class="mb-1 block font-medium text-sm">
                     ID / Employee / Passport Number
                   </Label>
                   <Input
@@ -378,12 +380,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="ACME-EMP-8841"
                     value={state.identityEmployeeId()}
                     onInput={(e) => state.setIdentityEmployeeId(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="id-email" class="mb-1 block font-medium text-xs">
+                  <Label for="id-email" class="mb-1 block font-medium text-sm">
                     Email
                   </Label>
                   <Input
@@ -392,12 +394,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="user@example.com"
                     value={state.identityEmail()}
                     onInput={(e) => state.setIdentityEmail(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label for="id-phone" class="mb-1 block font-medium text-xs">
+                  <Label for="id-phone" class="mb-1 block font-medium text-sm">
                     Phone
                   </Label>
                   <Input
@@ -406,12 +408,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="+1 (555) 000-0000"
                     value={state.identityPhone()}
                     onInput={(e) => state.setIdentityPhone(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label for="id-department" class="mb-1 block font-medium text-xs">
+                  <Label for="id-department" class="mb-1 block font-medium text-sm">
                     Department / Nationality
                   </Label>
                   <Input
@@ -420,7 +422,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="Engineering / United States"
                     value={state.identityDepartment()}
                     onInput={(e) => state.setIdentityDepartment(e.currentTarget.value)}
-                    class="text-xs"
+                    class="text-sm"
                   />
                 </div>
               </div>
@@ -429,13 +431,13 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           <Show when={state.category() === "sshKey"}>
             <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-              <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+              <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
                 SSH Key Details
               </h3>
 
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <Label for="ssh-username" class="mb-1 block font-medium text-xs">
+                  <Label for="ssh-username" class="mb-1 block font-medium text-sm">
                     Username
                   </Label>
                   <Input
@@ -444,12 +446,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="ec2-user, root, etc."
                     value={state.username()}
                     onInput={(e) => state.setUsername(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="ssh-url" class="mb-1 block font-medium text-xs">
+                  <Label for="ssh-url" class="mb-1 block font-medium text-sm">
                     Host / Server URL
                   </Label>
                   <Input
@@ -458,12 +460,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="ssh://bastion.example.com:2222"
                     value={state.url()}
                     onInput={(e) => state.setUrl(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="ssh-type" class="mb-1 block font-medium text-xs">
+                  <Label for="ssh-type" class="mb-1 block font-medium text-sm">
                     Key Type
                   </Label>
                   <Input
@@ -472,12 +474,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="Ed25519 or RSA"
                     value={state.sshKeyType()}
                     onInput={(e) => state.setSshKeyType(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
 
                 <div>
-                  <Label for="ssh-fingerprint" class="mb-1 block font-medium text-xs">
+                  <Label for="ssh-fingerprint" class="mb-1 block font-medium text-sm">
                     Fingerprint
                   </Label>
                   <Input
@@ -486,13 +488,13 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                     placeholder="SHA256:..."
                     value={state.sshFingerprint()}
                     onInput={(e) => state.setSshFingerprint(e.currentTarget.value)}
-                    class="text-xs font-mono"
+                    class="text-sm font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <Label for="ssh-passphrase" class="mb-1 block font-medium text-xs">
+                <Label for="ssh-passphrase" class="mb-1 block font-medium text-sm">
                   Passphrase
                 </Label>
                 <Input
@@ -501,12 +503,12 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                   placeholder="Key passphrase"
                   value={state.sshPassphrase()}
                   onInput={(e) => state.setSshPassphrase(e.currentTarget.value)}
-                  class="text-xs font-mono"
+                  class="text-sm font-mono"
                 />
               </div>
 
               <div>
-                <Label for="ssh-publickey" class="mb-1 block font-medium text-xs">
+                <Label for="ssh-publickey" class="mb-1 block font-medium text-sm">
                   Public Key
                 </Label>
                 <Textarea
@@ -515,7 +517,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                   placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5..."
                   value={state.sshPublicKey()}
                   onInput={(e) => state.setSshPublicKey(e.currentTarget.value)}
-                  class="text-xs font-mono"
+                  class="text-sm font-mono"
                 />
               </div>
             </CardWrapper>
@@ -523,27 +525,27 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           {/* Section: Secure Notes */}
           <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-            <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">Notes</h3>
+            <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">Notes</h3>
             <Textarea
               id="item-notes"
               rows={4}
               placeholder="Additional secure notes, recovery instructions, etc."
               value={state.notes()}
               onInput={(e) => state.setNotes(e.currentTarget.value)}
-              class="text-xs font-mono"
+              class="text-sm font-mono"
             />
           </CardWrapper>
 
           {/* Section: Custom Fields */}
           <CardWrapper class="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
             <div class="flex items-center justify-between">
-              <h3 class="font-semibold text-slate-900 text-xs dark:text-slate-100 uppercase tracking-wider">
+              <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100 uppercase tracking-wider">
                 Custom Fields
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
-                class="text-xs text-blue-600 dark:text-blue-400"
+                class="text-sm text-blue-600 dark:text-blue-400"
                 onClick={state.addCustomField}
               >
                 + Add Custom Field
@@ -553,7 +555,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
             <Show
               when={state.extraCustomFields().length > 0}
               fallback={
-                <p class="text-xs text-slate-600 dark:text-slate-400">No additional custom fields configured.</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">No additional custom fields configured.</p>
               }
             >
               <div class="space-y-3">
@@ -570,7 +572,7 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                               label: e.currentTarget.value,
                             })
                           }
-                          class="h-8 text-xs"
+                          class="h-8 text-sm"
                         />
                       </div>
                       <div class="min-w-44 flex-1">
@@ -583,16 +585,16 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
                               value: e.currentTarget.value,
                             })
                           }
-                          class="h-8 text-xs font-mono"
+                          class="h-8 text-sm font-mono"
                         />
                       </div>
                       <Checkbox
                         id={`custom-concealed-${idx()}`}
                         checked={Boolean(field.concealed)}
                         onChange={(checked) => state.updateCustomField(idx(), { concealed: checked })}
-                        class="text-xs"
+                        class="text-sm"
                       >
-                        <span class="text-[11px] text-slate-600 dark:text-slate-400">Hidden</span>
+                        <span class="text-sm text-slate-600 dark:text-slate-400">Hidden</span>
                       </Checkbox>
                       <ButtonIconOnly
                         variant="ghost"
@@ -613,15 +615,17 @@ export function VaultItemForm(props: VaultItemFormProps): JSX.Element {
 
           {/* Form Bottom Actions */}
           <div class="flex items-center justify-end gap-2 pt-2 pb-6">
-            <Button variant="ghost" size="sm" class="text-xs" onClick={state.cancel}>
+            <Button variant="ghost" size="sm" class="h-8 text-sm" onClick={state.cancel}>
+              <Icon path={vaultSvgIcons.close} class="mr-1.5 size-3.5" />
               Cancel
             </Button>
             <Button
               variant="filled"
               size="sm"
-              class="bg-blue-600 text-xs text-white hover:bg-blue-700"
+              class="h-8 bg-blue-600 text-sm text-white hover:bg-blue-700"
               onClick={state.save}
             >
+              <Icon path={vaultSvgIcons.save} class="mr-1.5 size-3.5" />
               Save Item
             </Button>
           </div>
