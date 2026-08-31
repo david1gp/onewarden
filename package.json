@@ -60,6 +60,7 @@
     "nodemailer": "^9.0.6",
     "solid-js": "1.9.15",
     "tailwind-merge": "^3.6.0",
+    "tldts": "^7.4.11",
     "valibot": "1.4.2"
   },
   "devDependencies": {
