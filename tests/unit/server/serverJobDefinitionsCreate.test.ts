@@ -17,6 +17,7 @@ const serverConfig = {
   JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: 6,
   JOB_INCOMPLETE_SSO_PURGE_INTERVAL: 7,
   JOB_SEND_PURGE_INTERVAL: 1,
+  JOB_SESSION_HANDOFF_PURGE_INTERVAL: 9,
   JOB_TRASH_PURGE_INTERVAL: 8,
 } satisfies Pick<
   ServerConfig,
@@ -27,6 +28,7 @@ const serverConfig = {
   | "JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL"
   | "JOB_INCOMPLETE_SSO_PURGE_INTERVAL"
   | "JOB_SEND_PURGE_INTERVAL"
+  | "JOB_SESSION_HANDOFF_PURGE_INTERVAL"
   | "JOB_TRASH_PURGE_INTERVAL"
 >
 
@@ -60,6 +62,7 @@ test("serverJobDefinitionsCreate registers current jobs with configured millisec
     { name: "two-factor-incomplete-notification", intervalMs: 6_000 },
     { name: "trash-purge", intervalMs: 8_000 },
     { name: "incomplete-sso-purge", intervalMs: 7_000 },
+    { name: "session-handoff-purge", intervalMs: 9_000 },
   ])
 })
 

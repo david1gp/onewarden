@@ -134,6 +134,7 @@ export const serverConfigSchema = v.object({
   JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: serverConfigJobIntervalSchema("60"),
   JOB_TRASH_PURGE_INTERVAL: serverConfigJobIntervalSchema("86400"),
   JOB_INCOMPLETE_SSO_PURGE_INTERVAL: serverConfigJobIntervalSchema("86400"),
+  JOB_SESSION_HANDOFF_PURGE_INTERVAL: serverConfigJobIntervalSchema("60"),
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>

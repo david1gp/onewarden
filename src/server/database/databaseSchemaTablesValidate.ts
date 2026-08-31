@@ -30,6 +30,7 @@ const databaseCurrentSchemaTables = [
   "archives",
   "sends",
   "send_recipient_verifications",
+  "extension_session_handoffs",
   "emergency_access",
   "attachments",
   "event",

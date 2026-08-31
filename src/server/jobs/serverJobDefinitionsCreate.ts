@@ -12,6 +12,7 @@ import type { IdentityMailAdapter } from "../contexts/identity/identityMailAdapt
 import { identitySsoAuthPurge } from "../contexts/identity/identitySsoAuthPurge.js"
 import type { SendFileStorageAdapter } from "../contexts/sends/sendFileStorageAdapter.js"
 import { sendPurge } from "../contexts/sends/sendPurge.js"
+import { sessionHandoffPurge } from "../contexts/sessionHandoffs/sessionHandoffPurge.js"
 import { twoFactorIncompleteNotificationRun } from "../contexts/twoFactor/twoFactorIncompleteNotificationRun.js"
 import type { DatabaseConnection } from "../database/database.js"
 import type { ServerJob } from "./serverJob.js"
@@ -33,6 +34,7 @@ type ServerJobDefinitionsOptions = {
     | "JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL"
     | "JOB_INCOMPLETE_SSO_PURGE_INTERVAL"
     | "JOB_SEND_PURGE_INTERVAL"
+    | "JOB_SESSION_HANDOFF_PURGE_INTERVAL"
     | "JOB_TRASH_PURGE_INTERVAL"
   >
 }
@@ -132,6 +134,15 @@ export function serverJobDefinitionsCreate(options: ServerJobDefinitionsOptions)
       run: () => {
         const result = identitySsoAuthPurge(options.database, options.clock)
         if (!result.success) options.logger.error("identity.sso-purge-failed", { errorMessage: result.errorMessage })
+        return result
+      },
+    },
+    {
+      intervalMs: options.serverConfig.JOB_SESSION_HANDOFF_PURGE_INTERVAL * 1_000,
+      name: "session-handoff-purge",
+      run: () => {
+        const result = sessionHandoffPurge(options.database, options.clock)
+        if (!result.success) options.logger.error("session-handoff.purge-failed", { errorMessage: result.errorMessage })
         return result
       },
     },

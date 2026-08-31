@@ -2,7 +2,11 @@ import { createEffect, onCleanup, onMount } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { webAdminApiClientCreate } from "../admin/model/webAdminApiClientCreate.js"
 import { webAuthSessionDefault } from "../auth/model/webAuthSessionDefault.js"
+import { webAuthStorageCreate } from "../auth/model/webAuthStorageCreate.js"
 import { webSendAccessIdResolve } from "../sends/model/webSendAccessIdResolve.js"
+import { sessionHandoffFragmentParse } from "../../shared/sessionHandoff/sessionHandoffFragmentParse.js"
+import { webSessionHandoffApiClientCreate } from "../sessionHandoffs/model/webSessionHandoffApiClientCreate.js"
+import { webSessionHandoffConsume } from "../sessionHandoffs/model/webSessionHandoffConsume.js"
 import { webAppRouteResolve } from "./webAppRouteResolve.js"
 
 export function webAppStateCreate() {
@@ -37,6 +41,14 @@ export function webAppStateCreate() {
     location.set(`${url.pathname}${url.search}${url.hash}`)
   }
 
+  const navigateReplace = (path: string) => {
+    if (typeof window === "undefined") return navigate(path)
+    const url = new URL(path, window.location.origin)
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`)
+    pathname.set(url.pathname)
+    location.set(`${url.pathname}${url.search}${url.hash}`)
+  }
+
   const handleLinkClick = (event: MouseEvent) => {
     const target = (event.target as HTMLElement).closest("a")
     if (!target) return
@@ -54,6 +66,23 @@ export function webAppStateCreate() {
     if (typeof window !== "undefined") {
       window.addEventListener("popstate", handlePopState)
       document.addEventListener("click", handleLinkClick)
+      const fragmentResult = sessionHandoffFragmentParse(window.location.hash)
+      if (new URLSearchParams(window.location.hash.replace(/^#/u, "")).has("onewarden-handoff")) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
+        location.set(`${window.location.pathname}${window.location.search}`)
+      }
+      if (fragmentResult.success && fragmentResult.data !== null) {
+        void webSessionHandoffConsume({
+          apiClient: webSessionHandoffApiClientCreate(),
+          deviceIdentifier: webAuthStorageCreate().deviceIdentifierGet(),
+          fragment: fragmentResult.data,
+          session,
+        }).then((result) => {
+          if (!result.success) return
+          if (window.location.pathname !== result.data) return navigateReplace(result.data)
+          routeRevision.set(routeRevision.get() + 1)
+        })
+      }
     }
   })
 

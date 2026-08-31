@@ -2,6 +2,7 @@ import { type Result } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import type { SessionHandoffConsumeResponse } from "../../../shared/sessionHandoff/sessionHandoffConsumeResponseSchema.js"
 import { type TwoFactorChallenge } from "./twoFactorChallengeSchema.js"
 import { webAuthApiClientCreate } from "./webAuthApiClientCreate.js"
 import { webAuthMasterKeyDerive } from "./webAuthMasterKeyDerive.js"
@@ -97,6 +98,40 @@ export function webAuthSessionCreate(
     status.set("unauthenticated")
     storage.sessionClear()
     return resultCreate(undefined)
+  }
+
+  const sessionHandoffAccept = (
+    response: SessionHandoffConsumeResponse,
+    transferredUserKey: Uint8Array,
+  ): Result<WebAuthSession> => {
+    const op = "webAuthSession.sessionHandoffAccept"
+    if (transferredUserKey.byteLength !== 64) {
+      return resultErrorCreate(op, "Transferred user key is invalid.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const newSession: WebAuthSession = {
+      email: response.email,
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+      tokenType: "Bearer",
+      expiresAt: Date.now() + response.expiresIn * 1_000,
+      userId: response.userId,
+      kdf: response.kdf,
+      kdfIterations: response.kdfIterations,
+      kdfMemory: response.kdfMemory,
+      kdfParallelism: response.kdfParallelism,
+      encryptedUserKey: response.encryptedUserKey,
+    }
+    const saveResult = storage.sessionSave(newSession)
+    if (!saveResult.success) return saveResult
+    clearUserKey()
+    inMemoryUserKey = transferredUserKey
+    session.set(newSession)
+    pendingTwoFactor.set(null)
+    status.set("unlocked")
+    return resultCreate(newSession)
   }
 
   const unlock = async (masterPassword: string): Promise<Result<void>> => {
@@ -754,6 +789,7 @@ export function webAuthSessionCreate(
     isUnauthenticated,
     lock,
     logout,
+    sessionHandoffAccept,
     unlock,
     login,
     loginTwoFactor,

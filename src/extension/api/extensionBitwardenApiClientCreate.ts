@@ -47,6 +47,14 @@ import {
 } from "../../shared/api/bitwardenSyncEnvelopeSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import {
+  type SessionHandoffCreateRequest,
+  sessionHandoffCreateRequestSchema,
+} from "../../shared/sessionHandoff/sessionHandoffCreateRequestSchema.js"
+import {
+  type SessionHandoffCreateResponse,
+  sessionHandoffCreateResponseSchema,
+} from "../../shared/sessionHandoff/sessionHandoffCreateResponseSchema.js"
 import type { ExtensionEnvironment } from "./extensionEnvironmentSchema.js"
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -246,6 +254,36 @@ export function extensionBitwardenApiClientCreate(
           headers: protectedHeaders(request.accessToken),
         },
         bitwardenSyncEnvelopeSchema,
+      )
+    },
+
+    sessionHandoffCreate(
+      request: ProtectedRequest & SessionHandoffCreateRequest,
+    ): Promise<Result<SessionHandoffCreateResponse>> {
+      const op = "extensionBitwardenApiClient.sessionHandoffCreate"
+      const { accessToken, ...handoffRequest } = request
+      const handoffResult = requestValidationParse(op, handoffRequest, sessionHandoffCreateRequestSchema)
+      if (!handoffResult.success) return Promise.resolve(handoffResult)
+      if (typeof accessToken !== "string" || accessToken.length === 0) {
+        return Promise.resolve(
+          resultErrorCreate(op, "Authentication is required.", {
+            code: "platform.unauthorized",
+            statusCode: 401,
+          }),
+        )
+      }
+      const bodyResult = jsonBodyCreate(op, handoffResult.data)
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return jsonRequest(
+        fetchImplementation,
+        apiUrlCreate(environment, "/session-handoffs"),
+        op,
+        {
+          method: "POST",
+          headers: { ...protectedHeaders(accessToken), "content-type": "application/json" },
+          body: bodyResult.data,
+        },
+        sessionHandoffCreateResponseSchema,
       )
     },
 

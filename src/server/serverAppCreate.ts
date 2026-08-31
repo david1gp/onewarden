@@ -53,6 +53,7 @@ import type { SendFileStorageAdapter } from "./contexts/sends/sendFileStorageAda
 import type { SendNotificationAdapter } from "./contexts/sends/sendNotificationAdapter.js"
 import type { SendRateLimiter } from "./contexts/sends/sendRouteOptions.js"
 import { sendRoutesRegister } from "./contexts/sends/sendRoutesRegister.js"
+import { sessionHandoffRoutesRegister } from "./contexts/sessionHandoffs/sessionHandoffRoutesRegister.js"
 import { syncRoutesRegister } from "./contexts/sync/syncRoutesRegister.js"
 import type { WebRouteOptions } from "./contexts/web/webRouteOptions.js"
 import { webRoutesRegister } from "./contexts/web/webRoutesRegister.js"
@@ -408,6 +409,16 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
     rateLimiter: options?.sends?.rateLimiter ?? identityOptions?.rateLimiter,
     sendsAllowed: options?.sends?.sendsAllowed,
     storage: options?.sends?.storage,
+  })
+  sessionHandoffRoutesRegister(app, {
+    clock: identityClock,
+    config: identityConfig,
+    database: identityDatabase,
+    groupsEnabled: options?.organizations?.groupsEnabled,
+    identifier: identityIdentifier,
+    privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
+    publicKey: identityOptions?.publicKey ?? defaultPublicKey,
+    publicOrigin: identityOptions?.publicOrigin,
   })
   iconRoutesRegister(app, {
     ...options?.icons,

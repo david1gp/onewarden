@@ -252,6 +252,11 @@ const currentRouteRegistrations = [
   ]),
   ...duplicatedEmergencyAccessRouteRegistrations,
   ...duplicatedTwoFactorRouteRegistrations,
+  ...[{ basePath: "/", method: "POST", path: "/api/extension/handoffs" }].flatMap((registration) => [
+    registration,
+    registration,
+  ]),
+  { basePath: "/", method: "POST", path: "/api/extension/handoffs/consume" },
   { basePath: "/", method: "GET", path: "/" },
   { basePath: "/", method: "GET", path: "/*" },
   { basePath: "/", method: "GET", path: "/.well-known/apple-app-site-association" },

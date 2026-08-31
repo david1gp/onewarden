@@ -3,6 +3,8 @@ import { type Result } from "#result"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
+import { sessionHandoffUserKeyEncrypt } from "../../shared/sessionHandoff/sessionHandoffUserKeyEncrypt.js"
 import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
 import { extensionOrganizationKeyDecrypt } from "../crypto/extensionOrganizationKeyDecrypt.js"
 import { extensionPersonalLoginCipherDecrypt } from "../crypto/extensionPersonalLoginCipherDecrypt.js"
@@ -176,6 +178,17 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
       return extensionEncryptedPayloadDecrypt(payload, userKey)
     })
 
+  const sessionHandoffEncrypt = (operation: SessionHandoffOperation, cipherId: string | null) =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.sessionHandoffEncrypt", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      return sessionHandoffUserKeyEncrypt(userKey, operation, cipherId)
+    })
+
   return {
     isUnlocked,
     unlock,
@@ -186,5 +199,6 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
     personalLoginCipherEncrypt,
     encryptedPayloadEncrypt,
     encryptedPayloadDecrypt,
+    sessionHandoffEncrypt,
   }
 }

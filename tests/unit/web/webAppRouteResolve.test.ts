@@ -24,3 +24,8 @@ test("demo route aliases resolve to their canonical vault experiences", () => {
     }
   }
 })
+
+test("session handoff target routes resolve to cipher create and edit pages", () => {
+  expect(webAppRouteResolve("/ciphers/new")).toBe("cipher-create")
+  expect(webAppRouteResolve("/ciphers/cipher-one/edit")).toBe("cipher-edit")
+})
