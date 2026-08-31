@@ -39,7 +39,7 @@ test("backup CLI creates a bundle in an explicit destination root", () => {
     expect(bundles).toHaveLength(1)
     expect(existsSync(join(destinationRoot, bundles[0] ?? "", "manifest.json"))).toBe(true)
     expect(readFileSync(join(destinationRoot, bundles[0] ?? "", "manifest.json"), "utf8")).toContain(
-      '"schemaVersion": 18',
+      '"schemaVersion": 19',
     )
   } finally {
     rmSync(directory, { force: true, recursive: true })

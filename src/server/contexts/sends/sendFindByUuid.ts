@@ -13,7 +13,7 @@ export function sendFindByUuid(database: DatabaseConnection, uuid: string): Resu
       .query<SendRow, [string]>(
         `SELECT uuid, user_uuid, organization_uuid, name, notes, atype, data, key,
            password_hash, password_salt, password_iter, max_access_count, access_count,
-           creation_date, revision_date, expiration_date, deletion_date, disabled, hide_email
+           creation_date, revision_date, expiration_date, deletion_date, disabled, hide_email, emails
          FROM sends WHERE uuid = ? LIMIT 1`,
       )
       .get(uuid)

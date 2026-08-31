@@ -24,6 +24,7 @@ export const sendItemSchema = v.object({
   accessCount: v.number(),
   password: v.nullable(v.string()),
   authType: v.number(),
+  emails: v.optional(v.nullable(v.string())),
   disabled: v.boolean(),
   hideEmail: v.boolean(),
   revisionDate: v.string(),

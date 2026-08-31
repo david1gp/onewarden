@@ -39,6 +39,8 @@ const identityTokenRequestAliases: Record<string, keyof IdentityTokenRequest> = 
   send_id: "sendId",
   passwordhashb64: "passwordHashB64",
   password_hash_b64: "passwordHashB64",
+  email: "email",
+  otp: "otp",
 }
 
 export function identityTokenRequestParse(input: unknown): Result<IdentityTokenRequest> {

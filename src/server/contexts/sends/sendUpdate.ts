@@ -10,6 +10,8 @@ import { sendDataValueSerialize } from "./sendDataValueSerialize.js"
 import type { SendData } from "./sendDataSchema.js"
 import { sendFindByUuidAndUser } from "./sendFindByUuidAndUser.js"
 import { sendPasswordSet } from "./sendPasswordSet.js"
+import { sendRecipientVerificationDelete } from "./sendRecipientVerificationDelete.js"
+import { sendRecipientsNormalize } from "./sendRecipientsNormalize.js"
 import { sendSave } from "./sendSave.js"
 import { sendUserRevisionUpdate } from "./sendUserRevisionUpdate.js"
 
@@ -34,6 +36,8 @@ export async function sendUpdate(
     )
   const maxAccessCountResult = sendDataNumberResolve(data.maxAccessCount)
   if (!maxAccessCountResult.success) return maxAccessCountResult
+  const recipientsResult = sendRecipientsNormalize(data.emails)
+  if (!recipientsResult.success) return recipientsResult
   const expirationTimestamp =
     data.expirationDate === undefined || data.expirationDate === null ? null : Date.parse(data.expirationDate)
   if (expirationTimestamp !== null && !Number.isFinite(expirationTimestamp))
@@ -55,9 +59,12 @@ export async function sendUpdate(
     deletionDate: new Date(deletionTimestamp).toISOString(),
     disabled: data.disabled,
     hideEmail: data.hideEmail ?? null,
+    emails: recipientsResult.data,
     revisionDate: clock.now().toISOString(),
   }
-  if (data.password !== undefined && data.password !== null) {
+  if (next.emails !== null) {
+    next = { ...next, passwordHash: null, passwordSalt: null, passwordIterations: null }
+  } else if (data.password !== undefined && data.password !== null) {
     const passwordResult = await sendPasswordSet(next, data.password)
     if (!passwordResult.success) return passwordResult
     next = passwordResult.data
@@ -65,6 +72,8 @@ export async function sendUpdate(
   return databaseTransaction(database, () => {
     const revisionResult = sendUserRevisionUpdate(database, userUuid, next.revisionDate)
     if (!revisionResult.success) return revisionResult
+    const verificationDeleteResult = sendRecipientVerificationDelete(database, next.uuid)
+    if (!verificationDeleteResult.success) return verificationDeleteResult
     const saveResult = sendSave(database, next)
     if (!saveResult.success) return saveResult
     return resultCreate(next)

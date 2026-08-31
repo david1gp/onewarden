@@ -22,6 +22,7 @@ export function sendCreateDialogStateCreate(props: SendCreateDialogProps) {
   const name = createSignalObject("")
   const textContent = createSignalObject("")
   const notes = createSignalObject("")
+  const emails = createSignalObject("")
   const password = createSignalObject("")
   const maxAccessCount = createSignalObject<string>("")
   const hideEmail = createSignalObject(false)
@@ -40,6 +41,7 @@ export function sendCreateDialogStateCreate(props: SendCreateDialogProps) {
     name.set("")
     textContent.set("")
     notes.set("")
+    emails.set("")
     password.set("")
     maxAccessCount.set("")
     hideEmail.set(false)
@@ -139,6 +141,7 @@ export function sendCreateDialogStateCreate(props: SendCreateDialogProps) {
           type: 1,
           name: sendName,
           notes: notes.get().trim() || null,
+          emails: emails.get().trim() || null,
           password: password.get().trim() || null,
           maxAccessCount: maxCountParsed,
           key: encryptedKeyResult.data,
@@ -178,6 +181,7 @@ export function sendCreateDialogStateCreate(props: SendCreateDialogProps) {
       type: 0,
       name: sendName,
       notes: notes.get().trim() || null,
+      emails: emails.get().trim() || null,
       text: { text: encryptedTextResult.data },
       key: encryptedKeyResult.data,
       password: password.get().trim() || null,
@@ -208,6 +212,8 @@ export function sendCreateDialogStateCreate(props: SendCreateDialogProps) {
     setTextContent: textContent.set,
     notes: notes.get,
     setNotes: notes.set,
+    emails: emails.get,
+    setEmails: emails.set,
     password: password.get,
     setPassword: password.set,
     maxAccessCount: maxAccessCount.get,

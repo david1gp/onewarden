@@ -140,6 +140,24 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
               />
             </div>
 
+            <div>
+              <label for="send-recipient-emails" class="block font-medium text-slate-700 dark:text-slate-300">
+                Recipient Verification Emails
+              </label>
+              <Input
+                id="send-recipient-emails"
+                type="text"
+                value={state.emails()}
+                onInput={(e) => state.setEmails(e.currentTarget.value)}
+                placeholder="person@example.com, another@example.com"
+                aria-describedby="send-recipient-emails-help"
+                class="mt-1 w-full"
+              />
+              <p id="send-recipient-emails-help" class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Optional. Authorized recipients receive a one-time access code by email.
+              </p>
+            </div>
+
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label for="send-password" class="block font-medium text-slate-700 dark:text-slate-300">
@@ -151,8 +169,14 @@ export function SendCreateDialog(props: SendCreateDialogProps): JSX.Element {
                   value={state.password()}
                   onInput={(e) => state.setPassword(e.currentTarget.value)}
                   placeholder="Protect with password"
+                  disabled={state.emails().trim().length > 0}
                   class="mt-1 w-full"
                 />
+                <Show when={state.emails().trim().length > 0}>
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Recipient verification replaces password protection.
+                  </p>
+                </Show>
               </div>
               <div>
                 <label for="send-max-access-count" class="block font-medium text-slate-700 dark:text-slate-300">

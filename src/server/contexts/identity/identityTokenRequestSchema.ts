@@ -22,6 +22,8 @@ export const identityTokenRequestSchema = v.object({
   codeVerifier: identityTokenOptionalStringSchema,
   sendId: identityTokenOptionalStringSchema,
   passwordHashB64: identityTokenOptionalStringSchema,
+  email: identityTokenOptionalStringSchema,
+  otp: identityTokenOptionalStringSchema,
 })
 
 export type IdentityTokenRequest = v.InferOutput<typeof identityTokenRequestSchema>

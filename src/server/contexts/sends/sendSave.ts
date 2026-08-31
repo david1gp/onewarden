@@ -11,8 +11,8 @@ export function sendSave(database: DatabaseConnection, send: Send): Result<void>
       `INSERT INTO sends (
         uuid, user_uuid, organization_uuid, name, notes, atype, data, key,
         password_hash, password_salt, password_iter, max_access_count, access_count,
-        creation_date, revision_date, expiration_date, deletion_date, disabled, hide_email
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         creation_date, revision_date, expiration_date, deletion_date, disabled, hide_email, emails
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(uuid) DO UPDATE SET
         user_uuid = excluded.user_uuid,
         organization_uuid = excluded.organization_uuid,
@@ -31,7 +31,8 @@ export function sendSave(database: DatabaseConnection, send: Send): Result<void>
         expiration_date = excluded.expiration_date,
         deletion_date = excluded.deletion_date,
         disabled = excluded.disabled,
-        hide_email = excluded.hide_email`,
+         hide_email = excluded.hide_email,
+         emails = excluded.emails`,
       [
         send.uuid,
         send.userUuid,
@@ -52,6 +53,7 @@ export function sendSave(database: DatabaseConnection, send: Send): Result<void>
         send.deletionDate,
         send.disabled ? 1 : 0,
         send.hideEmail === null ? null : send.hideEmail ? 1 : 0,
+        send.emails,
       ],
     )
     return resultCreate(undefined)

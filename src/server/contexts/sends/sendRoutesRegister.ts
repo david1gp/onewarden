@@ -12,6 +12,8 @@ import { authenticationMiddlewareCreate } from "../authentication/authentication
 import type { IdentityDevice } from "../identity/identityDevice.js"
 import { pushRelaySendUpdate } from "../push/pushRelaySendUpdate.js"
 import { sendAccessTokenIdResolve } from "./sendAccessTokenIdResolve.js"
+import { sendAccessIdCreate } from "./sendAccessIdCreate.js"
+import { sendAccessTokenCreate } from "./sendAccessTokenCreate.js"
 import { sendCreate } from "./sendCreate.js"
 import type { Send } from "./send.js"
 import type { SendData } from "./sendDataSchema.js"
@@ -30,6 +32,7 @@ import { sendFindByUuidAndUser } from "./sendFindByUuidAndUser.js"
 import { sendFindByUser } from "./sendFindByUser.js"
 import { sendIsAccessible } from "./sendIsAccessible.js"
 import { sendRegisterAccess } from "./sendRegisterAccess.js"
+import { sendRecipientVerificationDelete } from "./sendRecipientVerificationDelete.js"
 import { sendSizeByUser } from "./sendSizeByUser.js"
 import { sendPasswordVerify } from "./sendPasswordVerify.js"
 import { sendSave } from "./sendSave.js"
@@ -48,7 +51,11 @@ const sendPathSchema = v.object({ send_id: v.string() })
 const sendFilePathSchema = v.object({ send_id: v.string(), file_id: v.string() })
 const sendAccessFilePathSchema = v.object({ file_id: v.string() })
 const sendDownloadQuerySchema = v.object({ t: v.string() })
-const sendAccessDataSchema = v.object({ password: v.optional(v.nullable(v.string())) })
+const sendAccessDataSchema = v.object({
+  email: v.optional(v.nullable(v.string())),
+  otp: v.optional(v.nullable(v.string())),
+  password: v.optional(v.nullable(v.string())),
+})
 const sendMaxFileSizeBytes = 550_502_400
 const sendInaccessibleMessage = "Send does not exist or is no longer available"
 const anonymousDevice: IdentityDevice = {
@@ -437,6 +444,28 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     if (sendResult.data === null)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesAccessLegacy", sendInaccessibleMessage, 404))
     const send = sendResult.data
+    if (send.emails !== null) {
+      const tokenResult = await sendAccessTokenCreate(
+        database,
+        pathResult.data.access_id,
+        undefined,
+        sendClientIpResolve(context),
+        options.privateKey,
+        sendIssuerResolve(context, options),
+        options.clock,
+        {
+          config: options.config,
+          email: bodyResult.data.email ?? undefined,
+          mail: options.mail,
+          otp: bodyResult.data.otp ?? undefined,
+        },
+      )
+      if (!tokenResult.success) return apiErrorResponseCreate(tokenResult)
+      const jsonResult = sendToAccessJson(database, send)
+      if (!jsonResult.success) return apiErrorResponseCreate(jsonResult)
+      await sendMutationNotify(notification, options.push, sendUpdateType.update, send, anonymousDevice, database)
+      return context.json(jsonResult.data)
+    }
     if (send.maxAccessCount !== null && send.accessCount >= send.maxAccessCount)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesAccessLegacy", sendInaccessibleMessage, 404))
     if (!sendIsAccessible(send, options.clock))
@@ -491,6 +520,25 @@ export function sendRoutesRegister(app: Hono<AuthenticationEnvironment>, options
     if (sendResult.data === null)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesAccessFileLegacy", sendInaccessibleMessage, 404))
     const send = sendResult.data
+    if (send.emails !== null) {
+      const tokenResult = await sendAccessTokenCreate(
+        database,
+        sendAccessIdCreate(send.uuid),
+        undefined,
+        sendClientIpResolve(context),
+        options.privateKey,
+        sendIssuerResolve(context, options),
+        options.clock,
+        {
+          config: options.config,
+          email: bodyResult.data.email ?? undefined,
+          mail: options.mail,
+          otp: bodyResult.data.otp ?? undefined,
+        },
+      )
+      if (!tokenResult.success) return apiErrorResponseCreate(tokenResult)
+      return sendFileDownloadResponse(context, send, pathResult.data.file_id, options, notification, database)
+    }
     if (send.maxAccessCount !== null && send.accessCount >= send.maxAccessCount)
       return apiErrorResponseCreate(sendErrorCreate("sendRoutesAccessFileLegacy", sendInaccessibleMessage, 404))
     if (!sendIsAccessible(send, options.clock))
@@ -615,8 +663,6 @@ async function sendDataPolicyValidate(
   database: SendRequestContext["database"],
   userUuid: string,
 ): Promise<Result<void>> {
-  if (data.emails !== undefined && data.emails !== null)
-    return sendErrorCreate("sendPolicy", "Sends with email verification is not supported")
   if (data.hideEmail !== true) return resultCreate(undefined)
   const result = organizationPolicyIsHideEmailDisabled(database, userUuid)
   if (!result.success) return result
@@ -688,7 +734,7 @@ async function sendFileDownloadResponse(
 
 async function sendAccessBodyParse(
   context: Context<AuthenticationEnvironment>,
-): Promise<Result<{ password?: string | null }>> {
+): Promise<Result<{ email?: string | null; otp?: string | null; password?: string | null }>> {
   let body: unknown = {}
   try {
     body = await context.req.json()
@@ -773,16 +819,21 @@ async function sendUpdatePersist(
 ): Promise<Result<void>> {
   const revisionResult = sendUserRevisionUpdate(database, userUuid, send.revisionDate)
   if (!revisionResult.success) return revisionResult
+  const verificationDeleteResult = sendRecipientVerificationDelete(database, send.uuid)
+  if (!verificationDeleteResult.success) return verificationDeleteResult
   return sendSave(database, send)
 }
 
 function sendRateLimit(context: Context<AuthenticationEnvironment>, options: SendRouteOptions): Result<void> {
   if (options.rateLimiter === undefined) return resultCreate(undefined)
-  const ip =
-    context.req.header("x-real-ip") ?? context.req.header("x-forwarded-for")?.split(",", 1)[0]?.trim() ?? "0.0.0.0"
+  const ip = sendClientIpResolve(context)
   const result = options.rateLimiter.check(ip)
   if (!result.success) return sendErrorCreate("sendRateLimit", "Too many requests", 429)
   return resultCreate(undefined)
+}
+
+function sendClientIpResolve(context: Context<AuthenticationEnvironment>): string {
+  return context.req.header("x-real-ip") ?? context.req.header("x-forwarded-for")?.split(",", 1)[0]?.trim() ?? "0.0.0.0"
 }
 
 function sendBearerTokenResolve(value: string | undefined): string | undefined {

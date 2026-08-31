@@ -19,6 +19,7 @@ export function sendEditDialogStateCreate(props: SendEditDialogProps) {
 
   const name = createSignalObject("")
   const notes = createSignalObject("")
+  const emails = createSignalObject("")
   const password = createSignalObject("")
   const maxAccessCount = createSignalObject<string>("")
   const hideEmail = createSignalObject(false)
@@ -30,6 +31,7 @@ export function sendEditDialogStateCreate(props: SendEditDialogProps) {
     if (item === null) return
     name.set(item.name)
     notes.set(item.notes ?? "")
+    emails.set(item.emails ?? "")
     password.set("")
     maxAccessCount.set(item.maxAccessCount !== null ? String(item.maxAccessCount) : "")
     hideEmail.set(item.hideEmail)
@@ -55,6 +57,7 @@ export function sendEditDialogStateCreate(props: SendEditDialogProps) {
       type: currentSend.type,
       name: sendName,
       notes: notes.get().trim() || null,
+      emails: emails.get().trim() || null,
       text: currentSend.text?.text !== undefined ? { text: currentSend.text.text } : null,
       file: currentSend.file
         ? { fileName: currentSend.file.fileName ?? "file", size: String(currentSend.file.size ?? "") }
@@ -102,6 +105,8 @@ export function sendEditDialogStateCreate(props: SendEditDialogProps) {
     setName: name.set,
     notes: notes.get,
     setNotes: notes.set,
+    emails: emails.get,
+    setEmails: emails.set,
     password: password.get,
     setPassword: password.set,
     maxAccessCount: maxAccessCount.get,

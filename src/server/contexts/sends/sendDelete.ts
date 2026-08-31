@@ -7,6 +7,7 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { Send } from "./send.js"
 import type { SendFileStorageAdapter } from "./sendFileStorageAdapter.js"
 import { sendFindByUuidAndUser } from "./sendFindByUuidAndUser.js"
+import { sendRecipientVerificationDelete } from "./sendRecipientVerificationDelete.js"
 import { sendUserRevisionUpdate } from "./sendUserRevisionUpdate.js"
 
 export async function sendDelete(
@@ -27,6 +28,8 @@ export async function sendDelete(
   return databaseTransaction(database, () => {
     const revisionResult = sendUserRevisionUpdate(database, userUuid, clock.now().toISOString())
     if (!revisionResult.success) return revisionResult
+    const verificationDeleteResult = sendRecipientVerificationDelete(database, uuid)
+    if (!verificationDeleteResult.success) return verificationDeleteResult
     try {
       database.run("DELETE FROM sends WHERE uuid = ? AND user_uuid = ?", [uuid, userUuid])
       return resultCreate(send)

@@ -18,4 +18,5 @@ export type Send = {
   deletionDate: string
   disabled: boolean
   hideEmail: boolean | null
+  emails: string | null
 }

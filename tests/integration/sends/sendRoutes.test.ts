@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
+import { identityMailAdapterCreate } from "../../../src/server/contexts/identity/identityMailAdapterCreate.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import { sendAccessIdCreate } from "../../../src/server/contexts/sends/sendAccessIdCreate.js"
@@ -31,6 +32,7 @@ async function contextCreate(options?: {
   token: string
   notifications: unknown[]
   pushes: unknown[]
+  mail: ReturnType<typeof identityMailAdapterCreate>
 }> {
   const databaseResult = databaseTestCreate()
   if (!databaseResult.success) throw new Error(databaseResult.errorMessage)
@@ -58,6 +60,7 @@ async function contextCreate(options?: {
   if (!tokenResult.success) throw new Error(tokenResult.errorMessage)
   const notifications: unknown[] = []
   const pushes: unknown[] = []
+  const mail = identityMailAdapterCreate(clock)
   const app = serverAppCreate({
     clock,
     database,
@@ -68,6 +71,7 @@ async function contextCreate(options?: {
       privateKey: keyPair.privateKey,
       publicKey: keyPair.publicKey,
       publicOrigin: "https://vault.example",
+      mail,
       identifier: identifierTestCreate(options?.identifiers ?? ["send-one", "send-file", "file-one", "send-two"]),
     },
     sends: {
@@ -88,7 +92,7 @@ async function contextCreate(options?: {
       storage: sendFileStorageAdapterCreate(),
     },
   })
-  return { app, database, notifications, pushes, token: tokenResult.data.accessToken }
+  return { app, database, mail, notifications, pushes, token: tokenResult.data.accessToken }
 }
 
 function jsonHeaders(token: string): HeadersInit {
@@ -127,6 +131,22 @@ async function sendAccessToken(
   const response = await app.request("https://vault.example/identity/connect/token", { body, method: "POST" })
   expect(response.status).toBe(200)
   return (await response.json()).access_token
+}
+
+async function sendAccessTokenRequest(
+  app: ReturnType<typeof serverAppCreate>,
+  accessId: string,
+  options?: { email?: string; otp?: string },
+): Promise<Response> {
+  const body = new URLSearchParams({
+    client_id: "send-client",
+    grant_type: "send_access",
+    scope: "api.send.access",
+    send_id: accessId,
+  })
+  if (options?.email !== undefined) body.set("email", options.email)
+  if (options?.otp !== undefined) body.set("otp", options.otp)
+  return app.request("https://vault.example/identity/connect/token", { body, method: "POST" })
 }
 
 afterEach(() => {
@@ -245,6 +265,175 @@ test("Send access tokens support authenticated access, max access, expiration, a
     method: "POST",
   })
   expect(deletedAccess.status).toBe(404)
+})
+
+test("Send recipient verification normalizes recipients, sends hashed OTPs, and consumes access atomically", async () => {
+  const context = await contextCreate({ identifiers: ["email-send"] })
+  const createResponse = await context.app.request("https://vault.example/api/sends", {
+    body: JSON.stringify(
+      sendData({
+        emails: " Recipient@Example.com, recipient@example.com, second@example.com ",
+        name: "Email Send",
+        password: "ignored-password",
+      }),
+    ),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+  const created = await createResponse.json()
+  expect(created).toMatchObject({ authType: 0, emails: "recipient@example.com,second@example.com" })
+  expect(created.password).toBeNull()
+  expect(context.database.query("SELECT emails FROM sends WHERE uuid = ?").get(created.id)).toEqual({
+    emails: "recipient@example.com,second@example.com",
+  })
+
+  const missingEmail = await sendAccessTokenRequest(context.app, created.accessId)
+  expect(missingEmail.status).toBe(400)
+  expect(await missingEmail.json()).toMatchObject({
+    error: "invalid_request",
+    send_access_error_type: "email_required",
+  })
+
+  const invalidEmail = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: "not-recipient@example.com",
+  })
+  expect(invalidEmail.status).toBe(404)
+  const invalidEmailBody = await invalidEmail.text()
+  expect(invalidEmailBody).toContain('"send_access_error_type":"email_invalid"')
+  expect(invalidEmailBody).not.toContain("not-recipient@example.com")
+
+  const issueResponse = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: " RECIPIENT@example.com ",
+  })
+  expect(issueResponse.status).toBe(400)
+  expect(await issueResponse.json()).toMatchObject({
+    error: "invalid_request",
+    send_access_error_type: "email_and_otp_required_otp_sent",
+  })
+  const message = context.mail.messages.find((item) => item.kind === "sendOtp")
+  expect(message).toBeDefined()
+  expect(message?.recipient).toBe("recipient@example.com")
+  expect(message?.targetEmail).toBeNull()
+  expect(message?.token).toMatch(/^\d{6}$/)
+  const verification = context.database
+    .query("SELECT otp_hash, otp_salt, attempts FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?")
+    .get(created.id, "recipient@example.com") as { otp_hash: string; otp_salt: string; attempts: number }
+  expect(verification.otp_hash).toHaveLength(64)
+  expect(verification.otp_salt).not.toBe("")
+  expect(verification.attempts).toBe(0)
+  expect(verification.otp_hash).not.toBe(message?.token)
+  expect(JSON.stringify(verification)).not.toContain(message?.token ?? "")
+
+  const resendResponse = await sendAccessTokenRequest(context.app, created.accessId, { email: "recipient@example.com" })
+  expect(resendResponse.status).toBe(429)
+  expect((await resendResponse.json()).send_access_error_type).toBe("rate_limited")
+
+  context.database.run("UPDATE send_recipient_verifications SET otp_expires_at = ? WHERE send_uuid = ? AND email = ?", [
+    "2026-08-27T00:00:00.000Z",
+    created.id,
+    "recipient@example.com",
+  ])
+  const expiredOtp = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: "recipient@example.com",
+    otp: message?.token ?? "",
+  })
+  expect(expiredOtp.status).toBe(404)
+  expect((await expiredOtp.json()).send_access_error_type).toBe("otp_invalid")
+  expect(
+    context.database
+      .query("SELECT COUNT(*) AS count FROM send_recipient_verifications WHERE send_uuid = ?")
+      .get(created.id),
+  ).toEqual({ count: 0 })
+
+  const refreshedIssue = await sendAccessTokenRequest(context.app, created.accessId, { email: "recipient@example.com" })
+  expect(refreshedIssue.status).toBe(400)
+  const refreshedMessage = context.mail.messages[context.mail.messages.length - 1]
+  expect(refreshedMessage?.token).toMatch(/^\d{6}$/)
+  context.database.run("UPDATE send_recipient_verifications SET resend_count = 5 WHERE send_uuid = ? AND email = ?", [
+    created.id,
+    "recipient@example.com",
+  ])
+  const resendLimit = await sendAccessTokenRequest(context.app, created.accessId, { email: "recipient@example.com" })
+  expect(resendLimit.status).toBe(429)
+  expect((await resendLimit.json()).send_access_error_type).toBe("rate_limited")
+
+  const wrongOtp = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: "recipient@example.com",
+    otp: "000000",
+  })
+  expect(wrongOtp.status).toBe(404)
+  expect((await wrongOtp.json()).send_access_error_type).toBe("otp_invalid")
+  expect(
+    context.database
+      .query<{ attempts: number }, [string, string]>(
+        "SELECT attempts FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?",
+      )
+      .get(created.id, "recipient@example.com")?.attempts,
+  ).toBe(1)
+
+  const tokenResponse = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: "recipient@example.com",
+    otp: refreshedMessage?.token ?? "",
+  })
+  expect(tokenResponse.status).toBe(200)
+  const accessToken = (await tokenResponse.json()).access_token as string
+  const publicAccess = await context.app.request("https://vault.example/api/sends/access", {
+    headers: { authorization: `Bearer ${accessToken}` },
+    method: "POST",
+  })
+  expect(publicAccess.status).toBe(200)
+  const publicBody = await publicAccess.text()
+  expect(publicBody).not.toContain("recipient@example.com")
+  expect(publicBody).not.toContain(message?.token ?? "")
+  expect(
+    context.database
+      .query("SELECT COUNT(*) AS count FROM send_recipient_verifications WHERE send_uuid = ?")
+      .get(created.id),
+  ).toEqual({ count: 0 })
+
+  const replay = await sendAccessTokenRequest(context.app, created.accessId, {
+    email: "recipient@example.com",
+    otp: refreshedMessage?.token ?? "",
+  })
+  expect(replay.status).toBe(404)
+  expect((await replay.json()).send_access_error_type).toBe("otp_invalid")
+
+  const issueForCleanup = await sendAccessTokenRequest(context.app, created.accessId, { email: "second@example.com" })
+  expect(issueForCleanup.status).toBe(400)
+  const secondMessage = context.mail.messages[context.mail.messages.length - 1]
+  expect(secondMessage?.recipient).toBe("second@example.com")
+  const legacyAccess = await context.app.request(`https://vault.example/api/sends/access/${created.accessId}`, {
+    body: JSON.stringify({ email: "second@example.com", otp: secondMessage?.token ?? "" }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  })
+  expect(legacyAccess.status).toBe(200)
+  expect((await legacyAccess.json()).name).toBe("Email Send")
+  const updateResponse = await context.app.request(`https://vault.example/api/sends/${created.id}`, {
+    body: JSON.stringify(sendData({ emails: "updated@example.com" })),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(updateResponse.status).toBe(200)
+  expect(
+    context.database
+      .query("SELECT COUNT(*) AS count FROM send_recipient_verifications WHERE send_uuid = ?")
+      .get(created.id),
+  ).toEqual({ count: 0 })
+
+  const issueForDelete = await sendAccessTokenRequest(context.app, created.accessId, { email: "updated@example.com" })
+  expect(issueForDelete.status).toBe(400)
+  const deleteResponse = await context.app.request(`https://vault.example/api/sends/${created.id}`, {
+    headers: jsonHeaders(context.token),
+    method: "DELETE",
+  })
+  expect(deleteResponse.status).toBe(200)
+  expect(
+    context.database
+      .query("SELECT COUNT(*) AS count FROM send_recipient_verifications WHERE send_uuid = ?")
+      .get(created.id),
+  ).toEqual({ count: 0 })
 })
 
 test("Send v2 files enforce quota, validate uploads, issue download tokens, and delete storage", async () => {

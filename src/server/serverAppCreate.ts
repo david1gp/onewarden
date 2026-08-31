@@ -87,6 +87,7 @@ type ServerAppOptions = {
   }
   push?: { adapter?: PushRelayAdapter; configuration?: PushRelayConfiguration }
   sends?: {
+    mail?: IdentityRouteOptions["mail"]
     notification?: SendNotificationAdapter
     push?: PushRelayAdapter
     quotaBytes?: number | null
@@ -394,8 +395,10 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
   })
   sendRoutesRegister(app, {
     clock: identityClock,
+    config: identityConfig,
     database: identityDatabase,
     identifier: identityIdentifier,
+    mail: options?.sends?.mail ?? identityMail,
     notification: options?.sends?.notification ?? notificationHub.adapter,
     privateKey: identityOptions?.privateKey ?? defaultPrivateKey,
     publicKey: identityOptions?.publicKey ?? defaultPublicKey,

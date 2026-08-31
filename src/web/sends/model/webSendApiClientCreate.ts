@@ -3,6 +3,8 @@ import { type Result, resultTryParsingFetchErr } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { type SendAccessResponse, sendAccessResponseSchema } from "./sendAccessResponseSchema.js"
+import { sendAccessTokenErrorResponseSchema } from "./sendAccessTokenErrorResponseSchema.js"
+import { sendAccessTokenResponseSchema } from "./sendAccessTokenResponseSchema.js"
 import type { SendCreateRequest } from "./sendCreateRequestSchema.js"
 import { type SendItem, sendItemSchema } from "./sendItemSchema.js"
 import type { SendUpdateRequest } from "./sendUpdateRequestSchema.js"
@@ -31,7 +33,14 @@ async function responseJsonParse<TSchema extends v.GenericSchema>(
   }
 
   if (!response.ok) {
-    return resultTryParsingFetchErr(op, text, response.status, response.statusText)
+    const result = resultTryParsingFetchErr(op, text, response.status, response.statusText)
+    try {
+      const parsed = v.safeParse(v.looseObject({ message: v.string() }), JSON.parse(text))
+      if (parsed.success) return { ...result, errorMessage: parsed.output.message }
+    } catch {
+      // Fall through to the shared response parser.
+    }
+    return result
   }
 
   let json: unknown
@@ -232,7 +241,12 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     return responseJsonParse(op, response, sendItemSchema)
   }
 
-  const sendAccess = async (accessId: string, password?: string | null): Promise<Result<SendAccessResponse>> => {
+  const sendAccess = async (
+    accessId: string,
+    password?: string | null,
+    email?: string | null,
+    otp?: string | null,
+  ): Promise<Result<SendAccessResponse>> => {
     const op = "webSendApiClient.sendAccess"
     let response: Response
     try {
@@ -242,10 +256,82 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ password: password ?? null }),
+        body: JSON.stringify({ email: email ?? null, otp: otp ?? null, password: password ?? null }),
       })
     } catch {
       return resultErrorCreate(op, "Network error accessing send.", {
+        code: "platform.network-error",
+        statusCode: 503,
+      })
+    }
+    return responseJsonParse(op, response, sendAccessResponseSchema)
+  }
+
+  const sendAccessToken = async (
+    accessId: string,
+    email: string,
+    otp?: string | null,
+  ): Promise<Result<{ accessToken: string; expiresIn: number }>> => {
+    const op = "webSendApiClient.sendAccessToken"
+    let response: Response
+    try {
+      const body = new URLSearchParams({
+        client_id: "send",
+        email,
+        grant_type: "send_access",
+        scope: "api.send.access",
+        send_id: accessId,
+      })
+      if (otp !== undefined && otp !== null) body.set("otp", otp)
+      response = await fetchImpl(`${baseUrl}/identity/connect/token`, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      })
+    } catch {
+      return resultErrorCreate(op, "Network error requesting Send verification.", {
+        code: "platform.network-error",
+        statusCode: 503,
+      })
+    }
+    const result = await responseJsonParse(op, response, sendAccessTokenResponseSchema)
+    if (!result.success) {
+      if (result.errorData !== undefined && result.errorData !== null) {
+        try {
+          const parsedError = v.safeParse(sendAccessTokenErrorResponseSchema, JSON.parse(result.errorData))
+          if (parsedError.success) {
+            return resultErrorCreate(op, parsedError.output.error_description, {
+              code:
+                result.statusCode === 404
+                  ? "platform.not-found"
+                  : result.statusCode === 429
+                    ? "platform.rate-limited"
+                    : result.statusCode === 500
+                      ? "platform.internal"
+                      : "platform.invalid-request",
+              errorData: JSON.stringify({ sendAccessErrorType: parsedError.output.send_access_error_type }),
+              statusCode: result.statusCode,
+            })
+          }
+        } catch {
+          // Fall through to the shared response parser.
+        }
+      }
+      return result
+    }
+    return resultCreate({ accessToken: result.data.access_token, expiresIn: result.data.expires_in })
+  }
+
+  const sendAccessAuthenticated = async (accessToken: string): Promise<Result<SendAccessResponse>> => {
+    const op = "webSendApiClient.sendAccessAuthenticated"
+    let response: Response
+    try {
+      response = await fetchImpl(`${baseUrl}/api/sends/access`, {
+        method: "POST",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+      })
+    } catch {
+      return resultErrorCreate(op, "Network error accessing Send.", {
         code: "platform.network-error",
         statusCode: 503,
       })
@@ -257,6 +343,8 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     sendId: string,
     fileId: string,
     password?: string | null,
+    email?: string | null,
+    otp?: string | null,
   ): Promise<Result<{ url: string }>> => {
     const op = "webSendApiClient.sendAccessFile"
     let response: Response
@@ -269,7 +357,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({ password: password ?? null }),
+          body: JSON.stringify({ email: email ?? null, otp: otp ?? null, password: password ?? null }),
         },
       )
     } catch {
@@ -290,6 +378,23 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     }
   }
 
+  const sendAccessFileAuthenticated = async (accessToken: string, fileId: string): Promise<Result<{ url: string }>> => {
+    const op = "webSendApiClient.sendAccessFileAuthenticated"
+    let response: Response
+    try {
+      response = await fetchImpl(`${baseUrl}/api/sends/access/file/${encodeURIComponent(fileId)}`, {
+        method: "POST",
+        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+      })
+    } catch {
+      return resultErrorCreate(op, "Network error requesting file download url.", {
+        code: "platform.network-error",
+        statusCode: 503,
+      })
+    }
+    return responseJsonParse(op, response, v.object({ url: v.string() }))
+  }
+
   return {
     sendList,
     sendGet,
@@ -299,6 +404,9 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     sendDelete,
     sendRemovePassword,
     sendAccess,
+    sendAccessToken,
+    sendAccessAuthenticated,
     sendAccessFile,
+    sendAccessFileAuthenticated,
   }
 }

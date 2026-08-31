@@ -22,5 +22,6 @@ export function sendFromRow(row: SendRow): Send {
     deletionDate: row.deletion_date,
     disabled: row.disabled === 1,
     hideEmail: row.hide_email === null ? null : row.hide_email === 1,
+    emails: row.emails,
   }
 }

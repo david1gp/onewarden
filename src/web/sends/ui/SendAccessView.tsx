@@ -90,6 +90,64 @@ export function SendAccessView(props: SendAccessViewProps): JSX.Element {
           </div>
         </Show>
 
+        <Show when={!state.isLoading() && state.isEmailRequired()}>
+          <div class="mt-6 text-center">
+            <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+              <Icon path={vaultSvgIcons.email} class="size-6" />
+            </div>
+            <h2 class="mt-3 font-semibold text-sm text-slate-900 dark:text-slate-100">Recipient verification</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Enter an authorized recipient email address to receive an access code.
+            </p>
+
+            <form onSubmit={state.handleRecipientSubmit} class="mt-6 space-y-4 text-left">
+              <div>
+                <label for="send-access-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Recipient email
+                </label>
+                <Input
+                  id="send-access-email"
+                  type="email"
+                  autocomplete="email"
+                  value={state.emailInput()}
+                  onInput={(e) => state.setEmailInput(e.currentTarget.value)}
+                  placeholder="you@example.com"
+                  required
+                  class="mt-1 w-full"
+                />
+              </div>
+
+              <Show when={state.isOtpRequired()}>
+                <div>
+                  <label for="send-access-otp" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Verification code
+                  </label>
+                  <Input
+                    id="send-access-otp"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    value={state.otpInput()}
+                    onInput={(e) => state.setOtpInput(e.currentTarget.value)}
+                    placeholder="Enter the code from your email"
+                    required
+                    class="mt-1 w-full"
+                  />
+                </div>
+              </Show>
+
+              <Button type="submit" variant="filled" size="sm" class="h-8 w-full" disabled={state.isUnlocking()}>
+                <Icon path={vaultSvgIcons.email} class="mr-1.5 size-3.5" />
+                {state.isUnlocking()
+                  ? "Verifying..."
+                  : state.isOtpRequired()
+                    ? "Verify code"
+                    : "Send verification code"}
+              </Button>
+            </form>
+          </div>
+        </Show>
+
         {/* Content Display */}
         <Show when={!state.isLoading() && state.sendData()}>
           {(send) => (

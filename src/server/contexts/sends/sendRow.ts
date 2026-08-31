@@ -18,4 +18,5 @@ export type SendRow = {
   deletion_date: string
   disabled: number
   hide_email: number | null
+  emails: string | null
 }

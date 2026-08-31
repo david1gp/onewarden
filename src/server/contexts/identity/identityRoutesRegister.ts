@@ -63,6 +63,8 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         return identitySendAccessErrorResponse("send_id cannot be blank", "send_id_invalid", 400)
       if (options.database === undefined)
         return identitySendAccessErrorResponse("Database unavailable.", "send_id_invalid", 500)
+      const rateLimitResult = options.rateLimiter.check(identityLegacyClientIpResolve(context))
+      if (!rateLimitResult.success) return identitySendAccessErrorResponse("Too many requests", "rate_limited", 429)
       const result = await sendAccessTokenCreate(
         options.database,
         data.sendId,
@@ -71,6 +73,7 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
         options.privateKey,
         issuer,
         options.clock,
+        { config: options.config, email: data.email, mail: options.mail, otp: data.otp },
       )
       if (!result.success) return identitySendAccessResultErrorResponse(result)
       return context.json({
@@ -377,7 +380,7 @@ function identitySendAccessResultErrorResponse(error: ResultErr): Response {
   return identitySendAccessErrorResponse(
     error.errorMessage,
     sendAccessErrorType,
-    error.statusCode === 404 ? 404 : error.statusCode === 500 ? 500 : 400,
+    error.statusCode === 404 ? 404 : error.statusCode === 429 ? 429 : error.statusCode === 500 ? 500 : 400,
   )
 }
 

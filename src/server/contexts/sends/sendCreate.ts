@@ -10,6 +10,7 @@ import { sendDataNumberResolve } from "./sendDataNumberResolve.js"
 import { sendDataValueSerialize } from "./sendDataValueSerialize.js"
 import type { SendData } from "./sendDataSchema.js"
 import { sendPasswordSet } from "./sendPasswordSet.js"
+import { sendRecipientsNormalize } from "./sendRecipientsNormalize.js"
 import { sendSave } from "./sendSave.js"
 import { sendUserRevisionUpdate } from "./sendUserRevisionUpdate.js"
 
@@ -47,8 +48,9 @@ export async function sendCreate(
       deletionDate: preparedResult.data.deletionDate,
       disabled: data.disabled,
       hideEmail: data.hideEmail ?? null,
+      emails: preparedResult.data.emails,
     },
-    data.password ?? null,
+    preparedResult.data.emails === null ? (data.password ?? null) : null,
   )
   if (!passwordResult.success) return passwordResult
   const send = passwordResult.data
@@ -68,12 +70,15 @@ function sendDataPrepare(
   fileMetadata: SendFileMetadata | undefined,
 ): Result<{
   deletionDate: string
+  emails: string | null
   expirationDate: string | null
   maxAccessCount: number | null
   serialized: string
 }> {
   const maxAccessCountResult = sendDataNumberResolve(data.maxAccessCount)
   if (!maxAccessCountResult.success) return maxAccessCountResult
+  const recipientsResult = sendRecipientsNormalize(data.emails)
+  if (!recipientsResult.success) return recipientsResult
   const deletionTimestamp = Date.parse(data.deletionDate)
   const nowTimestamp = clock.now().getTime()
   if (!Number.isFinite(deletionTimestamp)) return resultErrorCreate("sendCreate", "Send deletion date is invalid.")
@@ -93,6 +98,7 @@ function sendDataPrepare(
     return resultCreate({
       deletionDate: new Date(deletionTimestamp).toISOString(),
       expirationDate: expirationTimestamp === null ? null : new Date(expirationTimestamp).toISOString(),
+      emails: recipientsResult.data,
       maxAccessCount: maxAccessCountResult.data,
       serialized: serializedResult.data,
     })
@@ -113,6 +119,7 @@ function sendDataPrepare(
   return resultCreate({
     deletionDate: new Date(deletionTimestamp).toISOString(),
     expirationDate: expirationTimestamp === null ? null : new Date(expirationTimestamp).toISOString(),
+    emails: recipientsResult.data,
     maxAccessCount: maxAccessCountResult.data,
     serialized: JSON.stringify(fileData),
   })

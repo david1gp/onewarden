@@ -20,7 +20,12 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
   const isUnlocking = createSignalObject(false)
   const isDownloading = createSignalObject(false)
   const isPasswordRequired = createSignalObject(false)
+  const isEmailRequired = createSignalObject(false)
+  const isOtpRequired = createSignalObject(false)
   const passwordInput = createSignalObject("")
+  const emailInput = createSignalObject("")
+  const otpInput = createSignalObject("")
+  const recipientAccessToken = createSignalObject<string | null>(null)
   const errorMessage = createSignalObject<string | null>(null)
   const isCopied = createSignalObject(false)
 
@@ -31,7 +36,65 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
     return keyResult.data
   }
 
-  const loadSend = async (password?: string) => {
+  const handleAccessError = (message: string) => {
+    const normalizedMessage = message.toLowerCase()
+    if (normalizedMessage.includes("verification code was sent")) {
+      isEmailRequired.set(true)
+      isOtpRequired.set(true)
+      errorMessage.set("A verification code was sent. Enter it below to continue.")
+      return
+    }
+    if (normalizedMessage.includes("verification code") || normalizedMessage.includes("otp")) {
+      isEmailRequired.set(true)
+      isOtpRequired.set(true)
+      errorMessage.set(message)
+      return
+    }
+    if (normalizedMessage.includes("email")) {
+      isEmailRequired.set(true)
+      isOtpRequired.set(false)
+      errorMessage.set(normalizedMessage.includes("required") ? null : message)
+      return
+    }
+    if (
+      normalizedMessage.includes("password") ||
+      normalizedMessage.includes("unauthorized") ||
+      normalizedMessage.includes("invalid password")
+    ) {
+      isPasswordRequired.set(true)
+      if (passwordInput.get()) errorMessage.set("Incorrect password. Please try again.")
+      return
+    }
+    errorMessage.set(message)
+  }
+
+  const sendDataSet = async (result: Awaited<ReturnType<typeof apiClient.sendAccess>>) => {
+    if (!result.success) {
+      handleAccessError(result.errorMessage)
+      return
+    }
+    const sendKey = sendKeyResolve()
+    if (sendKey === null) {
+      errorMessage.set("This Send link is missing a valid decryption key.")
+      return
+    }
+    if (result.data.text?.text) {
+      const textResult = await bitwardenCipherStringDecryptText(result.data.text.text, sendKey)
+      if (!textResult.success) {
+        errorMessage.set("This Send could not be decrypted.")
+        return
+      }
+      sendData.set({ ...result.data, text: { ...result.data.text, text: textResult.data } })
+    } else {
+      sendData.set(result.data)
+    }
+    isPasswordRequired.set(false)
+    isEmailRequired.set(false)
+    isOtpRequired.set(false)
+    errorMessage.set(null)
+  }
+
+  const loadSend = async (password?: string, email?: string, otp?: string) => {
     const id = props.accessId()
     if (!id) {
       errorMessage.set("No Send access ID provided.")
@@ -39,49 +102,32 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
       return
     }
 
-    if (password) {
+    if (password !== undefined || email !== undefined) {
       isUnlocking.set(true)
     } else {
       isLoading.set(true)
     }
     errorMessage.set(null)
 
-    const result = await apiClient.sendAccess(id, password)
+    let result: Awaited<ReturnType<typeof apiClient.sendAccess>>
+    if (email !== undefined) {
+      const tokenResult = await apiClient.sendAccessToken(id, email, otp)
+      if (!tokenResult.success) {
+        isLoading.set(false)
+        isUnlocking.set(false)
+        handleAccessError(tokenResult.errorMessage)
+        return
+      }
+      recipientAccessToken.set(tokenResult.data.accessToken)
+      result = await apiClient.sendAccessAuthenticated(tokenResult.data.accessToken)
+    } else {
+      result = await apiClient.sendAccess(id, password)
+    }
 
     isLoading.set(false)
     isUnlocking.set(false)
 
-    if (result.success) {
-      const sendKey = sendKeyResolve()
-      if (sendKey === null) {
-        errorMessage.set("This Send link is missing a valid decryption key.")
-        return
-      }
-      if (result.data.text?.text) {
-        const textResult = await bitwardenCipherStringDecryptText(result.data.text.text, sendKey)
-        if (!textResult.success) {
-          errorMessage.set("This Send could not be decrypted.")
-          return
-        }
-        sendData.set({ ...result.data, text: { ...result.data.text, text: textResult.data } })
-      } else {
-        sendData.set(result.data)
-      }
-      isPasswordRequired.set(false)
-    } else {
-      if (
-        result.errorMessage.toLowerCase().includes("password") ||
-        result.errorMessage.toLowerCase().includes("unauthorized") ||
-        result.errorMessage.toLowerCase().includes("invalid password")
-      ) {
-        isPasswordRequired.set(true)
-        if (password) {
-          errorMessage.set("Incorrect password. Please try again.")
-        }
-      } else {
-        errorMessage.set(result.errorMessage)
-      }
-    }
+    await sendDataSet(result)
   }
 
   onMount(() => {
@@ -96,6 +142,21 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
       return
     }
     await loadSend(pwd)
+  }
+
+  const handleRecipientSubmit = async (e: Event) => {
+    e.preventDefault()
+    const email = emailInput.get().trim()
+    if (!email) {
+      errorMessage.set("Email is required.")
+      return
+    }
+    const otp = isOtpRequired.get() ? otpInput.get().trim() : undefined
+    if (isOtpRequired.get() && !otp) {
+      errorMessage.set("Verification code is required.")
+      return
+    }
+    await loadSend(undefined, email, otp)
   }
 
   const handleCopyText = async () => {
@@ -115,7 +176,10 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
     if (!data?.file?.id) return
 
     isDownloading.set(true)
-    const fileResult = await apiClient.sendAccessFile(data.id, data.file.id, passwordInput.get().trim() || null)
+    const fileResult =
+      recipientAccessToken.get() !== null
+        ? await apiClient.sendAccessFileAuthenticated(recipientAccessToken.get()!, data.file.id)
+        : await apiClient.sendAccessFile(data.id, data.file.id, passwordInput.get().trim() || null)
 
     if (fileResult.success && fileResult.data.url) {
       const sendKey = sendKeyResolve()
@@ -162,11 +226,18 @@ export function sendAccessViewStateCreate(props: SendAccessViewProps) {
     isUnlocking: isUnlocking.get,
     isDownloading: isDownloading.get,
     isPasswordRequired: isPasswordRequired.get,
+    isEmailRequired: isEmailRequired.get,
+    isOtpRequired: isOtpRequired.get,
     passwordInput: passwordInput.get,
     setPasswordInput: passwordInput.set,
+    emailInput: emailInput.get,
+    setEmailInput: emailInput.set,
+    otpInput: otpInput.get,
+    setOtpInput: otpInput.set,
     errorMessage: errorMessage.get,
     isCopied: isCopied.get,
     handleUnlockWithPassword,
+    handleRecipientSubmit,
     handleCopyText,
     handleDownloadFile,
     handleNavigateHome: props.onNavigateHome,

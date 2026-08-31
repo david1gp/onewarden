@@ -29,6 +29,7 @@ function sendCreate(overrides?: Partial<Send>): Send {
     deletionDate: "2026-09-01T00:00:00.000Z",
     disabled: false,
     hideEmail: false,
+    emails: null,
     ...overrides,
   }
 }

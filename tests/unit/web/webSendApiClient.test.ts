@@ -192,6 +192,39 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
       )
     }
 
+    if (url.endsWith("/identity/connect/token") && method === "POST") {
+      const form = new URLSearchParams(body)
+      expect(form.get("grant_type")).toBe("send_access")
+      expect(form.get("send_id")).toBe("acc-email")
+      expect(form.get("email")).toBe("recipient@example.com")
+      expect(form.get("otp")).toBe("123456")
+      return new Response(
+        JSON.stringify({
+          access_token: "recipient-access-token",
+          expires_in: 120,
+          token_type: "Bearer",
+          scope: "api.send.access",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }
+
+    if (url.endsWith("/api/sends/access") && method === "POST") {
+      return new Response(
+        JSON.stringify({
+          id: "send-email",
+          type: 0,
+          name: "Email Send",
+          text: { text: "Email content" },
+          file: null,
+          expirationDate: null,
+          creatorIdentifier: null,
+          object: "send-access",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }
+
     if (url.endsWith("/api/sends/send-3/access/file/f-1") && method === "POST") {
       return new Response(
         JSON.stringify({
@@ -199,6 +232,13 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       )
+    }
+
+    if (url.endsWith("/api/sends/access/file/f-1") && method === "POST") {
+      return new Response(JSON.stringify({ url: "/download/recipient-file" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
     }
 
     return new Response("Not found", { status: 404 })
@@ -228,6 +268,7 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
     name: "Created Send",
     text: { text: "Created content" },
     key: "send-key",
+    emails: "recipient@example.com",
     disabled: false,
     deletionDate: "2026-09-05T12:00:00.000Z",
   })
@@ -260,6 +301,7 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
     key: "key-123",
     disabled: false,
     maxAccessCount: 10,
+    emails: "updated@example.com",
     deletionDate: "2026-09-05T12:00:00.000Z",
   })
   expect(updateRes.success).toBe(true)
@@ -267,6 +309,16 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
     expect(updateRes.data.name).toBe("Updated Secret Note")
     expect(updateRes.data.maxAccessCount).toBe(10)
   }
+  expect(
+    JSON.parse(
+      requests.find((request) => request.url.endsWith("/api/sends") && request.method === "POST")?.body ?? "{}",
+    ).emails,
+  ).toBe("recipient@example.com")
+  expect(
+    JSON.parse(
+      requests.find((request) => request.url.endsWith("/api/sends/send-1") && request.method === "PUT")?.body ?? "{}",
+    ).emails,
+  ).toBe("updated@example.com")
 
   // Send Remove Password
   const removePwdRes = await client.sendRemovePassword("token-123", "send-1")
@@ -281,6 +333,17 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
     expect(accessRes.data.creatorIdentifier).toBe("sender@example.com")
   }
 
+  const accessTokenRes = await client.sendAccessToken("acc-email", "recipient@example.com", "123456")
+  expect(accessTokenRes.success).toBe(true)
+  if (accessTokenRes.success) {
+    expect(accessTokenRes.data.accessToken).toBe("recipient-access-token")
+    expect(accessTokenRes.data.expiresIn).toBe(120)
+  }
+
+  const authenticatedAccessRes = await client.sendAccessAuthenticated("recipient-access-token")
+  expect(authenticatedAccessRes.success).toBe(true)
+  if (authenticatedAccessRes.success) expect(authenticatedAccessRes.data.name).toBe("Email Send")
+
   // Send Access File
   const accessFileRes = await client.sendAccessFile("send-3", "f-1", null)
   expect(accessFileRes.success).toBe(true)
@@ -288,7 +351,43 @@ test("webSendApiClient handles Send listing, creating, updating, deleting, passw
     expect(accessFileRes.data.url).toContain("download-token-xyz")
   }
 
+  const authenticatedFileRes = await client.sendAccessFileAuthenticated("recipient-access-token", "f-1")
+  expect(authenticatedFileRes.success).toBe(true)
+  if (authenticatedFileRes.success) expect(authenticatedFileRes.data.url).toBe("/download/recipient-file")
+
   // Send Delete
   const delRes = await client.sendDelete("token-123", "send-1")
   expect(delRes.success).toBe(true)
+})
+
+test("webSendApiClient preserves structured Send access errors", async () => {
+  const client = webSendApiClientCreate({
+    fetch: async (input: RequestInfo | URL): Promise<Response> => {
+      const url = String(input)
+      if (url.endsWith("/identity/connect/token"))
+        return new Response(
+          JSON.stringify({
+            error: "invalid_request",
+            error_description: "A verification code was sent.",
+            send_access_error_type: "email_and_otp_required_otp_sent",
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        )
+      return new Response(JSON.stringify({ message: "Email is required.", validationErrors: {}, object: "error" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      })
+    },
+  })
+
+  const tokenResult = await client.sendAccessToken("send-id", "recipient@example.com")
+  expect(tokenResult.success).toBe(false)
+  if (!tokenResult.success) {
+    expect(tokenResult.errorMessage).toBe("A verification code was sent.")
+    expect(tokenResult.errorData).toContain("email_and_otp_required_otp_sent")
+  }
+
+  const accessResult = await client.sendAccess("send-id")
+  expect(accessResult.success).toBe(false)
+  if (!accessResult.success) expect(accessResult.errorMessage).toBe("Email is required.")
 })

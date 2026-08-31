@@ -29,6 +29,7 @@ const databaseCurrentSchemaTables = [
   "favorites",
   "archives",
   "sends",
+  "send_recipient_verifications",
   "emergency_access",
   "attachments",
   "event",

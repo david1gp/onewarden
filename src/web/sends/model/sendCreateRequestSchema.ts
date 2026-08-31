@@ -22,6 +22,7 @@ export const sendCreateRequestSchema = v.object({
   key: v.string(),
   maxAccessCount: v.optional(v.nullable(v.number())),
   password: v.optional(v.nullable(v.string())),
+  emails: v.optional(v.nullable(v.string())),
   disabled: v.boolean(),
   hideEmail: v.optional(v.boolean()),
   expirationDate: v.optional(v.nullable(v.string())),
