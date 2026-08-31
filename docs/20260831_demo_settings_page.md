@@ -25,4 +25,4 @@ Add a complete, interactive settings experience under `/demo/settings` that demo
 - [x] 2. Integrate settings routes into SPA routing, the demo directory, and vault navigation.
 - [x] 3. Add and run focused automated tests for the demo settings experience.
 - [x] 4. Run final repository verification and fix scoped failures.
-- [ ] 5. Commit and push with the `/commits` skill, then deploy and verify production health. (In progress.)
+- [x] 5. Commit and push with the `/commits` skill, then deploy and verify production health.
