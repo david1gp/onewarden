@@ -1,3 +1,4 @@
+import * as v from "valibot"
 import { type Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
@@ -12,52 +13,28 @@ type ExtensionWebAuthnRequestContext = {
   isLocalhost: boolean
 }
 
+const extensionWebAuthnRequestContextSenderSchema = v.looseObject({
+  tab: v.looseObject({ id: v.pipe(v.number(), v.safeInteger(), v.minValue(0)) }),
+  frameId: v.optional(v.pipe(v.number(), v.safeInteger(), v.minValue(0)), 0),
+  url: v.string(),
+})
+
 export function extensionWebAuthnRequestContextResolve(sender: unknown): Result<ExtensionWebAuthnRequestContext> {
   const op = "extensionWebAuthnRequestContextResolve"
-  if (sender === null || typeof sender !== "object" || Array.isArray(sender)) {
+  const senderResult = v.safeParse(extensionWebAuthnRequestContextSenderSchema, sender)
+  if (!senderResult.success) {
     return resultErrorCreate(op, "WebAuthn message sender is invalid.", {
       code: "platform.forbidden",
       statusCode: 403,
     })
   }
-
-  const senderRecord = sender as Record<string, unknown>
-  const tab = senderRecord.tab
-  if (tab === null || typeof tab !== "object" || Array.isArray(tab)) {
-    return resultErrorCreate(op, "WebAuthn message sender is not a tab.", {
-      code: "platform.forbidden",
-      statusCode: 403,
-    })
-  }
-  const tabId = (tab as Record<string, unknown>).id
-  if (!Number.isSafeInteger(tabId) || (tabId as number) < 0) {
-    return resultErrorCreate(op, "WebAuthn message tab is invalid.", {
-      code: "platform.forbidden",
-      statusCode: 403,
-    })
-  }
-
-  const url = senderRecord.url
-  if (typeof url !== "string") {
-    return resultErrorCreate(op, "WebAuthn message sender URL is missing.", {
-      code: "platform.forbidden",
-      statusCode: 403,
-    })
-  }
+  const { tab, frameId, url } = senderResult.output
   const originResult = extensionWebAuthnOriginValidate(url)
   if (!originResult.success) return originResult
 
-  const frameId = senderRecord.frameId === undefined ? 0 : senderRecord.frameId
-  if (!Number.isSafeInteger(frameId) || (frameId as number) < 0) {
-    return resultErrorCreate(op, "WebAuthn message frame is invalid.", {
-      code: "platform.forbidden",
-      statusCode: 403,
-    })
-  }
-
   return resultCreate({
-    tabId: tabId as number,
-    frameId: frameId as number,
+    tabId: tab.id,
+    frameId,
     url,
     origin: originResult.data.origin,
     hostname: originResult.data.hostname,

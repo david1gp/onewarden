@@ -9,10 +9,7 @@ import {
 import { extensionWebAuthnBridgeResponseSchema } from "./extensionWebAuthnBridgeResponseSchema.js"
 import { extensionWebAuthnFramePolicyValidate } from "./extensionWebAuthnFramePolicyValidate.js"
 import { extensionWebAuthnOriginValidate } from "./extensionWebAuthnOriginValidate.js"
-import {
-  extensionWebAuthnPageMessageSchema,
-  type ExtensionWebAuthnPageMessage,
-} from "./extensionWebAuthnPageMessageSchema.js"
+import { extensionWebAuthnPageMessageSchema } from "./extensionWebAuthnPageMessageSchema.js"
 
 const extensionWebAuthnSource = "onewarden-webauthn"
 const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
@@ -63,7 +60,7 @@ export async function extensionWebAuthnContentBridgeInstall(
       return
     }
     if (pageMessage.kind !== "request") return
-    const requestMessage = pageMessage as Extract<ExtensionWebAuthnPageMessage, { kind: "request" }>
+    const requestMessage = pageMessage
 
     const requestResult = v.safeParse(extensionWebAuthnBridgeRequestSchema, {
       type: "webauthnBridgeRequest",
@@ -81,7 +78,8 @@ export async function extensionWebAuthnContentBridgeInstall(
       })
       return
     }
-    const request = requestResult.output as Exclude<ExtensionWebAuthnBridgeRequest, { type: "webauthnBridgeAbort" }>
+    if (requestResult.output.type === "webauthnBridgeAbort") return
+    const request = requestResult.output
     if (!extensionWebAuthnContentPolicyAllows(context.document, request.operation)) {
       extensionWebAuthnPageResponsePost(
         context,

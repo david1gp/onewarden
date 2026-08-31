@@ -1,3 +1,5 @@
+import * as v from "valibot"
+
 const extensionWebAuthnSource = "onewarden-webauthn"
 const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
 const extensionWebAuthnBridgeRequestType = "request"
@@ -223,8 +225,9 @@ export function extensionWebAuthnPageBridgeInstall(
   return extensionWebAuthnPageBridgeDestroy
 
   function extensionWebAuthnPageMessageOwned(value: unknown): value is ExtensionWebAuthnOwnedPageMessage {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) return false
-    const message = value as Record<string, unknown>
+    const messageResult = v.safeParse(v.record(v.string(), v.unknown()), value)
+    if (!messageResult.success) return false
+    const message = messageResult.output
     return message.source === extensionWebAuthnSource && typeof message.kind === "string"
   }
 }
@@ -341,7 +344,11 @@ function extensionWebAuthnCredentialCreate(operation: "create" | "get", value: u
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
   }
-  const responseValue = value as Record<string, unknown>
+  const responseValueResult = v.safeParse(v.record(v.string(), v.unknown()), value)
+  if (!responseValueResult.success) {
+    throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
+  }
+  const responseValue = responseValueResult.output
   const response = responseValue.response
   if (
     typeof responseValue.id !== "string" ||
@@ -353,7 +360,11 @@ function extensionWebAuthnCredentialCreate(operation: "create" | "get", value: u
   ) {
     throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
   }
-  const rawResponse = response as Record<string, unknown>
+  const rawResponseResult = v.safeParse(v.record(v.string(), v.unknown()), response)
+  if (!rawResponseResult.success) {
+    throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
+  }
+  const rawResponse = rawResponseResult.output
   const id = responseValue.id
   const rawId = extensionWebAuthnBufferDecode(responseValue.rawId)
   const clientDataJSON = extensionWebAuthnBufferDecode(rawResponse.clientDataJSON)
@@ -386,10 +397,12 @@ function extensionWebAuthnAttestationResponseCreate(
     typeof response.attestationObject !== "string" ||
     typeof response.publicKey !== "string" ||
     response.publicKeyAlgorithm !== -7 ||
-    !Array.isArray(response.transports)
+    !Array.isArray(response.transports) ||
+    !response.transports.every((transport): transport is string => typeof transport === "string")
   ) {
     throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
   }
+  const transports = response.transports
   const attestationObject = extensionWebAuthnBufferDecode(response.attestationObject)
   const publicKey = extensionWebAuthnBufferDecode(response.publicKey)
   const result = {
@@ -398,7 +411,7 @@ function extensionWebAuthnAttestationResponseCreate(
     getAuthenticatorData: () => authenticatorData,
     getPublicKey: () => publicKey,
     getPublicKeyAlgorithm: () => -7,
-    getTransports: () => response.transports as string[],
+    getTransports: () => transports,
   } as unknown as AuthenticatorAttestationResponse
   const responsePrototype = (
     globalThis as typeof globalThis & { AuthenticatorAttestationResponse?: typeof AuthenticatorAttestationResponse }
@@ -413,6 +426,8 @@ function extensionWebAuthnAssertionResponseCreate(
   authenticatorData: ArrayBuffer,
 ): AuthenticatorAssertionResponse {
   if (typeof response.signature !== "string")
+    throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
+  if (response.userHandle !== null && typeof response.userHandle !== "string")
     throw extensionWebAuthnNotAllowedError("The WebAuthn response is invalid.")
   const userHandle = response.userHandle === null ? null : extensionWebAuthnBufferDecode(response.userHandle)
   const result = {

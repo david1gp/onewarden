@@ -4,12 +4,12 @@ import { base64UrlEncode } from "../../shared/crypto/base64UrlEncode.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionPasskeyAssertionResponseSchema } from "../passkey/extensionPasskeyAssertionResponseSchema.js"
+import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
 import type { ExtensionPasskeyConsent } from "../passkey/extensionPasskeyConsentSchema.js"
 import { extensionPasskeyRegistrationResponseSchema } from "../passkey/extensionPasskeyRegistrationResponseSchema.js"
-import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
 import {
-  extensionWebAuthnBridgeRequestSchema,
   type ExtensionWebAuthnBridgeRequest,
+  extensionWebAuthnBridgeRequestSchema,
 } from "./extensionWebAuthnBridgeRequestSchema.js"
 import {
   type ExtensionWebAuthnBridgeResponse,
@@ -17,13 +17,14 @@ import {
 } from "./extensionWebAuthnBridgeResponseSchema.js"
 import { extensionWebAuthnFramePolicyValidate } from "./extensionWebAuthnFramePolicyValidate.js"
 import {
-  extensionWebAuthnRequestContextResolve,
   type ExtensionWebAuthnRequestContext,
+  extensionWebAuthnRequestContextResolve,
 } from "./extensionWebAuthnRequestContextResolve.js"
 import { extensionWebAuthnRpIdValidate } from "./extensionWebAuthnRpIdValidate.js"
 
 const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
 const extensionWebAuthnDefaultTimeout = 120_000
+const extensionWebAuthnRecordSchema = v.record(v.string(), v.unknown())
 
 type ExtensionWebAuthnBackgroundService = {
   passkeyConsentContextCreate: (request: unknown) => Result<ExtensionPasskeyConsentContext>
@@ -323,15 +324,22 @@ export function extensionWebAuthnBackgroundBridgeCreate(options: ExtensionWebAut
 }
 
 function extensionWebAuthnBridgeMessageRecognized(value: unknown): boolean {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false
-  const type = (value as Record<string, unknown>).type
+  const record = extensionWebAuthnRecordRead(value)
+  if (record === null) return false
+  const type = record.type
   return type === "webauthnBridgeRequest" || type === "webauthnBridgeAbort"
 }
 
 function extensionWebAuthnRequestIdRead(value: unknown): string | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return null
-  const requestId = (value as Record<string, unknown>).requestId
+  const record = extensionWebAuthnRecordRead(value)
+  if (record === null) return null
+  const requestId = record.requestId
   return typeof requestId === "string" && /^[A-Za-z0-9_-]{1,128}$/u.test(requestId) ? requestId : null
+}
+
+function extensionWebAuthnRecordRead(value: unknown): Record<string, unknown> | null {
+  const result = v.safeParse(extensionWebAuthnRecordSchema, value)
+  return result.success ? result.output : null
 }
 
 function extensionWebAuthnDefaultOriginsRead(): Promise<readonly string[]> {
