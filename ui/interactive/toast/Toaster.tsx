@@ -5,8 +5,6 @@ import { toasterState } from "#ui/interactive/toast/toasterState.js"
 import { classArr } from "#ui/utils/classArr.js"
 import type { MayHaveClass } from "#ui/utils/MayHaveClass.js"
 
-// const log = true
-const log = false
 /**
  * Renders queued toast notifications; mount once near the app root.
  * radix-ui
