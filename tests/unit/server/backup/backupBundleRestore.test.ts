@@ -139,7 +139,7 @@ test("backupManifestValidate rejects unsupported versions, corrupt hashes, trave
   databaseFile.sha256 = createHash("sha256")
     .update(readFileSync(join(paths.backupDirectory, "database.sqlite3")))
     .digest("hex")
-  manifest.schemaVersion = 20
+  manifest.schemaVersion = 21
   writeFileSync(manifestPath, JSON.stringify(manifest))
   expect(await backupManifestValidate(paths.backupDirectory)).toMatchObject({ success: false })
 
