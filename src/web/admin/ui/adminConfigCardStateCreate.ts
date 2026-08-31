@@ -1,6 +1,7 @@
 import { onMount } from "solid-js"
+import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { AdminConfig } from "../model/adminConfigSchema.js"
+import { type AdminConfig, adminConfigSchema } from "../model/adminConfigSchema.js"
 import { webAdminApiClientCreate } from "../model/webAdminApiClientCreate.js"
 
 export interface AdminConfigCardProps {
@@ -44,13 +45,14 @@ export function adminConfigCardStateCreate(props: AdminConfigCardProps) {
       props.onNotifyError?.("Invalid JSON format in configuration editor.")
       return
     }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    const parsedResult = v.safeParse(adminConfigSchema, parsed)
+    if (!parsedResult.success) {
       props.onNotifyError?.("Configuration must be a JSON object.")
       return
     }
 
     isSaving.set(true)
-    const result = await apiClient.configUpdate(parsed as Record<string, unknown>)
+    const result = await apiClient.configUpdate(parsedResult.output)
     isSaving.set(false)
 
     if (result.success) {
