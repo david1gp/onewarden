@@ -1,0 +1,5 @@
+folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp
+Personal,1,login,"Portal, ""Primary""","First line
+Second line","Environment: test
+Recovery code: abc:def",1,https://example.test,user@example.test,password,JBSWY3DPEHPK3PXP
+Personal,0,note,Secure Note,Note body,,0,,,,

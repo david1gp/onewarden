@@ -1,0 +1,169 @@
+{
+  "encrypted": false,
+  "folders": [
+    {
+      "id": "folder-personal",
+      "name": "Personal"
+    }
+  ],
+  "items": [
+    {
+      "id": "cipher-login",
+      "organizationId": null,
+      "folderId": "folder-personal",
+      "type": 1,
+      "reprompt": 1,
+      "name": "Example Login",
+      "notes": "Sanitized login notes",
+      "favorite": true,
+      "login": {
+        "uris": [
+          {
+            "uri": "https://example.test",
+            "match": 0
+          },
+          {
+            "uri": "https://login.example.test",
+            "match": 5
+          }
+        ],
+        "username": "user@example.test",
+        "password": "not-a-real-password",
+        "totp": "JBSWY3DPEHPK3PXP",
+        "passwordRevisionDate": "2026-08-30T12:00:00.000Z",
+        "fido2Credentials": [
+          {
+            "credentialId": "sanitized-credential-id",
+            "keyType": "public-key",
+            "keyAlgorithm": "ECDSA",
+            "keyCurve": "P-256",
+            "keyValue": "sanitized-key-value",
+            "rpId": "example.test",
+            "userHandle": "sanitized-user-handle",
+            "userName": "user@example.test",
+            "counter": 7,
+            "rpName": "Example",
+            "userDisplayName": "Example User",
+            "discoverable": true,
+            "creationDate": "2026-08-30T12:00:00.000Z"
+          }
+        ]
+      },
+      "secureNote": null,
+      "card": null,
+      "identity": null,
+      "fields": [
+        {
+          "name": "Environment",
+          "value": "test",
+          "type": 0,
+          "linkedId": null
+        },
+        {
+          "name": "Recovery code",
+          "value": "sanitized-recovery-code",
+          "type": 1,
+          "linkedId": 2
+        }
+      ],
+      "passwordHistory": [
+        {
+          "password": "old-not-a-real-password",
+          "lastUsedDate": "2026-08-29T12:00:00.000Z"
+        }
+      ],
+      "creationDate": "2026-08-01T12:00:00.000Z",
+      "revisionDate": "2026-08-30T12:00:00.000Z",
+      "deletedDate": null,
+      "archivedDate": "2026-08-31T10:00:00.000Z"
+    },
+    {
+      "id": "cipher-note",
+      "organizationId": null,
+      "folderId": "folder-personal",
+      "type": 2,
+      "reprompt": 0,
+      "name": "Example Note",
+      "notes": "Sanitized secure note",
+      "favorite": false,
+      "login": null,
+      "secureNote": {
+        "type": 0
+      },
+      "card": null,
+      "identity": null,
+      "fields": [],
+      "passwordHistory": [],
+      "creationDate": "2026-08-02T12:00:00.000Z",
+      "revisionDate": "2026-08-30T12:00:00.000Z",
+      "deletedDate": null,
+      "archivedDate": null
+    },
+    {
+      "id": "cipher-card",
+      "organizationId": null,
+      "folderId": "folder-personal",
+      "type": 3,
+      "reprompt": 0,
+      "name": "Example Card",
+      "notes": null,
+      "favorite": false,
+      "login": null,
+      "secureNote": null,
+      "card": {
+        "cardholderName": "Example User",
+        "brand": "Visa",
+        "number": "4111111111111111",
+        "expMonth": "01",
+        "expYear": "2030",
+        "code": "123"
+      },
+      "identity": null,
+      "fields": [],
+      "passwordHistory": [],
+      "creationDate": "2026-08-03T12:00:00.000Z",
+      "revisionDate": "2026-08-30T12:00:00.000Z",
+      "deletedDate": null,
+      "archivedDate": null
+    },
+    {
+      "id": "cipher-identity",
+      "organizationId": null,
+      "folderId": "folder-personal",
+      "type": 4,
+      "reprompt": 0,
+      "name": "Example Identity",
+      "notes": null,
+      "favorite": false,
+      "login": null,
+      "secureNote": null,
+      "card": null,
+      "identity": {
+        "title": "Mx.",
+        "firstName": "Example",
+        "middleName": "Test",
+        "lastName": "User",
+        "address1": "1 Example Street",
+        "address2": "Suite 2",
+        "address3": "Mailbox 3",
+        "city": "Exampleville",
+        "state": "EX",
+        "postalCode": "00000",
+        "country": "US",
+        "company": "Example Co",
+        "email": "user@example.test",
+        "phone": "+1 555 0100",
+        "ssn": "000-00-0000",
+        "username": "example-user",
+        "passportNumber": "P0000000",
+        "licenseNumber": "D0000000"
+      },
+      "fields": [],
+      "passwordHistory": [],
+      "creationDate": "2026-08-04T12:00:00.000Z",
+      "revisionDate": "2026-08-30T12:00:00.000Z",
+      "deletedDate": null,
+      "archivedDate": null
+    }
+  ]
+}

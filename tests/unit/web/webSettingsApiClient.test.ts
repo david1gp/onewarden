@@ -251,3 +251,47 @@ test("webSettingsApiClient handles profile, avatar, API key, password, KDF, devi
   })
   expect(importRes.success).toBe(true)
 })
+
+test("webSettingsApiClient validates the structured cipher import report", async () => {
+  const client = webSettingsApiClientCreate({
+    fetch: async () =>
+      new Response(
+        JSON.stringify({
+          importedCipherCount: 2,
+          importedFolderCount: 1,
+          revisionDate: "2026-08-31T12:00:00.000Z",
+          warnings: ["A folder was reused."],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+  })
+
+  const result = await client.ciphersImport("token-123", {
+    ciphers: [],
+    folders: [],
+    folderRelationships: [],
+  })
+  expect(result).toEqual({
+    success: true,
+    data: {
+      importedCipherCount: 2,
+      importedFolderCount: 1,
+      revisionDate: "2026-08-31T12:00:00.000Z",
+      warnings: ["A folder was reused."],
+    },
+  })
+
+  const malformedClient = webSettingsApiClientCreate({
+    fetch: async () =>
+      new Response(JSON.stringify({ revisionDate: "2026-08-31T12:00:00.000Z", warnings: [1] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  })
+  const malformedResult = await malformedClient.ciphersImport("token-123", {
+    ciphers: [],
+    folders: [],
+    folderRelationships: [],
+  })
+  expect(malformedResult.success).toBe(false)
+})

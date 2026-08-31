@@ -1,6 +1,9 @@
 import * as v from "valibot"
-import { type Result, resultTryParsingFetchErr } from "#result"
-import { resultCreate } from "../../../shared/result/resultCreate.js"
+import type { Result } from "#result"
+import { cipherImportResultSchema } from "../../../shared/api/cipherImportResultSchema.js"
+import { webApiAuthenticatedHeadersCreate } from "../../../shared/api/webApiAuthenticatedHeadersCreate.js"
+import { webApiResponseEmptyParse } from "../../../shared/api/webApiResponseEmptyParse.js"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { type AccountApiKey, accountApiKeySchema } from "./accountApiKeySchema.js"
 import { type AccountDeleteRequest } from "./accountDeleteRequestSchema.js"
@@ -12,62 +15,12 @@ import { type AccountPasswordChangeRequest } from "./accountPasswordChangeReques
 import { type AccountProfile, accountProfileSchema } from "./accountProfileSchema.js"
 import type { AccountProfileUpdateRequest } from "./accountProfileUpdateRequestSchema.js"
 import { type AccountRotateKeysRequest } from "./accountRotateKeysRequestSchema.js"
+import { type BitwardenEncryptedSync, bitwardenEncryptedSyncSchema } from "./bitwardenEncryptedSyncSchema.js"
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-async function responseJsonParse<TSchema extends v.GenericSchema>(
-  op: string,
-  response: Response,
-  schema: TSchema,
-): Promise<Result<v.InferOutput<TSchema>>> {
-  let text: string
-  try {
-    text = await response.text()
-  } catch {
-    return resultErrorCreate(op, "Failed to read server response.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
-  }
-
-  if (!response.ok) {
-    const errorResult = resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    return errorResult
-  }
-
-  let json: unknown
-  try {
-    json = JSON.parse(text)
-  } catch {
-    return resultErrorCreate(op, "Server returned invalid JSON response.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  const parsed = v.safeParse(schema, json)
-  if (!parsed.success) {
-    return resultErrorCreate(op, "Server response did not match expected schema.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  return resultCreate(parsed.output)
-}
-
-async function responseEmptyParse(op: string, response: Response): Promise<Result<void>> {
-  if (response.ok) {
-    return resultCreate(undefined)
-  }
-  let text = ""
-  try {
-    text = await response.text()
-  } catch {
-    // ignore
-  }
-  return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-}
+const cipherImportResponseSchema = v.union([cipherImportResultSchema, v.strictObject({ revisionDate: v.string() })])
+type CipherImportResponse = v.InferOutput<typeof cipherImportResponseSchema>
 
 export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: FetchImplementation } = {}) {
   const baseUrl = options.baseUrl ?? ""
@@ -79,10 +32,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/profile`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error during profile fetch.", {
@@ -90,7 +40,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountProfileSchema)
+    return webApiResponseParse(op, response, accountProfileSchema)
   }
 
   const profileUpdate = async (
@@ -102,11 +52,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/profile`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -115,7 +61,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountProfileSchema)
+    return webApiResponseParse(op, response, accountProfileSchema)
   }
 
   const avatarUpdate = async (accessToken: string, avatarColor: string | null): Promise<Result<AccountProfile>> => {
@@ -124,11 +70,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/avatar`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify({ avatarColor }),
       })
     } catch {
@@ -137,7 +79,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountProfileSchema)
+    return webApiResponseParse(op, response, accountProfileSchema)
   }
 
   const apiKeyGet = async (accessToken: string, masterPasswordHash: string): Promise<Result<AccountApiKey>> => {
@@ -146,11 +88,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/api-key`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify({ masterPasswordHash }),
       })
     } catch {
@@ -159,7 +97,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountApiKeySchema)
+    return webApiResponseParse(op, response, accountApiKeySchema)
   }
 
   const apiKeyRotate = async (accessToken: string, masterPasswordHash: string): Promise<Result<AccountApiKey>> => {
@@ -168,11 +106,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/rotate-api-key`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify({ masterPasswordHash }),
       })
     } catch {
@@ -181,7 +115,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountApiKeySchema)
+    return webApiResponseParse(op, response, accountApiKeySchema)
   }
 
   const passwordChange = async (accessToken: string, payload: AccountPasswordChangeRequest): Promise<Result<void>> => {
@@ -190,11 +124,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/password`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -203,7 +133,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const kdfChange = async (accessToken: string, payload: AccountKdfChangeRequest): Promise<Result<void>> => {
@@ -212,11 +142,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/kdf`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -225,7 +151,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const keysRotate = async (accessToken: string, payload: AccountRotateKeysRequest): Promise<Result<void>> => {
@@ -234,11 +160,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/key-management/rotate-user-account-keys`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -247,7 +169,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const emailTokenRequest = async (
@@ -259,11 +181,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/email-token`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -272,7 +190,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const emailChangeComplete = async (
@@ -284,11 +202,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/email`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -297,7 +211,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const emailVerificationSend = async (accessToken: string): Promise<Result<void>> => {
@@ -306,10 +220,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/verify-email`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error sending email verification.", {
@@ -317,7 +228,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const devicesGet = async (accessToken: string): Promise<Result<AccountDeviceListResponse>> => {
@@ -326,10 +237,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/devices`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error fetching devices.", {
@@ -337,7 +245,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, accountDeviceListResponseSchema)
+    return webApiResponseParse(op, response, accountDeviceListResponseSchema)
   }
 
   const securityStampRotate = async (
@@ -350,11 +258,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/security-stamp`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify({ masterPasswordHash, otp: otp ?? null }),
       })
     } catch {
@@ -363,7 +267,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const accountDelete = async (accessToken: string, payload: AccountDeleteRequest): Promise<Result<void>> => {
@@ -372,11 +276,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     try {
       response = await fetchImpl(`${baseUrl}/api/accounts/delete`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -385,7 +285,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const accountDeleteRecover = async (email: string): Promise<Result<void>> => {
@@ -406,19 +306,16 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
-  const syncGet = async (accessToken: string): Promise<Result<Record<string, unknown>>> => {
+  const syncGet = async (accessToken: string): Promise<Result<BitwardenEncryptedSync>> => {
     const op = "webSettingsApiClient.syncGet"
     let response: Response
     try {
       response = await fetchImpl(`${baseUrl}/api/sync`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error during sync.", {
@@ -426,16 +323,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    if (!response.ok) {
-      const text = await response.text().catch(() => "")
-      return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    }
-    try {
-      const data = await response.json()
-      return resultCreate(data as Record<string, unknown>)
-    } catch {
-      return resultErrorCreate(op, "Invalid sync response JSON.")
-    }
+    return webApiResponseParse(op, response, bitwardenEncryptedSyncSchema)
   }
 
   const ciphersImport = async (
@@ -445,17 +333,13 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
       folders: unknown[]
       folderRelationships: Array<{ key: number; value: number }>
     },
-  ): Promise<Result<{ revisionDate: string }>> => {
+  ): Promise<Result<CipherImportResponse>> => {
     const op = "webSettingsApiClient.ciphersImport"
     let response: Response
     try {
       response = await fetchImpl(`${baseUrl}/api/ciphers/import`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(data),
       })
     } catch {
@@ -464,16 +348,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
         statusCode: 503,
       })
     }
-    if (!response.ok) {
-      const text = await response.text().catch(() => "")
-      return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    }
-    try {
-      const json = await response.json()
-      return resultCreate(json as { revisionDate: string })
-    } catch {
-      return resultErrorCreate(op, "Invalid import response JSON.")
-    }
+    return webApiResponseParse(op, response, cipherImportResponseSchema)
   }
 
   return {

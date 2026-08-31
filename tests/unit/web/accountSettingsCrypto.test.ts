@@ -181,6 +181,7 @@ test("accountPasswordChangeExecute, accountKdfChangeExecute, and vaultExport/Imp
 
   // Test Vault Import (JSON)
   const sampleImportJson = JSON.stringify({
+    encrypted: false,
     folders: [{ id: "f-1", name: "Personal" }],
     items: [
       {

@@ -1,10 +1,17 @@
+import * as v from "valibot"
 import { type Result } from "#result"
+import { extensionCipherKeyResolve } from "../../../extension/crypto/extensionCipherKeyResolve.js"
+import { extensionFido2CredentialDecrypt } from "../../../extension/crypto/extensionFido2CredentialDecrypt.js"
+import type { BitwardenEncryptedLoginCipher } from "../../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { bitwardenCipherStringDecryptText } from "../../../shared/crypto/bitwardenCipherStringDecryptText.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { webAuthSessionCreate } from "../../auth/model/webAuthSessionCreate.js"
 import { webAuthUserKeyUnlock } from "../../auth/model/webAuthUserKeyUnlock.js"
 import { type BitwardenCsvRecord, bitwardenCsvFormat } from "./bitwardenCsvFormat.js"
+import { bitwardenEncryptedSyncSchema } from "./bitwardenEncryptedSyncSchema.js"
+import { bitwardenJsonPayloadSchema } from "./bitwardenJsonPayloadSchema.js"
+import { bitwardenPortableEncryptedJsonEnvelopeEncrypt } from "./bitwardenPortableEncryptedJsonEnvelopeEncrypt.js"
 import type { VaultExportFormat } from "./vaultExportSchema.js"
 import { webSettingsApiClientCreate } from "./webSettingsApiClientCreate.js"
 
@@ -43,8 +50,15 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
     })
   }
 
+  if (options.format === "json-encrypted" && (!options.password || options.password.length === 0)) {
+    return resultErrorCreate(op, "A password is required for password-protected JSON export.", {
+      code: "platform.invalid-request",
+      statusCode: 400,
+    })
+  }
+
   let userKey = options.session.getUserKey()
-  if (userKey === null && options.password) {
+  if (userKey === null && options.format !== "json-encrypted" && options.password) {
     const kdfMetadata = {
       kdfType: currentSession.kdf,
       iterations: currentSession.kdfIterations,
@@ -66,35 +80,35 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
     userKey = unlockResult.data
   }
 
-  if (userKey === null && options.format !== "json-encrypted") {
-    return resultErrorCreate(op, "Vault is locked. Master password is required for decrypted export.", {
-      code: "platform.invalid-request",
-      statusCode: 400,
-    })
+  if (userKey === null) {
+    return resultErrorCreate(
+      op,
+      options.format === "json-encrypted"
+        ? "Vault is locked. Unlock the vault before creating a password-protected export."
+        : "Vault is locked. Master password is required for decrypted export.",
+      {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      },
+    )
   }
 
   const client = options.apiClient ?? webSettingsApiClientCreate()
   const syncResult = await client.syncGet(currentSession.accessToken)
   if (!syncResult.success) return syncResult
 
-  const syncData = syncResult.data
-  const rawFolders = (Array.isArray(syncData.folders) ? syncData.folders : []) as Array<Record<string, unknown>>
-  const rawCiphers = (Array.isArray(syncData.ciphers) ? syncData.ciphers : []) as Array<Record<string, unknown>>
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-
-  if (options.format === "json-encrypted") {
-    const exportPayload = {
-      encrypted: true,
-      folders: rawFolders,
-      items: rawCiphers,
-    }
-    return resultCreate({
-      filename: `onewarden_export_${timestamp}.json`,
-      mimeType: "application/json",
-      content: JSON.stringify(exportPayload, null, 2),
+  const syncDataResult = v.safeParse(bitwardenEncryptedSyncSchema, syncResult.data)
+  if (!syncDataResult.success) {
+    return resultErrorCreate(op, `Invalid Bitwarden sync response: ${v.summarize(syncDataResult.issues)}`, {
+      code: "platform.invalid-request",
+      statusCode: 400,
     })
   }
+  const syncData = syncDataResult.output
+  const rawFolders = syncData.folders
+  const rawCiphers = syncData.ciphers
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
 
   if (userKey === null) {
     return resultErrorCreate(op, "Decryption key unavailable.")
@@ -106,11 +120,22 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
   const decryptionFailure = { errorMessage: null as string | null }
 
   for (const folder of rawFolders) {
-    const id = String(folder.id ?? folder.uuid ?? "")
-    const nameEncrypted = String(folder.name ?? "")
-    const nameDecrypted = (await decryptOptionalString(nameEncrypted, userKey, decryptionFailure)) ?? ""
+    if (folder.id.length === 0) {
+      return resultErrorCreate(op, "Invalid Bitwarden sync response: folder id must not be empty.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    if (folderNameMap.has(folder.id)) {
+      return resultErrorCreate(op, `Invalid Bitwarden sync response: duplicate folder id '${folder.id}'.`, {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const nameDecrypted = (await decryptOptionalString(folder.name, userKey, decryptionFailure)) ?? ""
+    const id = folder.id
     decryptedFolders.push({ id, name: nameDecrypted })
-    if (id) folderNameMap.set(id, nameDecrypted)
+    folderNameMap.set(id, nameDecrypted)
   }
 
   // Decrypt items
@@ -118,16 +143,57 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
   const csvRecords: BitwardenCsvRecord[] = []
 
   for (const cipher of rawCiphers) {
-    const id = String(cipher.id ?? cipher.uuid ?? "")
-    const folderId = cipher.folderId ? String(cipher.folderId) : null
-    const type = typeof cipher.type === "number" ? cipher.type : 1
-    const favorite = Boolean(cipher.favorite)
-    const reprompt = typeof cipher.reprompt === "number" ? cipher.reprompt : 0
+    const isJsonExport = options.format === "json-decrypted"
+    const isCsvExport = options.format === "csv-decrypted"
+    const isPortableJsonExport = options.format === "json-encrypted"
+    const isIndividualExport = isJsonExport || isCsvExport || isPortableJsonExport
+    if (isIndividualExport && cipher.organizationId !== undefined && cipher.organizationId !== null) continue
+    if (isIndividualExport && cipher.deletedDate !== undefined && cipher.deletedDate !== null) continue
+
+    const type = cipher.type
+    if (type !== 1 && type !== 2 && type !== 3 && type !== 4) {
+      return resultErrorCreate(op, `Bitwarden export does not support cipher type ${type}.`, {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    if (isCsvExport && type !== 1 && type !== 2) continue
+
+    const folderId = cipher.folderId ?? null
+    if (isIndividualExport && folderId !== null && (folderId === "" || !folderNameMap.has(folderId))) {
+      return resultErrorCreate(
+        op,
+        `Invalid Bitwarden sync response: cipher references a missing folder '${folderId}'.`,
+        {
+          code: "platform.invalid-request",
+          statusCode: 400,
+        },
+      )
+    }
+
+    if (isJsonExport || isPortableJsonExport) {
+      const typeData =
+        type === 1 ? cipher.login : type === 2 ? cipher.secureNote : type === 3 ? cipher.card : cipher.identity
+      if (typeData === undefined || typeData === null) {
+        return resultErrorCreate(
+          op,
+          `Invalid Bitwarden sync response: cipher type ${type} has no type-specific data.`,
+          {
+            code: "platform.invalid-request",
+            statusCode: 400,
+          },
+        )
+      }
+    }
+
+    const id = cipher.id
+    const favorite = cipher.favorite === true
+    const reprompt = cipher.reprompt ?? 0
 
     const name = (await decryptOptionalString(cipher.name, userKey, decryptionFailure)) ?? ""
     const notes = await decryptOptionalString(cipher.notes, userKey, decryptionFailure)
 
-    const rawLogin = cipher.login as Record<string, unknown> | undefined
+    const rawLogin = cipher.login
     let loginData: Record<string, unknown> | undefined
     let csvUri: string | null = null
     let csvUsername: string | null = null
@@ -140,13 +206,11 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
       const totp = await decryptOptionalString(rawLogin.totp, userKey, decryptionFailure)
       const uris: Array<{ uri: string; match?: number | null }> = []
 
-      if (Array.isArray(rawLogin.uris)) {
-        for (const u of rawLogin.uris as Array<Record<string, unknown>>) {
-          const decryptedUri = await decryptOptionalString(u.uri, userKey, decryptionFailure)
-          if (decryptedUri) {
-            uris.push({ uri: decryptedUri, match: (u.match as number) ?? null })
-            if (!csvUri) csvUri = decryptedUri
-          }
+      for (const u of rawLogin.uris) {
+        const decryptedUri = await decryptOptionalString(u.uri, userKey, decryptionFailure)
+        if (decryptedUri !== null) {
+          uris.push({ uri: decryptedUri, match: u.match ?? null })
+          if (csvUri === null) csvUri = decryptedUri
         }
       }
 
@@ -154,15 +218,43 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
       csvPassword = password
       csvTotp = totp
 
+      let decryptedFido2Credentials: unknown
+      if (rawLogin.fido2Credentials !== undefined) {
+        if (rawLogin.fido2Credentials === null) {
+          decryptedFido2Credentials = null
+        } else {
+          const cipherKeyResult = await extensionCipherKeyResolve(
+            cipher as unknown as BitwardenEncryptedLoginCipher,
+            userKey,
+          )
+          if (!cipherKeyResult.success) {
+            decryptionFailure.errorMessage ??= cipherKeyResult.errorMessage
+          } else {
+            const fido2Credentials: unknown[] = []
+            for (const credential of rawLogin.fido2Credentials) {
+              const credentialResult = await extensionFido2CredentialDecrypt(credential, cipherKeyResult.data)
+              if (!credentialResult.success) {
+                decryptionFailure.errorMessage ??= credentialResult.errorMessage
+                continue
+              }
+              fido2Credentials.push(credentialResult.data)
+            }
+            decryptedFido2Credentials = fido2Credentials
+          }
+        }
+      }
+
       loginData = {
         uris,
         username,
         password,
         totp,
+        passwordRevisionDate: rawLogin.passwordRevisionDate ?? null,
+        ...(decryptedFido2Credentials === undefined ? {} : { fido2Credentials: decryptedFido2Credentials }),
       }
     }
 
-    const rawCard = cipher.card as Record<string, unknown> | undefined
+    const rawCard = cipher.card
     let cardData: Record<string, unknown> | undefined
     if (rawCard) {
       cardData = {
@@ -175,7 +267,7 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
       }
     }
 
-    const rawIdentity = cipher.identity as Record<string, unknown> | undefined
+    const rawIdentity = cipher.identity
     let identityData: Record<string, unknown> | undefined
     if (rawIdentity) {
       identityData = {
@@ -185,6 +277,7 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
         lastName: await decryptOptionalString(rawIdentity.lastName, userKey, decryptionFailure),
         address1: await decryptOptionalString(rawIdentity.address1, userKey, decryptionFailure),
         address2: await decryptOptionalString(rawIdentity.address2, userKey, decryptionFailure),
+        address3: await decryptOptionalString(rawIdentity.address3, userKey, decryptionFailure),
         city: await decryptOptionalString(rawIdentity.city, userKey, decryptionFailure),
         state: await decryptOptionalString(rawIdentity.state, userKey, decryptionFailure),
         postalCode: await decryptOptionalString(rawIdentity.postalCode, userKey, decryptionFailure),
@@ -199,14 +292,30 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
       }
     }
 
-    const rawFields = cipher.fields as Array<Record<string, unknown>> | undefined
-    const decryptedFields: Array<Record<string, unknown>> = []
+    const rawFields = cipher.fields
+    const decryptedFields: Array<{
+      name: string | null
+      value: string | null
+      type: number
+      linkedId: number | null
+    }> = []
     if (Array.isArray(rawFields)) {
       for (const field of rawFields) {
         decryptedFields.push({
           name: await decryptOptionalString(field.name, userKey, decryptionFailure),
           value: await decryptOptionalString(field.value, userKey, decryptionFailure),
-          type: field.type ?? 0,
+          type: field.type,
+          linkedId: field.linkedId,
+        })
+      }
+    }
+
+    const decryptedPasswordHistory: Array<{ password: string; lastUsedDate: string }> = []
+    if ((isJsonExport || isPortableJsonExport) && Array.isArray(cipher.passwordHistory)) {
+      for (const entry of cipher.passwordHistory) {
+        decryptedPasswordHistory.push({
+          password: (await decryptOptionalString(entry.password, userKey, decryptionFailure)) ?? "",
+          lastUsedDate: entry.lastUsedDate,
         })
       }
     }
@@ -219,26 +328,32 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
       notes,
       favorite,
       reprompt,
-      login: loginData,
-      card: cardData,
-      identity: identityData,
-      fields: decryptedFields.length > 0 ? decryptedFields : undefined,
+      organizationId: null,
+      login: type === 1 ? loginData : null,
+      secureNote: type === 2 ? cipher.secureNote : null,
+      card: type === 3 ? cardData : null,
+      identity: type === 4 ? identityData : null,
+      fields: decryptedFields,
+      passwordHistory: decryptedPasswordHistory,
+      collectionIds: [],
+      creationDate: cipher.creationDate ?? null,
+      revisionDate: cipher.revisionDate ?? null,
+      deletedDate: cipher.deletedDate ?? null,
+      archivedDate: cipher.archivedDate ?? null,
     })
 
-    const typeNames: Record<number, string> = {
-      1: "login",
-      2: "note",
-      3: "card",
-      4: "identity",
-    }
+    const csvFields = decryptedFields.map((field) => ({
+      name: field.name,
+      value: field.value,
+    }))
 
     csvRecords.push({
       folder: folderId ? (folderNameMap.get(folderId) ?? null) : null,
       favorite,
-      type: typeNames[type] ?? "login",
+      type: type === 1 ? "login" : "note",
       name,
       notes,
-      fields: decryptedFields.length > 0 ? JSON.stringify(decryptedFields) : null,
+      fields: csvFields.length > 0 ? csvFields : null,
       reprompt,
       login_uri: csvUri,
       login_username: csvUsername,
@@ -267,10 +382,40 @@ export async function vaultExportExecute(options: VaultExportExecuteOptions): Pr
     folders: decryptedFolders,
     items: decryptedItems,
   }
+  const exportPayloadResult = v.safeParse(bitwardenJsonPayloadSchema, exportPayload)
+  if (!exportPayloadResult.success) {
+    return resultErrorCreate(
+      op,
+      `Bitwarden JSON export contains unsupported data: ${v.summarize(exportPayloadResult.issues)}`,
+      {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      },
+    )
+  }
+
+  if (options.format === "json-encrypted") {
+    if (!options.password) {
+      return resultErrorCreate(op, "A password is required for password-protected JSON export.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const encryptedPayloadResult = await bitwardenPortableEncryptedJsonEnvelopeEncrypt(
+      JSON.stringify(exportPayloadResult.output),
+      options.password,
+    )
+    if (!encryptedPayloadResult.success) return encryptedPayloadResult
+    return resultCreate({
+      filename: `onewarden_export_${timestamp}.json`,
+      mimeType: "application/json",
+      content: JSON.stringify(encryptedPayloadResult.data, null, 2),
+    })
+  }
 
   return resultCreate({
     filename: `onewarden_export_${timestamp}.json`,
     mimeType: "application/json",
-    content: JSON.stringify(exportPayload, null, 2),
+    content: JSON.stringify(exportPayloadResult.output, null, 2),
   })
 }

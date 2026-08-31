@@ -17,9 +17,9 @@ import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreat
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
+import extensionFixtures from "../../fixtures/extensionCryptoFixtures.json"
 import { identityTestDeviceCreate } from "../../helpers/identityTestDeviceCreate.js"
 import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
-import extensionFixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -28,7 +28,12 @@ const databases: DatabaseConnection[] = []
 const date = "2026-08-28T00:00:00.000Z"
 
 async function contextCreate(
-  options: { attachmentStorage?: AttachmentFileStorageAdapter; password?: string; orgEventsEnabled?: boolean } = {},
+  options: {
+    attachmentStorage?: AttachmentFileStorageAdapter
+    identifierValues?: readonly string[]
+    password?: string
+    orgEventsEnabled?: boolean
+  } = {},
 ): Promise<{
   app: ReturnType<typeof serverAppCreate>
   database: DatabaseConnection
@@ -87,7 +92,7 @@ async function contextCreate(
       privateKey: keyPair.privateKey,
       publicKey: keyPair.publicKey,
       publicOrigin: "https://vault.example",
-      identifier: identifierTestCreate(["cipher-one", "cipher-two", "folder-one"]),
+      identifier: identifierTestCreate(options.identifierValues ?? ["cipher-one", "cipher-two", "folder-one"]),
     },
   })
   return { app, database, notifications, token: bundleResult.data.accessToken }
@@ -885,7 +890,12 @@ test("personal cipher import maps folders, ignores client revisions, persists hi
   })
 
   expect(response.status).toBe(200)
-  expect(await response.text()).toBe("")
+  expect(await response.json()).toEqual({
+    importedCipherCount: 1,
+    importedFolderCount: 1,
+    revisionDate: date,
+    warnings: [],
+  })
   expect(
     context.database
       .query<{ updated_at: string }, [string]>("SELECT updated_at FROM users WHERE uuid = ?")
@@ -967,4 +977,191 @@ test("personal cipher import rejects notes over the default encrypted size limit
   })
   expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
   expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import rejects invalid relationships, duplicate references, and unsafe IDs", async () => {
+  const context = await contextCreate()
+  const validCipher = loginData("Import validation")
+  const invalidPayloads = [
+    {
+      ciphers: [validCipher],
+      folders: [],
+      folderRelationships: [{ key: 1, value: 0 }],
+    },
+    {
+      ciphers: [validCipher],
+      folders: [{ name: "Import folder" }],
+      folderRelationships: [{ key: 0, value: 1 }],
+    },
+    {
+      ciphers: [validCipher],
+      folders: [{ name: "Import folder" }],
+      folderRelationships: [
+        { key: 0, value: 0 },
+        { key: 0, value: 0 },
+      ],
+    },
+    {
+      ciphers: [
+        { ...validCipher, id: "duplicate-cipher" },
+        { ...validCipher, id: "duplicate-cipher" },
+      ],
+      folders: [],
+      folderRelationships: [],
+    },
+    {
+      ciphers: [{ ...validCipher, id: "unsafe/cipher-id" }],
+      folders: [],
+      folderRelationships: [],
+    },
+    {
+      ciphers: [validCipher],
+      folders: [{ id: "unsafe/folder-id", name: "Import folder" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    },
+    {
+      ciphers: [validCipher],
+      folders: [],
+      folderRelationships: [],
+      unexpected: true,
+    },
+  ]
+
+  for (const payload of invalidPayloads) {
+    const response = await context.app.request("https://vault.example/api/ciphers/import", {
+      body: JSON.stringify(payload),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    })
+    expect(response.status).toBe(400)
+  }
+
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM folders").get()?.count).toBe(0)
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+  expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import requires an authenticated personal owner and rejects organization data", async () => {
+  const context = await contextCreate()
+  const body = {
+    ciphers: [{ ...loginData("Organization item"), organizationId: "00000000-0000-4000-8000-000000000701" }],
+    folders: [],
+    folderRelationships: [],
+  }
+  const unauthenticatedResponse = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  })
+  expect(unauthenticatedResponse.status).toBe(401)
+
+  const organizationResponse = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify(body),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(organizationResponse.status).toBe(403)
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+  expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import rejects a folder owned by another user", async () => {
+  const context = await contextCreate()
+  const otherUser = identityTestUserCreate("another-user", { name: "another-user", passwordIterations: 600_000 })
+  expect(identityUserSave(context.database, otherUser).success).toBe(true)
+  context.database.run("INSERT INTO folders (uuid, created_at, updated_at, user_uuid, name) VALUES (?, ?, ?, ?, ?)", [
+    "foreign-folder",
+    date,
+    date,
+    "another-user",
+    "Foreign folder",
+  ])
+
+  const response = await context.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [loginData("Foreign folder reference")],
+      folders: [{ id: "foreign-folder", name: "Imported folder" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+
+  expect(response.status).toBe(403)
+  expect(
+    context.database
+      .query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM folders WHERE user_uuid = ?")
+      .get("cipher-user")?.count,
+  ).toBe(0)
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+  expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import is additive and rolls back folders and ciphers on a mid-transaction failure", async () => {
+  const additiveContext = await contextCreate()
+  const existingResponse = await additiveContext.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(loginData("Existing")),
+    headers: jsonHeaders(additiveContext.token),
+    method: "POST",
+  })
+  expect(existingResponse.status).toBe(200)
+  const existingFolderResponse = await additiveContext.app.request("https://vault.example/api/folders", {
+    body: JSON.stringify({ name: "Existing folder" }),
+    headers: jsonHeaders(additiveContext.token),
+    method: "POST",
+  })
+  expect(existingFolderResponse.status).toBe(200)
+  const existingFolder = (await existingFolderResponse.json()) as { id: string }
+
+  const additiveResponse = await additiveContext.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [loginData("Imported")],
+      folders: [{ id: existingFolder.id, name: "Reused folder" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    }),
+    headers: jsonHeaders(additiveContext.token),
+    method: "POST",
+  })
+  expect(additiveResponse.status).toBe(200)
+  expect(await additiveResponse.json()).toMatchObject({
+    importedCipherCount: 1,
+    importedFolderCount: 1,
+    warnings: [`Folder at index 0 reused existing folder '${existingFolder.id}'.`],
+  })
+  expect(
+    additiveContext.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count,
+  ).toBe(2)
+  expect(
+    additiveContext.database
+      .query<{ name: string }, [string]>("SELECT name FROM ciphers WHERE uuid = ?")
+      .get("cipher-one"),
+  ).toEqual({ name: "Existing" })
+
+  const rollbackContext = await contextCreate({ identifierValues: ["rollback-folder", "rollback-cipher"] })
+  const rollbackResponse = await rollbackContext.app.request("https://vault.example/api/ciphers/import", {
+    body: JSON.stringify({
+      ciphers: [loginData("Rollback first"), loginData("Rollback second")],
+      folders: [{ name: "Rollback folder" }],
+      folderRelationships: [{ key: 0, value: 0 }],
+    }),
+    headers: jsonHeaders(rollbackContext.token),
+    method: "POST",
+  })
+
+  expect(rollbackResponse.status).toBe(409)
+  expect(
+    rollbackContext.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM folders").get()?.count,
+  ).toBe(0)
+  expect(
+    rollbackContext.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count,
+  ).toBe(0)
+  expect(
+    rollbackContext.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM favorites").get()?.count,
+  ).toBe(0)
+  expect(
+    rollbackContext.database
+      .query<{ updated_at: string }, [string]>("SELECT updated_at FROM users WHERE uuid = ?")
+      .get("cipher-user"),
+  ).toEqual({ updated_at: date })
+  expect(rollbackContext.notifications).toEqual([])
 })

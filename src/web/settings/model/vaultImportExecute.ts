@@ -1,10 +1,18 @@
+import * as v from "valibot"
 import { type Result } from "#result"
+import { extensionFido2CredentialEncrypt } from "../../../extension/crypto/extensionFido2CredentialEncrypt.js"
+import type { BitwardenFido2Credential } from "../../../shared/api/bitwardenFido2CredentialSchema.js"
 import { bitwardenCipherStringEncrypt } from "../../../shared/crypto/bitwardenCipherStringEncrypt.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { webAuthSessionCreate } from "../../auth/model/webAuthSessionCreate.js"
 import { webAuthUserKeyUnlock } from "../../auth/model/webAuthUserKeyUnlock.js"
+import { bitwardenCsvFieldsParse } from "./bitwardenCsvFieldsParse.js"
+import { bitwardenCsvLossyWarning } from "./bitwardenCsvLossyWarning.js"
 import { bitwardenCsvParse } from "./bitwardenCsvParse.js"
+import type { BitwardenJsonPayload } from "./bitwardenJsonPayloadSchema.js"
+import { bitwardenJsonPayloadSchema } from "./bitwardenJsonPayloadSchema.js"
+import { bitwardenPortableEncryptedJsonEnvelopeDecrypt } from "./bitwardenPortableEncryptedJsonEnvelopeDecrypt.js"
 import { webSettingsApiClientCreate } from "./webSettingsApiClientCreate.js"
 
 export interface VaultImportExecuteOptions {
@@ -37,7 +45,7 @@ async function encryptOptional(
 
 export async function vaultImportExecute(
   options: VaultImportExecuteOptions,
-): Promise<Result<{ cipherCount: number; folderCount: number }>> {
+): Promise<Result<{ cipherCount: number; folderCount: number; warnings: string[] }>> {
   const op = "vaultImportExecute"
   const currentSession = options.session.session()
   if (currentSession === null) {
@@ -47,10 +55,11 @@ export async function vaultImportExecute(
     })
   }
 
+  let jsonPayload: BitwardenJsonPayload | undefined
   if (options.format === "json") {
-    let encryptedPayload: unknown
+    let rawPayload: unknown
     try {
-      encryptedPayload = JSON.parse(options.rawContent)
+      rawPayload = JSON.parse(options.rawContent)
     } catch {
       return resultErrorCreate(op, "Invalid JSON vault file format.", {
         code: "platform.invalid-request",
@@ -58,60 +67,82 @@ export async function vaultImportExecute(
       })
     }
 
-    if (
-      encryptedPayload !== null &&
-      typeof encryptedPayload === "object" &&
-      "encrypted" in encryptedPayload &&
-      encryptedPayload.encrypted === true
-    ) {
-      const folders = "folders" in encryptedPayload ? encryptedPayload.folders : undefined
-      const items = "items" in encryptedPayload ? encryptedPayload.items : undefined
-      if (!Array.isArray(folders) || !Array.isArray(items)) {
-        return resultErrorCreate(op, "Encrypted vault export must contain folders and items arrays.", {
+    const rawPayloadRecord =
+      typeof rawPayload === "object" && rawPayload !== null ? (rawPayload as Record<string, unknown>) : null
+    if (rawPayloadRecord !== null && "encrypted" in rawPayloadRecord && rawPayloadRecord.encrypted === true) {
+      if (rawPayloadRecord.passwordProtected !== true) {
+        return resultErrorCreate(
+          op,
+          "Account-restricted Bitwarden encrypted JSON exports cannot be imported. Use a password-protected portable export.",
+          { code: "platform.unsupported", statusCode: 400 },
+        )
+      }
+      if (!options.password) {
+        return resultErrorCreate(op, "A password is required for password-protected JSON import.", {
           code: "platform.invalid-request",
           statusCode: 400,
         })
       }
+      const decryptedPayloadResult = await bitwardenPortableEncryptedJsonEnvelopeDecrypt(rawPayload, options.password)
+      if (!decryptedPayloadResult.success) return decryptedPayloadResult
+      jsonPayload = decryptedPayloadResult.data
+    } else {
+      const parsedPayloadResult = v.safeParse(bitwardenJsonPayloadSchema, rawPayload)
+      if (!parsedPayloadResult.success) {
+        return resultErrorCreate(op, `Invalid Bitwarden JSON vault file: ${v.summarize(parsedPayloadResult.issues)}`, {
+          code: "platform.invalid-request",
+          statusCode: 400,
+        })
+      }
+      jsonPayload = parsedPayloadResult.output
+    }
 
-      const folderIndexById = new Map<string, number>()
-      const importedFolders: Array<{ id: null; name: string }> = []
-      for (const [index, folder] of folders.entries()) {
-        if (folder === null || typeof folder !== "object" || !("name" in folder) || typeof folder.name !== "string") {
-          return resultErrorCreate(op, "Encrypted vault export contains an invalid folder.", {
-            code: "platform.invalid-request",
-            statusCode: 400,
-          })
+    const folderIndexById = new Map<string, number>()
+    for (const [index, folder] of jsonPayload.folders.entries()) {
+      if (folder.id === undefined || folder.id === null || folder.id === "") continue
+      if (folderIndexById.has(folder.id)) {
+        return resultErrorCreate(op, `Invalid Bitwarden JSON vault file: duplicate folder id '${folder.id}'.`, {
+          code: "platform.invalid-request",
+          statusCode: 400,
+        })
+      }
+      folderIndexById.set(folder.id, index)
+    }
+
+    for (const [index, item] of jsonPayload.items.entries()) {
+      if (item.organizationId !== undefined && item.organizationId !== null) {
+        return resultErrorCreate(
+          op,
+          `Invalid Bitwarden JSON vault file: organization-owned item at index ${index} is not supported.`,
+          { code: "platform.invalid-request", statusCode: 400 },
+        )
+      }
+      if (item.deletedDate !== undefined && item.deletedDate !== null) {
+        return resultErrorCreate(
+          op,
+          `Invalid Bitwarden JSON vault file: trashed item at index ${index} is not supported.`,
+          { code: "platform.invalid-request", statusCode: 400 },
+        )
+      }
+      if (item.folderId !== undefined && item.folderId !== null) {
+        if (item.folderId === "" || !folderIndexById.has(item.folderId)) {
+          return resultErrorCreate(
+            op,
+            `Invalid Bitwarden JSON vault file: item at index ${index} references a missing folder '${item.folderId}'.`,
+            { code: "platform.invalid-request", statusCode: 400 },
+          )
         }
-        if ("id" in folder && typeof folder.id === "string") folderIndexById.set(folder.id, index)
-        importedFolders.push({ id: null, name: folder.name })
       }
 
-      const importedCiphers: Record<string, unknown>[] = []
-      const folderRelationships: Array<{ key: number; value: number }> = []
-      for (const [index, item] of items.entries()) {
-        if (item === null || typeof item !== "object" || !("name" in item) || typeof item.name !== "string") {
-          return resultErrorCreate(op, "Encrypted vault export contains an invalid item.", {
-            code: "platform.invalid-request",
-            statusCode: 400,
-          })
-        }
-        const itemRecord = item as Record<string, unknown>
-        const folderId = typeof itemRecord.folderId === "string" ? itemRecord.folderId : null
-        if (folderId !== null) {
-          const folderIndex = folderIndexById.get(folderId)
-          if (folderIndex !== undefined) folderRelationships.push({ key: index, value: folderIndex })
-        }
-        importedCiphers.push({ ...itemRecord, id: undefined, folderId: null, organizationId: null })
+      const typeData =
+        item.type === 1 ? item.login : item.type === 2 ? item.secureNote : item.type === 3 ? item.card : item.identity
+      if (typeData === undefined || typeData === null) {
+        return resultErrorCreate(
+          op,
+          `Invalid Bitwarden JSON vault file: item at index ${index} is missing data for cipher type ${item.type}.`,
+          { code: "platform.invalid-request", statusCode: 400 },
+        )
       }
-
-      const client = options.apiClient ?? webSettingsApiClientCreate()
-      const importResult = await client.ciphersImport(currentSession.accessToken, {
-        ciphers: importedCiphers,
-        folders: importedFolders,
-        folderRelationships,
-      })
-      if (!importResult.success) return importResult
-      return resultCreate({ cipherCount: importedCiphers.length, folderCount: importedFolders.length })
     }
   }
 
@@ -148,6 +179,7 @@ export async function vaultImportExecute(
   let parsedFolders: Array<{ id?: string | null; name: string }> = []
   let parsedItems: Array<{
     folderName?: string | null
+    folderId?: string | null
     type: number
     name: string
     notes?: string | null
@@ -158,7 +190,10 @@ export async function vaultImportExecute(
       username?: string | null
       password?: string | null
       totp?: string | null
+      passwordRevisionDate?: string | null
+      fido2Credentials?: Array<BitwardenFido2Credential> | null
     } | null
+    secureNote?: { type?: number | null } | null
     card?: {
       cardholderName?: string | null
       brand?: string | null
@@ -174,6 +209,7 @@ export async function vaultImportExecute(
       lastName?: string | null
       address1?: string | null
       address2?: string | null
+      address3?: string | null
       city?: string | null
       state?: string | null
       postalCode?: string | null
@@ -186,7 +222,14 @@ export async function vaultImportExecute(
       passportNumber?: string | null
       licenseNumber?: string | null
     } | null
-    fields?: Array<{ name?: string | null; value?: string | null; type?: number | null }> | null
+    fields?: Array<{
+      name?: string | null
+      value?: string | null
+      type?: number | null
+      linkedId?: number | null
+    }> | null
+    passwordHistory?: Array<{ password: string; lastUsedDate: string }> | null
+    archivedDate?: string | null
   }> = []
 
   if (options.format === "csv") {
@@ -195,21 +238,18 @@ export async function vaultImportExecute(
 
     const folderNames = new Set<string>()
     for (const rec of csvParsedResult.data) {
-      if (rec.folder && rec.folder.trim().length > 0) {
-        folderNames.add(rec.folder.trim())
+      const folder = rec.folder ?? null
+      if (folder !== null && folder.length > 0) {
+        folderNames.add(folder)
       }
 
-      const typeMap: Record<string, number> = {
-        login: 1,
-        note: 2,
-        securenote: 2,
-        card: 3,
-        identity: 4,
-      }
-      const type = typeMap[rec.type.toLowerCase()] ?? 1
+      const type = rec.type === "login" ? 1 : 2
+      const fieldsText = typeof rec.fields === "string" ? rec.fields : null
+      const fieldsResult = bitwardenCsvFieldsParse(fieldsText)
+      if (!fieldsResult.success) return fieldsResult
 
       parsedItems.push({
-        folderName: rec.folder?.trim() || null,
+        folderName: folder,
         type,
         name: rec.name,
         notes: rec.notes,
@@ -224,52 +264,14 @@ export async function vaultImportExecute(
                 totp: rec.login_totp,
               }
             : null,
+        fields: fieldsResult.data,
       })
     }
 
     parsedFolders = Array.from(folderNames).map((name) => ({ name }))
-  } else {
-    try {
-      const json = JSON.parse(options.rawContent)
-      if (Array.isArray(json.folders)) {
-        parsedFolders = json.folders.map((f: { id?: string; name?: string }) => ({
-          id: f.id ?? null,
-          name: f.name ?? "Folder",
-        }))
-      }
-      if (Array.isArray(json.items)) {
-        parsedItems = json.items.map(
-          (item: {
-            folderId?: string
-            type?: number
-            name?: string
-            notes?: string
-            favorite?: boolean
-            reprompt?: number
-            login?: Record<string, unknown>
-            card?: Record<string, unknown>
-            identity?: Record<string, unknown>
-            fields?: Array<Record<string, unknown>>
-          }) => ({
-            folderName: item.folderId ?? null,
-            type: typeof item.type === "number" ? item.type : 1,
-            name: item.name ?? "Untitled",
-            notes: item.notes ?? null,
-            favorite: item.favorite ?? false,
-            reprompt: item.reprompt ?? 0,
-            login: item.login ? (item.login as any) : null,
-            card: item.card ? (item.card as any) : null,
-            identity: item.identity ? (item.identity as any) : null,
-            fields: item.fields ? (item.fields as any) : null,
-          }),
-        )
-      }
-    } catch {
-      return resultErrorCreate(op, "Invalid JSON vault file format.", {
-        code: "platform.invalid-request",
-        statusCode: 400,
-      })
-    }
+  } else if (jsonPayload !== undefined) {
+    parsedFolders = jsonPayload.folders
+    parsedItems = jsonPayload.items
   }
 
   // Encrypt folders
@@ -294,8 +296,9 @@ export async function vaultImportExecute(
     const item = parsedItems[i]
     if (!item) continue
 
-    if (item.folderName && folderIndexMap.has(item.folderName)) {
-      const fIdx = folderIndexMap.get(item.folderName)
+    const folderReference = item.folderId ?? item.folderName ?? null
+    if (folderReference && folderIndexMap.has(folderReference)) {
+      const fIdx = folderIndexMap.get(folderReference)
       if (fIdx !== undefined) {
         folderRelationships.push({ key: i, value: fIdx })
       }
@@ -309,16 +312,33 @@ export async function vaultImportExecute(
       const encUris: Array<{ uri: string; match?: number | null }> = []
       if (Array.isArray(item.login.uris)) {
         for (const u of item.login.uris) {
-          if (u.uri) {
-            encUris.push({ uri: await encryptString(u.uri, userKey, encryptionFailure), match: u.match ?? null })
+          encUris.push({ uri: await encryptString(u.uri, userKey, encryptionFailure), match: u.match ?? null })
+        }
+      }
+      let encryptedFido2Credentials: unknown
+      if (item.login.fido2Credentials !== undefined) {
+        if (item.login.fido2Credentials === null) {
+          encryptedFido2Credentials = null
+        } else {
+          const fido2Credentials: unknown[] = []
+          for (const credential of item.login.fido2Credentials) {
+            const credentialResult = await extensionFido2CredentialEncrypt(credential, userKey)
+            if (!credentialResult.success) {
+              encryptionFailure.errorMessage ??= credentialResult.errorMessage
+              continue
+            }
+            fido2Credentials.push(credentialResult.data)
           }
+          encryptedFido2Credentials = fido2Credentials
         }
       }
       encLogin = {
-        uris: encUris.length > 0 ? encUris : null,
+        uris: encUris,
         username: await encryptOptional(item.login.username, userKey, encryptionFailure),
         password: await encryptOptional(item.login.password, userKey, encryptionFailure),
         totp: await encryptOptional(item.login.totp, userKey, encryptionFailure),
+        passwordRevisionDate: item.login.passwordRevisionDate ?? null,
+        ...(encryptedFido2Credentials === undefined ? {} : { fido2Credentials: encryptedFido2Credentials }),
       }
     }
 
@@ -343,6 +363,7 @@ export async function vaultImportExecute(
         lastName: await encryptOptional(item.identity.lastName, userKey, encryptionFailure),
         address1: await encryptOptional(item.identity.address1, userKey, encryptionFailure),
         address2: await encryptOptional(item.identity.address2, userKey, encryptionFailure),
+        address3: await encryptOptional(item.identity.address3, userKey, encryptionFailure),
         city: await encryptOptional(item.identity.city, userKey, encryptionFailure),
         state: await encryptOptional(item.identity.state, userKey, encryptionFailure),
         postalCode: await encryptOptional(item.identity.postalCode, userKey, encryptionFailure),
@@ -364,24 +385,37 @@ export async function vaultImportExecute(
           name: await encryptOptional(field.name, userKey, encryptionFailure),
           value: await encryptOptional(field.value, userKey, encryptionFailure),
           type: field.type ?? 0,
+          linkedId: field.linkedId ?? null,
+        })
+      }
+    }
+
+    const encryptedPasswordHistory: Array<{ password: string; lastUsedDate: string }> = []
+    if (Array.isArray(item.passwordHistory)) {
+      for (const entry of item.passwordHistory) {
+        encryptedPasswordHistory.push({
+          password: await encryptString(entry.password, userKey, encryptionFailure),
+          lastUsedDate: entry.lastUsedDate,
         })
       }
     }
 
     encryptedCiphers.push({
+      id: null,
       type: item.type,
       folderId: null,
       organizationId: null,
       name: encName,
       notes: encNotes,
       favorite: item.favorite ?? false,
-      login: encLogin,
-      card: encCard,
-      identity: encIdentity,
-      secureNote: item.type === 2 ? { type: 0 } : null,
-      fields: encFields.length > 0 ? encFields : null,
-      passwordHistory: null,
+      login: item.type === 1 ? encLogin : null,
+      card: item.type === 3 ? encCard : null,
+      identity: item.type === 4 ? encIdentity : null,
+      secureNote: item.type === 2 ? { type: item.secureNote?.type ?? 0 } : null,
+      fields: encFields,
+      passwordHistory: encryptedPasswordHistory,
       reprompt: item.reprompt ?? 0,
+      archivedDate: item.archivedDate ?? null,
     })
   }
 
@@ -401,8 +435,16 @@ export async function vaultImportExecute(
 
   if (!importResult.success) return importResult
 
+  const warnings = "warnings" in importResult.data ? [...importResult.data.warnings] : []
+  if (options.format === "csv") warnings.unshift(bitwardenCsvLossyWarning)
+  const importedCipherCount =
+    "importedCipherCount" in importResult.data ? importResult.data.importedCipherCount : undefined
+  const importedFolderCount =
+    "importedFolderCount" in importResult.data ? importResult.data.importedFolderCount : undefined
+
   return resultCreate({
-    cipherCount: encryptedCiphers.length,
-    folderCount: encryptedFolders.length,
+    cipherCount: importedCipherCount ?? encryptedCiphers.length,
+    folderCount: importedFolderCount ?? encryptedFolders.length,
+    warnings,
   })
 }

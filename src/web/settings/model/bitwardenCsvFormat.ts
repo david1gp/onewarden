@@ -1,10 +1,12 @@
+import { bitwardenCsvFieldsFormat } from "./bitwardenCsvFieldsFormat.js"
+
 export interface BitwardenCsvRecord {
   folder?: string | null
   favorite?: boolean | null
   type: string
   name: string
   notes?: string | null
-  fields?: string | null
+  fields?: string | ReadonlyArray<{ name?: string | null; value?: string | null }> | null
   reprompt?: number | null
   login_uri?: string | null
   login_username?: string | null
@@ -26,13 +28,17 @@ export function bitwardenCsvFormat(records: BitwardenCsvRecord[]): string {
   const lines = [header]
 
   for (const record of records) {
+    const fields =
+      typeof record.fields === "string" || record.fields === null || record.fields === undefined
+        ? record.fields
+        : bitwardenCsvFieldsFormat(record.fields)
     const row = [
       csvFieldEscape(record.folder),
-      csvFieldEscape(record.favorite ? "1" : ""),
+      csvFieldEscape(record.favorite ? "1" : "0"),
       csvFieldEscape(record.type),
       csvFieldEscape(record.name),
       csvFieldEscape(record.notes),
-      csvFieldEscape(record.fields),
+      csvFieldEscape(fields),
       csvFieldEscape(record.reprompt ?? 0),
       csvFieldEscape(record.login_uri),
       csvFieldEscape(record.login_username),
@@ -42,5 +48,5 @@ export function bitwardenCsvFormat(records: BitwardenCsvRecord[]): string {
     lines.push(row.join(","))
   }
 
-  return lines.join("\n")
+  return lines.join("\r\n")
 }
