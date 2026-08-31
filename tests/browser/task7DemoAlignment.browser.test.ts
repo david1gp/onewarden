@@ -238,4 +238,23 @@ test.describe("task 7 demo alignment", () => {
     await mobileTabs.getByRole("button", { name: "Details", exact: true }).click()
     await expect(page.getByRole("heading", { level: 2, name: "GitHub Enterprise" })).toBeVisible()
   })
+
+  test("keeps every mobile detail action inside the detail panel", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto("/demo/secure-note")
+    await page.getByRole("navigation", { name: "Vault sections" }).getByRole("button", { name: "Details" }).click()
+
+    const detail = page.getByRole("article")
+    const trashButton = detail.getByRole("button", { name: "Trash", exact: true })
+    await expect(trashButton).toBeVisible()
+    await expect
+      .poll(() =>
+        trashButton.evaluate((button) => {
+          const buttonBounds = button.getBoundingClientRect()
+          const detailBounds = button.closest("article")?.getBoundingClientRect()
+          return detailBounds !== undefined && buttonBounds.right <= detailBounds.right
+        }),
+      )
+      .toBe(true)
+  })
 })

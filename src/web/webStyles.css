@@ -2,6 +2,24 @@
 @source "../../ui";
 @source "../../src";
 
+/* Tailwind v4 resolves `dark:` through `prefers-color-scheme` by default, which
+   ignores the `.dark` class that `themeSet` toggles on <html>. Bind the variant
+   to that class so the theme button actually switches light/dark. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: #f8fafc;
+}
+
+html.dark,
+html.dark body,
+html.dark #root {
+  background-color: #020617;
+}
+
 /* The badge variants are shared from ./ui, which is outside Tailwind's
    application source scan. Keep their semantic colors present in the web
    bundle so they retain their intended contrast in both themes. */
@@ -13,7 +31,9 @@
   background-color: #be123c;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Scoped to the `.dark` class for the same reason as the custom variant above:
+   these overrides must follow the selected theme, not the OS preference. */
+:where(.dark, .dark *) {
   .dark\:bg-emerald-600 {
     background-color: #047857;
   }

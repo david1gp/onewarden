@@ -1,6 +1,7 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
+import { ThemeButton } from "#ui/interactive/theme/ThemeButton.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
@@ -18,7 +19,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
     >
       {/* Account / Workspace Switcher Header */}
       <div class="border-b border-slate-200 p-3 dark:border-slate-800">
-        <CardWrapper class="flex items-center gap-2.5 rounded-lg border-0 bg-white p-2 shadow-xs ring-1 ring-slate-200/60 dark:border-0 dark:bg-slate-800 dark:ring-slate-700/60">
+        <CardWrapper class="flex items-center gap-2.5 rounded-lg border-0 bg-white p-2 shadow-xs ring-1 ring-slate-200/60 lg:p-2 dark:border-0 dark:bg-slate-800 dark:ring-slate-700/60">
           <div class="flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-600 font-semibold text-sm text-white">
             {state.userInitials()}
           </div>
@@ -323,6 +324,12 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
             </div>
           </div>
         </Show>
+      </div>
+
+      {/* Footer / appearance */}
+      <div class="flex items-center justify-between border-t border-slate-200 p-3 dark:border-slate-800">
+        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">Appearance</p>
+        <ThemeButton showText class="h-8 text-sm text-slate-700 dark:text-slate-300" />
       </div>
     </nav>
   )

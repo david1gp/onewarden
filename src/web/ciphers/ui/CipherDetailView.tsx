@@ -119,7 +119,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               </div>
 
               {/* Action Toolbar */}
-              <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <Show when={!item().organizationId && item().edit !== false}>
                   <ButtonIcon
                     variant="outline"
