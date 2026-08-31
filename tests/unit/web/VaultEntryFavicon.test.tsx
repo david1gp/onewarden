@@ -17,13 +17,16 @@ test("VaultEntryFavicon keeps a fixed-size container with the category icon fall
   screen.unmount()
 })
 
-// happy-dom never loads real image bytes and fires `error` on every <img>, so an entry with a
-// usable URL settles into the category-icon fallback. Successful-load rendering is covered by the
-// browser tests; the decorative/lazy image contract is covered by the shared Img primitive tests.
+// Trigger the load failure explicitly because happy-dom does not deterministically dispatch image
+// errors before an immediate assertion. Successful-load rendering is covered by the browser tests;
+// the decorative/lazy image contract is covered by the shared Img primitive tests.
 test("VaultEntryFavicon falls back to the visible category icon when the favicon fails to load", () => {
   const screen = render(() => (
     <VaultEntryFavicon url={() => "https://example.com/login"} categoryIcon={() => categoryIcon} />
   ))
+
+  const image = screen.container.querySelector("img")
+  image?.dispatchEvent(new Event("error"))
 
   expect(screen.container.querySelector("img")).toBeNull()
   expect(screen.container.querySelector("svg")?.getAttribute("class")).not.toContain("invisible")
