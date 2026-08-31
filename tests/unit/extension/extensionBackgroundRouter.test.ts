@@ -3,6 +3,7 @@ import { extensionBackgroundRouterCreate } from "../../../src/extension/backgrou
 import type { ExtensionPersonalLoginCipher } from "../../../src/extension/crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../../../src/extension/messaging/extensionRuntimeMessageSend.js"
+import type { ExtensionLockPolicy } from "../../../src/extension/storage/extensionLockPolicySchema.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
 import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
@@ -96,11 +97,13 @@ function routerCreate(
     syncSnapshotLoad: async () => resultCreate({ ciphers: [cipher] }),
     lock: async () => resultCreate(undefined),
     logout: async () => resultCreate(undefined),
+    lockPolicyLoad: async () => storage.lockPolicyLoad(),
+    lockPolicySave: async (policy: ExtensionLockPolicy) => storage.lockPolicySave(policy),
   } as unknown as RouterOptions["service"]
   let fullWindowTab: { id: number; url: string; windowId: number } | null = null
   let listenerRegistered = false
   const contextFilters: { documentUrls?: string[] }[] = []
-  const focusedTabs: { id: number; active: boolean }[] = []
+  const focusedTabs: { id: number; active: boolean; url?: string }[] = []
   const createdWindows: { url: string | undefined }[] = []
   const fillCalls: { tabId: number; frameId: number | undefined; username: string | null; password: string | null }[] =
     []
@@ -115,7 +118,14 @@ function routerCreate(
       getURL: (path) => `chrome-extension://onewarden/${path}`,
       getContexts: async (filter) => {
         contextFilters.push(filter)
-        return fullWindowTab === null ? [] : [{ tabId: fullWindowTab.id, windowId: fullWindowTab.windowId }]
+        if (fullWindowTab === null) return []
+        const documentUrl = fullWindowTab.url
+        const matches =
+          filter.documentUrls === undefined ||
+          filter.documentUrls.some((candidate) =>
+            candidate.endsWith("*") ? documentUrl.startsWith(candidate.slice(0, -1)) : documentUrl === candidate,
+          )
+        return matches ? [{ tabId: fullWindowTab.id, windowId: fullWindowTab.windowId }] : []
       },
     },
     tabs: {
@@ -124,7 +134,9 @@ function routerCreate(
         return query.lastFocusedWindow === true ? [activeTab] : otherActiveTabs
       },
       update: async (tabId, update) => {
-        if (update.active === true) focusedTabs.push({ id: tabId, active: true })
+        if (update.url !== undefined && fullWindowTab !== null) fullWindowTab = { ...fullWindowTab, url: update.url }
+        if (update.active === true)
+          focusedTabs.push({ id: tabId, active: true, ...(update.url ? { url: update.url } : {}) })
       },
     },
     scripting: {
@@ -156,6 +168,9 @@ function routerCreate(
     createdWindows,
     fillCalls,
     handoffCalls,
+    fullWindowTabSet: (url: string) => {
+      if (fullWindowTab !== null) fullWindowTab = { ...fullWindowTab, url }
+    },
   }
 }
 
@@ -247,8 +262,25 @@ test("extensionBackgroundRouterCreate focuses an existing full window or opens o
   })
   expect(context.focusedTabs).toEqual([{ id: 9, active: true }])
   expect(context.contextFilters).toEqual([
-    { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html"] },
-    { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html"] },
+    { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html*"] },
+    { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html*"] },
+  ])
+})
+
+test("extensionBackgroundRouterCreate opens and retargets a full-window pane", async () => {
+  const context = routerCreate()
+
+  expect(await context.router.messageHandle({ type: "fullWindowOpen", pane: "generator" })).toEqual({
+    success: true,
+    data: { created: true, url: "chrome-extension://onewarden/fullwindow/index.html?pane=generator" },
+  })
+  context.fullWindowTabSet("chrome-extension://onewarden/fullwindow/index.html?pane=generator&q=mail&login=login-1")
+  expect(await context.router.messageHandle({ type: "fullWindowOpen", pane: "settings" })).toEqual({
+    success: true,
+    data: { created: false, url: "chrome-extension://onewarden/fullwindow/index.html?pane=settings" },
+  })
+  expect(context.focusedTabs).toEqual([
+    { id: 9, active: true, url: "chrome-extension://onewarden/fullwindow/index.html?pane=settings" },
   ])
 })
 
@@ -374,4 +406,22 @@ test("typed runtime settings save persists custom environment data for a full-wi
   } finally {
     chromeGlobal.chrome = previousChrome as typeof chromeGlobal.chrome
   }
+})
+
+test("extensionBackgroundRouterCreate loads and saves the typed lock policy messages", async () => {
+  const context = routerCreate()
+  const policy = { action: "logout" as const, timeoutMinutes: null }
+  const runtimeMessageSend = (message: unknown) =>
+    new Promise<unknown>((resolve) => context.listener(message, {}, resolve))
+
+  expect(await runtimeMessageSend({ type: "lockPolicySave", request: policy })).toEqual({ success: true, data: null })
+  expect(await runtimeMessageSend({ type: "lockPolicyLoad" })).toEqual({ success: true, data: policy })
+  expect(await context.router.messageHandle({ type: "lockPolicyLoad" })).toEqual({ success: true, data: policy })
+  expect(await context.router.messageHandle({ type: "viewModelLoad", surface: "fullwindow" })).toMatchObject({
+    success: true,
+    data: { lockPolicy: policy },
+  })
+  expect((await context.router.messageHandle({ type: "lockPolicySave", request: { action: "invalid" } })).success).toBe(
+    false,
+  )
 })

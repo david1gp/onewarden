@@ -22,6 +22,10 @@ export interface ExtensionPopupCommands {
   vaultLogout: () => void
   /** Open the full-window vault. */
   fullVaultOpen: () => void
+  /** Open the full-window password generator. */
+  generatorOpen: () => void
+  /** Open the full-window settings. */
+  settingsOpen: () => void
   /** Unlock from the locked state using the master password. */
   vaultUnlock: (masterPassword: string) => void
   /** Start the login flow from the logged-out state or log in with credentials. */

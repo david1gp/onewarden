@@ -1,6 +1,10 @@
+import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
+import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
+import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
@@ -29,6 +33,43 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       </header>
 
       <Separator />
+
+      <nav
+        aria-label="Extension navigation"
+        class="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900"
+      >
+        <ButtonIcon
+          variant="filledBlue"
+          size="sm"
+          icon={mdiLock}
+          aria-current="page"
+          disabled={state.busy()}
+          onClick={state.fullVaultOpen}
+          class="min-h-10 flex-1"
+        >
+          Vault
+        </ButtonIcon>
+        <ButtonIcon
+          variant="ghost"
+          size="sm"
+          icon={mdiKey}
+          disabled={state.busy()}
+          onClick={state.generatorOpen}
+          class="min-h-10 flex-1"
+        >
+          Generator
+        </ButtonIcon>
+        <ButtonIcon
+          variant="ghost"
+          size="sm"
+          icon={mdiCog}
+          disabled={state.busy()}
+          onClick={state.settingsOpen}
+          class="min-h-10 flex-1"
+        >
+          Settings
+        </ButtonIcon>
+      </nav>
 
       <Show when={state.isLoading()}>
         <div role="status" aria-label="Loading vault" class="flex justify-center py-6">
@@ -132,9 +173,6 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             Log out
           </Button>
         </Show>
-        <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.fullVaultOpen}>
-          Open full vault
-        </Button>
       </footer>
     </main>
   )

@@ -1,10 +1,15 @@
+import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
+import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
+import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import { ExtensionFullWindowGeneratorPane } from "./ExtensionFullWindowGeneratorPane.jsx"
 import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
 import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
@@ -27,38 +32,58 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         <Badge aria-label="Active site">{state.siteLabel()}</Badge>
       </header>
 
-      <nav aria-label="Vault navigation" class="flex flex-wrap gap-1">
-        <Button
-          variant={state.isVaultPane() ? "filled" : "outline"}
+      <nav
+        aria-label="Extension navigation"
+        class="flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900"
+      >
+        <ButtonIcon
+          variant={state.isVaultPane() ? "filledBlue" : "ghost"}
           size="sm"
+          icon={mdiLock}
           aria-current={state.isVaultPane() ? "page" : undefined}
           onClick={state.vaultPaneOpen}
+          class="min-h-10"
         >
           Vault
-        </Button>
-        <Button
-          variant={state.isSettingsPane() ? "filled" : "outline"}
+        </ButtonIcon>
+        <ButtonIcon
+          variant={state.isGeneratorPane() ? "filledBlue" : "ghost"}
           size="sm"
+          icon={mdiKey}
+          aria-current={state.isGeneratorPane() ? "page" : undefined}
+          onClick={state.generatorPaneOpen}
+          class="min-h-10"
+        >
+          Generator
+        </ButtonIcon>
+        <ButtonIcon
+          variant={state.isSettingsPane() ? "filledBlue" : "ghost"}
+          size="sm"
+          icon={mdiCog}
           aria-current={state.isSettingsPane() ? "page" : undefined}
           onClick={state.settingsPaneOpen}
+          class="min-h-10"
         >
           Settings
-        </Button>
-        <Button variant="outline" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
-          Add login
-        </Button>
-        <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
-          Sync
-        </Button>
-        <Show when={state.isReady()}>
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
-            Lock
+        </ButtonIcon>
+        <Show when={state.isVaultPane()}>
+          <span aria-hidden="true" class="mx-1 hidden h-6 w-px bg-slate-300 sm:block dark:bg-slate-700" />
+          <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
+            Add login
           </Button>
-        </Show>
-        <Show when={!state.isLoggedOut()}>
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
-            Log out
+          <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
+            Sync
           </Button>
+          <Show when={state.isReady()}>
+            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
+              Lock
+            </Button>
+          </Show>
+          <Show when={!state.isLoggedOut()}>
+            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
+              Log out
+            </Button>
+          </Show>
         </Show>
       </nav>
 
@@ -75,7 +100,23 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           isSelfHosted={state.isSelfHosted()}
           fieldSignal={state.environmentFieldSignal}
           onSave={state.environmentSave}
+          securityAvailable={state.securitySettingsAvailable()}
+          securityLoading={state.securitySettingsLoading()}
+          securitySaveStatus={state.securitySaveStatus()}
+          securityErrorMessage={state.securityErrorMessage()}
+          securityTimeoutSignal={state.securityTimeoutSignal}
+          securityTimeoutOptions={state.securityTimeoutOptions}
+          securityTimeoutLabel={state.securityTimeoutLabel}
+          securityActionSignal={state.securityActionSignal}
+          securityActionOptions={state.securityActionOptions}
+          securityActionLabel={state.securityActionLabel}
+          securityNeverSelected={state.securityNeverSelected()}
+          onSecuritySave={state.lockPolicySave}
         />
+      </Show>
+
+      <Show when={state.isGeneratorPane()}>
+        <ExtensionFullWindowGeneratorPane />
       </Show>
 
       <Show when={state.isVaultPane()}>

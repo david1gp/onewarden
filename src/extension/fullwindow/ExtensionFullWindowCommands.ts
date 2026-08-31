@@ -1,3 +1,4 @@
+import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
@@ -21,4 +22,5 @@ export interface ExtensionFullWindowCommands {
     environment?: ExtensionFullWindowEnvironmentSettings,
   ) => void
   environmentSave: (environment: ExtensionFullWindowEnvironmentSettings) => void
+  lockPolicySave: (policy: ExtensionLockPolicy) => void
 }

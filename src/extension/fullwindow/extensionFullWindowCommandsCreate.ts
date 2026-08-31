@@ -4,11 +4,13 @@ import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboard
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
+import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
+import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionHostPermissionRequest } from "./extensionHostPermissionRequest.js"
@@ -125,6 +127,43 @@ export function extensionFullWindowCommandsCreate(
     })
   }
 
+  const lockPolicySave = (policy: ExtensionLockPolicy) => {
+    onModelUpdate((prev) => ({
+      ...prev,
+      busy: true,
+      errorMessage: null,
+      securitySaveStatus: extensionFullWindowSecuritySaveStatus.saving,
+    }))
+    void sender({ type: "lockPolicySave", request: policy }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          securitySaveStatus: extensionFullWindowSecuritySaveStatus.error,
+          errorMessage: res.errorMessage ?? "Security settings save failed.",
+        }))
+        return
+      }
+      await onRefresh()
+      onModelUpdate((prev) => {
+        if (prev.status === "error") {
+          return {
+            ...prev,
+            busy: false,
+            securitySaveStatus: extensionFullWindowSecuritySaveStatus.error,
+            errorMessage: prev.errorMessage ?? "Security settings could not be refreshed.",
+          }
+        }
+        return {
+          ...prev,
+          busy: false,
+          securitySaveStatus: extensionFullWindowSecuritySaveStatus.saved,
+          errorMessage: null,
+        }
+      })
+    })
+  }
+
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
@@ -137,6 +176,7 @@ export function extensionFullWindowCommandsCreate(
     vaultUnlock: commonCommands.vaultUnlock,
     accountLogin,
     environmentSave,
+    lockPolicySave,
     ...overrides,
   }
 }

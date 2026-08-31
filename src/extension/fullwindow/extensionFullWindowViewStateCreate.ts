@@ -1,11 +1,13 @@
 import { createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
+import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import { extensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
@@ -18,6 +20,20 @@ const regionLabels: Record<string, string> = {
   eu: "Bitwarden EU",
   selfHosted: "Self-hosted",
 }
+
+const defaultLockPolicy: ExtensionLockPolicy = { action: "lock", timeoutMinutes: null }
+const timeoutOptions = ["1", "5", "15", "30", "60", "240", "never"]
+const timeoutLabels: Record<string, string> = {
+  "1": "1 minute",
+  "5": "5 minutes",
+  "15": "15 minutes",
+  "30": "30 minutes",
+  "60": "1 hour",
+  "240": "4 hours",
+  never: "Never",
+}
+const actionOptions = ["lock", "logout"]
+const actionLabels: Record<string, string> = { lock: "Lock", logout: "Log out" }
 
 /** Component-local view state and command glue for the full-window vault. */
 export function extensionFullWindowViewStateCreate(
@@ -33,6 +49,8 @@ export function extensionFullWindowViewStateCreate(
 
   const environmentSignal = createSignalObject(extensionFullWindowEnvironmentSettingsCreate())
   const environmentTouchedSignal = createSignalObject(false)
+  const securitySignal = createSignalObject<ExtensionLockPolicy>(defaultLockPolicy)
+  const securityTouchedSignal = createSignalObject(false)
 
   const status = createMemo(() => model().status)
   const hostname = createMemo(() => model().hostname)
@@ -43,6 +61,7 @@ export function extensionFullWindowViewStateCreate(
     environmentSaveStatus() === extensionFullWindowEnvironmentSaveStatus.error ? errorMessage() : null,
   )
   const fillAvailable = createMemo(() => model().fillAvailable)
+  const lockPolicy = createMemo(() => model().lockPolicy)
 
   const isLoading = createMemo(() => status() === extensionFullWindowStatus.loading)
   const isLocked = createMemo(() => status() === extensionFullWindowStatus.locked)
@@ -50,8 +69,20 @@ export function extensionFullWindowViewStateCreate(
   const isError = createMemo(() => status() === extensionFullWindowStatus.error)
   const isReady = createMemo(() => status() === extensionFullWindowStatus.ready)
 
+  const securitySaveStatus = createMemo(() => model().securitySaveStatus)
+  const securityErrorMessage = createMemo(() => {
+    if (securitySaveStatus() === extensionFullWindowSecuritySaveStatus.error || isError()) return errorMessage()
+    return null
+  })
+  const securitySettingsLoading = createMemo(() => isLoading())
+  const securitySettingsAvailable = createMemo(() => !isLoading() && !isError())
+  const securityPolicy = createMemo(() =>
+    securityTouchedSignal.get() ? securitySignal.get() : (lockPolicy() ?? defaultLockPolicy),
+  )
+
   const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
-  const isVaultPane = createMemo(() => !isSettingsPane())
+  const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
+  const isVaultPane = createMemo(() => !isGeneratorPane() && !isSettingsPane())
 
   const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
   const siteFilterAvailable = createMemo(() => hostname() !== null)
@@ -78,6 +109,30 @@ export function extensionFullWindowViewStateCreate(
   const regionOptions = () => Object.keys(extensionFullWindowRegion)
   const regionLabel = (region: string) => regionLabels[region] ?? region
 
+  const securityTimeoutSignal = {
+    get: () => securityPolicy().timeoutMinutes?.toString() ?? "never",
+    set: (value: string) => {
+      securitySignal.set({
+        ...securityPolicy(),
+        timeoutMinutes: value === "never" ? null : Number(value),
+      })
+      securityTouchedSignal.set(true)
+    },
+  }
+  const securityActionSignal = {
+    get: () => securityPolicy().action,
+    set: (value: string) => {
+      if (value !== "lock" && value !== "logout") return
+      securitySignal.set({ ...securityPolicy(), action: value })
+      securityTouchedSignal.set(true)
+    },
+  }
+  const securityTimeoutOptions = () => timeoutOptions
+  const securityTimeoutLabel = (value: string) => timeoutLabels[value] ?? value
+  const securityActionOptions = () => actionOptions
+  const securityActionLabel = (value: string) => actionLabels[value] ?? value
+  const securityNeverSelected = createMemo(() => securityPolicy().timeoutMinutes === null)
+
   const environmentFieldSignal = (
     field: "base" | "webVault" | "api" | "identity" | "icons" | "notifications" | "events",
   ) => ({
@@ -96,6 +151,7 @@ export function extensionFullWindowViewStateCreate(
   const loginSelect = (login: ExtensionFullWindowLogin) => selectedLoginIdSignal.set(login.id)
   const loginDeselect = () => selectedLoginIdSignal.set("")
   const vaultPaneOpen = () => paneSignal.set(extensionFullWindowPane.vault)
+  const generatorPaneOpen = () => paneSignal.set(extensionFullWindowPane.generator)
   const settingsPaneOpen = () => paneSignal.set(extensionFullWindowPane.settings)
   const siteOnlyToggle = () => siteOnlySignal.set(siteOnly() ? "" : "1")
 
@@ -119,6 +175,7 @@ export function extensionFullWindowViewStateCreate(
     commands().accountLogin({ email, password }, environment())
   }
   const environmentSave = () => commands().environmentSave(environment())
+  const lockPolicySave = () => commands().lockPolicySave(securityPolicy())
 
   const vaultUnlock = () => {
     const masterPassword = masterPasswordSignal.get()
@@ -146,6 +203,18 @@ export function extensionFullWindowViewStateCreate(
     environmentSaveErrorMessage,
     busy,
     fillAvailable,
+    lockPolicy,
+    securitySaveStatus,
+    securityErrorMessage,
+    securitySettingsLoading,
+    securitySettingsAvailable,
+    securityTimeoutSignal,
+    securityTimeoutOptions,
+    securityTimeoutLabel,
+    securityActionSignal,
+    securityActionOptions,
+    securityActionLabel,
+    securityNeverSelected,
     isLoading,
     isLocked,
     isLoggedOut,
@@ -154,8 +223,10 @@ export function extensionFullWindowViewStateCreate(
     isEmpty,
     hasNoLogins,
     isVaultPane,
+    isGeneratorPane,
     isSettingsPane,
     vaultPaneOpen,
+    generatorPaneOpen,
     settingsPaneOpen,
     visibleLogins,
     selectedLogin,
@@ -174,5 +245,6 @@ export function extensionFullWindowViewStateCreate(
     vaultUnlock,
     accountLogin,
     environmentSave,
+    lockPolicySave,
   }
 }

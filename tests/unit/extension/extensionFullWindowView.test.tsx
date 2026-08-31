@@ -336,6 +336,118 @@ test("extensionFullWindowView saves region, base and independent service overrid
   root.unmount()
 })
 
+test("extensionFullWindowView loads the persisted vault timeout policy", () => {
+  const root = fullWindowRender({
+    status: "ready",
+    lockPolicy: { timeoutMinutes: 60, action: "logout" },
+  })
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+
+  expect((root.getByLabelText("Vault timeout") as HTMLSelectElement).value).toBe("60")
+  expect(root.getByRole("radio", { name: "Log out" }).getAttribute("aria-checked")).toBe("true")
+  expect(root.queryByText(/With Never selected/)).toBeNull()
+
+  root.unmount()
+})
+
+test("extensionFullWindowView saves minute and logout timeout choices", () => {
+  const saved: unknown[] = []
+  const root = fullWindowRender(
+    { status: "ready", lockPolicy: { timeoutMinutes: 15, action: "lock" } },
+    { lockPolicySave: (policy) => saved.push(policy) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  fireEvent.change(root.getByLabelText("Vault timeout"), { target: { value: "240" } })
+  fireEvent.click(root.getByRole("radio", { name: "Log out" }))
+  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
+
+  expect(saved).toEqual([{ timeoutMinutes: 240, action: "logout" }])
+
+  root.unmount()
+})
+
+test("extensionFullWindowView represents Never as a null timeout and explains its risk", () => {
+  const saved: unknown[] = []
+  const root = fullWindowRender(
+    { status: "ready", lockPolicy: { timeoutMinutes: 5, action: "lock" } },
+    { lockPolicySave: (policy) => saved.push(policy) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  fireEvent.change(root.getByLabelText("Vault timeout"), { target: { value: "never" } })
+
+  expect(root.getByText(/With Never selected/)).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
+  expect(saved).toEqual([{ timeoutMinutes: null, action: "lock" }])
+
+  root.unmount()
+})
+
+test("extensionFullWindowView shows security loading and save result states", async () => {
+  const loading = fullWindowRender({ status: "loading" })
+  fireEvent.click(loading.getByRole("button", { name: "Settings" }))
+  expect(loading.getByRole("status").textContent).toContain("Loading security settings")
+  expect(loading.queryByLabelText("Vault timeout")).toBeNull()
+  loading.unmount()
+
+  const modelSignal = createSignalObject(
+    extensionFullWindowViewModelCreate({
+      status: "ready",
+      lockPolicy: { timeoutMinutes: 30, action: "lock" },
+    }),
+  )
+  const sent: unknown[] = []
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async (message) => {
+        sent.push(message)
+        return resultCreate(undefined)
+      },
+      onModelUpdate: (updater) => modelSignal.set(updater(modelSignal.get())),
+    },
+  )
+  const root = render(() => <ExtensionFullWindowView model={modelSignal.get} commands={commands} />)
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
+  expect((root.getByRole("button", { name: "Saving security settings…" }) as HTMLButtonElement).disabled).toBe(true)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(sent).toEqual([{ type: "lockPolicySave", request: { timeoutMinutes: 30, action: "lock" } }])
+  expect(root.getByRole("status").textContent).toContain("Security settings saved")
+
+  root.unmount()
+})
+
+test("extensionFullWindowView surfaces security save errors", async () => {
+  const modelSignal = createSignalObject(
+    extensionFullWindowViewModelCreate({
+      status: "ready",
+      lockPolicy: { timeoutMinutes: null, action: "lock" },
+    }),
+  )
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async () => resultErrorCreate("extensionBackgroundRouter.lockPolicySave", "Policy storage failed."),
+      onModelUpdate: (updater) => modelSignal.set(updater(modelSignal.get())),
+    },
+  )
+  const root = render(() => <ExtensionFullWindowView model={modelSignal.get} commands={commands} />)
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(root.getByRole("alert").textContent).toContain("Policy storage failed.")
+  expect((root.getByRole("button", { name: "Save security settings" }) as HTMLButtonElement).disabled).toBe(false)
+
+  root.unmount()
+})
+
 test("extensionFullWindowView re-enables settings and surfaces a save error after the bridge responds", async () => {
   const modelSignal = createSignalObject(extensionFullWindowViewModelCreate({ status: "ready" }))
   const commands = extensionFullWindowCommandsCreate(
@@ -375,4 +487,65 @@ test("extensionFullWindowView switches between the vault and settings panes", ()
   expect(root.queryByLabelText("Server settings")).toBeNull()
 
   root.unmount()
+})
+
+test("extensionFullWindowView navigates among URL-backed vault, generator and settings panes", async () => {
+  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
+
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  expect(root.getByRole("heading", { name: "Password Generator" })).toBeDefined()
+  expect(root.queryByLabelText("Search logins")).toBeNull()
+  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(new URLSearchParams(window.location.search).get("pane")).toBe("generator")
+
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  expect(root.getByLabelText("Server settings")).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Vault" }))
+  expect(root.getByLabelText("Search logins")).toBeDefined()
+
+  root.unmount()
+})
+
+test("extensionFullWindowGeneratorPane updates useful generation controls", () => {
+  const root = fullWindowRender({ status: "loggedOut" })
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  const password = root.getByLabelText("Generated password") as HTMLInputElement
+
+  expect(password.value).toHaveLength(20)
+  fireEvent.input(root.getByLabelText("Password length slider"), { target: { value: "32" } })
+  expect(password.value).toHaveLength(32)
+
+  fireEvent.click(root.getByLabelText(/Uppercase/))
+  fireEvent.click(root.getByLabelText(/Numbers/))
+  fireEvent.click(root.getByLabelText(/Symbols/))
+  fireEvent.click(root.getByRole("button", { name: "Regenerate password" }))
+  expect(password.value).toMatch(/^[a-z]{32}$/)
+  expect((root.getByLabelText(/Lowercase/) as HTMLInputElement).disabled).toBe(true)
+
+  fireEvent.click(root.getByRole("button", { name: "Show" }))
+  expect(password.type).toBe("text")
+  expect(root.getByRole("button", { name: "Hide" }).getAttribute("aria-pressed")).toBe("true")
+
+  root.unmount()
+})
+
+test("extensionFullWindowGeneratorPane copies the generated password", async () => {
+  const copied: string[] = []
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async (value: string) => copied.push(value) },
+  })
+  const root = fullWindowRender({ status: "loggedOut" })
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  const password = root.getByLabelText("Generated password") as HTMLInputElement
+
+  fireEvent.click(root.getByRole("button", { name: "Copy" }))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(copied).toEqual([password.value])
+  expect(root.getByRole("button", { name: "Copied" })).toBeDefined()
+
+  root.unmount()
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
 })

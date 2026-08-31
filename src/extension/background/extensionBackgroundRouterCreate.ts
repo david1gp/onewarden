@@ -23,6 +23,7 @@ import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskey
 import type { ExtensionPopupLogin } from "../popup/ExtensionPopupLogin.js"
 import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
 import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
+import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import { type ExtensionActiveTabContext, extensionActiveTabContextSchema } from "./extensionActiveTabContextSchema.js"
 import type { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
@@ -43,6 +44,8 @@ type ExtensionBackgroundService = Pick<
   | "syncSnapshotLoad"
   | "lock"
   | "logout"
+  | "lockPolicyLoad"
+  | "lockPolicySave"
   | "passkeyConsentContextCreate"
   | "passkeyCredentialCreate"
   | "passkeyAssertion"
@@ -324,18 +327,24 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     return resultCreate(parsed.output)
   }
 
-  const fullWindowOpen = async (): Promise<Result<{ created: boolean; url: string }>> => {
+  const fullWindowOpen = async (
+    pane?: "vault" | "generator" | "settings",
+  ): Promise<Result<{ created: boolean; url: string }>> => {
     const op = "extensionBackgroundRouter.fullWindowOpen"
     let url: string
     try {
-      url = options.runtime.getURL(options.fullWindowPath ?? "fullwindow/index.html")
+      const baseUrl = options.runtime.getURL(options.fullWindowPath ?? "fullwindow/index.html")
+      url = pane === undefined ? baseUrl : `${baseUrl}?pane=${pane}`
     } catch {
       return unavailable(op, "Full-window URL could not be resolved.")
     }
 
     let contexts: Awaited<ReturnType<ExtensionRuntimeAdapter["getContexts"]>>
     try {
-      contexts = await options.runtime.getContexts({ documentUrls: [url] })
+      const baseUrl = options.runtime.getURL(options.fullWindowPath ?? "fullwindow/index.html")
+      contexts = await options.runtime.getContexts({
+        documentUrls: [`${baseUrl}*`],
+      })
     } catch {
       return unavailable(op, "Full-window page could not be located.")
     }
@@ -344,7 +353,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     )
     if (existingContext !== undefined) {
       try {
-        await options.tabs.update(existingContext.tabId, { active: true })
+        await options.tabs.update(existingContext.tabId, { active: true, ...(pane === undefined ? {} : { url }) })
         await options.windows.update(existingContext.windowId, { focused: true })
       } catch {
         return unavailable(op, "Full-window page could not be focused.")
@@ -368,6 +377,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!contextResult.success) return contextResult
     const environmentResult = await options.storage.environmentSettingsLoad()
     if (!environmentResult.success) return environmentResult
+    const lockPolicyResult = surface === "fullwindow" ? await options.service.lockPolicyLoad() : resultCreate(null)
+    if (!lockPolicyResult.success) return lockPolicyResult
     const authResult = await options.storage.authSessionLoad()
     if (!authResult.success) return authResult
     const stateResult = await options.storage.sessionStateLoad()
@@ -385,14 +396,26 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       return resultCreate(
         surface === "popup"
           ? extensionPopupViewModelCreate({ ...shared, status: "loggedOut", logins: [] })
-          : extensionFullWindowViewModelCreate({ ...shared, status: "loggedOut", logins: [], environment }),
+          : extensionFullWindowViewModelCreate({
+              ...shared,
+              status: "loggedOut",
+              logins: [],
+              environment,
+              lockPolicy: lockPolicyResult.data,
+            }),
       )
     }
     if (stateResult.data === null) {
       return resultCreate(
         surface === "popup"
           ? extensionPopupViewModelCreate({ ...shared, status: "locked", logins: [] })
-          : extensionFullWindowViewModelCreate({ ...shared, status: "locked", logins: [], environment }),
+          : extensionFullWindowViewModelCreate({
+              ...shared,
+              status: "locked",
+              logins: [],
+              environment,
+              lockPolicy: lockPolicyResult.data,
+            }),
       )
     }
 
@@ -404,7 +427,13 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return resultCreate(
           surface === "popup"
             ? extensionPopupViewModelCreate({ ...shared, status: "locked", logins: [] })
-            : extensionFullWindowViewModelCreate({ ...shared, status: "locked", logins: [], environment }),
+            : extensionFullWindowViewModelCreate({
+                ...shared,
+                status: "locked",
+                logins: [],
+                environment,
+                lockPolicy: lockPolicyResult.data,
+              }),
         )
       }
       return snapshotResult
@@ -423,6 +452,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
             status: "ready",
             logins,
             environment,
+            lockPolicy: lockPolicyResult.data,
           }),
     )
   }
@@ -493,6 +523,12 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!sourceResult.success) return sourceResult
     return options.storage.environmentSettingsSave(sourceResult.data)
   }
+
+  const lockPolicyLoad = (): Promise<Result<ExtensionLockPolicy | null>> => options.service.lockPolicyLoad()
+
+  const lockPolicySave = (
+    request: Extract<ExtensionRuntimeMessage, { type: "lockPolicySave" }>["request"],
+  ): Promise<Result<void>> => options.service.lockPolicySave(request)
 
   const lock = async (): Promise<Result<void>> => {
     const initializeResult = await initialize()
@@ -613,6 +649,10 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         if (!requestResult.success) return requestResult
         return environmentSave(requestResult.data)
       }
+      case "lockPolicyLoad":
+        return lockPolicyLoad()
+      case "lockPolicySave":
+        return lockPolicySave(message.request)
       case "lock":
         return lock()
       case "logout":
@@ -624,7 +664,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       case "totpCopy":
         return totpCopy(message.request)
       case "fullWindowOpen":
-        return fullWindowOpen()
+        return fullWindowOpen(message.pane)
       case "passkeyConsentContext":
         return passkeyConsentContextCreate(message.request)
       case "passkeyCredentialCreate":
@@ -661,7 +701,6 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     _sender: unknown,
     sendResponse: (response: unknown) => void,
   ): boolean => {
-    if (extensionWebAuthnBridgeMessageRecognized(_message)) return false
     void messageHandle(_message).then(
       (response) => {
         const wireResponse = response.success && response.data === undefined ? { ...response, data: null } : response
@@ -677,12 +716,6 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     return true
   }
 
-  function extensionWebAuthnBridgeMessageRecognized(value: unknown): boolean {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) return false
-    const type = (value as Record<string, unknown>).type
-    return type === "webauthnBridgeRequest" || type === "webauthnBridgeAbort"
-  }
-
   options.runtime.onMessageAddListener(runtimeMessageReceive)
 
   return {
@@ -691,6 +724,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     fullWindowOpen,
     viewModelLoad,
     messageHandle,
+    lockPolicyLoad,
+    lockPolicySave,
     passkeyConsentContextCreate,
     passkeyCredentialCreate,
     passkeyAssertion,

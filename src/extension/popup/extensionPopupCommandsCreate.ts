@@ -41,11 +41,19 @@ export function extensionPopupCommandsCreate(
   })
 
   const loginAdd = () => {
-    void sender({ type: "fullWindowOpen" })
+    void sender({ type: "fullWindowOpen", pane: "vault" })
   }
 
   const fullVaultOpen = () => {
-    void sender({ type: "fullWindowOpen" })
+    void sender({ type: "fullWindowOpen", pane: "vault" })
+  }
+
+  const generatorOpen = () => {
+    void sender({ type: "fullWindowOpen", pane: "generator" })
+  }
+
+  const settingsOpen = () => {
+    void sender({ type: "fullWindowOpen", pane: "settings" })
   }
 
   const accountLogin = (credentials?: { email: string; password: string }) => {
@@ -60,7 +68,7 @@ export function extensionPopupCommandsCreate(
       })
       return
     }
-    void sender({ type: "fullWindowOpen" })
+    void sender({ type: "fullWindowOpen", pane: "vault" })
   }
 
   return {
@@ -72,6 +80,8 @@ export function extensionPopupCommandsCreate(
     vaultLock: commonCommands.vaultLock,
     vaultLogout: commonCommands.vaultLogout,
     fullVaultOpen,
+    generatorOpen,
+    settingsOpen,
     vaultUnlock: commonCommands.vaultUnlock,
     accountLogin,
     ...overrides,

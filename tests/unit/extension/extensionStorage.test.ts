@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
-import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { type ExtensionAuthSession } from "../../../src/extension/storage/extensionAuthSessionStorageSchema.js"
 import { type ExtensionCreateDraft } from "../../../src/extension/storage/extensionCreateDraftStorageSchema.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
+import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
+import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
 import { extensionStorageKeys } from "../../../src/extension/storage/extensionStorageKeys.js"
 import type { ExtensionSyncStorage } from "../../../src/extension/storage/extensionSyncStorageSchema.js"
@@ -159,6 +159,18 @@ test("extensionStorageCreate locks only the unlock state and logout clears sessi
   expect(local.values.has(extensionStorageKeys.createDrafts)).toBe(false)
   expect(await storage.environmentSettingsLoad()).toEqual({ success: true, data: "us" })
   expect(await storage.lockPolicyLoad()).toEqual({ success: true, data: { action: "logout", timeoutMinutes: 15 } })
+})
+
+test("extensionStorageCreate loads and saves both lock actions, including the Never timeout", async () => {
+  const { storage } = storageCreate()
+
+  for (const policy of [
+    { action: "lock" as const, timeoutMinutes: 1 },
+    { action: "logout" as const, timeoutMinutes: null },
+  ]) {
+    expect(await storage.lockPolicySave(policy)).toEqual({ success: true, data: undefined })
+    expect(await storage.lockPolicyLoad()).toEqual({ success: true, data: policy })
+  }
 })
 
 test("extensionStorageCreate converts storage failures into Results", async () => {

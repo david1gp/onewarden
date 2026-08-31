@@ -1,7 +1,9 @@
 import * as v from "valibot"
+import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
 import { extensionLoginFillRequestSchema } from "../fill/extensionLoginFillRequestSchema.js"
 import { extensionPasskeyAssertionRequestSchema } from "../passkey/extensionPasskeyAssertionRequestSchema.js"
 import { extensionPasskeyCredentialCreateRequestSchema } from "../passkey/extensionPasskeyCredentialCreateRequestSchema.js"
+import { extensionLockPolicyRequestSchema } from "../storage/extensionLockPolicyRequestSchema.js"
 
 const extensionRuntimeSurfaceSchema = v.picklist(["popup", "fullwindow"])
 
@@ -26,6 +28,8 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
     ]),
   }),
   v.strictObject({ type: v.literal("environmentSave"), request: v.unknown() }),
+  v.strictObject({ type: v.literal("lockPolicyLoad") }),
+  v.strictObject({ type: v.literal("lockPolicySave"), request: extensionLockPolicyRequestSchema }),
   v.strictObject({ type: v.literal("lock") }),
   v.strictObject({ type: v.literal("logout") }),
   v.strictObject({ type: v.literal("activeTabContextLookup") }),
@@ -34,7 +38,10 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
     type: v.literal("totpCopy"),
     request: v.strictObject({ loginId: v.pipe(v.string(), v.minLength(1)) }),
   }),
-  v.strictObject({ type: v.literal("fullWindowOpen") }),
+  v.strictObject({
+    type: v.literal("fullWindowOpen"),
+    pane: v.optional(v.picklist(Object.values(extensionFullWindowPane))),
+  }),
   v.strictObject({ type: v.literal("passkeyConsentContext"), request: v.unknown() }),
   v.strictObject({
     type: v.literal("passkeyCredentialCreate"),

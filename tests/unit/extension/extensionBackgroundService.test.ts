@@ -9,14 +9,14 @@ import type { ExtensionStorageAdapter } from "../../../src/extension/storage/ext
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
 import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
+import type { BitwardenEncryptedLoginCipher } from "../../../src/shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../../src/shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../../src/shared/api/bitwardenPreloginResponseSchema.js"
 import type { BitwardenRefreshTokenResponse } from "../../../src/shared/api/bitwardenRefreshTokenResponseSchema.js"
 import type { BitwardenSyncEnvelope } from "../../../src/shared/api/bitwardenSyncEnvelopeSchema.js"
-import type { BitwardenEncryptedLoginCipher } from "../../../src/shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
-import organizationFixture from "../../fixtures/extensionOrganizationFixtures.json"
 import fixtures from "../../fixtures/extensionCryptoFixtures.json"
+import organizationFixture from "../../fixtures/extensionOrganizationFixtures.json"
 
 const passwordLogin = fixtures.passwordLogin
 const userKey = Uint8Array.from({ length: 64 }, (_, index) => index)
@@ -377,9 +377,16 @@ test("extensionBackgroundServiceCreate applies inactivity and restart lock/logou
   })
 
   expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const unlockedAt = now
+  now += 30_000
   expect((await service.lockPolicySave({ action: "lock", timeoutMinutes: 1 })).success).toBe(true)
-  expect(context.alarmCalls.at(-1)).toEqual({ name: extensionTimeoutAlarmName, delayInMinutes: 1 })
-  now += 60_000
+  expect(await service.lockPolicyLoad()).toEqual({ success: true, data: { action: "lock", timeoutMinutes: 1 } })
+  expect(context.alarmCalls.at(-1)).toEqual({ name: extensionTimeoutAlarmName, delayInMinutes: 0.5 })
+  expect(await context.storage.sessionStateLoad()).toEqual({
+    success: true,
+    data: { status: "unlocked", unlockedAt },
+  })
+  now = unlockedAt + 60_000
   expect((await service.timeoutAlarmHandle({ name: extensionTimeoutAlarmName })).success).toBe(true)
   expect(context.vaultSession.isUnlocked()).toBe(false)
   const lockedAuth = await context.storage.authSessionLoad()

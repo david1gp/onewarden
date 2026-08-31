@@ -47,6 +47,8 @@ export function extensionPopupViewStateCreate(
   const vaultLock = () => commands().vaultLock()
   const vaultLogout = () => commands().vaultLogout()
   const fullVaultOpen = () => commands().fullVaultOpen()
+  const generatorOpen = () => commands().generatorOpen()
+  const settingsOpen = () => commands().settingsOpen()
   const accountLogin = () => commands().accountLogin()
 
   const vaultUnlock = () => {
@@ -82,6 +84,8 @@ export function extensionPopupViewStateCreate(
     vaultLock,
     vaultLogout,
     fullVaultOpen,
+    generatorOpen,
+    settingsOpen,
     vaultUnlock,
     accountLogin,
   }

@@ -6,6 +6,7 @@ import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwi
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
 import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
+import type { ExtensionLockPolicy } from "../../../src/extension/storage/extensionLockPolicySchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
@@ -31,6 +32,8 @@ const testEnvSettings: ExtensionFullWindowEnvironmentSettings = {
   notifications: "https://vaultwarden.local/notifications",
   events: "https://vaultwarden.local/events",
 }
+
+const testLockPolicy: ExtensionLockPolicy = { action: "lock", timeoutMinutes: 15 }
 
 test("full-window commands delegate normal create and edit actions to secure web handoffs", async () => {
   const sentMessages: ExtensionRuntimeMessage[] = []
@@ -97,6 +100,60 @@ test("full-window commands send typed runtime messages for environment save and 
     request: { email: "user@example.com", password: "mypassword" },
   })
   expect(refreshCalls).toBe(2)
+})
+
+test("full-window commands send the typed lock policy save message and refresh", async () => {
+  const sentMessages: ExtensionRuntimeMessage[] = []
+  let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
+  let refreshCalls = 0
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async (message) => {
+        sentMessages.push(message)
+        return resultCreate(undefined)
+      },
+      onModelUpdate: (updater) => {
+        currentModel = updater(currentModel)
+      },
+      onRefresh: async () => {
+        refreshCalls += 1
+      },
+    },
+  )
+
+  commands.lockPolicySave(testLockPolicy)
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  expect(sentMessages).toEqual([{ type: "lockPolicySave", request: testLockPolicy }])
+  expect(refreshCalls).toBe(1)
+  expect(currentModel.busy).toBe(false)
+})
+
+test("full-window commands surface a lock policy refresh failure", async () => {
+  let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      messageSend: async () => resultCreate(undefined),
+      onModelUpdate: (updater) => {
+        currentModel = updater(currentModel)
+      },
+      onRefresh: async () => {
+        currentModel = { ...currentModel, status: "error", errorMessage: "Policy reload failed." }
+      },
+    },
+  )
+
+  commands.lockPolicySave(testLockPolicy)
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  expect(currentModel).toMatchObject({
+    status: "error",
+    busy: false,
+    securitySaveStatus: "error",
+    errorMessage: "Policy reload failed.",
+  })
 })
 
 test("full-window commands copy fields using clipboard adapter and manage timeout feedback", async () => {

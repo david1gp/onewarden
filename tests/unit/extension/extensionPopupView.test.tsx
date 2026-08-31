@@ -215,7 +215,7 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView exposes add, sync, lock, logout and full vault commands", () => {
+test("extensionPopupView exposes current vault, generator, settings, and vault commands", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
@@ -225,14 +225,18 @@ test("extensionPopupView exposes add, sync, lock, logout and full vault commands
       vaultLock: () => calls.push("lock"),
       vaultLogout: () => calls.push("logout"),
       fullVaultOpen: () => calls.push("full"),
+      generatorOpen: () => calls.push("generator"),
+      settingsOpen: () => calls.push("settings"),
     },
   )
 
-  for (const name of ["Add login", "Sync", "Lock", "Log out", "Open full vault"]) {
+  expect(root.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBe("page")
+
+  for (const name of ["Vault", "Generator", "Settings", "Add login", "Sync", "Lock", "Log out"]) {
     fireEvent.click(root.getByRole("button", { name }))
   }
 
-  expect(calls).toEqual(["add", "sync", "lock", "logout", "full"])
+  expect(calls).toEqual(["full", "generator", "settings", "add", "sync", "lock", "logout"])
 
   root.unmount()
 })

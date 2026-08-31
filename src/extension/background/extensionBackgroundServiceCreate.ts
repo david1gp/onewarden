@@ -699,9 +699,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     operationRun(async () => {
       const saveResult = await options.storage.lockPolicySave(policy)
       if (!saveResult.success) return saveResult
-      if (options.vaultSession.isUnlocked()) return activityRun()
       return timeoutReconcile()
     })
+
+  const lockPolicyLoad = (): Promise<Result<ExtensionLockPolicy | null>> =>
+    operationRun(() => options.storage.lockPolicyLoad())
 
   const activity = (): Promise<Result<void>> => operationRun(activityRun)
 
@@ -1043,6 +1045,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     unlock,
     lock,
     logout,
+    lockPolicyLoad,
     lockPolicySave,
     activity,
     passkeyConsentContextCreate,

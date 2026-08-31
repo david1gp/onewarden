@@ -49,16 +49,22 @@ test("popup commands send typed runtime messages for fill, sync, lock, logout, a
   expect(sentMessages[3]).toEqual({ type: "logout" })
 
   commands.fullVaultOpen()
-  expect(sentMessages[4]).toEqual({ type: "fullWindowOpen" })
+  expect(sentMessages[4]).toEqual({ type: "fullWindowOpen", pane: "vault" })
+
+  commands.generatorOpen()
+  expect(sentMessages[5]).toEqual({ type: "fullWindowOpen", pane: "generator" })
+
+  commands.settingsOpen()
+  expect(sentMessages[6]).toEqual({ type: "fullWindowOpen", pane: "settings" })
 
   commands.loginAdd()
-  expect(sentMessages[5]).toEqual({ type: "fullWindowOpen" })
+  expect(sentMessages[7]).toEqual({ type: "fullWindowOpen", pane: "vault" })
 
   commands.accountLogin()
-  expect(sentMessages[6]).toEqual({ type: "fullWindowOpen" })
+  expect(sentMessages[8]).toEqual({ type: "fullWindowOpen", pane: "vault" })
 
   commands.vaultUnlock("secret123")
-  expect(sentMessages[7]).toEqual({ type: "unlock", request: { password: "secret123" } })
+  expect(sentMessages[9]).toEqual({ type: "unlock", request: { password: "secret123" } })
 
   // Allow promises to resolve
   await new Promise((r) => setTimeout(r, 10))

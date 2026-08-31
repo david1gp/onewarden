@@ -1,4 +1,5 @@
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
+import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import { extensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
@@ -17,6 +18,8 @@ export function extensionFullWindowViewModelCreate(
     fillAvailable: false,
     environment: extensionFullWindowEnvironmentSettingsCreate(),
     environmentSaveStatus: extensionFullWindowEnvironmentSaveStatus.idle,
+    lockPolicy: null,
+    securitySaveStatus: extensionFullWindowSecuritySaveStatus.idle,
     ...overrides,
   }
 }
