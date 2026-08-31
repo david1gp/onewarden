@@ -3,12 +3,16 @@ import { extensionBackgroundApiClientCreate } from "./extensionBackgroundApiClie
 import { extensionBackgroundRouterCreate } from "./extensionBackgroundRouterCreate.js"
 import { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
 import { extensionScriptingAdapterCreate } from "./extensionScriptingAdapterCreate.js"
+import { extensionWebAuthnBackgroundBridgeCreate } from "../webauthn/extensionWebAuthnBackgroundBridgeCreate.js"
+import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
+import { extensionWebAuthnOriginValidate } from "../webauthn/extensionWebAuthnOriginValidate.js"
 import type { ExtensionRuntimeAdapter } from "./extensionRuntimeAdapter.js"
 import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
 import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
 import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
+import { extensionPasskeyConsentUiCreate } from "../passkey/extensionPasskeyConsentUiCreate.js"
 
 /** Entry point of the MV3 service worker. Listener registration stays synchronous. */
 export function extensionBackgroundStart(): void {
@@ -48,7 +52,13 @@ export function extensionBackgroundStart(): void {
     update: async (windowId, updateInfo) => {
       await chrome.windows.update(windowId, updateInfo)
     },
+    onRemovedAddListener: (listener) => chrome.windows.onRemoved.addListener(listener),
   }
+  const passkeyConsentUi = extensionPasskeyConsentUiCreate({
+    service,
+    windows,
+    urlCreate: runtime.getURL,
+  })
 
   const router = extensionBackgroundRouterCreate({
     storage,
@@ -57,9 +67,25 @@ export function extensionBackgroundStart(): void {
     windows,
     scripting: extensionScriptingAdapterCreate(chrome.scripting),
     service,
+    passkeyConsentUi,
   })
   void router.initialize().then((result) => {
     if (!result.success) console.error(result.errorMessage)
+  })
+  extensionWebAuthnBackgroundBridgeCreate({
+    service,
+    runtime,
+    initialize: router.initialize,
+    oneWardenOriginsRead: async () => {
+      const configuredResult = await storage.environmentSettingsLoad()
+      if (!configuredResult.success) return ["https://onewarden.contentoren.de"]
+      const environmentResult = extensionEnvironmentResolve(configuredResult.data ?? "us")
+      if (!environmentResult.success) return ["https://onewarden.contentoren.de"]
+      const webVaultOriginResult = extensionWebAuthnOriginValidate(environmentResult.data.webVault)
+      if (!webVaultOriginResult.success) return ["https://onewarden.contentoren.de"]
+      return ["https://onewarden.contentoren.de", webVaultOriginResult.data.origin]
+    },
+    consentResolve: passkeyConsentUi.open,
   })
   chrome.runtime.onInstalled.addListener(() => {
     console.info("OneWarden extension installed")

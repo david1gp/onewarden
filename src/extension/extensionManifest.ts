@@ -15,12 +15,32 @@ export const extensionManifest = defineManifest({
     service_worker: "background/extensionBackgroundStart.ts",
     type: "module",
   },
+  content_scripts: [
+    {
+      matches: ["https://*/*", "http://localhost/*"],
+      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      js: ["webauthn/extensionWebAuthnPageBridge.ts"],
+      run_at: "document_start",
+      all_frames: false,
+      world: "MAIN",
+    },
+    {
+      matches: ["https://*/*", "http://localhost/*"],
+      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      js: ["webauthn/extensionWebAuthnContentBridge.ts"],
+      run_at: "document_start",
+      all_frames: false,
+      world: "ISOLATED",
+    },
+  ],
   permissions: ["storage", "alarms", "activeTab", "scripting"],
   host_permissions: [
     "https://api.bitwarden.com/*",
     "https://identity.bitwarden.com/*",
     "https://api.bitwarden.eu/*",
     "https://identity.bitwarden.eu/*",
+    "https://*/*",
+    "http://localhost/*",
   ],
   optional_host_permissions: ["http://*/*", "https://*/*"],
 })

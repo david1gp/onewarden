@@ -13,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         fullwindow: "fullwindow/index.html",
+        passkeyConsent: "passkey-consent/index.html",
       },
     },
   },

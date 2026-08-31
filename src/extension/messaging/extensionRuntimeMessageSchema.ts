@@ -41,6 +41,30 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
     request: extensionPasskeyCredentialCreateRequestSchema,
   }),
   v.strictObject({ type: v.literal("passkeyAssertion"), request: extensionPasskeyAssertionRequestSchema }),
+  v.strictObject({
+    type: v.literal("passkeyConsentUiLoad"),
+    request: v.strictObject({ requestId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)) }),
+  }),
+  v.strictObject({
+    type: v.literal("passkeyConsentUiVerify"),
+    request: v.strictObject({
+      requestId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
+      password: v.pipe(v.string(), v.minLength(1), v.maxLength(1_000)),
+    }),
+  }),
+  v.strictObject({
+    type: v.literal("passkeyConsentUiApprove"),
+    request: v.strictObject({
+      requestId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
+      cipherId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)),
+      credentialId: v.nullable(v.pipe(v.string(), v.minLength(1), v.maxLength(256))),
+      revisionDate: v.string(),
+    }),
+  }),
+  v.strictObject({
+    type: v.literal("passkeyConsentUiCancel"),
+    request: v.strictObject({ requestId: v.pipe(v.string(), v.minLength(1), v.maxLength(128)) }),
+  }),
 ])
 
 export const extensionRuntimeMessageSchema = extensionRuntimeMessageSchemaData

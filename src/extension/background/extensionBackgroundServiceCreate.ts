@@ -740,6 +740,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       userId: createRequest?.userId ?? assertionRequest?.userHandle ?? null,
       credentialId: assertionRequest?.credentialId ?? null,
       cipherId: createRequest?.cipherId ?? null,
+      allowCredentialIds: assertionRequest?.allowCredentialIds ?? [],
       userVerification: createRequest?.userVerification ?? assertionRequest?.userVerification ?? "discouraged",
       clientDataJSON: createRequest?.clientDataJSON ?? assertionRequest?.clientDataJSON ?? "",
       expiresAt,

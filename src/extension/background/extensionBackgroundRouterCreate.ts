@@ -59,6 +59,17 @@ type ExtensionBackgroundRouterOptions = {
   scripting: ExtensionScriptingAdapter
   now?: () => number
   fullWindowPath?: string
+  passkeyConsentUi?: {
+    load: (requestId: string) => Promise<Result<unknown>>
+    verify: (requestId: string, password: string) => Promise<Result<unknown>>
+    approve: (request: {
+      requestId: string
+      cipherId: string
+      credentialId: string | null
+      revisionDate: string
+    }) => Promise<Result<void>>
+    cancel: (requestId: string) => Result<void>
+  }
 }
 
 type ExtensionLoginViewData = {
@@ -620,6 +631,26 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return passkeyCredentialCreate(message.request)
       case "passkeyAssertion":
         return passkeyAssertion(message.request)
+      case "passkeyConsentUiLoad":
+        return (
+          options.passkeyConsentUi?.load(message.request.requestId) ??
+          unavailable("extensionBackgroundRouter.passkeyConsentUiLoad", "Passkey confirmation is unavailable.")
+        )
+      case "passkeyConsentUiVerify":
+        return (
+          options.passkeyConsentUi?.verify(message.request.requestId, message.request.password) ??
+          unavailable("extensionBackgroundRouter.passkeyConsentUiVerify", "Passkey confirmation is unavailable.")
+        )
+      case "passkeyConsentUiApprove":
+        return (
+          options.passkeyConsentUi?.approve(message.request) ??
+          unavailable("extensionBackgroundRouter.passkeyConsentUiApprove", "Passkey confirmation is unavailable.")
+        )
+      case "passkeyConsentUiCancel":
+        return (
+          options.passkeyConsentUi?.cancel(message.request.requestId) ??
+          unavailable("extensionBackgroundRouter.passkeyConsentUiCancel", "Passkey confirmation is unavailable.")
+        )
       default:
         return internal("extensionBackgroundRouter.messageHandle", "Runtime message type is invalid.")
     }
@@ -630,6 +661,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     _sender: unknown,
     sendResponse: (response: unknown) => void,
   ): boolean => {
+    if (extensionWebAuthnBridgeMessageRecognized(_message)) return false
     void messageHandle(_message).then(
       (response) => {
         const wireResponse = response.success && response.data === undefined ? { ...response, data: null } : response
@@ -643,6 +675,12 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       () => sendResponse(internal("extensionBackgroundRouter.messageHandle", "Runtime message handling failed.")),
     )
     return true
+  }
+
+  function extensionWebAuthnBridgeMessageRecognized(value: unknown): boolean {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false
+    const type = (value as Record<string, unknown>).type
+    return type === "webauthnBridgeRequest" || type === "webauthnBridgeAbort"
   }
 
   options.runtime.onMessageAddListener(runtimeMessageReceive)

@@ -9,6 +9,7 @@ export const extensionPasskeyConsentContextSchema = v.strictObject({
   userId: v.nullable(v.string()),
   credentialId: v.nullable(v.string()),
   cipherId: v.nullable(v.string()),
+  allowCredentialIds: v.optional(v.array(v.string())),
   userVerification: v.picklist(["required", "preferred", "discouraged"]),
   clientDataJSON: v.pipe(v.string(), v.minLength(1)),
   expiresAt: v.number(),
