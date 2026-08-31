@@ -1,4 +1,4 @@
-import { type JSX, Show, Switch, Match } from "solid-js"
+import { type JSX, Match, Show, Switch } from "solid-js"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { CipherDetailView } from "./CipherDetailView.jsx"
@@ -56,6 +56,7 @@ export function CipherPage(props: CipherPageStateProps): JSX.Element {
             <Match when={state.mode() === "edit" || state.mode() === "create"}>
               <CipherEditForm
                 initialItem={state.mode() === "edit" ? state.currentItem : undefined}
+                defaultUri={props.defaultUri}
                 onSave={state.handleSave}
                 onCancel={state.handleCancel}
                 isSaving={state.isSaving}

@@ -152,6 +152,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 17 },
     { version: 18 },
     { version: 19 },
+    { version: 20 },
   ])
   expect(
     result.data
@@ -161,7 +162,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
   expect(
     result.data
       .query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'org_policies', 'organization_domains', 'organization_sso_configs', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'ciphers_collections', 'favorites', 'archives', 'sends', 'send_recipient_verifications', 'emergency_access', 'attachments', 'event', 'auth_requests') ORDER BY name",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'org_policies', 'organization_domains', 'organization_sso_configs', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'ciphers_collections', 'favorites', 'archives', 'sends', 'send_recipient_verifications', 'extension_session_handoffs', 'emergency_access', 'attachments', 'event', 'auth_requests') ORDER BY name",
       )
       .all(),
   ).toEqual([
@@ -175,6 +176,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { name: "devices" },
     { name: "emergency_access" },
     { name: "event" },
+    { name: "extension_session_handoffs" },
     { name: "favorites" },
     { name: "folders" },
     { name: "folders_ciphers" },
@@ -394,6 +396,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 17 },
       { version: 18 },
       { version: 19 },
+      { version: 20 },
     ])
     databaseClose(result.data)
   }
@@ -417,6 +420,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 19 })
+  expect(await response.json()).toEqual({ version: 20 })
   databaseClose(databaseResult.data)
 })

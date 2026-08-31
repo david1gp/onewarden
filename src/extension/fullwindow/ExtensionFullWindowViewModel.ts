@@ -1,7 +1,5 @@
-import type { ExtensionFullWindowCreatePrefill } from "./ExtensionFullWindowCreatePrefill.js"
-import type { ExtensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
-import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
+import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import type { ExtensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 
@@ -19,10 +17,4 @@ export interface ExtensionFullWindowViewModel {
   environment: ExtensionFullWindowEnvironmentSettings
   /** Lifecycle of the environment settings submission. */
   environmentSaveStatus: ExtensionFullWindowEnvironmentSaveStatus
-  /** Lifecycle of the create-login submission. */
-  createStatus: ExtensionFullWindowCreateStatus
-  /** Name and URI the popup suggests for a new entry from the active site. */
-  createPrefill: ExtensionFullWindowCreatePrefill
-  /** Id of the entry the last create produced, so the vault can select it. */
-  createdLoginId: string | null
 }

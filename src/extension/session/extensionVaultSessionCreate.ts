@@ -153,7 +153,7 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
           statusCode: 401,
         })
       }
-      return extensionPersonalLoginCipherEncrypt(cipher, userKey)
+      return extensionPersonalLoginCipherEncrypt(cipher, userKey, organizationKeys)
     })
 
   const encryptedPayloadEncrypt = (plaintext: unknown): Promise<Result<ExtensionEncryptedPayload>> =>

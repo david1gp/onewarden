@@ -6,8 +6,15 @@ const commonFields = {
   transferKey: v.pipe(v.string(), v.regex(/^[A-Za-z0-9_-]{43}$/u)),
 }
 
+const prefillUrlSchema = v.pipe(v.string(), v.url(), v.maxLength(2_048))
+
 export const sessionHandoffFragmentSchema = v.variant("operation", [
-  v.strictObject({ ...commonFields, operation: v.literal("create"), cipherId: v.null() }),
+  v.strictObject({
+    ...commonFields,
+    operation: v.literal("create"),
+    cipherId: v.null(),
+    prefillUrl: v.nullable(prefillUrlSchema),
+  }),
   v.strictObject({
     ...commonFields,
     operation: v.literal("edit"),

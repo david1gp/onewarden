@@ -40,6 +40,7 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: 60,
       JOB_TRASH_PURGE_INTERVAL: 86400,
       JOB_INCOMPLETE_SSO_PURGE_INTERVAL: 86400,
+      JOB_SESSION_HANDOFF_PURGE_INTERVAL: 60,
     },
   })
 })
@@ -94,6 +95,7 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: 60,
       JOB_TRASH_PURGE_INTERVAL: 86400,
       JOB_INCOMPLETE_SSO_PURGE_INTERVAL: 86400,
+      JOB_SESSION_HANDOFF_PURGE_INTERVAL: 60,
     },
   })
 })

@@ -14,6 +14,7 @@ export interface ExtensionFullWindowLoginDetailProps {
   onCopy: (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => void
   totpIsCopied: (login: ExtensionFullWindowLogin) => boolean
   onTotpCopy: (login: ExtensionFullWindowLogin) => void
+  onEdit: (login: ExtensionFullWindowLogin) => void
   onClose: () => void
 }
 
@@ -39,6 +40,15 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
               Fill
             </Button>
           </Show>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={p.disabled}
+            aria-label={`Edit ${p.login.name} in OneWarden`}
+            onClick={() => p.onEdit(p.login)}
+          >
+            Edit
+          </Button>
           <Button variant="ghost" size="sm" aria-label="Close details" onClick={p.onClose}>
             Close
           </Button>

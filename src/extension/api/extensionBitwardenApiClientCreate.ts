@@ -339,6 +339,32 @@ export function extensionBitwardenApiClientCreate(
         bitwardenEncryptedLoginCipherResponseSchema,
       )
     },
+
+    cipherUpdate(
+      cipherId: string,
+      cipher: BitwardenEncryptedLoginCipherCreateRequest,
+      request: ProtectedRequest,
+    ): Promise<Result<BitwardenEncryptedLoginCipherResponse>> {
+      const op = "extensionBitwardenApiClient.cipherUpdate"
+      const requestResult = requestValidationParse(op, cipher, bitwardenEncryptedLoginCipherCreateRequestSchema)
+      if (!requestResult.success) return Promise.resolve(requestResult)
+      const bodyResult = jsonBodyCreate(op, requestResult.data)
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return jsonRequest(
+        fetchImplementation,
+        apiUrlCreate(
+          environment,
+          apiRoutePathRead(bitwardenApiRoutes.cipherUpdate.path.replace(":cipher_id", encodeURIComponent(cipherId))),
+        ),
+        op,
+        {
+          method: "PUT",
+          headers: jsonHeadersWithAuthorization(request.accessToken),
+          body: bodyResult.data,
+        },
+        bitwardenEncryptedLoginCipherResponseSchema,
+      )
+    },
   }
 }
 

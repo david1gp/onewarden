@@ -171,6 +171,21 @@ test("extensionFullWindowView shows details only for the selected login", () => 
   root.unmount()
 })
 
+test("extensionFullWindowView delegates editing to OneWarden and does not render a local form", () => {
+  const edited: string[] = []
+  const root = fullWindowRender(
+    { status: "ready", logins: [exampleLogin] },
+    { loginEdit: (login) => edited.push(login.id) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
+  fireEvent.click(root.getByRole("button", { name: "Edit Example Mail in OneWarden" }))
+
+  expect(edited).toEqual(["login-1"])
+  expect(root.queryByRole("form")).toBeNull()
+  root.unmount()
+})
+
 test("extensionFullWindowView copies standard and custom fields without rendering secrets", () => {
   const copied: string[] = []
   const root = fullWindowRender(

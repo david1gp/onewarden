@@ -6,6 +6,7 @@ import {
 } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionCipherKeyResolve } from "./extensionCipherKeyResolve.js"
 import { extensionEncStringEncrypt } from "./extensionEncStringEncrypt.js"
 import { extensionFido2CredentialEncrypt } from "./extensionFido2CredentialEncrypt.js"
 import { extensionPersonalLoginCipherMap } from "./extensionPersonalLoginCipherMap.js"
@@ -14,16 +15,10 @@ import {
   extensionPersonalLoginCipherSchema,
 } from "./extensionPersonalLoginCipherSchema.js"
 
-function unsupportedResult(message: string): Result<BitwardenEncryptedLoginCipher> {
-  return resultErrorCreate("extensionPersonalLoginCipherEncrypt", message, {
-    code: "extension.unsupported",
-    statusCode: 400,
-  })
-}
-
 export async function extensionPersonalLoginCipherEncrypt(
   cipher: ExtensionPersonalLoginCipher,
   userKey: Uint8Array,
+  organizationKeys: ReadonlyMap<string, Uint8Array> = new Map(),
 ): Promise<Result<BitwardenEncryptedLoginCipher>> {
   const op = "extensionPersonalLoginCipherEncrypt"
   const parsed = v.safeParse(extensionPersonalLoginCipherSchema, cipher)
@@ -35,19 +30,19 @@ export async function extensionPersonalLoginCipherEncrypt(
     })
   }
   const plainCipher = parsed.output
-  if (plainCipher.organizationId !== undefined && plainCipher.organizationId !== null) {
-    return unsupportedResult("Organization ciphers are not supported.")
-  }
-  if (plainCipher.key !== undefined && plainCipher.key !== null) {
-    return unsupportedResult("Cipher-specific keys are not supported.")
-  }
+  const cipherKeyResult = await extensionCipherKeyResolve(
+    plainCipher as BitwardenEncryptedLoginCipher,
+    userKey,
+    organizationKeys,
+  )
+  if (!cipherKeyResult.success) return cipherKeyResult
   const encryptedResult = await extensionPersonalLoginCipherMap(plainCipher, (value) =>
-    extensionEncStringEncrypt(value, userKey),
+    extensionEncStringEncrypt(value, cipherKeyResult.data),
   )
   if (!encryptedResult.success) return encryptedResult
   const fido2Credentials = []
   for (const credential of plainCipher.login.fido2Credentials ?? []) {
-    const credentialResult = await extensionFido2CredentialEncrypt(credential, userKey)
+    const credentialResult = await extensionFido2CredentialEncrypt(credential, cipherKeyResult.data)
     if (!credentialResult.success) return credentialResult
     fido2Credentials.push(credentialResult.data)
   }

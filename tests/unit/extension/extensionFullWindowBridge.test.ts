@@ -1,7 +1,5 @@
 import { expect, test } from "bun:test"
 import { extensionClipboardAdapterCreate } from "../../../src/extension/clipboard/extensionClipboardAdapterCreate.js"
-import type { ExtensionCreateLoginRequest } from "../../../src/extension/create/extensionCreateLoginRequestSchema.js"
-import { extensionFullWindowCreateStatus } from "../../../src/extension/fullwindow/ExtensionFullWindowCreateStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../../../src/extension/fullwindow/ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
@@ -23,17 +21,6 @@ const testLogin: ExtensionFullWindowLogin = {
   ],
 }
 
-const testCreateRequest: ExtensionCreateLoginRequest = {
-  name: "New Entry",
-  username: "user@test.org",
-  password: "secure-pass-123",
-  uris: [{ uri: "https://test.org", match: null }],
-  notes: "sample note",
-  favorite: false,
-  folderId: null,
-  fields: [{ name: "Security Question", value: "Answer", type: 0 }],
-}
-
 const testEnvSettings: ExtensionFullWindowEnvironmentSettings = {
   region: "selfHosted",
   base: "https://vaultwarden.local",
@@ -45,43 +32,32 @@ const testEnvSettings: ExtensionFullWindowEnvironmentSettings = {
   events: "https://vaultwarden.local/events",
 }
 
-test("full-window commands send typed runtime messages for login creation and draft handling", async () => {
+test("full-window commands delegate normal create and edit actions to secure web handoffs", async () => {
   const sentMessages: ExtensionRuntimeMessage[] = []
   let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
-  let refreshCalls = 0
 
   const commands = extensionFullWindowCommandsCreate(
     {},
     {
       messageSend: async (msg) => {
         sentMessages.push(msg)
-        if (msg.type === "createLogin") {
-          return resultCreate({ id: "created-cipher-id" })
-        }
         return resultCreate(undefined)
       },
       onModelUpdate: (updater) => {
         currentModel = updater(currentModel)
       },
-      onRefresh: async () => {
-        refreshCalls += 1
-      },
     },
   )
 
-  commands.loginCreate(testCreateRequest)
+  commands.loginAdd()
+  commands.loginEdit(testLogin)
   await new Promise((r) => setTimeout(r, 10))
 
-  expect(sentMessages[0]).toEqual({ type: "createLogin", request: testCreateRequest })
-  expect(currentModel.createStatus).toBe(extensionFullWindowCreateStatus.saved)
-  expect(currentModel.createdLoginId).toBe("created-cipher-id")
-  expect(refreshCalls).toBe(1)
-
-  commands.loginDraftSave(testCreateRequest)
-  expect(sentMessages[1]).toEqual({ type: "draftSave", request: testCreateRequest })
-
-  commands.loginDraftDiscard("draft-123")
-  expect(sentMessages[2]).toEqual({ type: "draftDiscard", request: "draft-123" })
+  expect(sentMessages).toEqual([
+    { type: "sessionHandoffOpen", request: { operation: "create", cipherId: null } },
+    { type: "sessionHandoffOpen", request: { operation: "edit", cipherId: "cipher-2" } },
+  ])
+  expect(currentModel.busy).toBe(false)
 })
 
 test("full-window commands send typed runtime messages for environment save and credentials login", async () => {
@@ -255,22 +231,22 @@ test("full-window command overrides take precedence over shared commands", () =>
   expect(overrideCalls).toBe(1)
 })
 
-test("full-window commands handle create failure gracefully", async () => {
+test("full-window commands surface secure handoff failures", async () => {
   let currentModel: ExtensionFullWindowViewModel = extensionFullWindowViewModelCreate()
 
   const commands = extensionFullWindowCommandsCreate(
     {},
     {
-      messageSend: async () => resultErrorCreate("extensionBackgroundRouter.createLogin", "Network timeout."),
+      messageSend: async () => resultErrorCreate("extensionBackgroundRouter.sessionHandoffOpen", "Network timeout."),
       onModelUpdate: (updater) => {
         currentModel = updater(currentModel)
       },
     },
   )
 
-  commands.loginCreate(testCreateRequest)
+  commands.loginAdd()
   await new Promise((r) => setTimeout(r, 10))
 
-  expect(currentModel.createStatus).toBe(extensionFullWindowCreateStatus.error)
+  expect(currentModel.busy).toBe(false)
   expect(currentModel.errorMessage).toBe("Network timeout.")
 })

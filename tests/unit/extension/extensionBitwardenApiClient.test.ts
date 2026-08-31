@@ -104,7 +104,30 @@ test("extensionBitwardenApiClientCreate returns errors for invalid responses and
   expect(failedResult).toMatchObject({ success: false, code: "platform.unavailable", statusCode: 503 })
 })
 
-test("extensionBitwardenApiClientCreate covers refresh, sync, cipher read/list, and personal login create", async () => {
+test("extensionBitwardenApiClientCreate creates an authenticated session handoff", async () => {
+  let request: { input: string; init?: RequestInit } | undefined
+  const client = extensionBitwardenApiClientCreate(environmentResult.data, {
+    fetch: async (input, init) => {
+      request = { input: String(input), init }
+      return Response.json({ token: "A".repeat(43), expiresAt: "2026-08-31T12:00:45.000Z" })
+    },
+  })
+  const result = await client.sessionHandoffCreate({
+    accessToken: "access-token",
+    operation: "create",
+    cipherId: null,
+    encryptedUserKey: { algorithm: "AES-GCM", iv: "A".repeat(16), ciphertext: "B".repeat(107) },
+  })
+
+  expect(result.success).toBe(true)
+  expect(request).toMatchObject({
+    input: "https://vault.example/api/session-handoffs",
+    init: { method: "POST", headers: { authorization: "Bearer access-token" } },
+  })
+  expect(request?.init?.body).not.toContain("access-token")
+})
+
+test("extensionBitwardenApiClientCreate covers refresh, sync, cipher read/list, create, and update", async () => {
   const client = extensionBitwardenApiClientCreate(environmentResult.data, {
     fetch: async (input, init) => {
       const url = String(input)
@@ -130,10 +153,23 @@ test("extensionBitwardenApiClientCreate covers refresh, sync, cipher read/list, 
     },
     { accessToken: "access-token" },
   )
+  const updated = await client.cipherUpdate(
+    "cipher-id",
+    {
+      id: "cipher-id",
+      type: 1,
+      name: "encrypted name",
+      notes: null,
+      fields: [],
+      login: { username: "encrypted username", password: "encrypted password", uris: [], totp: null },
+    },
+    { accessToken: "access-token" },
+  )
 
   expect(refresh.success).toBe(true)
   expect(synced.success).toBe(true)
   expect(listed.success).toBe(true)
   expect(read.success).toBe(true)
   expect(created.success).toBe(true)
+  expect(updated.success).toBe(true)
 })

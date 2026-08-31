@@ -8,7 +8,6 @@ import {
   type ExtensionEnvironmentSource,
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
-import { type ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionLoginFillData } from "../fill/extensionLoginFillDataSchema.js"
 import type { ExtensionLoginFillRequest } from "../fill/extensionLoginFillRequestSchema.js"
@@ -20,6 +19,7 @@ import {
   extensionRuntimeMessageSchema,
 } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeResponseSchema } from "../messaging/extensionRuntimeResponseSchema.js"
+import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
 import type { ExtensionPopupLogin } from "../popup/ExtensionPopupLogin.js"
 import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
 import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
@@ -39,12 +39,13 @@ type ExtensionBackgroundService = Pick<
   | "unlock"
   | "conditionalSync"
   | "manualSync"
-  | "createLogin"
-  | "createLoginDraftSave"
-  | "createLoginDraftDiscard"
+  | "sessionHandoffCreate"
   | "syncSnapshotLoad"
   | "lock"
   | "logout"
+  | "passkeyConsentContextCreate"
+  | "passkeyCredentialCreate"
+  | "passkeyAssertion"
 >
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 type ExtensionViewModel = ExtensionPopupViewModel | ExtensionFullWindowViewModel
@@ -297,7 +298,16 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     } catch {
       return unavailable(op, "Active tab could not be read.")
     }
-    const context = extensionActiveTabContextCreate(tabs[0] ?? { id: undefined, url: undefined })
+    let context = extensionActiveTabContextCreate(tabs[0] ?? { id: undefined, url: undefined })
+    if (!context.fillAvailable) {
+      try {
+        const activeTabs = await options.tabs.query({ active: true })
+        context =
+          activeTabs.map(extensionActiveTabContextCreate).find((candidate) => candidate.fillAvailable) ?? context
+      } catch {
+        return unavailable(op, "Active tab could not be read.")
+      }
+    }
     const parsed = v.safeParse(extensionActiveTabContextSchema, context)
     if (!parsed.success) return internal(op, "Active tab context is invalid.")
     return resultCreate(parsed.output)
@@ -436,24 +446,36 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     return resultCreate(syncCommandResultCreate(result.data))
   }
 
-  const createLogin = async (request: ExtensionCreateLoginRequest): Promise<Result<{ id: string }>> => {
+  const sessionHandoffOpen = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "sessionHandoffOpen" }>["request"],
+  ): Promise<Result<{ url: string }>> => {
+    const op = "extensionBackgroundRouter.sessionHandoffOpen"
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
-    const result = await options.service.createLogin(request)
-    if (!result.success) return result
-    return resultCreate({ id: result.data.cipher.id })
+    const environmentSourceResult = await options.storage.environmentSettingsLoad()
+    if (!environmentSourceResult.success) return environmentSourceResult
+    const environmentResult = extensionEnvironmentResolve(environmentSourceResult.data ?? "us")
+    if (!environmentResult.success) return environmentResult
+    const contextResult = request.operation === "create" ? await activeTabContextLookup() : null
+    if (contextResult !== null && !contextResult.success) return contextResult
+    const prefillUrl =
+      request.operation === "create" && contextResult?.success === true && contextResult.data.fillAvailable
+        ? contextResult.data.url
+        : null
+    const handoffResult = await options.service.sessionHandoffCreate(
+      request.operation,
+      request.cipherId,
+      environmentResult.data.webVault,
+      prefillUrl,
+    )
+    if (!handoffResult.success) return handoffResult
+    try {
+      await options.windows.create({ focused: true, type: "normal", url: handoffResult.data })
+    } catch {
+      return unavailable(op, "OneWarden could not be opened.")
+    }
+    return resultCreate({ url: handoffResult.data })
   }
-
-  const draftSave = async (
-    request: ExtensionCreateLoginRequest,
-  ): Promise<Result<{ id: string; updatedAt: number }>> => {
-    const initializeResult = await initialize()
-    if (!initializeResult.success) return initializeResult
-    return options.service.createLoginDraftSave(request)
-  }
-
-  const draftDiscard = async (request: string): Promise<Result<void>> =>
-    options.service.createLoginDraftDiscard(request)
 
   const environmentSave = async (request: unknown): Promise<Result<void>> => {
     const sourceResult = extensionEnvironmentSourceCreate(request)
@@ -471,6 +493,24 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
     return options.service.logout()
+  }
+
+  const passkeyConsentContextCreate = async (request: unknown): Promise<Result<ExtensionPasskeyConsentContext>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.passkeyConsentContextCreate(request)
+  }
+
+  const passkeyCredentialCreate = async (request: unknown): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.passkeyCredentialCreate(request)
+  }
+
+  const passkeyAssertion = async (request: unknown): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.passkeyAssertion(request)
   }
 
   const loginFill = async (request: ExtensionLoginFillRequest): Promise<Result<ExtensionLoginFillData>> => {
@@ -555,12 +595,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return conditionalSync()
       case "manualSync":
         return manualSync()
-      case "createLogin":
-        return createLogin(message.request)
-      case "draftSave":
-        return draftSave(message.request)
-      case "draftDiscard":
-        return draftDiscard(message.request)
+      case "sessionHandoffOpen":
+        return sessionHandoffOpen(message.request)
       case "environmentSave": {
         const requestResult = requestRead(message.request, "extensionBackgroundRouter.environmentSave")
         if (!requestResult.success) return requestResult
@@ -578,6 +614,14 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return totpCopy(message.request)
       case "fullWindowOpen":
         return fullWindowOpen()
+      case "passkeyConsentContext":
+        return passkeyConsentContextCreate(message.request)
+      case "passkeyCredentialCreate":
+        return passkeyCredentialCreate(message.request)
+      case "passkeyAssertion":
+        return passkeyAssertion(message.request)
+      default:
+        return internal("extensionBackgroundRouter.messageHandle", "Runtime message type is invalid.")
     }
   }
 
@@ -609,5 +653,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     fullWindowOpen,
     viewModelLoad,
     messageHandle,
+    passkeyConsentContextCreate,
+    passkeyCredentialCreate,
+    passkeyAssertion,
   }
 }

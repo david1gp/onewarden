@@ -80,7 +80,7 @@ test("backupBundleCreate snapshots WAL state, storage files, and integrity metad
   expect(readdirSync(destinationRoot).every((name) => !name.endsWith(".tmp"))).toBe(true)
 
   const manifest = manifestRead(join(result.data, "manifest.json"))
-  expect(manifest).toMatchObject({ format: "onewarden-backup", version: 1, schemaVersion: 19 })
+  expect(manifest).toMatchObject({ format: "onewarden-backup", version: 1, schemaVersion: 20 })
   expect(manifest.files.map((file) => file.path)).toEqual([
     "attachments/cipher-one/attachment.bin",
     "database.sqlite3",

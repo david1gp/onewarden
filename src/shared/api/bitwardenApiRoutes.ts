@@ -9,4 +9,5 @@ export const bitwardenApiRoutes = {
   cipherList: { method: "GET", path: "/api/ciphers" },
   cipherRead: { method: "GET", path: "/api/ciphers/:cipher_id" },
   cipherCreate: { method: "POST", path: "/api/ciphers" },
+  cipherUpdate: { method: "PUT", path: "/api/ciphers/:cipher_id" },
 } as const

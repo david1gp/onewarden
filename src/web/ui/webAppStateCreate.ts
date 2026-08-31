@@ -1,10 +1,10 @@
 import { createEffect, onCleanup, onMount } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { sessionHandoffFragmentParse } from "../../shared/sessionHandoff/sessionHandoffFragmentParse.js"
 import { webAdminApiClientCreate } from "../admin/model/webAdminApiClientCreate.js"
 import { webAuthSessionDefault } from "../auth/model/webAuthSessionDefault.js"
 import { webAuthStorageCreate } from "../auth/model/webAuthStorageCreate.js"
 import { webSendAccessIdResolve } from "../sends/model/webSendAccessIdResolve.js"
-import { sessionHandoffFragmentParse } from "../../shared/sessionHandoff/sessionHandoffFragmentParse.js"
 import { webSessionHandoffApiClientCreate } from "../sessionHandoffs/model/webSessionHandoffApiClientCreate.js"
 import { webSessionHandoffConsume } from "../sessionHandoffs/model/webSessionHandoffConsume.js"
 import { webAppRouteResolve } from "./webAppRouteResolve.js"
@@ -107,6 +107,17 @@ export function webAppStateCreate() {
     return id
   }
   const currentSendAccessId = () => webSendAccessIdResolve(location.get())
+  const currentCipherCreateUri = () => {
+    const rawUri = new URL(location.get(), "http://localhost").searchParams.get("uri")
+    if (rawUri === null) return null
+    try {
+      const uri = new URL(rawUri)
+      if (uri.protocol !== "http:" && uri.protocol !== "https:") return null
+      return rawUri
+    } catch {
+      return null
+    }
+  }
 
   createEffect(() => {
     if (typeof document === "undefined") return
@@ -165,6 +176,7 @@ export function webAppStateCreate() {
     currentRoute,
     routeCipherId,
     currentSendAccessId,
+    currentCipherCreateUri,
     session,
     isAdminLoggedIn: isAdminLoggedIn.get,
     isAdminSessionChecking: isAdminSessionChecking.get,

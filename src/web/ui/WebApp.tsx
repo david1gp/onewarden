@@ -198,7 +198,11 @@ export function WebApp(): JSX.Element {
             </Match>
             <Match when={state.session.isUnlocked()}>
               <WebAppShell>
-                <CipherPage initialMode={() => "create"} onNavigateBack={() => state.navigate("/")} />
+                <CipherPage
+                  initialMode={() => "create"}
+                  defaultUri={state.currentCipherCreateUri}
+                  onNavigateBack={() => state.navigate("/")}
+                />
               </WebAppShell>
             </Match>
           </Switch>

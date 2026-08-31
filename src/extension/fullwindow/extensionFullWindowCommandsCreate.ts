@@ -2,12 +2,10 @@ import type { Result } from "#result"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
-import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
-import { extensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
@@ -48,36 +46,23 @@ export function extensionFullWindowCommandsCreate(
     onRefresh,
   })
 
-  const loginAdd = () => {}
-
-  const loginCreate = (request: ExtensionCreateLoginRequest) => {
-    onModelUpdate((prev) => ({ ...prev, createStatus: extensionFullWindowCreateStatus.saving, errorMessage: null }))
-    void sender({ type: "createLogin", request }).then(async (res) => {
+  const handoffOpen = (request: Extract<ExtensionRuntimeMessage, { type: "sessionHandoffOpen" }>["request"]) => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null }))
+    void sender({ type: "sessionHandoffOpen", request }).then((res) => {
       if (!res.success) {
         onModelUpdate((prev) => ({
           ...prev,
-          createStatus: extensionFullWindowCreateStatus.error,
-          errorMessage: res.errorMessage ?? "Creation failed.",
+          busy: false,
+          errorMessage: res.errorMessage ?? "OneWarden could not be opened.",
         }))
         return
       }
-      const data = res.data as { id?: string } | undefined
-      onModelUpdate((prev) => ({
-        ...prev,
-        createStatus: extensionFullWindowCreateStatus.saved,
-        createdLoginId: data?.id ?? null,
-      }))
-      await onRefresh()
+      onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: null }))
     })
   }
 
-  const loginDraftSave = (request: ExtensionCreateLoginRequest) => {
-    void sender({ type: "draftSave", request })
-  }
-
-  const loginDraftDiscard = (draftId: string) => {
-    void sender({ type: "draftDiscard", request: draftId })
-  }
+  const loginAdd = () => handoffOpen({ operation: "create", cipherId: null })
+  const loginEdit = (login: ExtensionFullWindowLogin) => handoffOpen({ operation: "edit", cipherId: login.id })
 
   const accountLogin = (
     credentials?: { email: string; password: string },
@@ -145,9 +130,7 @@ export function extensionFullWindowCommandsCreate(
     fieldCopy: commonCommands.fieldCopy,
     totpCopy: commonCommands.totpCopy,
     loginAdd,
-    loginCreate,
-    loginDraftSave,
-    loginDraftDiscard,
+    loginEdit,
     vaultSync: commonCommands.vaultSync,
     vaultLock: commonCommands.vaultLock,
     vaultLogout: commonCommands.vaultLogout,

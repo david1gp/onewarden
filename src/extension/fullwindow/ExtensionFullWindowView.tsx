@@ -5,7 +5,6 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import { ExtensionFullWindowCreatePane } from "./ExtensionFullWindowCreatePane.jsx"
 import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
 import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
@@ -45,13 +44,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         >
           Settings
         </Button>
-        <Button
-          variant={state.isCreatePane() ? "filled" : "outline"}
-          size="sm"
-          aria-current={state.isCreatePane() ? "page" : undefined}
-          disabled={state.busy()}
-          onClick={state.loginAdd}
-        >
+        <Button variant="outline" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
           Add login
         </Button>
         <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
@@ -82,18 +75,6 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           isSelfHosted={state.isSelfHosted()}
           fieldSignal={state.environmentFieldSignal}
           onSave={state.environmentSave}
-        />
-      </Show>
-
-      <Show when={state.isCreatePane()}>
-        <ExtensionFullWindowCreatePane
-          prefill={state.createPrefill()}
-          status={state.createStatus()}
-          errorMessage={state.createErrorMessage()}
-          onCreate={state.loginCreate}
-          onDraftSave={state.loginDraftSave}
-          onDraftDiscard={state.loginDraftDiscard}
-          onCancel={state.createCancel}
         />
       </Show>
 
@@ -219,6 +200,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     onCopy={state.fieldCopy}
                     totpIsCopied={state.totpIsCopied}
                     onTotpCopy={state.totpCopy}
+                    onEdit={state.loginEdit}
                     onClose={state.loginDeselect}
                   />
                 )}

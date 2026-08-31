@@ -2,8 +2,8 @@ import { type Result } from "#result"
 import { base64UrlEncode } from "../crypto/base64UrlEncode.js"
 import { resultCreate } from "../result/resultCreate.js"
 import { resultErrorCreate } from "../result/resultErrorCreate.js"
-import { sessionHandoffRouteCreate } from "./sessionHandoffRouteCreate.js"
 import type { SessionHandoffOperation } from "./sessionHandoffOperationSchema.js"
+import { sessionHandoffRouteCreate } from "./sessionHandoffRouteCreate.js"
 
 export function sessionHandoffFragmentCreate(
   webVaultOrigin: string,
@@ -11,6 +11,7 @@ export function sessionHandoffFragmentCreate(
   transferKey: Uint8Array,
   operation: SessionHandoffOperation,
   cipherId: string | null,
+  prefillUrl: string | null = null,
 ): Result<string> {
   const op = "sessionHandoffFragmentCreate"
   if (transferKey.byteLength !== 32) {
@@ -27,6 +28,7 @@ export function sessionHandoffFragmentCreate(
       transferKey: base64UrlEncode(transferKey),
       operation,
       cipherId,
+      ...(operation === "create" ? { prefillUrl } : {}),
     })
     url.hash = `onewarden-handoff=${base64UrlEncode(new TextEncoder().encode(fragment))}`
     return resultCreate(url.toString())

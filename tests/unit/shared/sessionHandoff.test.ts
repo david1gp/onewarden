@@ -66,3 +66,23 @@ test("session handoff fragment parser rejects malformed transfer data", () => {
   expect(sessionHandoffFragmentParse("")).toEqual({ success: true, data: null })
   expect(sessionHandoffFragmentParse("#onewarden-handoff=not-json").success).toBe(false)
 })
+
+test("create handoff keeps the active-site prefill in the fragment until consumption", () => {
+  const result = sessionHandoffFragmentCreate(
+    "https://onewarden.example",
+    token,
+    new Uint8Array(32).fill(3),
+    "create",
+    null,
+    "https://current.example/sign-in?next=%2Faccount",
+  )
+
+  expect(result.success).toBe(true)
+  if (!result.success) return
+  const url = new URL(result.data)
+  expect(url.search).toBe("")
+  expect(sessionHandoffFragmentParse(url.hash)).toMatchObject({
+    success: true,
+    data: { prefillUrl: "https://current.example/sign-in?next=%2Faccount" },
+  })
+})

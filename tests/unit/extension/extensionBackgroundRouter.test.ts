@@ -40,7 +40,10 @@ function storageAreaCreate() {
   return { area, values }
 }
 
-function routerCreate() {
+function routerCreate(
+  activeTab = { id: 7, url: "https://example.test/login", windowId: 3 },
+  otherActiveTabs = [activeTab],
+) {
   const local = storageAreaCreate()
   const session = storageAreaCreate()
   const adapter: ExtensionStorageAdapter = extensionStorageAdapterCreate({ local: local.area, session: session.area })
@@ -68,6 +71,12 @@ function routerCreate() {
     ],
   } as unknown as ExtensionPersonalLoginCipher
   let listener: RuntimeListener = () => undefined
+  const handoffCalls: {
+    operation: string
+    cipherId: string | null
+    webVaultOrigin: string
+    prefillUrl: string | null
+  }[] = []
   const service = {
     start: async () => resultCreate(undefined),
     passwordLogin: async () => resultCreate(undefined),
@@ -75,14 +84,19 @@ function routerCreate() {
     conditionalSync: async () =>
       resultCreate({ status: "unchanged", changed: false, revisionDate: 1, lastSyncedAt: 2 }),
     manualSync: async () => resultCreate({ status: "synced", changed: true, revisionDate: 2, lastSyncedAt: 3 }),
-    createLogin: async () => resultCreate({ cipher: { id: "created" } }),
-    createLoginDraftSave: async () => resultCreate({ id: "draft", updatedAt: 4 }),
-    createLoginDraftDiscard: async () => resultCreate(undefined),
+    sessionHandoffCreate: async (
+      operation: "create" | "edit",
+      cipherId: string | null,
+      webVaultOrigin: string,
+      prefillUrl: string | null,
+    ) => {
+      handoffCalls.push({ operation, cipherId, webVaultOrigin, prefillUrl })
+      return resultCreate(`${webVaultOrigin}/ciphers/${operation === "create" ? "new" : `${cipherId}/edit`}#handoff`)
+    },
     syncSnapshotLoad: async () => resultCreate({ ciphers: [cipher] }),
     lock: async () => resultCreate(undefined),
     logout: async () => resultCreate(undefined),
   } as unknown as RouterOptions["service"]
-  const activeTab = { id: 7, url: "https://example.test/login", windowId: 3 }
   let fullWindowTab: { id: number; url: string; windowId: number } | null = null
   let listenerRegistered = false
   const contextFilters: { documentUrls?: string[] }[] = []
@@ -105,7 +119,10 @@ function routerCreate() {
       },
     },
     tabs: {
-      query: async (query) => (query.url === undefined ? [activeTab] : fullWindowTab === null ? [] : [fullWindowTab]),
+      query: async (query) => {
+        if (query.url !== undefined) return fullWindowTab === null ? [] : [fullWindowTab]
+        return query.lastFocusedWindow === true ? [activeTab] : otherActiveTabs
+      },
       update: async (tabId, update) => {
         if (update.active === true) focusedTabs.push({ id: tabId, active: true })
       },
@@ -138,6 +155,7 @@ function routerCreate() {
     focusedTabs,
     createdWindows,
     fillCalls,
+    handoffCalls,
   }
 }
 
@@ -201,6 +219,18 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
   })
 })
 
+test("extensionBackgroundRouterCreate retains a website context while the full-window extension is focused", async () => {
+  const context = routerCreate({ id: 9, url: "chrome-extension://onewarden/fullwindow/index.html", windowId: 8 }, [
+    { id: 9, url: "chrome-extension://onewarden/fullwindow/index.html", windowId: 8 },
+    { id: 7, url: "https://example.test/login", windowId: 3 },
+  ])
+
+  expect(await context.router.activeTabContextLookup()).toEqual({
+    success: true,
+    data: { tabId: 7, url: "https://example.test/login", hostname: "example.test", fillAvailable: true },
+  })
+})
+
 test("extensionBackgroundRouterCreate focuses an existing full window or opens one", async () => {
   const context = routerCreate()
   const first = await context.router.fullWindowOpen()
@@ -235,6 +265,58 @@ test("extensionBackgroundRouterCreate routes an explicit fill to the active tab 
     data: { status: "filled", usernameFilled: true, passwordFilled: true },
   })
   expect(context.fillCalls).toEqual([{ tabId: 7, frameId: 4, username: "user", password: "password" }])
+})
+
+test("extensionBackgroundRouterCreate opens create and edit handoffs at the configured web origin", async () => {
+  const context = routerCreate()
+  await context.storage.environmentSettingsSave({
+    base: "https://api.onewarden.test",
+    webVault: "https://onewarden.test",
+  })
+
+  const createResult = await context.router.messageHandle({
+    type: "sessionHandoffOpen",
+    request: { operation: "create", cipherId: null },
+  })
+  const editResult = await context.router.messageHandle({
+    type: "sessionHandoffOpen",
+    request: { operation: "edit", cipherId: "matching-login" },
+  })
+
+  expect(createResult.success).toBe(true)
+  expect(editResult.success).toBe(true)
+  expect(context.handoffCalls).toEqual([
+    {
+      operation: "create",
+      cipherId: null,
+      webVaultOrigin: "https://onewarden.test",
+      prefillUrl: "https://example.test/login",
+    },
+    {
+      operation: "edit",
+      cipherId: "matching-login",
+      webVaultOrigin: "https://onewarden.test",
+      prefillUrl: null,
+    },
+  ])
+  expect(context.createdWindows.map((entry) => entry.url)).toEqual([
+    "https://onewarden.test/ciphers/new#handoff",
+    "https://onewarden.test/ciphers/matching-login/edit#handoff",
+  ])
+})
+
+test("extensionBackgroundRouterCreate rejects obsolete normal local create and draft actions", async () => {
+  const context = routerCreate()
+
+  expect(
+    (
+      await context.router.messageHandle({
+        type: "createLogin",
+        request: { name: "Local form mutation" },
+      })
+    ).success,
+  ).toBe(false)
+  expect((await context.router.messageHandle({ type: "draftSave", request: {} })).success).toBe(false)
 })
 
 test("typed runtime settings save persists custom environment data for a full-window reload", async () => {

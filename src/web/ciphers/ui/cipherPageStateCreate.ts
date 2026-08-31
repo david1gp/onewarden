@@ -10,6 +10,7 @@ export interface CipherPageStateProps {
   cipherId?: () => string | null
   initialMode?: () => CipherDialogMode
   defaultType?: () => CipherType | undefined
+  defaultUri?: () => string | null
   onNavigateBack?: () => void
 }
 

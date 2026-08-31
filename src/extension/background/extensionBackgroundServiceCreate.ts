@@ -2,7 +2,6 @@ import * as v from "valibot"
 import { type Result } from "#result"
 import type { BitwardenEncryptedLoginCipherCreateRequest } from "../../shared/api/bitwardenEncryptedLoginCipherCreateRequestSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
-import type { BitwardenEncryptedLoginCipherResponse } from "../../shared/api/bitwardenEncryptedLoginCipherResponseSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
 import type { BitwardenRefreshTokenResponse } from "../../shared/api/bitwardenRefreshTokenResponseSchema.js"
@@ -10,18 +9,29 @@ import type { BitwardenSyncEnvelope } from "../../shared/api/bitwardenSyncEnvelo
 import { base64Encode } from "../../shared/crypto/base64Encode.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
-import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
-import { extensionCreateLoginRequestSchema } from "../create/extensionCreateLoginRequestSchema.js"
 import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
-import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import {
   type ExtensionPersonalLoginCipher,
   extensionPersonalLoginCipherSchema,
 } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import { extensionEmailSchema } from "../extensionEmailSchema.js"
 import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
+import { extensionSessionHandoffCreate } from "../handoff/extensionSessionHandoffCreate.js"
+import type { ExtensionPasskeyAssertionRequest } from "../passkey/extensionPasskeyAssertionRequestSchema.js"
+import { extensionPasskeyAssertionCreate } from "../passkey/extensionPasskeyAssertionCreate.js"
+import type { ExtensionPasskeyConsent } from "../passkey/extensionPasskeyConsentSchema.js"
+import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
+import type { ExtensionPasskeyCredentialCreateRequest } from "../passkey/extensionPasskeyCredentialCreateRequestSchema.js"
+import { extensionPasskeyCredentialCreate } from "../passkey/extensionPasskeyCredentialCreate.js"
+import { extensionPasskeyCredentialCreateRequestSchema } from "../passkey/extensionPasskeyCredentialCreateRequestSchema.js"
+import { extensionPasskeyCredentialIdCreate } from "../passkey/extensionPasskeyCredentialIdCreate.js"
+import { extensionPasskeyCredentialIdDecode } from "../passkey/extensionPasskeyCredentialIdDecode.js"
+import { extensionPasskeyRpIdNormalize } from "../passkey/extensionPasskeyRpIdNormalize.js"
+import { extensionPasskeyAssertionRequestSchema } from "../passkey/extensionPasskeyAssertionRequestSchema.js"
 import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
 import type { ExtensionAuthSession } from "../storage/extensionAuthSessionStorageSchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
@@ -35,7 +45,9 @@ type ExtensionApiClient = Pick<
   ReturnType<typeof extensionBitwardenApiClientCreate>,
   "prelogin" | "passwordToken" | "refreshToken" | "revisionDate" | "sync"
 > &
-  Partial<Pick<ReturnType<typeof extensionBitwardenApiClientCreate>, "cipherCreate">>
+  Partial<
+    Pick<ReturnType<typeof extensionBitwardenApiClientCreate>, "cipherCreate" | "cipherUpdate" | "sessionHandoffCreate">
+  >
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 type ExtensionVaultSession = ReturnType<typeof extensionVaultSessionCreate>
 
@@ -71,11 +83,6 @@ type ExtensionSyncResult = {
   revisionDate: number
   lastSyncedAt: number
   snapshot: ExtensionSyncSnapshot
-}
-
-type ExtensionCreateLoginResult = {
-  cipher: BitwardenEncryptedLoginCipherResponse
-  sync: ExtensionSyncResult
 }
 
 const passwordLoginRequestSchema = v.object({
@@ -167,6 +174,45 @@ function textDecode(op: string, bytes: Uint8Array): Result<unknown> {
   }
 }
 
+function passkeyCredentialIdMatches(left: string, right: string): boolean {
+  const leftResult = extensionPasskeyCredentialIdDecode(left)
+  const rightResult = extensionPasskeyCredentialIdDecode(right)
+  if (!leftResult.success || !rightResult.success || leftResult.data.byteLength !== rightResult.data.byteLength)
+    return false
+  return leftResult.data.every((byte, index) => byte === rightResult.data[index])
+}
+
+function passkeyRpIdMatches(left: string, right: string): boolean {
+  const leftResult = extensionPasskeyRpIdNormalize(left)
+  const rightResult = extensionPasskeyRpIdNormalize(right)
+  return leftResult.success && rightResult.success && leftResult.data === rightResult.data
+}
+
+function passkeyCipherRequestCreate(cipher: BitwardenEncryptedLoginCipher): BitwardenEncryptedLoginCipherCreateRequest {
+  return {
+    id: cipher.id,
+    ...(cipher.folderId === undefined ? {} : { folderId: cipher.folderId }),
+    ...(cipher.organizationId === undefined ? {} : { organizationId: cipher.organizationId }),
+    ...(cipher.key === undefined ? {} : { key: cipher.key }),
+    type: cipher.type,
+    name: cipher.name,
+    notes: cipher.notes,
+    fields: cipher.fields,
+    login: cipher.login,
+    ...(cipher.favorite === undefined ? {} : { favorite: cipher.favorite }),
+    lastKnownRevisionDate: cipher.revisionDate,
+  }
+}
+
+function passkeyCipherWriteAllowed(cipher: ExtensionPersonalLoginCipher): Result<void> {
+  if (cipher.edit === false)
+    return resultErrorCreate("extensionBackgroundService.passkey", "The selected login is read-only.", {
+      code: "platform.forbidden",
+      statusCode: 403,
+    })
+  return resultCreate(undefined)
+}
+
 function syncCipherWireCreate(
   cipher: BitwardenSyncEnvelope["ciphers"][number],
   revisionDate: number,
@@ -201,99 +247,6 @@ function syncCipherWireCreate(
     ...(collectionIds === undefined ? {} : { collectionIds }),
     login: cipher.login,
     fields: cipher.fields ?? [],
-  }
-}
-
-function createLoginFieldTypeRead(type: ExtensionCreateLoginRequest["fields"][number]["type"]): 0 | 1 | 2 {
-  if (typeof type === "number") return type
-  if (type === "text") return 0
-  if (type === "hidden") return 1
-  return 2
-}
-
-function createLoginFieldValueRead(
-  op: string,
-  field: ExtensionCreateLoginRequest["fields"][number],
-  type: 0 | 1 | 2,
-): Result<string> {
-  if (type === 2) {
-    if (typeof field.value === "boolean") return resultCreate(String(field.value))
-    if (field.value === "true" || field.value === "false") return resultCreate(field.value)
-    return invalidRequest(op, "Boolean custom field values must be true or false.")
-  }
-  if (typeof field.value !== "string") return invalidRequest(op, "Text and hidden custom field values must be strings.")
-  return resultCreate(field.value)
-}
-
-function createLoginCipherCreate(
-  op: string,
-  request: ExtensionCreateLoginRequest,
-  draftId: string,
-  revisionDate: string,
-): Result<ExtensionPersonalLoginCipher> {
-  const fields: ExtensionPersonalLoginCipher["fields"] = []
-  for (const field of request.fields) {
-    const type = createLoginFieldTypeRead(field.type)
-    const valueResult = createLoginFieldValueRead(op, field, type)
-    if (!valueResult.success) return valueResult
-    fields.push({ name: field.name, value: valueResult.data, type, linkedId: null })
-  }
-
-  const uris = request.uris.map((uri) =>
-    typeof uri === "string" ? { uri, match: null } : { uri: uri.uri, match: uri.match ?? null },
-  )
-  const firstUri = uris[0]
-  if (firstUri === undefined) return invalidRequest(op, "At least one URI is required.")
-
-  return resultCreate({
-    object: "cipherDetails",
-    id: draftId,
-    type: 1,
-    revisionDate,
-    deletedDate: null,
-    organizationId: null,
-    folderId: request.folderId,
-    name: request.name,
-    notes: request.notes,
-    favorite: request.favorite,
-    login: {
-      username: request.username,
-      password: request.password,
-      uris,
-      uri: firstUri.uri,
-      totp: null,
-    },
-    fields,
-  })
-}
-
-function createLoginRequestCreate(cipher: BitwardenEncryptedLoginCipher): BitwardenEncryptedLoginCipherCreateRequest {
-  return {
-    type: cipher.type,
-    name: cipher.name,
-    notes: cipher.notes,
-    fields: cipher.fields,
-    login: cipher.login,
-    favorite: cipher.favorite,
-    ...(cipher.folderId === undefined || cipher.folderId === null ? {} : { folderId: cipher.folderId }),
-  }
-}
-
-function createLoginDraftIdCreate(op: string, requestedId: string | undefined): Result<string> {
-  if (requestedId !== undefined) return resultCreate(requestedId)
-  try {
-    return resultCreate(globalThis.crypto.randomUUID())
-  } catch {
-    return internal(op, "Create draft id could not be generated.")
-  }
-}
-
-function createLoginDateCreate(op: string, timestamp: number): Result<string> {
-  if (!timestampValid(timestamp)) return internal(op, "Create timestamp is invalid.")
-  try {
-    return resultCreate(new Date(timestamp).toISOString())
-  } catch {
-    return internal(op, "Create timestamp is invalid.")
   }
 }
 
@@ -640,89 +593,6 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       return syncCacheRead(cacheResult.data)
     })
 
-  const createLogin = (request: unknown): Promise<Result<ExtensionCreateLoginResult>> =>
-    operationRun(async () => {
-      const op = "extensionBackgroundService.createLogin"
-      const parsed = v.safeParse(extensionCreateLoginRequestSchema, request)
-      if (!parsed.success) return invalidRequest(op, "Create login request is invalid.", v.summarize(parsed.issues))
-      if (!options.vaultSession.isUnlocked()) {
-        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
-      }
-
-      const draftIdResult = createLoginDraftIdCreate(op, parsed.output.draftId)
-      if (!draftIdResult.success) return draftIdResult
-      const updatedAt = now()
-      const revisionDateResult = createLoginDateCreate(op, updatedAt)
-      if (!revisionDateResult.success) return revisionDateResult
-      const plainCipherResult = createLoginCipherCreate(op, parsed.output, draftIdResult.data, revisionDateResult.data)
-      if (!plainCipherResult.success) return plainCipherResult
-
-      const draftTextResult = jsonEncode(op, parsed.output, "Create draft could not be encoded.")
-      if (!draftTextResult.success) return draftTextResult
-      const draftPayloadResult = await options.vaultSession.encryptedPayloadEncrypt(draftTextResult.data)
-      if (!draftPayloadResult.success) return draftPayloadResult
-      const draftSaveResult = await options.storage.createDraftSave({
-        id: draftIdResult.data,
-        updatedAt,
-        payload: draftPayloadResult.data,
-      })
-      if (!draftSaveResult.success) return draftSaveResult
-
-      const encryptedCipherResult = await options.vaultSession.personalLoginCipherEncrypt(plainCipherResult.data)
-      if (!encryptedCipherResult.success) return encryptedCipherResult
-      const cipherCreate = options.apiClient.cipherCreate
-      if (cipherCreate === undefined) return internal(op, "Cipher create API is unavailable.")
-      const createResult = await protectedRequest((accessToken) =>
-        cipherCreate(createLoginRequestCreate(encryptedCipherResult.data), { accessToken }),
-      )
-      if (!createResult.success) return createResult
-
-      const syncResult = await syncRun(true)
-      if (!syncResult.success) return syncResult
-      const draftDeleteResult = await options.storage.createDraftDelete(draftIdResult.data)
-      if (!draftDeleteResult.success) return draftDeleteResult
-      return resultCreate({ cipher: createResult.data, sync: syncResult.data })
-    })
-
-  const createLoginDraftSave = (request: unknown): Promise<Result<{ id: string; updatedAt: number }>> =>
-    operationRun(async () => {
-      const op = "extensionBackgroundService.createLoginDraftSave"
-      const parsed = v.safeParse(extensionCreateLoginRequestSchema, request)
-      if (!parsed.success)
-        return invalidRequest(op, "Create login draft request is invalid.", v.summarize(parsed.issues))
-      if (!options.vaultSession.isUnlocked()) {
-        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
-      }
-
-      const draftIdResult = createLoginDraftIdCreate(op, parsed.output.draftId)
-      if (!draftIdResult.success) return draftIdResult
-      const updatedAt = now()
-      if (!timestampValid(updatedAt)) return internal(op, "Create draft timestamp is invalid.")
-      const draftTextResult = jsonEncode(
-        op,
-        { ...parsed.output, draftId: draftIdResult.data },
-        "Create draft could not be encoded.",
-      )
-      if (!draftTextResult.success) return draftTextResult
-      const draftPayloadResult = await options.vaultSession.encryptedPayloadEncrypt(draftTextResult.data)
-      if (!draftPayloadResult.success) return draftPayloadResult
-      const draftSaveResult = await options.storage.createDraftSave({
-        id: draftIdResult.data,
-        updatedAt,
-        payload: draftPayloadResult.data,
-      })
-      if (!draftSaveResult.success) return draftSaveResult
-      return resultCreate({ id: draftIdResult.data, updatedAt })
-    })
-
-  const createLoginDraftDiscard = (id: unknown): Promise<Result<void>> =>
-    operationRun(async () => {
-      const op = "extensionBackgroundService.createLoginDraftDiscard"
-      const parsed = v.safeParse(v.pipe(v.string(), v.minLength(1)), id)
-      if (!parsed.success) return invalidRequest(op, "Create draft id is invalid.")
-      return options.storage.createDraftDelete(parsed.output)
-    })
-
   const activityRun = async (): Promise<Result<void>> => {
     const op = "extensionBackgroundService.activity"
     if (!options.vaultSession.isUnlocked()) {
@@ -833,6 +703,302 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const fullSync = (): Promise<Result<ExtensionSyncResult>> => operationRun(() => syncRun(true))
   const manualSync = (): Promise<Result<ExtensionSyncResult>> => fullSync()
 
+  const passkeyConsentContexts = new Map<string, ExtensionPasskeyConsentContext>()
+
+  const passkeyConsentContextCreate = (request: unknown): Result<ExtensionPasskeyConsentContext> => {
+    const currentTime = now()
+    for (const [requestId, context] of passkeyConsentContexts) {
+      if (context.expiresAt <= currentTime) passkeyConsentContexts.delete(requestId)
+    }
+    const createParsed = v.safeParse(extensionPasskeyCredentialCreateRequestSchema, request)
+    const assertionParsed = v.safeParse(extensionPasskeyAssertionRequestSchema, request)
+    const createRequest: ExtensionPasskeyCredentialCreateRequest | null = createParsed.success
+      ? createParsed.output
+      : null
+    const assertionRequest: ExtensionPasskeyAssertionRequest | null = assertionParsed.success
+      ? assertionParsed.output
+      : null
+    if (createRequest === null && assertionRequest === null)
+      return invalidRequest("extensionBackgroundService.passkeyConsentContextCreate", "Passkey request is invalid.")
+    const operation = createRequest === null ? "get" : "create"
+    const rpIdResult = extensionPasskeyRpIdNormalize(createRequest?.rpId ?? assertionRequest?.rpId ?? "")
+    if (!rpIdResult.success) return rpIdResult
+    const requestIdResult = extensionPasskeyCredentialIdCreate()
+    if (!requestIdResult.success) return requestIdResult
+    const expiresAt = currentTime + 60_000
+    if (!timestampValid(expiresAt))
+      return internal(
+        "extensionBackgroundService.passkeyConsentContextCreate",
+        "Passkey consent expiration is invalid.",
+      )
+    const context: ExtensionPasskeyConsentContext = {
+      requestId: requestIdResult.data.id,
+      operation,
+      rpId: rpIdResult.data,
+      rpName: createRequest?.rpName ?? null,
+      userName: createRequest?.userName ?? null,
+      userId: createRequest?.userId ?? assertionRequest?.userHandle ?? null,
+      credentialId: assertionRequest?.credentialId ?? null,
+      cipherId: createRequest?.cipherId ?? null,
+      userVerification: createRequest?.userVerification ?? assertionRequest?.userVerification ?? "discouraged",
+      clientDataJSON: createRequest?.clientDataJSON ?? assertionRequest?.clientDataJSON ?? "",
+      expiresAt,
+    }
+    passkeyConsentContexts.set(context.requestId, context)
+    return resultCreate(context)
+  }
+
+  const passkeyConsentAuthorize = (
+    operation: "create" | "get",
+    rpId: string,
+    cipherId: string | null,
+    credentialId: string | null,
+    userId: string | null,
+    userVerification: "required" | "preferred" | "discouraged",
+    clientDataJSON: string,
+    consent: ExtensionPasskeyConsent | undefined,
+  ): Result<ExtensionPasskeyConsent> => {
+    const op = `extensionBackgroundService.passkey${operation === "create" ? "CredentialCreate" : "Assertion"}`
+    if (consent === undefined)
+      return resultErrorCreate(op, "Explicit passkey consent is required.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    const context = passkeyConsentContexts.get(consent.requestId)
+    if (context === undefined || context.expiresAt <= now()) {
+      passkeyConsentContexts.delete(consent.requestId)
+      return resultErrorCreate(op, "Passkey consent is expired or unknown.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    passkeyConsentContexts.delete(consent.requestId)
+    if (
+      context.operation !== operation ||
+      context.rpId !== rpId ||
+      context.cipherId !== cipherId ||
+      context.userId !== userId ||
+      context.userVerification !== userVerification ||
+      context.clientDataJSON !== clientDataJSON ||
+      (context.credentialId !== null &&
+        (credentialId === null || !passkeyCredentialIdMatches(context.credentialId, credentialId)))
+    )
+      return resultErrorCreate(op, "Passkey consent does not match the request.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    if (!consent.approved)
+      return resultErrorCreate(op, "Passkey operation was not approved.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    return resultCreate(consent)
+  }
+
+  const passkeyCredentialCreate = (request: unknown): Promise<Result<unknown>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.passkeyCredentialCreate"
+      const parsed = v.safeParse(extensionPasskeyCredentialCreateRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "WebAuthn registration request is invalid.", v.summarize(parsed.issues))
+      const value = parsed.output
+      const rpIdResult = extensionPasskeyRpIdNormalize(value.rpId)
+      if (!rpIdResult.success) return rpIdResult
+      const consentResult = passkeyConsentAuthorize(
+        "create",
+        rpIdResult.data,
+        value.cipherId,
+        null,
+        value.userId,
+        value.userVerification,
+        value.clientDataJSON,
+        value.consent,
+      )
+      if (!consentResult.success) return consentResult
+      if (!options.vaultSession.isUnlocked())
+        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
+      const syncResult = await syncRun(true)
+      if (!syncResult.success) return syncResult
+      const snapshot = syncResult.data.snapshot
+      for (const cipher of snapshot.ciphers) {
+        if (cipher.deletedDate !== null) continue
+        for (const credential of cipher.login.fido2Credentials ?? []) {
+          if (
+            passkeyRpIdMatches(credential.rpId, rpIdResult.data) &&
+            value.excludeCredentialIds.some((id) => passkeyCredentialIdMatches(id, credential.credentialId))
+          )
+            return resultErrorCreate(op, "A WebAuthn credential is already registered.", {
+              code: "platform.forbidden",
+              statusCode: 403,
+            })
+        }
+      }
+      const registrationResult = await extensionPasskeyCredentialCreate(value, consentResult.data.userVerified, now)
+      if (!registrationResult.success) return registrationResult
+      const targetCipher =
+        value.cipherId === null ? null : snapshot.ciphers.find((cipher) => cipher.id === value.cipherId)
+      if (value.cipherId !== null && targetCipher === undefined)
+        return invalidRequest(op, "The selected login could not be found.")
+      if (targetCipher === undefined) return invalidRequest(op, "The selected login could not be found.")
+      if (targetCipher !== null && targetCipher.deletedDate !== null)
+        return invalidRequest(op, "The selected login could not be found.")
+      let plainCipher: ExtensionPersonalLoginCipher
+      if (targetCipher === null) {
+        const createdAt = new Date(now()).toISOString()
+        plainCipher = {
+          object: "cipherDetails",
+          id: registrationResult.data.credential.credentialId,
+          type: 1,
+          creationDate: createdAt,
+          revisionDate: createdAt,
+          deletedDate: null,
+          organizationId: null,
+          folderId: null,
+          name: value.rpName ?? rpIdResult.data,
+          notes: null,
+          favorite: false,
+          login: {
+            username: value.userName,
+            password: null,
+            uris: [{ uri: `https://${rpIdResult.data}`, match: null }],
+            uri: `https://${rpIdResult.data}`,
+            totp: null,
+            fido2Credentials: [registrationResult.data.credential],
+          },
+          fields: [],
+        }
+      } else {
+        const writeResult = passkeyCipherWriteAllowed(targetCipher)
+        if (!writeResult.success) return writeResult
+        plainCipher = {
+          ...targetCipher,
+          login: {
+            ...targetCipher.login,
+            ...(targetCipher.login.username === null && value.userName !== null ? { username: value.userName } : {}),
+            fido2Credentials: [...(targetCipher.login.fido2Credentials ?? []), registrationResult.data.credential],
+          },
+        }
+      }
+      const encryptedResult = await options.vaultSession.personalLoginCipherEncrypt(plainCipher)
+      if (!encryptedResult.success) return encryptedResult
+      const encryptedRequest = passkeyCipherRequestCreate(encryptedResult.data)
+      if (targetCipher === null) {
+        const cipherCreate = options.apiClient.cipherCreate
+        if (cipherCreate === undefined) return internal(op, "Cipher create API is unavailable.")
+        const createResult = await protectedRequest((accessToken) => cipherCreate(encryptedRequest, { accessToken }))
+        if (!createResult.success) return createResult
+      } else {
+        const cipherUpdate = options.apiClient.cipherUpdate
+        if (cipherUpdate === undefined) return internal(op, "Cipher update API is unavailable.")
+        const updateResult = await protectedRequest((accessToken) =>
+          cipherUpdate(targetCipher.id, encryptedRequest, { accessToken }),
+        )
+        if (!updateResult.success) return updateResult
+      }
+      const refreshedResult = await syncRun(true)
+      if (!refreshedResult.success) return refreshedResult
+      return resultCreate(registrationResult.data.response)
+    })
+
+  const passkeyAssertion = (request: unknown): Promise<Result<unknown>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.passkeyAssertion"
+      const parsed = v.safeParse(extensionPasskeyAssertionRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "WebAuthn assertion request is invalid.", v.summarize(parsed.issues))
+      const value = parsed.output
+      const rpIdResult = extensionPasskeyRpIdNormalize(value.rpId)
+      if (!rpIdResult.success) return rpIdResult
+      const consentCredentialId = value.credentialId ?? value.consent?.credentialId ?? null
+      const consentResult = passkeyConsentAuthorize(
+        "get",
+        rpIdResult.data,
+        null,
+        consentCredentialId,
+        value.userHandle,
+        value.userVerification,
+        value.clientDataJSON,
+        value.consent,
+      )
+      if (!consentResult.success) return consentResult
+      if (!options.vaultSession.isUnlocked())
+        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
+      const syncResult = await syncRun(true)
+      if (!syncResult.success) return syncResult
+      const credentials = syncResult.data.snapshot.ciphers
+        .filter((cipher) => cipher.deletedDate === null)
+        .flatMap((cipher) => cipher.login.fido2Credentials ?? [])
+      const assertionRequest: ExtensionPasskeyAssertionRequest = {
+        ...value,
+        credentialId: value.credentialId ?? consentResult.data.credentialId ?? null,
+      }
+      const assertionResult = await extensionPasskeyAssertionCreate(
+        assertionRequest,
+        credentials,
+        consentResult.data.userVerified,
+      )
+      if (!assertionResult.success) return assertionResult
+      const selectedCipher = syncResult.data.snapshot.ciphers.find((cipher) =>
+        (cipher.login.fido2Credentials ?? []).some(
+          (credential) =>
+            passkeyRpIdMatches(credential.rpId, rpIdResult.data) &&
+            passkeyCredentialIdMatches(credential.credentialId, assertionResult.data.credential.credentialId),
+        ),
+      )
+      if (selectedCipher === undefined) return invalidRequest(op, "The selected login could not be found.")
+      if (assertionResult.data.credential.counter > 0) {
+        const writeResult = passkeyCipherWriteAllowed(selectedCipher)
+        if (!writeResult.success) return writeResult
+        const updatedCipher: ExtensionPersonalLoginCipher = {
+          ...selectedCipher,
+          login: {
+            ...selectedCipher.login,
+            fido2Credentials: (selectedCipher.login.fido2Credentials ?? []).map((credential) =>
+              passkeyCredentialIdMatches(credential.credentialId, assertionResult.data.credential.credentialId)
+                ? assertionResult.data.credential
+                : credential,
+            ),
+          },
+        }
+        const encryptedResult = await options.vaultSession.personalLoginCipherEncrypt(updatedCipher)
+        if (!encryptedResult.success) return encryptedResult
+        const cipherUpdate = options.apiClient.cipherUpdate
+        if (cipherUpdate === undefined) return internal(op, "Cipher update API is unavailable.")
+        const updateResult = await protectedRequest((accessToken) =>
+          cipherUpdate(selectedCipher.id, passkeyCipherRequestCreate(encryptedResult.data), { accessToken }),
+        )
+        if (!updateResult.success) return updateResult
+        const refreshedResult = await syncRun(true)
+        if (!refreshedResult.success) return refreshedResult
+      }
+      return resultCreate(assertionResult.data.response)
+    })
+
+  const sessionHandoffCreate = (
+    operation: SessionHandoffOperation,
+    cipherId: string | null,
+    webVaultOrigin: string,
+    prefillUrl: string | null,
+  ): Promise<Result<string>> => {
+    const apiCreate = options.apiClient.sessionHandoffCreate
+    if (apiCreate === undefined) {
+      return Promise.resolve(
+        internal("extensionBackgroundService.sessionHandoffCreate", "Session handoff is unavailable."),
+      )
+    }
+    return protectedRequest((accessToken) =>
+      extensionSessionHandoffCreate({
+        accessToken,
+        apiClient: { sessionHandoffCreate: apiCreate },
+        cipherId,
+        operation,
+        prefillUrl,
+        vaultSession: options.vaultSession,
+        webVaultOrigin,
+      }),
+    )
+  }
+
   const timeoutAlarmHandle = (alarm: { name: string }): Promise<Result<void>> => {
     if (alarm.name !== extensionTimeoutAlarmName) return Promise.resolve(resultCreate(undefined))
     return operationRun(timeoutReconcile)
@@ -858,15 +1024,16 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     conditionalSync,
     fullSync,
     manualSync,
-    createLogin,
+    sessionHandoffCreate,
     syncSnapshotLoad,
-    createLoginDraftSave,
-    createLoginDraftDiscard,
     unlock,
     lock,
     logout,
     lockPolicySave,
     activity,
+    passkeyConsentContextCreate,
+    passkeyCredentialCreate,
+    passkeyAssertion,
     start,
     timeoutAlarmHandle,
   }

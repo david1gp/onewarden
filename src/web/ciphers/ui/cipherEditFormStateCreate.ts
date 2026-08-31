@@ -9,6 +9,7 @@ import type { CipherType } from "../schemas/cipherTypeSchema.js"
 export interface CipherEditFormStateProps {
   initialItem?: () => CipherItem | null
   defaultType?: () => CipherType | undefined
+  defaultUri?: () => string | null
   onSave: (data: CipherFormData) => Promise<void> | void
   onCancel: () => void
   isSaving?: () => boolean
@@ -28,9 +29,11 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
   const username = createSignalObject(initial?.login?.username ?? "")
   const password = createSignalObject(initial?.login?.password ?? "")
   const totp = createSignalObject(initial?.login?.totp ?? "")
-  const uri = createSignalObject(initial?.login?.uris?.[0]?.uri ?? "")
+  const defaultUri = initial === undefined ? (props.defaultUri?.() ?? "") : ""
+  const uri = createSignalObject(initial?.login?.uris?.[0]?.uri ?? defaultUri)
   const loginUris = createSignalObject<NonNullable<CipherFormData["uris"]>>(
-    initial?.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [],
+    initial?.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ??
+      (defaultUri === "" ? [] : [{ uri: defaultUri, match: null }]),
   )
   const fido2Credentials = createSignalObject<CipherFormData["fido2Credentials"]>(initial?.login?.fido2Credentials)
 

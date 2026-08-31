@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { extensionSessionHandoffCreate } from "../../../src/extension/handoff/extensionSessionHandoffCreate.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { sessionHandoffFragmentParse } from "../../../src/shared/sessionHandoff/sessionHandoffFragmentParse.js"
 
 test("extension session handoff creates a fragment URL without transferring the local key to the server", async () => {
   const transferKey = new Uint8Array(32).fill(5)
@@ -15,6 +16,7 @@ test("extension session handoff creates a fragment URL without transferring the 
     },
     cipherId: null,
     operation: "create",
+    prefillUrl: "https://current.example/login?from=extension",
     vaultSession: {
       sessionHandoffEncrypt: () =>
         Promise.resolve(
@@ -32,6 +34,11 @@ test("extension session handoff creates a fragment URL without transferring the 
     const url = new URL(result.data)
     expect(`${url.origin}${url.pathname}`).toBe("https://vault.example/ciphers/new")
     expect(url.hash).toStartWith("#onewarden-handoff=")
+    const fragmentResult = sessionHandoffFragmentParse(url.hash)
+    expect(fragmentResult).toMatchObject({
+      success: true,
+      data: { operation: "create", prefillUrl: "https://current.example/login?from=extension" },
+    })
   }
   expect(apiRequest).toMatchObject({
     accessToken: "access-token",

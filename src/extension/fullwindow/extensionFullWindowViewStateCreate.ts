@@ -1,9 +1,7 @@
-import { createEffect, createMemo } from "solid-js"
+import { createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
-import { extensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
@@ -53,20 +51,7 @@ export function extensionFullWindowViewStateCreate(
   const isReady = createMemo(() => status() === extensionFullWindowStatus.ready)
 
   const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
-  const isCreatePane = createMemo(() => paneSignal.get() === extensionFullWindowPane.create)
-  const isVaultPane = createMemo(() => !isSettingsPane() && !isCreatePane())
-
-  const createStatus = createMemo(() => model().createStatus)
-  const createErrorMessage = createMemo(() =>
-    model().createStatus === extensionFullWindowCreateStatus.error ? model().errorMessage : null,
-  )
-  const createPrefill = createMemo(() => {
-    const prefill = model().createPrefill
-    if (prefill.name !== "" || prefill.uri !== "") return prefill
-    const activeHostname = hostname()
-    if (activeHostname === null) return prefill
-    return { name: activeHostname, uri: `https://${activeHostname}` }
-  })
+  const isVaultPane = createMemo(() => !isSettingsPane())
 
   const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
   const siteFilterAvailable = createMemo(() => hostname() !== null)
@@ -111,7 +96,6 @@ export function extensionFullWindowViewStateCreate(
   const loginSelect = (login: ExtensionFullWindowLogin) => selectedLoginIdSignal.set(login.id)
   const loginDeselect = () => selectedLoginIdSignal.set("")
   const vaultPaneOpen = () => paneSignal.set(extensionFullWindowPane.vault)
-  const createPaneOpen = () => paneSignal.set(extensionFullWindowPane.create)
   const settingsPaneOpen = () => paneSignal.set(extensionFullWindowPane.settings)
   const siteOnlyToggle = () => siteOnlySignal.set(siteOnly() ? "" : "1")
 
@@ -119,22 +103,8 @@ export function extensionFullWindowViewStateCreate(
   const fieldCopy = (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) =>
     commands().fieldCopy(login, field)
   const totpCopy = (login: ExtensionFullWindowLogin) => commands().totpCopy(login)
-  const loginAdd = () => {
-    createPaneOpen()
-    commands().loginAdd()
-  }
-  const loginCreate = (request: ExtensionCreateLoginRequest) => commands().loginCreate(request)
-  const loginDraftSave = (request: ExtensionCreateLoginRequest) => commands().loginDraftSave(request)
-  const loginDraftDiscard = (draftId: string) => commands().loginDraftDiscard(draftId)
-  const createCancel = () => vaultPaneOpen()
-
-  createEffect(() => {
-    if (!isCreatePane()) return
-    if (createStatus() !== extensionFullWindowCreateStatus.saved) return
-    const createdId = model().createdLoginId
-    vaultPaneOpen()
-    if (createdId !== null) selectedLoginIdSignal.set(createdId)
-  })
+  const loginAdd = () => commands().loginAdd()
+  const loginEdit = (login: ExtensionFullWindowLogin) => commands().loginEdit(login)
   const vaultSync = () => commands().vaultSync()
   const vaultLock = () => commands().vaultLock()
   const vaultLogout = () => commands().vaultLogout()
@@ -185,12 +155,7 @@ export function extensionFullWindowViewStateCreate(
     hasNoLogins,
     isVaultPane,
     isSettingsPane,
-    isCreatePane,
-    createStatus,
-    createErrorMessage,
-    createPrefill,
     vaultPaneOpen,
-    createPaneOpen,
     settingsPaneOpen,
     visibleLogins,
     selectedLogin,
@@ -202,10 +167,7 @@ export function extensionFullWindowViewStateCreate(
     fieldCopy,
     totpCopy,
     loginAdd,
-    loginCreate,
-    loginDraftSave,
-    loginDraftDiscard,
-    createCancel,
+    loginEdit,
     vaultSync,
     vaultLock,
     vaultLogout,

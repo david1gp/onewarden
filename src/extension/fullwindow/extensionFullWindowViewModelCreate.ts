@@ -1,8 +1,7 @@
-import { extensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
-import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import { extensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
+import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
 
 /** Initial full-window read model used before background messaging is wired up. */
 export function extensionFullWindowViewModelCreate(
@@ -18,9 +17,6 @@ export function extensionFullWindowViewModelCreate(
     fillAvailable: false,
     environment: extensionFullWindowEnvironmentSettingsCreate(),
     environmentSaveStatus: extensionFullWindowEnvironmentSaveStatus.idle,
-    createStatus: extensionFullWindowCreateStatus.idle,
-    createPrefill: { name: "", uri: "" },
-    createdLoginId: null,
     ...overrides,
   }
 }

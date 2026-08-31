@@ -1,13 +1,20 @@
 import type { Result } from "#result"
+import { resultCreate } from "../../shared/result/resultCreate.js"
 import { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
 import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
-import { resultCreate } from "../../shared/result/resultCreate.js"
 
 type ExtensionApiClient = ReturnType<typeof extensionBitwardenApiClientCreate>
 type ExtensionApiClientMethods = Pick<
   ExtensionApiClient,
-  "prelogin" | "passwordToken" | "refreshToken" | "revisionDate" | "sync" | "cipherCreate"
+  | "prelogin"
+  | "passwordToken"
+  | "refreshToken"
+  | "revisionDate"
+  | "sync"
+  | "cipherCreate"
+  | "cipherUpdate"
+  | "sessionHandoffCreate"
 >
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 
@@ -58,6 +65,7 @@ export function extensionBackgroundApiClientCreate(storage: ExtensionStorage): E
     return clientResult.data.sync(request)
   }
 
+  /** Background-only mutation seam retained for passkey registration; normal creation uses a web handoff. */
   const cipherCreate = async (
     request: Parameters<ExtensionApiClient["cipherCreate"]>[0],
     protectedRequest: Parameters<ExtensionApiClient["cipherCreate"]>[1],
@@ -67,5 +75,23 @@ export function extensionBackgroundApiClientCreate(storage: ExtensionStorage): E
     return clientResult.data.cipherCreate(request, protectedRequest)
   }
 
-  return { prelogin, passwordToken, refreshToken, revisionDate, sync, cipherCreate }
+  const cipherUpdate = async (
+    cipherId: Parameters<ExtensionApiClient["cipherUpdate"]>[0],
+    request: Parameters<ExtensionApiClient["cipherUpdate"]>[1],
+    protectedRequest: Parameters<ExtensionApiClient["cipherUpdate"]>[2],
+  ): ReturnType<ExtensionApiClient["cipherUpdate"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.cipherUpdate(cipherId, request, protectedRequest)
+  }
+
+  const sessionHandoffCreate = async (
+    request: Parameters<ExtensionApiClient["sessionHandoffCreate"]>[0],
+  ): ReturnType<ExtensionApiClient["sessionHandoffCreate"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.sessionHandoffCreate(request)
+  }
+
+  return { prelogin, passwordToken, refreshToken, revisionDate, sync, cipherCreate, cipherUpdate, sessionHandoffCreate }
 }

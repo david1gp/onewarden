@@ -1,5 +1,5 @@
-import { render } from "@solidjs/testing-library"
 import { describe, expect, test } from "bun:test"
+import { render } from "@solidjs/testing-library"
 import type { CipherFormData } from "../../../src/web/ciphers/schemas/cipherFormDataSchema.js"
 import type { CipherItem } from "../../../src/web/ciphers/schemas/cipherItemSchema.js"
 import { CipherEditForm } from "../../../src/web/ciphers/ui/CipherEditForm.jsx"
@@ -82,6 +82,20 @@ describe("CipherEditForm component", () => {
     const notesTextarea = screen.getByPlaceholderText(/Enter confidential notes/i) as HTMLTextAreaElement
     expect(notesTextarea.value).toBe("SSID: OfficeNet, Pass: secret123")
 
+    screen.unmount()
+  })
+
+  test("prefills a new login with the active-site URL from a handoff", () => {
+    const screen = render(() => (
+      <CipherEditForm
+        defaultUri={() => "https://current.example/login?next=%2Fvault"}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />
+    ))
+
+    const uriInput = screen.getByPlaceholderText("https://example.com/login") as HTMLInputElement
+    expect(uriInput.value).toBe("https://current.example/login?next=%2Fvault")
     screen.unmount()
   })
 

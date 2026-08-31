@@ -1,4 +1,3 @@
-import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
@@ -9,13 +8,10 @@ export interface ExtensionFullWindowCommands {
   fieldCopy: (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => void
   /** Generate and copy the current TOTP code without exposing its seed. */
   totpCopy: (login: ExtensionFullWindowLogin) => void
+  /** Open the normal web create page through a secure session handoff. */
   loginAdd: () => void
-  /** Create one personal login entry from the full-window editor. */
-  loginCreate: (request: ExtensionCreateLoginRequest) => void
-  /** Persist the in-progress create form as an encrypted draft. */
-  loginDraftSave: (request: ExtensionCreateLoginRequest) => void
-  /** Drop the encrypted draft of an abandoned create form. */
-  loginDraftDiscard: (draftId: string) => void
+  /** Open the normal web edit page through a secure session handoff. */
+  loginEdit: (login: ExtensionFullWindowLogin) => void
   vaultSync: () => void
   vaultLock: () => void
   vaultLogout: () => void

@@ -50,5 +50,11 @@ export async function webSessionHandoffConsume(options: WebSessionHandoffConsume
     userKeyResult.data.fill(0)
     return acceptResult
   }
-  return resultCreate(sessionHandoffRouteCreate(response.operation, response.cipherId))
+  return resultCreate(
+    sessionHandoffRouteCreate(
+      response.operation,
+      response.cipherId,
+      options.fragment.operation === "create" ? options.fragment.prefillUrl : null,
+    ),
+  )
 }
