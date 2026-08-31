@@ -27,4 +27,4 @@ Make `/demo/login` use one compact, consistent three-column vault detail layout 
 - [x] 2. Refactor the shared cipher detail header and actions: prevent title wrapping, remove duplicate updated text/divider, make Edit primary, and show all six actions in a responsive grid.
 - [x] 3. Make detail content compact and responsive: notes before attachments, stronger notes contrast, and two-column fields when width allows.
 - [x] 4. Update focused browser coverage and verify the selected first four second-column entries at relevant widths.
-- [ ] 5. Run final checks, use the commits skill to create and push conventional commits, then deploy with the existing project workflow.
+- [x] 5. Run final checks, use the commits skill to create and push conventional commits, then deploy with the existing project workflow.
