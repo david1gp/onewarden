@@ -250,6 +250,14 @@ function syncCipherWireCreate(
   }
 }
 
+function syncCipherPlainRead(cipher: BitwardenEncryptedLoginCipher): ExtensionPersonalLoginCipher | null {
+  if (!/^2\.[^|]+\|[^|]+\|[^|]+$/u.test(cipher.name)) {
+    const parsed = v.safeParse(extensionPersonalLoginCipherSchema, cipher)
+    if (parsed.success) return parsed.output
+  }
+  return null
+}
+
 export function extensionBackgroundServiceCreate(options: ExtensionBackgroundServiceOptions) {
   const now = options.now ?? Date.now
   let operationChain: Promise<void> = Promise.resolve()
@@ -503,6 +511,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       if (wireCipher === null) continue
       const organizationId = wireCipher.organizationId ?? null
       if (organizationId !== null && !authorizedOrganizationIds.has(organizationId)) continue
+      const plainCipher = syncCipherPlainRead(wireCipher)
+      if (plainCipher !== null) {
+        ciphers.push(plainCipher)
+        continue
+      }
       const decryptedResult = await options.vaultSession.personalLoginCipherDecrypt(wireCipher)
       if (!decryptedResult.success) return decryptedResult
       ciphers.push(decryptedResult.data)
