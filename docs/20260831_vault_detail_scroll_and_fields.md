@@ -25,8 +25,8 @@ Refine the vault workspace so each column scrolls independently with consistent 
 ## Tasks
 
 - [x] 1. Make all three vault columns independently scrollable with consistent styled scrollbars.
-- [ ] 2. Remove navigation separator lines, retain consistent group spacing, and place Edit before Favorite.
-- [ ] 3. Replace Collections text entry with `CheckMultiple`.
-- [ ] 4. Remove display-view password strength badges and show non-empty password history as a section below password details.
-- [ ] 5. Add focused tests and visually verify the updated vault workspace.
-- [ ] 6. Run final checks, commit and push scoped changes, then deploy and verify.
+- [x] 2. Remove navigation separator lines, retain consistent group spacing, and place Edit before Favorite.
+- [x] 3. Replace Collections text entry with `CheckMultiple`.
+- [x] 4. Remove display-view password strength badges and show non-empty password history as a section below password details.
+- [x] 5. Add focused tests and visually verify the updated vault workspace.
+- [x] 6. Run final checks, commit and push scoped changes, then deploy and verify.
