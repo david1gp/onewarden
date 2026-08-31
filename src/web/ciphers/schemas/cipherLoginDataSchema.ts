@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { bitwardenFido2CredentialSchema } from "../../../shared/api/bitwardenFido2CredentialSchema.js"
 
 export const cipherLoginDataSchema = v.object({
   username: v.optional(v.nullable(v.string())),
@@ -15,6 +16,7 @@ export const cipherLoginDataSchema = v.object({
     ),
   ),
   passwordRevisionDate: v.optional(v.nullable(v.string())),
+  fido2Credentials: v.optional(v.nullable(v.array(bitwardenFido2CredentialSchema))),
 })
 
 export type CipherLoginData = v.InferOutput<typeof cipherLoginDataSchema>

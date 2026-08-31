@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { bitwardenFido2CredentialSchema } from "../../../shared/api/bitwardenFido2CredentialSchema.js"
 import { type CipherItem, cipherItemSchema } from "../schemas/cipherItemSchema.js"
 import { type CipherType, cipherTypeSchema } from "../schemas/cipherTypeSchema.js"
 import { cipherPasswordStrengthCalculate } from "./cipherPasswordStrengthCalculate.js"
@@ -16,6 +17,10 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
   }))
 
   const rawLogin = wire.login as Record<string, unknown> | null | undefined
+  const fido2CredentialsResult = v.safeParse(
+    v.nullable(v.array(bitwardenFido2CredentialSchema)),
+    rawLogin?.fido2Credentials,
+  )
   const login = rawLogin
     ? {
         username: typeof rawLogin.username === "string" ? rawLogin.username : null,
@@ -30,6 +35,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
             ? [{ uri: rawLogin.uri, match: null }]
             : null,
         passwordRevisionDate: typeof rawLogin.passwordRevisionDate === "string" ? rawLogin.passwordRevisionDate : null,
+        ...(fido2CredentialsResult.success ? { fido2Credentials: fido2CredentialsResult.output } : {}),
       }
     : null
 

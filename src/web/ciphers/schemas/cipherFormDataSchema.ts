@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { bitwardenFido2CredentialSchema } from "../../../shared/api/bitwardenFido2CredentialSchema.js"
 import { cipherCustomFieldSchema } from "./cipherCustomFieldSchema.js"
 import { cipherTypeSchema } from "./cipherTypeSchema.js"
 
@@ -21,6 +22,7 @@ export const cipherFormDataSchema = v.object({
       }),
     ),
   ),
+  fido2Credentials: v.optional(v.nullable(v.array(bitwardenFido2CredentialSchema))),
   // Card fields
   cardholderName: v.optional(v.string()),
   brand: v.optional(v.string()),

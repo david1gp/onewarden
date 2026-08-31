@@ -33,6 +33,7 @@ export function cipherItemToWire(item: CipherFormData | CipherItem): Record<stri
         uris:
           uris?.map((entry) => ({ uri: entry.uri, match: entry.match ?? null })) ??
           (item.uri ? [{ uri: item.uri, match: null }] : []),
+        ...(item.fido2Credentials === undefined ? {} : { fido2Credentials: item.fido2Credentials }),
       }
     } else if ("login" in item && item.login) {
       base.login = item.login

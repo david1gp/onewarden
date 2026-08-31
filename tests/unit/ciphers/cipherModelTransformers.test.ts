@@ -6,6 +6,7 @@ import { cipherItemFromWire } from "../../../src/web/ciphers/model/cipherItemFro
 import { cipherItemToWire } from "../../../src/web/ciphers/model/cipherItemToWire.js"
 import { cipherPasswordStrengthCalculate } from "../../../src/web/ciphers/model/cipherPasswordStrengthCalculate.js"
 import type { VaultItem } from "../../../src/web/demo/vaultItemSchema.js"
+import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 describe("cipherCardBrandDetect", () => {
   test("detects Visa, Mastercard, Amex, Discover", () => {
@@ -52,6 +53,7 @@ describe("cipherItemFromWire and cipherItemToWire", () => {
         password: "SuperPassword123!",
         totp: "492018",
         uris: [{ uri: "https://github.com/login", match: null }],
+        fido2Credentials: [fixtures.fido2Credential.plain],
       },
       creationDate: "2026-01-01T00:00:00Z",
       revisionDate: "2026-02-01T00:00:00Z",
@@ -71,6 +73,7 @@ describe("cipherItemFromWire and cipherItemToWire", () => {
     expect(wirePayload.name).toBe("GitHub")
     expect(wirePayload.favorite).toBe(true)
     expect((wirePayload.login as any)?.username).toBe("alex@example.com")
+    expect((wirePayload.login as any)?.fido2Credentials).toEqual([fixtures.fido2Credential.plain])
   })
 
   test("transforms demo VaultItem to CipherItem", () => {

@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import type { CipherFormData } from "../../../src/web/ciphers/schemas/cipherFormDataSchema.js"
 import type { CipherItem } from "../../../src/web/ciphers/schemas/cipherItemSchema.js"
 import { CipherEditForm } from "../../../src/web/ciphers/ui/CipherEditForm.jsx"
+import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 describe("CipherEditForm component", () => {
   test("renders create form and saves valid login cipher", async () => {
@@ -81,6 +82,39 @@ describe("CipherEditForm component", () => {
     const notesTextarea = screen.getByPlaceholderText(/Enter confidential notes/i) as HTMLTextAreaElement
     expect(notesTextarea.value).toBe("SSID: OfficeNet, Pass: secret123")
 
+    screen.unmount()
+  })
+
+  test("preserves FIDO2 credentials when editing unrelated login fields", () => {
+    let savedData: CipherFormData | null = null
+    const existingItem: CipherItem = {
+      id: "cipher-passkey-1",
+      type: 1,
+      name: "Passkey login",
+      favorite: false,
+      fields: [],
+      login: {
+        username: "user@example.test",
+        password: "password",
+        totp: null,
+        uris: [{ uri: "https://example.test", match: null }],
+        fido2Credentials: [fixtures.fido2Credential.plain],
+      },
+    }
+    const screen = render(() => (
+      <CipherEditForm
+        initialItem={() => existingItem}
+        onSave={(data) => {
+          savedData = data
+        }}
+        onCancel={() => {}}
+      />
+    ))
+
+    screen.getAllByText("Save Item")[0]!.click()
+
+    expect(savedData).not.toBeNull()
+    expect((savedData as CipherFormData | null)?.fido2Credentials).toEqual([fixtures.fido2Credential.plain])
     screen.unmount()
   })
 })

@@ -19,6 +19,7 @@ import { identifierTestCreate } from "../../../src/shared/identifier/identifierT
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { identityTestDeviceCreate } from "../../helpers/identityTestDeviceCreate.js"
 import { identityTestUserCreate } from "../../helpers/identityTestUserCreate.js"
+import extensionFixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -199,6 +200,39 @@ test("cipher routes persist encrypted data, favorites, folders, archive, revisio
   expect(
     context.notifications.filter((item) => typeof item === "object" && item !== null && "type" in item),
   ).toHaveLength(5)
+})
+
+test("cipher create, update, and sync round-trip encrypted FIDO2 credentials without loss", async () => {
+  const context = await contextCreate()
+  const fido2Credentials = [extensionFixtures.fido2Credential.encrypted]
+  const login = loginData("Passkey cipher")
+  const createData = { ...login, login: { ...login.login, fido2Credentials } }
+  const createResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(createData),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+  const created = await createResponse.json()
+  expect(created.login.fido2Credentials).toEqual(fido2Credentials)
+
+  const updateData = { ...createData, notes: "updated encrypted notes" }
+  const updateResponse = await context.app.request(`https://vault.example/api/ciphers/${created.id}`, {
+    body: JSON.stringify(updateData),
+    headers: jsonHeaders(context.token),
+    method: "PUT",
+  })
+  expect(updateResponse.status).toBe(200)
+  expect((await updateResponse.json()).login.fido2Credentials).toEqual(fido2Credentials)
+
+  const syncResponse = await context.app.request("https://vault.example/api/sync", {
+    headers: { authorization: `Bearer ${context.token}`, "Bitwarden-Client-Version": "2024.12.0" },
+  })
+  expect(syncResponse.status).toBe(200)
+  const sync = await syncResponse.json()
+  expect(sync.ciphers.find((cipher: { id: string }) => cipher.id === created.id).login.fido2Credentials).toEqual(
+    fido2Credentials,
+  )
 })
 
 test("cipher route aliases implement bulk delete, restore, and move", async () => {

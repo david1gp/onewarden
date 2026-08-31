@@ -32,6 +32,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
   const loginUris = createSignalObject<NonNullable<CipherFormData["uris"]>>(
     initial?.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [],
   )
+  const fido2Credentials = createSignalObject<CipherFormData["fido2Credentials"]>(initial?.login?.fido2Credentials)
 
   // Card signals
   const cardholderName = createSignalObject(initial?.card?.cardholderName ?? "")
@@ -81,6 +82,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       totp.set(item.login?.totp ?? "")
       uri.set(item.login?.uris?.[0]?.uri ?? "")
       loginUris.set(item.login?.uris?.map((entry) => ({ uri: entry.uri, match: entry.match })) ?? [])
+      fido2Credentials.set(item.login?.fido2Credentials)
       cardholderName.set(item.card?.cardholderName ?? "")
       brand.set(item.card?.brand ?? "Visa")
       number.set(item.card?.number ?? "")
@@ -161,6 +163,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       totp: typeNum === 1 ? totp.get().trim() || undefined : undefined,
       uri: typeNum === 1 ? firstLoginUri : undefined,
       uris: typeNum === 1 ? loginUrisForSubmit : undefined,
+      fido2Credentials: typeNum === 1 ? fido2Credentials.get() : undefined,
       cardholderName: typeNum === 3 ? cardholderName.get().trim() || undefined : undefined,
       brand: typeNum === 3 ? brand.get() || undefined : undefined,
       number: typeNum === 3 ? number.get().trim() || undefined : undefined,
