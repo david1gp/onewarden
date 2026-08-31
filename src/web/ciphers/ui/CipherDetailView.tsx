@@ -18,7 +18,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
   const state = cipherDetailViewStateCreate(props)
 
   return (
-    <article class="flex h-full min-w-0 flex-1 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
+    <article class="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
       <Show
         when={state.item()}
         fallback={
@@ -34,7 +34,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
         }
       >
         {(item) => (
-          <div class={`@container min-w-0 flex-1 overflow-y-auto ${classesScrollbar} p-4 sm:p-6`}>
+          <div class={`@container min-h-0 min-w-0 flex-1 overflow-y-auto ${classesScrollbar} p-4 sm:p-6`}>
             {/* Trash Banner if soft-deleted */}
             <Show when={state.isDeleted()}>
               <div class="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200">

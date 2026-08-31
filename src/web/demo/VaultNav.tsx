@@ -15,7 +15,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
   return (
     <nav
       aria-label="Vault Navigation"
-      class="flex h-full w-full flex-col bg-slate-50 text-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
+      class="flex h-full min-h-0 w-full flex-col bg-slate-50 text-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
     >
       {/* Account / Workspace Switcher Header */}
       <div class="border-b border-slate-200 p-3 dark:border-slate-800">
@@ -32,7 +32,7 @@ export function VaultNav(props: VaultNavStateProps): JSX.Element {
       </div>
 
       {/* Navigation Scrollable Body */}
-      <div class={`flex-1 space-y-5 overflow-y-auto ${classesScrollbar} p-3 text-sm`}>
+      <div class={`min-h-0 flex-1 space-y-5 overflow-y-auto ${classesScrollbar} p-3 text-sm`}>
         {/* Quick Access */}
         <div>
           <p class="px-2 pb-1 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">

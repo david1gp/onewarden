@@ -18,7 +18,7 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
   return (
     <section
       aria-label="Vault Items"
-      class="flex h-full w-full flex-col bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+      class="flex h-full min-h-0 w-full flex-col bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-200"
     >
       <div class="border-b border-slate-200 p-3 dark:border-slate-800">
         <div class="relative flex items-center">
@@ -64,7 +64,7 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
         </div>
       </div>
 
-      <div class={`flex-1 overflow-y-auto ${classesScrollbar}`}>
+      <div class={`min-h-0 flex-1 overflow-y-auto ${classesScrollbar}`}>
         <Show
           when={state.items().length > 0}
           fallback={
