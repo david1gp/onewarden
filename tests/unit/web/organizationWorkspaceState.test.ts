@@ -1,12 +1,47 @@
 import { describe, expect, test } from "bun:test"
 import { createRoot } from "solid-js"
-import { organizationWorkspaceStateCreate } from "../../../src/web/organizations/ui/organizationWorkspaceStateCreate.js"
-import { organizationNavStateCreate } from "../../../src/web/organizations/ui/organizationNavStateCreate.js"
-import { organizationMemberListStateCreate } from "../../../src/web/organizations/ui/organizationMemberListStateCreate.js"
 import { organizationCollectionListStateCreate } from "../../../src/web/organizations/ui/organizationCollectionListStateCreate.js"
 import { organizationMemberInviteDialogStateCreate } from "../../../src/web/organizations/ui/organizationMemberInviteDialogStateCreate.js"
+import { organizationMemberListStateCreate } from "../../../src/web/organizations/ui/organizationMemberListStateCreate.js"
+import { organizationNavStateCreate } from "../../../src/web/organizations/ui/organizationNavStateCreate.js"
+import { organizationWorkspaceStateCreate } from "../../../src/web/organizations/ui/organizationWorkspaceStateCreate.js"
+
+window.location.href = "http://localhost/"
 
 describe("organizationWorkspaceState and child state creators", () => {
+  test("organizationWorkspaceState accepts valid URL state and ignores malformed values", () => {
+    const initialUrl = window.location.href
+    window.history.replaceState(
+      null,
+      "",
+      "http://localhost/?tab=collections&orgId=org-startup-lab-002&memberId=mem-bob-002&collectionId=col-finance-002&groupId=grp-finance-002&dialog=create-group",
+    )
+
+    createRoot((dispose) => {
+      const state = organizationWorkspaceStateCreate()
+
+      expect(state.activeOrg()?.id).toBe("org-startup-lab-002")
+      expect(state.activeTab()).toBe("collections")
+      expect(state.selectedMemberId()).toBe("mem-bob-002")
+      expect(state.selectedCollectionId()).toBe("col-finance-002")
+      expect(state.selectedGroupId()).toBe("grp-finance-002")
+      expect(state.isCreateGroupOpen()).toBe(true)
+      dispose()
+    })
+
+    window.history.replaceState(null, "", "http://localhost/?tab=unknown&orgId=%20&memberId=%20&dialog=unknown")
+    createRoot((dispose) => {
+      const state = organizationWorkspaceStateCreate()
+
+      expect(state.activeOrg()?.id).toBe("org-acme-corp-001")
+      expect(state.activeTab()).toBe("members")
+      expect(state.selectedMemberId()).toBe("mem-alice-001")
+      expect(state.isCreateGroupOpen()).toBe(false)
+      dispose()
+    })
+    window.history.replaceState(null, "", initialUrl)
+  })
+
   test("organizationWorkspaceState initializes with active organization, members, and collections", () => {
     createRoot((dispose) => {
       const state = organizationWorkspaceStateCreate()

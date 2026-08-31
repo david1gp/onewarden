@@ -1,25 +1,28 @@
 import { createMemo, onCleanup, onMount } from "solid-js"
+import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { Organization } from "../schemas/organizationSchema.js"
-import type { OrganizationMember } from "../schemas/organizationMemberSchema.js"
-import type { OrganizationCollection } from "../schemas/organizationCollectionSchema.js"
-import type { OrganizationGroup } from "../schemas/organizationGroupSchema.js"
-import type { OrganizationGroupInput } from "../schemas/organizationGroupInputSchema.js"
-import type { OrganizationPolicy } from "../schemas/organizationPolicySchema.js"
-import type { OrganizationPolicyInput } from "../schemas/organizationPolicyInputSchema.js"
-import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
-import type { OrganizationDomain } from "../schemas/organizationDomainSchema.js"
-import type { OrganizationDomainInput } from "../schemas/organizationDomainInputSchema.js"
-import type { OrganizationSso } from "../schemas/organizationSsoSchema.js"
-import type { OrganizationSsoInput } from "../schemas/organizationSsoInputSchema.js"
-import type { OrganizationWorkspaceTab } from "../schemas/organizationWorkspaceTab.js"
-import type { OrganizationCreateInput } from "../schemas/organizationCreateInputSchema.js"
-import type { OrganizationUpdateInput } from "../schemas/organizationUpdateInputSchema.js"
-import type { OrganizationMemberInviteInput } from "../schemas/organizationMemberInviteInputSchema.js"
-import type { OrganizationMemberUpdateInput } from "../schemas/organizationMemberUpdateInputSchema.js"
-import type { OrganizationCollectionInput } from "../schemas/organizationCollectionInputSchema.js"
 import { organizationApiClientCreate, type OrganizationApiClientOptions } from "../api/organizationApiClientCreate.js"
 import { organizationDemoData } from "../demo/organizationDemoData.js"
+import type { OrganizationCollection } from "../schemas/organizationCollectionSchema.js"
+import type { OrganizationCollectionInput } from "../schemas/organizationCollectionInputSchema.js"
+import type { OrganizationCreateInput } from "../schemas/organizationCreateInputSchema.js"
+import type { OrganizationDomain } from "../schemas/organizationDomainSchema.js"
+import type { OrganizationDomainInput } from "../schemas/organizationDomainInputSchema.js"
+import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
+import type { OrganizationGroup } from "../schemas/organizationGroupSchema.js"
+import type { OrganizationGroupInput } from "../schemas/organizationGroupInputSchema.js"
+import type { OrganizationMember } from "../schemas/organizationMemberSchema.js"
+import type { OrganizationMemberInviteInput } from "../schemas/organizationMemberInviteInputSchema.js"
+import type { OrganizationMemberUpdateInput } from "../schemas/organizationMemberUpdateInputSchema.js"
+import type { OrganizationPolicy } from "../schemas/organizationPolicySchema.js"
+import type { OrganizationPolicyInput } from "../schemas/organizationPolicyInputSchema.js"
+import type { Organization } from "../schemas/organizationSchema.js"
+import type { OrganizationSso } from "../schemas/organizationSsoSchema.js"
+import type { OrganizationSsoInput } from "../schemas/organizationSsoInputSchema.js"
+import type { OrganizationUpdateInput } from "../schemas/organizationUpdateInputSchema.js"
+import { organizationWorkspaceDialogSchema } from "../schemas/organizationWorkspaceDialogSchema.js"
+import { organizationWorkspaceIdentifierSchema } from "../schemas/organizationWorkspaceIdentifierSchema.js"
+import { type OrganizationWorkspaceTab, organizationWorkspaceTabSchema } from "../schemas/organizationWorkspaceTab.js"
 
 export interface OrganizationWorkspaceProps {
   apiClientOptions?: OrganizationApiClientOptions
@@ -138,29 +141,21 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
   const syncFromUrl = () => {
     if (typeof window === "undefined") return
     const params = new URLSearchParams(window.location.search)
-    const tabParam = params.get("tab")
-    if (
-      tabParam === "settings" ||
-      tabParam === "members" ||
-      tabParam === "collections" ||
-      tabParam === "groups" ||
-      tabParam === "policies" ||
-      tabParam === "events" ||
-      tabParam === "domains" ||
-      tabParam === "sso"
-    ) {
-      activeTabSignal.set(tabParam)
-    }
-    const orgParam = params.get("orgId")
-    if (orgParam) activeOrgIdSignal.set(orgParam)
-    const memParam = params.get("memberId")
-    if (memParam) selectedMemberIdSignal.set(memParam)
-    const colParam = params.get("collectionId")
-    if (colParam) selectedCollectionIdSignal.set(colParam)
-    const grpParam = params.get("groupId")
-    if (grpParam) selectedGroupIdSignal.set(grpParam)
+    const tabResult = v.safeParse(organizationWorkspaceTabSchema, params.get("tab"))
+    if (tabResult.success) activeTabSignal.set(tabResult.output)
 
-    const dialogParam = params.get("dialog")
+    const orgResult = v.safeParse(organizationWorkspaceIdentifierSchema, params.get("orgId"))
+    if (orgResult.success) activeOrgIdSignal.set(orgResult.output)
+    const memberResult = v.safeParse(organizationWorkspaceIdentifierSchema, params.get("memberId"))
+    if (memberResult.success) selectedMemberIdSignal.set(memberResult.output)
+    const collectionResult = v.safeParse(organizationWorkspaceIdentifierSchema, params.get("collectionId"))
+    if (collectionResult.success) selectedCollectionIdSignal.set(collectionResult.output)
+    const groupResult = v.safeParse(organizationWorkspaceIdentifierSchema, params.get("groupId"))
+    if (groupResult.success) selectedGroupIdSignal.set(groupResult.output)
+
+    const dialogResult = v.safeParse(organizationWorkspaceDialogSchema, params.get("dialog"))
+    if (!dialogResult.success) return
+    const dialogParam = dialogResult.output
     if (dialogParam === "create-org") isCreateOrgOpenSignal.set(true)
     if (dialogParam === "invite-member") isInviteMemberOpenSignal.set(true)
     if (dialogParam === "create-collection") isCreateCollectionOpenSignal.set(true)
@@ -332,8 +327,9 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
     }
   }
 
+  syncFromUrl()
+
   onMount(() => {
-    syncFromUrl()
     void loadOrganizations()
     if (typeof window !== "undefined") {
       window.addEventListener("popstate", syncFromUrl)
