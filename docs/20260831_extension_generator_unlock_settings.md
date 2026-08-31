@@ -30,4 +30,4 @@ Give the browser extension a Bitwarden-like icon navigation experience with dedi
 - [x] 5. Add compact popup icon actions that enter Generator and Settings views.
 - [x] 6. Run focused and repository-wide verification and fix only issues caused by this change.
 - [x] 7. Verify the extension UI and interactions in a real browser, fixing any visual or functional defects.
-- [ ] 8. Use the `/commits` workflow to create and push conventional commits, then deploy with the existing release workflow.
+- [x] 8. Use the `/commits` workflow to create and push conventional commits, then deploy with the existing release workflow.
