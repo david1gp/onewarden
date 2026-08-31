@@ -1,25 +1,51 @@
+import { createHmac } from "node:crypto"
 import {
-  verifyAuthenticationResponse,
-  verifyRegistrationResponse,
   type AuthenticationResponseJSON,
   type RegistrationResponseJSON,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
 } from "@simplewebauthn/server"
-import { createHmac } from "node:crypto"
+import * as v from "valibot"
 import type { Result } from "#result"
-import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import type { Clock } from "../../../shared/clock/clock.js"
+import { clockCreate } from "../../../shared/clock/clockCreate.js"
 import { base64Decode } from "../../../shared/crypto/base64Decode.js"
 import { base64UrlDecode } from "../../../shared/crypto/base64UrlDecode.js"
 import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
-import type { Clock } from "../../../shared/clock/clock.js"
-import { clockCreate } from "../../../shared/clock/clockCreate.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { TwoFactorAdapters, TwoFactorDuoCredentials, TwoFactorDuoLogin } from "./twoFactorAdapters.js"
 import type { TwoFactorWebAuthnAuthentication } from "./twoFactorWebAuthnAuthentication.js"
+import { type TwoFactorWebAuthnResponse, twoFactorWebAuthnResponseSchema } from "./twoFactorWebAuthnResponseSchema.js"
 
 const adapterRequestTimeoutMilliseconds = 10_000
+
+const webauthnRegistrationResponseSchema = v.object({
+  id: v.string(),
+  rawId: v.string(),
+  type: v.literal("public-key"),
+  response: v.object({
+    clientDataJSON: v.string(),
+    attestationObject: v.string(),
+  }),
+  clientExtensionResults: v.record(v.string(), v.unknown()),
+})
+
+const webauthnAuthenticationResponseSchema = v.object({
+  id: v.string(),
+  rawId: v.string(),
+  type: v.literal("public-key"),
+  response: v.object({
+    clientDataJSON: v.string(),
+    authenticatorData: v.string(),
+    signature: v.string(),
+    userHandle: v.nullable(v.string()),
+  }),
+  clientExtensionResults: v.record(v.string(), v.unknown()),
+})
 
 type TwoFactorAdapterConfiguration = Pick<
   IdentityConfig,
@@ -73,10 +99,18 @@ export function twoFactorAdaptersCreate(
         }
         if (state.expiresAt <= Math.floor(clock.now().getTime() / 1_000))
           return resultErrorCreate("twoFactorWebAuthnRegistrationValidate", "Webauthn registration challenge expired")
-        const normalized = webauthnResponseNormalize(response)
+        const responseResult = v.safeParse(twoFactorWebAuthnResponseSchema, response)
+        if (!responseResult.success)
+          return resultErrorCreate("twoFactorWebAuthnRegistrationValidate", "Webauthn registration was invalid")
+        const registrationResponseResult = v.safeParse(
+          webauthnRegistrationResponseSchema,
+          webauthnResponseJsonCreate(responseResult.output),
+        )
+        if (!registrationResponseResult.success)
+          return resultErrorCreate("twoFactorWebAuthnRegistrationValidate", "Webauthn registration was invalid")
         try {
           const verification = await verifyRegistrationResponse({
-            response: normalized as RegistrationResponseJSON,
+            response: registrationResponseResult.output as RegistrationResponseJSON,
             expectedChallenge: state.challenge,
             expectedOrigin: state.origin,
             expectedRPID: state.rpId,
@@ -87,8 +121,8 @@ export function twoFactorAdaptersCreate(
           if (!verification.verified)
             return resultErrorCreate("twoFactorWebAuthnRegistrationValidate", "Webauthn registration was not verified")
           const credential = verification.registrationInfo.credential
-          const responseId = webauthnResponseStringRead(normalized, "id")
-          const rawId = webauthnResponseStringRead(normalized, "rawId")
+          const responseId = webauthnResponseStringRead(responseResult.output, "id")
+          const rawId = webauthnResponseRawIdRead(responseResult.output)
           if (responseId === undefined || rawId === undefined || responseId !== rawId || credential.id !== rawId)
             return resultErrorCreate("twoFactorWebAuthnRegistrationValidate", "Webauthn credential ID was invalid")
           return {
@@ -113,13 +147,19 @@ export function twoFactorAdaptersCreate(
         }
         if (state.expiresAt <= Math.floor(clock.now().getTime() / 1_000))
           return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn login challenge expired")
-        const normalized = webauthnResponseNormalize(response)
+        const responseResult = v.safeParse(twoFactorWebAuthnResponseSchema, response)
+        if (!responseResult.success)
+          return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
+        const authenticationResponseResult = v.safeParse(
+          webauthnAuthenticationResponseSchema,
+          webauthnResponseJsonCreate(responseResult.output),
+        )
+        if (!authenticationResponseResult.success)
+          return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
         if (state.credentials === undefined)
           return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn credentials are unavailable")
-        if (typeof normalized !== "object" || normalized === null || Array.isArray(normalized))
-          return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
-        const responseId = (normalized as Record<string, unknown>).id
-        const rawId = webauthnResponseStringRead(normalized, "rawId")
+        const responseId = webauthnResponseStringRead(responseResult.output, "id")
+        const rawId = webauthnResponseRawIdRead(responseResult.output)
         if (typeof responseId !== "string" || rawId === undefined || responseId !== rawId)
           return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
         const storedCredential = state.credentials.find((credential) => credential.id === responseId)
@@ -134,7 +174,7 @@ export function twoFactorAdaptersCreate(
           return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn credential was invalid")
         try {
           const verification = await verifyAuthenticationResponse({
-            response: normalized as AuthenticationResponseJSON,
+            response: authenticationResponseResult.output as AuthenticationResponseJSON,
             expectedChallenge: state.challenge,
             expectedOrigin: state.origin,
             expectedRPID: state.rpId,
@@ -354,33 +394,54 @@ function twoFactorYubikeyResponseRead(body: string): Result<Record<string, strin
   return resultCreate(fields)
 }
 
-function webauthnResponseNormalize(response: unknown): unknown {
-  if (typeof response !== "object" || response === null || Array.isArray(response)) return response
-  const normalized = { ...(response as Record<string, unknown>) }
-  if (normalized.rawId === undefined && normalized.raw_id !== undefined) normalized.rawId = normalized.raw_id
-  if (normalized.clientExtensionResults === undefined && normalized.client_extension_results !== undefined)
-    normalized.clientExtensionResults = normalized.client_extension_results
-  const nested = normalized.response
-  if (typeof nested !== "object" || nested === null || Array.isArray(nested)) return normalized
-  const nestedResponse = { ...(nested as Record<string, unknown>) }
-  if (nestedResponse.clientDataJSON === undefined && nestedResponse.clientDataJson !== undefined)
-    nestedResponse.clientDataJSON = nestedResponse.clientDataJson
-  if (nestedResponse.clientDataJSON === undefined && nestedResponse.client_data_json !== undefined)
-    nestedResponse.clientDataJSON = nestedResponse.client_data_json
-  if (nestedResponse.attestationObject === undefined && nestedResponse.AttestationObject !== undefined)
-    nestedResponse.attestationObject = nestedResponse.AttestationObject
-  if (nestedResponse.attestationObject === undefined && nestedResponse.attestation_object !== undefined)
-    nestedResponse.attestationObject = nestedResponse.attestation_object
-  if (nestedResponse.authenticatorData === undefined && nestedResponse.authenticator_data !== undefined)
-    nestedResponse.authenticatorData = nestedResponse.authenticator_data
-  if (nestedResponse.userHandle === undefined && nestedResponse.user_handle !== undefined)
-    nestedResponse.userHandle = nestedResponse.user_handle
-  normalized.response = nestedResponse
-  return normalized
+function webauthnResponseStringRead(response: unknown, key: string): string | undefined {
+  const responseResult = v.safeParse(v.record(v.string(), v.unknown()), response)
+  if (!responseResult.success) return undefined
+  const value = responseResult.output[key]
+  return typeof value === "string" && value !== "" ? value : undefined
 }
 
-function webauthnResponseStringRead(response: unknown, key: string): string | undefined {
-  if (typeof response !== "object" || response === null || Array.isArray(response)) return undefined
-  const value = (response as Record<string, unknown>)[key]
-  return typeof value === "string" && value !== "" ? value : undefined
+function webauthnResponseJsonCreate(response: TwoFactorWebAuthnResponse): Record<string, unknown> {
+  const nested = response.response
+  const userHandle = webauthnResponseBinaryStringRead(nested.userHandle ?? nested.user_handle)
+  return {
+    clientExtensionResults: webauthnResponseRecordRead(
+      response.clientExtensionResults ?? response.client_extension_results,
+    ),
+    id: response.id,
+    rawId: webauthnResponseBinaryStringRead(response.rawId ?? response.raw_id),
+    response: {
+      attestationObject: webauthnResponseBinaryStringRead(
+        nested.attestationObject ?? nested.AttestationObject ?? nested.attestation_object,
+      ),
+      authenticatorData: webauthnResponseBinaryStringRead(nested.authenticatorData ?? nested.authenticator_data),
+      clientDataJSON: webauthnResponseBinaryStringRead(
+        nested.clientDataJSON ?? nested.clientDataJson ?? nested.client_data_json,
+      ),
+      signature: webauthnResponseBinaryStringRead(nested.signature),
+      userHandle: userHandle ?? null,
+    },
+    type: response.type ?? "public-key",
+  }
+}
+
+function webauthnResponseRawIdRead(response: TwoFactorWebAuthnResponse): string | undefined {
+  return webauthnResponseStringRead(response, "rawId") ?? webauthnResponseStringRead(response, "raw_id")
+}
+
+function webauthnResponseBinaryStringRead(value: unknown): string | undefined {
+  if (typeof value === "string" && value !== "") return value
+  if (
+    !Array.isArray(value) ||
+    !value.every(
+      (byte): byte is number => typeof byte === "number" && Number.isInteger(byte) && byte >= 0 && byte <= 255,
+    )
+  )
+    return undefined
+  return base64UrlEncode(Uint8Array.from(value))
+}
+
+function webauthnResponseRecordRead(value: unknown): Record<string, unknown> {
+  const result = v.safeParse(v.record(v.string(), v.unknown()), value)
+  return result.success ? result.output : {}
 }

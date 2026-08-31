@@ -729,8 +729,10 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
         stateResult.data.expiresAt <= Math.floor(options.clock.now().getTime() / 1_000))
     )
       return apiErrorResponseCreate(identityTwoFactorError("Webauthn challenge is invalid"))
-    const response = webauthnResponseNormalize(request.data.body.deviceResponse)
-    const credentialResult = await adapters.webauthn?.registrationValidate?.(response, stateResult.data)
+    const credentialResult = await adapters.webauthn?.registrationValidate?.(
+      request.data.body.deviceResponse,
+      stateResult.data,
+    )
     if (credentialResult === undefined)
       return apiErrorResponseCreate(identityTwoFactorError("Webauthn adapter unavailable"))
     if (!credentialResult.success) return apiErrorResponseCreate(credentialResult)
@@ -1139,31 +1141,6 @@ function twoFactorDuoGlobalConfigured(options: IdentityRouteOptions): boolean {
 
 function twoFactorDuoFieldIsDefault(value: string): boolean {
   return value.trim() === "" || value === "<To use the global Duo keys, please leave these fields untouched>"
-}
-
-function webauthnResponseNormalize(response: unknown): unknown {
-  if (typeof response !== "object" || response === null || Array.isArray(response)) return response
-  const normalized = { ...(response as Record<string, unknown>) }
-  if (normalized.rawId === undefined && normalized.raw_id !== undefined) normalized.rawId = normalized.raw_id
-  if (normalized.clientExtensionResults === undefined && normalized.client_extension_results !== undefined)
-    normalized.clientExtensionResults = normalized.client_extension_results
-  const nested = normalized.response
-  if (typeof nested === "object" && nested !== null && !Array.isArray(nested)) {
-    const value = { ...(nested as Record<string, unknown>) }
-    if (value.clientDataJSON === undefined && value.clientDataJson !== undefined)
-      value.clientDataJSON = value.clientDataJson
-    if (value.clientDataJSON === undefined && value.client_data_json !== undefined)
-      value.clientDataJSON = value.client_data_json
-    if (value.attestationObject === undefined && value.AttestationObject !== undefined)
-      value.attestationObject = value.AttestationObject
-    if (value.attestationObject === undefined && value.attestation_object !== undefined)
-      value.attestationObject = value.attestation_object
-    if (value.authenticatorData === undefined && value.authenticator_data !== undefined)
-      value.authenticatorData = value.authenticator_data
-    if (value.userHandle === undefined && value.user_handle !== undefined) value.userHandle = value.user_handle
-    normalized.response = value
-  }
-  return normalized
 }
 
 function twoFactorWebAuthnKeysRead(data: string): Result<Array<{ id: number; name: string; migrated: boolean }>> {

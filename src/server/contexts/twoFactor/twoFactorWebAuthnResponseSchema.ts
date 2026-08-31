@@ -11,6 +11,8 @@ export const twoFactorWebAuthnResponseSchema = v.looseObject({
   rawId: v.optional(twoFactorWebAuthnBinarySchema),
   raw_id: v.optional(twoFactorWebAuthnBinarySchema),
   type: v.optional(v.literal("public-key")),
+  clientExtensionResults: v.optional(v.record(v.string(), v.unknown())),
+  client_extension_results: v.optional(v.record(v.string(), v.unknown())),
   response: v.looseObject({
     clientDataJSON: v.optional(twoFactorWebAuthnBinarySchema),
     clientDataJson: v.optional(twoFactorWebAuthnBinarySchema),

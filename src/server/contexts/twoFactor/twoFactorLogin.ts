@@ -1,5 +1,4 @@
 import { type KeyInput } from "jose"
-import * as v from "valibot"
 import { type Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
@@ -34,7 +33,6 @@ import type { TwoFactorWebAuthnAuthentication } from "./twoFactorWebAuthnAuthent
 import { twoFactorWebAuthnChallengeConsume } from "./twoFactorWebAuthnChallengeConsume.js"
 import { twoFactorWebAuthnChallengeCreate } from "./twoFactorWebAuthnChallengeCreate.js"
 import { twoFactorWebAuthnRegistrationCounterUpdate } from "./twoFactorWebAuthnRegistrationCounterUpdate.js"
-import { twoFactorWebAuthnResponseSchema } from "./twoFactorWebAuthnResponseSchema.js"
 import { twoFactorWebAuthnStateRead } from "./twoFactorWebAuthnStateRead.js"
 import { twoFactorYubikeyLoginValidate } from "./twoFactorYubikeyLoginValidate.js"
 
@@ -236,10 +234,7 @@ async function twoFactorRecordLoginValidate(
     } catch {
       return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
     }
-    const responseResult = v.safeParse(twoFactorWebAuthnResponseSchema, response)
-    if (!responseResult.success)
-      return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
-    const validationResult = await adapters.webauthn?.loginValidate?.(responseResult.output, stateResult.data)
+    const validationResult = await adapters.webauthn?.loginValidate?.(response, stateResult.data)
     if (validationResult === undefined)
       return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn adapter unavailable")
     return validationResult
