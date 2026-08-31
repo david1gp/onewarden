@@ -15,6 +15,7 @@ export type WebAppRouteName =
   | "emergency-access"
   | "admin-login"
   | "directory"
+  | "demo-settings"
   | "admin"
   | "all-items"
   | "login"
@@ -113,6 +114,28 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   }
   if (routePath === "/demo") {
     return "directory"
+  }
+  if (
+    routePath === "/demo/settings" ||
+    routePath === "/demo/settings/account" ||
+    routePath === "/demo/settings/profile" ||
+    routePath === "/demo/settings/security" ||
+    routePath === "/demo/settings/two-factor" ||
+    routePath === "/demo/settings/2fa" ||
+    routePath === "/demo/settings/two-factor-setup" ||
+    routePath === "/demo/settings/email" ||
+    routePath === "/demo/settings/devices" ||
+    routePath === "/demo/settings/sessions" ||
+    routePath === "/demo/settings/emergency" ||
+    routePath === "/demo/settings/tools" ||
+    routePath === "/demo/settings/import" ||
+    routePath === "/demo/settings/export" ||
+    routePath === "/demo/settings/appearance" ||
+    routePath === "/demo/settings/theme" ||
+    routePath === "/demo/settings/danger" ||
+    routePath === "/demo/settings/delete-account"
+  ) {
+    return "demo-settings"
   }
   if (routePath === "/demo/admin" || routePath === "/demo/admin/login") {
     return "admin"

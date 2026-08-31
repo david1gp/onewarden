@@ -16,6 +16,7 @@ export function vaultDemoHeaderStateCreate(props: VaultDemoHeaderProps) {
     { id: "trash", path: "/demo/trash", label: "Trash" },
     { id: "locked", path: "/demo/locked", label: "Locked" },
     { id: "admin", path: "/demo/admin", label: "Admin" },
+    { id: "settings", path: "/demo/settings", label: "Settings" },
   ]
 
   return {

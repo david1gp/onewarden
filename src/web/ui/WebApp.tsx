@@ -21,6 +21,7 @@ import { DemoSelectedIdentity } from "../demo/DemoSelectedIdentity.jsx"
 import { DemoSelectedLogin } from "../demo/DemoSelectedLogin.jsx"
 import { DemoSelectedSecureNote } from "../demo/DemoSelectedSecureNote.jsx"
 import { DemoSelectedSshKey } from "../demo/DemoSelectedSshKey.jsx"
+import { DemoSettings } from "../demo/DemoSettings.jsx"
 import { DemoTrash } from "../demo/DemoTrash.jsx"
 import { vaultDemoData } from "../demo/vaultDemoData.js"
 import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
@@ -93,6 +94,9 @@ export function WebApp(): JSX.Element {
         </Match>
         <Match when={state.currentRoute() === "directory"}>
           <DemoDirectory />
+        </Match>
+        <Match when={state.currentRoute() === "demo-settings"}>
+          <DemoSettings />
         </Match>
         <Match when={state.currentRoute() === "admin" && state.pathname().toLowerCase().startsWith("/demo/")}>
           <DemoAdmin />

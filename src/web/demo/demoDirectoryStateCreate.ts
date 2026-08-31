@@ -20,6 +20,15 @@ export function demoDirectoryStateCreate() {
       badgeVariant: "filledBlue",
     },
     {
+      id: "settings",
+      path: "/demo/settings",
+      title: "Account Settings",
+      category: "Settings",
+      description: "Interactive account settings for profile, security, email, devices, emergency access, and tools.",
+      badgeText: "Settings Demo",
+      badgeVariant: "filledBlue",
+    },
+    {
       id: "all-items",
       path: "/demo/all-items",
       title: "All Items & Multi-Vault Workspace",
