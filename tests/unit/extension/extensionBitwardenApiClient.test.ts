@@ -121,7 +121,7 @@ test("extensionBitwardenApiClientCreate creates an authenticated session handoff
 
   expect(result.success).toBe(true)
   expect(request).toMatchObject({
-    input: "https://vault.example/api/session-handoffs",
+    input: "https://vault.example/api/extension/handoffs",
     init: { method: "POST", headers: { authorization: "Bearer access-token" } },
   })
   expect(request?.init?.body).not.toContain("access-token")
