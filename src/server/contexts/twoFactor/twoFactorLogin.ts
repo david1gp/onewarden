@@ -259,9 +259,9 @@ async function twoFactorRecordLoginValidate(
     options.config.AUTHENTICATOR_DISABLE_TIME_DRIFT ?? false,
   )
   if (!codeResult.success) return codeResult
-  return twoFactorRecordSave(options.database, { ...record, lastUsed: codeResult.data }) as Result<
-    undefined | TwoFactorWebAuthnAuthentication
-  >
+  const saveResult = twoFactorRecordSave(options.database, { ...record, lastUsed: codeResult.data })
+  if (!saveResult.success) return saveResult
+  return resultCreate(undefined)
 }
 
 async function twoFactorLoginChallengeCreate(
