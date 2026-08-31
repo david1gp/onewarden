@@ -204,6 +204,7 @@ test.describe("task 7 demo alignment", () => {
         .filter({ has: page.getByText("Password", { exact: true }) })
         .first()
 
+    await expect(page.getByRole("heading", { level: 3, name: "Password History" })).toBeVisible()
     await expect(passwordRow().getByRole("button", { name: "Show password", exact: true })).toBeVisible()
     await passwordRow().getByRole("button", { name: "Show password", exact: true }).click()
     await expect(passwordRow().getByRole("button", { name: "Hide password", exact: true })).toBeVisible()
@@ -211,6 +212,7 @@ test.describe("task 7 demo alignment", () => {
     await expect(passwordRow().getByRole("button", { name: "Copied password", exact: true })).toBeVisible()
 
     await itemList.getByRole("button", { name: /^AWS Console - Root Admin/ }).click()
+    await expect(page.getByRole("heading", { level: 3, name: "Password History" })).toHaveCount(0)
     await expect(passwordRow().getByRole("button", { name: "Show password", exact: true })).toBeVisible()
     await expect(passwordRow().getByRole("button", { name: "Copy password", exact: true })).toBeVisible()
   })

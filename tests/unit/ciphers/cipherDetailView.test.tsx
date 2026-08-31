@@ -106,15 +106,15 @@ describe("CipherDetailView component", () => {
     expect(screen.queryByText(/Updated/i)).toBeNull()
     expect(screen.getAllByText(/Last modified 2026-08-31/)).toHaveLength(1)
 
-    const actions = [
-      screen.getByRole("button", { name: "Add to Favorites" }),
-      ...["Edit", "Share", "Clone", "Archive", "Trash"].map((name) => screen.getByRole("button", { name })),
-    ]
+    const actions = ["Edit", "Add to Favorites", "Share", "Clone", "Archive", "Trash"].map((name) =>
+      screen.getByRole("button", { name }),
+    )
     const actionGrid = actions[0]?.parentElement
     expect(actions.every((action) => action.parentElement === actionGrid)).toBe(true)
     expect(actionGrid?.classList.contains("grid-cols-2")).toBe(true)
     expect(actionGrid?.classList.contains("sm:grid-cols-3")).toBe(true)
-    expect(actions[1]?.className).toContain("bg-slate-900")
+    expect(actions[0]!.className).toContain("bg-slate-900")
+    expect(actions[0]!.compareDocumentPosition(actions[1]!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
 
     const notesHeading = screen.getByText("Secure Notes")
     const attachmentsHeading = screen.getByText("Attachments (1)")
@@ -254,7 +254,7 @@ describe("CipherDetailView component", () => {
     screen.unmount()
   })
 
-  test("renders password history button and count for login items", () => {
+  test("renders password history inline without display-view strength or duplicate dialog access", () => {
     const item: CipherItem = {
       id: "cipher-login-hist-1",
       type: 1,
@@ -270,15 +270,39 @@ describe("CipherDetailView component", () => {
         { password: "OldPassword1!", lastUsedDate: "2025-05-10T12:00:00.000Z" },
         { password: "OlderPassword0!", lastUsedDate: "2024-01-01T00:00:00.000Z" },
       ],
+      passwordStrength: "Very Strong",
       reprompt: 0,
     }
 
     const screen = render(() => <CipherDetailView item={() => item} />)
 
-    expect(screen.getByText("History (2)")).toBeDefined()
-    const historyBtn = screen.getByLabelText("View password history")
-    expect(historyBtn).toBeDefined()
+    expect(screen.getByRole("heading", { name: "Password History" })).toBeDefined()
+    expect(screen.getAllByText("••••••••••••••••••••")).toHaveLength(3)
+    expect(screen.getAllByLabelText("Show password")).toHaveLength(3)
+    expect(screen.getAllByLabelText("Copy past password")).toHaveLength(2)
+    expect(screen.queryByText("Very Strong")).toBeNull()
+    expect(screen.queryByText("History (2)")).toBeNull()
+    expect(screen.queryByLabelText("View password history")).toBeNull()
 
+    screen.unmount()
+  })
+
+  test("does not render password history when there are no previous passwords", () => {
+    const item: CipherItem = {
+      id: "cipher-login-no-history",
+      type: 1,
+      name: "Account without history",
+      favorite: false,
+      fields: [],
+      login: { password: "CurrentPassword123!", uris: [] },
+      passwordHistory: [],
+      reprompt: 0,
+    }
+
+    const screen = render(() => <CipherDetailView item={() => item} />)
+
+    expect(screen.queryByRole("heading", { name: "Password History" })).toBeNull()
+    expect(screen.queryByText("No previous passwords recorded for this cipher item.")).toBeNull()
     screen.unmount()
   })
 

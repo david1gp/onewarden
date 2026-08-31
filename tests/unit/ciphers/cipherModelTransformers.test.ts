@@ -84,6 +84,7 @@ describe("cipherItemFromWire and cipherItemToWire", () => {
       vault: "Work",
       favorite: true,
       folder: "Finance",
+      passwordHistory: [{ password: "previous-password", lastUsedDate: "2025-12-01T00:00:00Z" }],
       customFields: [
         { label: "Cardholder Name", value: "Alex J. Rivera" },
         { label: "Card Number", value: "4242 4242 4242 8819", concealed: true },
@@ -100,6 +101,7 @@ describe("cipherItemFromWire and cipherItemToWire", () => {
     expect(cipher.type).toBe(3)
     expect(cipher.name).toBe("Acme Corporate Platinum")
     expect(cipher.favorite).toBe(true)
+    expect(cipher.passwordHistory).toEqual([{ password: "previous-password", lastUsedDate: "2025-12-01T00:00:00Z" }])
     expect(cipher.card?.cardholderName).toBe("Alex J. Rivera")
     expect(cipher.card?.expMonth).toBe("09")
     expect(cipher.card?.expYear).toBe("29")

@@ -1,9 +1,5 @@
-import { render } from "@solidjs/testing-library"
 import { describe, expect, test } from "bun:test"
-import { within } from "@testing-library/dom"
-import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { CipherItem } from "../../../src/web/ciphers/schemas/cipherItemSchema.js"
-import { CipherPasswordHistoryDialog } from "../../../src/web/ciphers/ui/CipherPasswordHistoryDialog.jsx"
+import { render } from "@solidjs/testing-library"
 import { CipherPasswordHistoryList } from "../../../src/web/ciphers/ui/CipherPasswordHistoryList.jsx"
 
 describe("CipherPasswordHistory components", () => {
@@ -28,26 +24,6 @@ describe("CipherPasswordHistory components", () => {
     expect(copyBtns.length).toBe(2)
     copyBtns[0]?.click()
 
-    screen.unmount()
-  })
-
-  test("renders CipherPasswordHistoryDialog when open", () => {
-    const openSignal = createSignalObject(true)
-    const item: CipherItem = {
-      id: "cipher-hist-dialog",
-      type: 1,
-      name: "Database Admin",
-      favorite: false,
-      fields: [],
-      passwordHistory: [{ password: "Pass123!", lastUsedDate: "2026-02-01T00:00:00.000Z" }],
-      reprompt: 0,
-    }
-
-    const screen = render(() => <CipherPasswordHistoryDialog openSignal={openSignal} item={() => item} />)
-    const body = within(document.body)
-
-    expect(body.getByText("Password History")).toBeDefined()
-    expect(body.getByText(/1 recorded/)).toBeDefined()
     screen.unmount()
   })
 })

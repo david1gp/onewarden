@@ -78,6 +78,22 @@ test.describe("task 34 vault shell and navigation UI", () => {
     await expect(page.getByRole("heading", { level: 2, name: /AWS Console - Root Admin/i })).toBeVisible()
   })
 
+  test("manages named collection options for the selected demo login", async ({ page }) => {
+    await page.goto("/demo/login")
+
+    await page.getByTitle("Manage Collections").click()
+    const dialog = page.getByRole("dialog", { name: "Manage Collections" })
+    const engineering = dialog.getByRole("button", { name: "Engineering" })
+
+    await expect(engineering).toHaveAttribute("aria-pressed", "true")
+    await expect(dialog.getByRole("button", { name: "Infrastructure" })).toBeVisible()
+    await expect(dialog.getByRole("button", { name: "Finance" })).toBeVisible()
+
+    await engineering.click()
+    await dialog.getByRole("button", { name: "Update Collections" }).click()
+    await expect(dialog.getByText("At least one Collection ID is required.")).toBeVisible()
+  })
+
   test("renders empty state with accessible structure on /demo/empty", async ({ page }) => {
     await page.goto("/demo/empty")
 
@@ -134,6 +150,27 @@ test.describe("task 34 vault shell and navigation UI", () => {
       clientWidth: body.clientWidth,
     }))
     expect(viewportState.scrollWidth).toBeLessThanOrEqual(viewportState.clientWidth)
+  })
+
+  test("bounds the desktop workspace and scrolls each vault column independently", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 700 })
+    await page.goto("/demo/login")
+
+    const documentSize = await page.evaluate(() => ({
+      clientHeight: document.documentElement.clientHeight,
+      scrollHeight: document.documentElement.scrollHeight,
+    }))
+    expect(documentSize.scrollHeight).toBeLessThanOrEqual(documentSize.clientHeight)
+
+    for (const columnId of ["vault-navigation-column", "vault-items-column", "vault-detail-column"]) {
+      const scrollOwner = page.locator(`#${columnId} .overflow-y-auto`)
+      await expect(scrollOwner).toHaveCount(1)
+      await expect.poll(() => scrollOwner.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+
+      await scrollOwner.hover()
+      await page.mouse.wheel(0, 500)
+      await expect.poll(() => scrollOwner.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    }
   })
 
   test("syncs live vault data from mocked API on root vault shell", async ({ page }) => {
