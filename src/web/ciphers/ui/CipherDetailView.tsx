@@ -18,7 +18,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
   const state = cipherDetailViewStateCreate(props)
 
   return (
-    <article class="flex h-full min-w-0 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
+    <article class="flex h-full min-w-0 flex-1 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
       <Show
         when={state.item()}
         fallback={
@@ -34,7 +34,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
         }
       >
         {(item) => (
-          <div class={`flex-1 overflow-y-auto ${classesScrollbar} p-4 sm:p-6`}>
+          <div class={`@container min-w-0 flex-1 overflow-y-auto ${classesScrollbar} p-4 sm:p-6`}>
             {/* Trash Banner if soft-deleted */}
             <Show when={state.isDeleted()}>
               <div class="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/50 dark:text-amber-200">
@@ -81,15 +81,18 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
             </Show>
 
             {/* Header / Title Banner */}
-            <div class="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-5 sm:gap-4 dark:border-slate-800">
-              <div class="flex min-w-0 flex-1 basis-full items-start gap-3.5 sm:basis-64">
+            <div class="mb-4">
+              <div class="flex min-w-0 items-start gap-3.5">
                 <div
                   class={`flex size-12 shrink-0 items-center justify-center rounded-xl shadow-xs ${state.categoryTheme().bg} ${state.categoryTheme().text}`}
                 >
                   <Icon path={state.categoryIcon()} class="size-6" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <h2 class="break-words font-bold text-xl text-slate-900 tracking-tight dark:text-slate-50">
+                  <h2
+                    class="truncate font-bold text-xl text-slate-900 tracking-tight dark:text-slate-50"
+                    title={item().name}
+                  >
                     {item().name}
                   </h2>
                   <div class="mt-1 flex flex-wrap items-center gap-2">
@@ -111,20 +114,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         Organization
                       </Badge>
                     </Show>
-                    <Show when={item().revisionDate}>
-                      <span class="text-sm text-slate-600 dark:text-slate-400">Updated {item().revisionDate}</span>
-                    </Show>
                   </div>
                 </div>
               </div>
 
               {/* Action Toolbar */}
-              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                <Show when={!item().organizationId && item().edit !== false}>
+              <div class="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
+                <Show when={item().edit !== false}>
                   <ButtonIcon
                     variant="outline"
                     size="sm"
-                    class="h-8 text-sm"
+                    class="h-8 w-full text-sm"
                     icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
                     iconClass={`size-4 fill-current dark:fill-current ${
                       item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
@@ -137,7 +137,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 </Show>
 
                 <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
-                  <Button variant="ghost" size="sm" class="h-8 text-sm" onClick={() => state.editItem()}>
+                  <Button variant="contrast" size="sm" class="h-8 w-full text-sm" onClick={() => state.editItem()}>
                     <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
                     Edit
                   </Button>
@@ -145,7 +145,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="h-8 text-sm"
+                    class="h-8 w-full text-sm"
                     onClick={() => state.openShareDialog()}
                     title={item().organizationId ? "Manage Collections" : "Share to Organization"}
                   >
@@ -156,7 +156,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="h-8 text-sm"
+                    class="h-8 w-full text-sm"
                     onClick={() => state.handleClone()}
                     disabled={state.isActionLoading()}
                     title="Clone cipher item"
@@ -168,7 +168,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="h-8 text-sm"
+                    class="h-8 w-full text-sm"
                     onClick={() => state.handleToggleArchive()}
                     disabled={state.isActionLoading()}
                     title={state.isArchived() ? "Unarchive cipher" : "Archive cipher"}
@@ -180,7 +180,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Button
                     variant="ghost"
                     size="sm"
-                    class="h-8 text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
+                    class="h-8 w-full text-sm text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/50"
                     onClick={() => state.openDeleteDialog(false)}
                     title="Move cipher to trash"
                   >
@@ -192,7 +192,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
             </div>
 
             {/* Content Sections Grid */}
-            <div class="max-w-3xl space-y-4">
+            <div class="grid min-w-0 grid-cols-1 gap-4 @3xl:grid-cols-2">
               {/* Type 1: Login Details */}
               <Show
                 when={
@@ -444,7 +444,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   </Show>
 
                   {/* Expiration & Security Code */}
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
                     <Show when={item().card?.expMonth || item().card?.expYear}>
                       <div>
                         <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
@@ -551,7 +551,7 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     </div>
                   </Show>
 
-                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
                     <Show when={item().identity?.email}>
                       <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
@@ -736,15 +736,6 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
               {/* Custom Fields Section */}
               <CipherCustomFieldsView fields={state.customFields} itemId={state.itemId} />
 
-              {/* Attachments Section */}
-              <CipherAttachmentsSection
-                item={state.item}
-                onUploadAttachment={state.handleUploadAttachment}
-                onDeleteAttachment={state.handleDeleteAttachment}
-                readOnly={() => item().edit === false}
-                canDelete={() => item().permissions?.delete !== false}
-              />
-
               {/* Secure Notes Section */}
               <Show when={item().notes}>
                 <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
@@ -762,14 +753,23 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                       {state.copiedField() === "notes" ? "Copied" : "Copy"}
                     </ButtonIcon>
                   </div>
-                  <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 font-mono text-slate-700 text-sm leading-relaxed dark:bg-slate-950 dark:text-slate-300">
+                  <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 font-mono text-slate-900 text-sm leading-relaxed dark:bg-slate-950 dark:text-slate-100">
                     {item().notes}
                   </pre>
                 </CardWrapper>
               </Show>
 
+              {/* Attachments Section */}
+              <CipherAttachmentsSection
+                item={state.item}
+                onUploadAttachment={state.handleUploadAttachment}
+                onDeleteAttachment={state.handleDeleteAttachment}
+                readOnly={() => item().edit === false}
+                canDelete={() => item().permissions?.delete !== false}
+              />
+
               {/* Folder & Metadata Footer */}
-              <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs @3xl:col-span-2 dark:border-slate-800 dark:bg-slate-900">
                 <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Metadata & Organization</p>
                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                   <Badge variant="subtle" class="max-w-full truncate text-sm">

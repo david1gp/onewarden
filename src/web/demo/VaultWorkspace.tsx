@@ -76,7 +76,8 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
 
       <div class="flex flex-1 overflow-hidden">
         <div
-          class={`h-full border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60 lg:flex lg:w-64 xl:w-72 ${
+          id="vault-navigation-column"
+          class={`h-full min-w-0 shrink-0 border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60 lg:flex lg:w-64 xl:w-72 ${
             state.activeMobileTab() === "nav" ? "flex w-full" : "hidden"
           }`}
         >
@@ -96,7 +97,8 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
         </div>
 
         <div
-          class={`h-full border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex md:w-80 lg:w-80 xl:w-96 ${
+          id="vault-items-column"
+          class={`h-full min-w-0 shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex lg:w-80 xl:w-96 ${
             state.activeMobileTab() === "list" ? "flex w-full" : "hidden"
           }`}
         >
@@ -118,6 +120,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
         </div>
 
         <div
+          id="vault-detail-column"
           class={`h-full flex-1 min-w-0 bg-white dark:bg-slate-900 lg:flex ${
             state.activeMobileTab() === "detail" ? "flex w-full" : "hidden"
           }`}

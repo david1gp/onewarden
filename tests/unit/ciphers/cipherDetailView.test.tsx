@@ -83,6 +83,54 @@ describe("CipherDetailView component", () => {
     screen.unmount()
   })
 
+  test("keeps the shared detail header, actions, and content layout consistent", () => {
+    const item: CipherItem = {
+      id: "cipher-layout-1",
+      type: 1,
+      name: "A login title long enough to require single-line truncation",
+      notes: "High-contrast operational notes",
+      favorite: false,
+      fields: [],
+      login: { username: "operator@example.com", password: "secret", uris: [] },
+      attachments: [{ id: "attachment-1", fileName: "runbook.txt", size: "12", sizeName: "12 B" }],
+      creationDate: "2026-08-01",
+      revisionDate: "2026-08-31",
+      reprompt: 0,
+      edit: true,
+    }
+
+    const screen = render(() => <CipherDetailView item={() => item} />)
+    const title = screen.getByRole("heading", { level: 2, name: item.name })
+    expect(title.classList.contains("truncate")).toBe(true)
+    expect(title.getAttribute("title")).toBe(item.name)
+    expect(screen.queryByText(/Updated/i)).toBeNull()
+    expect(screen.getAllByText(/Last modified 2026-08-31/)).toHaveLength(1)
+
+    const actions = [
+      screen.getByRole("button", { name: "Add to Favorites" }),
+      ...["Edit", "Share", "Clone", "Archive", "Trash"].map((name) => screen.getByRole("button", { name })),
+    ]
+    const actionGrid = actions[0]?.parentElement
+    expect(actions.every((action) => action.parentElement === actionGrid)).toBe(true)
+    expect(actionGrid?.classList.contains("grid-cols-2")).toBe(true)
+    expect(actionGrid?.classList.contains("sm:grid-cols-3")).toBe(true)
+    expect(actions[1]?.className).toContain("bg-slate-900")
+
+    const notesHeading = screen.getByText("Secure Notes")
+    const attachmentsHeading = screen.getByText("Attachments (1)")
+    expect(notesHeading.compareDocumentPosition(attachmentsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    const notes = screen.getByText("High-contrast operational notes")
+    expect(notes.classList.contains("text-slate-900")).toBe(true)
+    expect(notes.classList.contains("dark:text-slate-100")).toBe(true)
+
+    const contentGrid = Array.from(screen.container.querySelectorAll("div")).find(
+      (element) => element.classList.contains("grid-cols-1") && element.classList.contains("@3xl:grid-cols-2"),
+    )
+    expect(contentGrid).not.toBeNull()
+
+    screen.unmount()
+  })
+
   test("renders card cipher details with cardholder, number masking, cvv reveal", () => {
     const item: CipherItem = {
       id: "cipher-card-1",
