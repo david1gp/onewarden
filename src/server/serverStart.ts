@@ -4,25 +4,22 @@ import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { adminBackupAdapterCreate } from "./contexts/admin/adminBackupAdapterCreate.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
 import { attachmentFileStorageAdapterCreate } from "./contexts/attachments/attachmentFileStorageAdapterCreate.js"
-import { emergencyAccessReminderRun } from "./contexts/emergencyAccess/emergencyAccessReminderRun.js"
-import { emergencyAccessTimeoutRun } from "./contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
-import { eventPurge } from "./contexts/events/eventPurge.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
-import { identityAuthRequestPurge } from "./contexts/identity/identityAuthRequestPurge.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
-import { identityMailAdapterCreate } from "./contexts/identity/identityMailAdapterCreate.js"
+import { identityMailAdapterDisabledCreate } from "./contexts/identity/identityMailAdapterDisabledCreate.js"
+import { identityMailAdapterSmtpCreate } from "./contexts/identity/identityMailAdapterSmtpCreate.js"
 import { identityTokenKeyPairResolve } from "./contexts/identity/identityTokenKeyPairResolve.js"
 import { notificationHubCreate } from "./contexts/notifications/notificationHubCreate.js"
 import { sendFileStorageAdapterCreate } from "./contexts/sends/sendFileStorageAdapterCreate.js"
-import { sendPurge } from "./contexts/sends/sendPurge.js"
-import { twoFactorIncompleteNotificationRun } from "./contexts/twoFactor/twoFactorIncompleteNotificationRun.js"
 import { twoFactorWebAuthnU2fMigrate } from "./contexts/twoFactor/twoFactorWebAuthnU2fMigrate.js"
 import { databaseClose } from "./database/databaseClose.js"
 import { databaseMigrate } from "./database/databaseMigrate.js"
 import { databaseOpen } from "./database/databaseOpen.js"
-import { responseSecurityHeadersApply } from "./responseSecurityHeadersApply.js"
+import { serverJobDefinitionsCreate } from "./jobs/serverJobDefinitionsCreate.js"
+import { serverJobRunnerCreate } from "./jobs/serverJobRunner.js"
 import { releaseManifestRead } from "./release/releaseManifestRead.js"
+import { responseSecurityHeadersApply } from "./responseSecurityHeadersApply.js"
 import { serverAppCreate } from "./serverAppCreate.js"
 
 const defaultLogger = loggerCreate()
@@ -87,7 +84,22 @@ const notificationHub = notificationHubCreate({
   publicOrigin: configResult.data.PUBLIC_ORIGIN,
 })
 const serverClock = clockCreate()
-const mail = identityMailAdapterCreate(serverClock)
+const mail = identityConfigResult.data.MAIL_ENABLED
+  ? identityMailAdapterSmtpCreate({ config: configResult.data, publicOrigin: configResult.data.PUBLIC_ORIGIN })
+  : identityMailAdapterDisabledCreate()
+const jobRunner = serverJobRunnerCreate({
+  jobs: serverJobDefinitionsCreate({
+    clock: serverClock,
+    database,
+    attachmentStorage,
+    identityConfig: identityConfigResult.data,
+    logger,
+    mail,
+    sendStorage,
+    serverConfig: configResult.data,
+  }),
+  logger,
+})
 
 const app = serverAppCreate({
   ciphers: {
@@ -169,65 +181,7 @@ try {
     host: configResult.data.HOST,
     port: configResult.data.PORT,
   })
-
-  const purgeSends = async (): Promise<void> => {
-    const result = await sendPurge(database, serverClock, sendStorage)
-    if (!result.success) logger.error("send.purge-failed", { errorMessage: result.errorMessage })
-  }
-  const purgeEvents = async (): Promise<void> => {
-    const result = eventPurge(database, serverClock, identityConfigResult.data.EVENTS_DAYS_RETAIN)
-    if (!result.success) logger.error("event.purge-failed", { errorMessage: result.errorMessage })
-  }
-  const purgeAuthRequests = async (): Promise<void> => {
-    const result = identityAuthRequestPurge(database, serverClock)
-    if (!result.success) logger.error("auth-request.purge-failed", { errorMessage: result.errorMessage })
-  }
-  const runEmergencyAccessTimeout = async (): Promise<void> => {
-    const result = await emergencyAccessTimeoutRun({
-      clock: serverClock,
-      config: identityConfigResult.data,
-      database,
-      mail,
-    })
-    if (!result.success) logger.error("emergency-access.timeout-failed", { errorMessage: result.errorMessage })
-  }
-  const runEmergencyAccessReminder = async (): Promise<void> => {
-    const result = await emergencyAccessReminderRun({
-      clock: serverClock,
-      config: identityConfigResult.data,
-      database,
-      mail,
-    })
-    if (!result.success) logger.error("emergency-access.reminder-failed", { errorMessage: result.errorMessage })
-  }
-  const runTwoFactorIncompleteNotification = async (): Promise<void> => {
-    const result = await twoFactorIncompleteNotificationRun({
-      clock: serverClock,
-      config: identityConfigResult.data,
-      database,
-      mail,
-    })
-    if (!result.success)
-      logger.error("two-factor.incomplete-notification-failed", { errorMessage: result.errorMessage })
-  }
-  const purgeInterval = setInterval(() => void purgeSends(), 60 * 60 * 1_000)
-  const authRequestPurgeInterval = setInterval(() => void purgeAuthRequests(), 60 * 60 * 1_000)
-  const eventPurgeInterval =
-    identityConfigResult.data.ORG_EVENTS_ENABLED && identityConfigResult.data.EVENTS_DAYS_RETAIN !== undefined
-      ? setInterval(() => void purgeEvents(), 60 * 60 * 1_000)
-      : undefined
-  const emergencyAccessTimeoutInterval = setInterval(() => void runEmergencyAccessTimeout(), 60 * 60 * 1_000)
-  const emergencyAccessReminderInterval = setInterval(() => void runEmergencyAccessReminder(), 60 * 60 * 1_000)
-  const twoFactorIncompleteNotificationInterval = setInterval(
-    () => void runTwoFactorIncompleteNotification(),
-    60 * 1_000,
-  )
-  void purgeSends()
-  void purgeAuthRequests()
-  if (eventPurgeInterval !== undefined) void purgeEvents()
-  void runEmergencyAccessTimeout()
-  void runEmergencyAccessReminder()
-  void runTwoFactorIncompleteNotification()
+  jobRunner.start()
 
   let shutdownPromise: Promise<void> | undefined
   const shutdown = (): Promise<void> => {
@@ -238,12 +192,14 @@ try {
       } catch {
         logger.error("server.stop-failed", { error: "stop-failed" })
       }
-      clearInterval(purgeInterval)
-      clearInterval(authRequestPurgeInterval)
-      if (eventPurgeInterval !== undefined) clearInterval(eventPurgeInterval)
-      clearInterval(emergencyAccessTimeoutInterval)
-      clearInterval(emergencyAccessReminderInterval)
-      clearInterval(twoFactorIncompleteNotificationInterval)
+      await jobRunner.stop()
+      try {
+        const mailCloseResult = await mail.close?.()
+        if (mailCloseResult !== undefined && !mailCloseResult.success)
+          logger.error("mail.close-failed", { errorMessage: mailCloseResult.errorMessage })
+      } catch {
+        logger.error("mail.close-failed", { error: "close-failed" })
+      }
       const closeResult = databaseClose(database)
       if (!closeResult.success) logger.error("database.close-failed", { errorMessage: closeResult.errorMessage })
     })()

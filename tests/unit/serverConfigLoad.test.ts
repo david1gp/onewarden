@@ -14,13 +14,14 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       ATTACHMENTS_FOLDER: "./data/attachments",
       BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
-      USER_SEND_LIMIT: undefined,
       INCREASE_NOTE_SIZE_LIMIT: false,
       LOG_LEVEL: "info",
       PROXY: false,
       IP_HEADER: "X-Real-IP",
       IP_HEADER_TRUSTED_PROXIES: "local",
       ENABLE_WEBSOCKET: true,
+      SMTP_PORT: 587,
+      SMTP_TIMEOUT: 15,
       PUSH_ENABLED: false,
       PUSH_RELAY_URI: "https://push.bitwarden.com",
       PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
@@ -31,6 +32,14 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       DISABLE_ADMIN_TOKEN: false,
       ADMIN_SESSION_LIFETIME: 20,
       INVITATION_ORG_NAME: "Vaultwarden",
+      JOB_SEND_PURGE_INTERVAL: 3600,
+      JOB_AUTH_REQUEST_PURGE_INTERVAL: 3600,
+      JOB_EVENT_PURGE_INTERVAL: 3600,
+      JOB_EMERGENCY_ACCESS_TIMEOUT_INTERVAL: 3600,
+      JOB_EMERGENCY_ACCESS_REMINDER_INTERVAL: 3600,
+      JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: 60,
+      JOB_TRASH_PURGE_INTERVAL: 86400,
+      JOB_INCOMPLETE_SSO_PURGE_INTERVAL: 86400,
     },
   })
 })
@@ -62,10 +71,11 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       SENDS_FOLDER: "./data/sends",
       BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
-      USER_SEND_LIMIT: undefined,
       INCREASE_NOTE_SIZE_LIMIT: true,
       ENABLE_WEBSOCKET: true,
       PUBLIC_ORIGIN: "https://vault.example.com",
+      SMTP_PORT: 587,
+      SMTP_TIMEOUT: 15,
       PUSH_ENABLED: false,
       PUSH_RELAY_URI: "https://push.bitwarden.com",
       PUSH_IDENTITY_URI: "https://identity.bitwarden.com",
@@ -76,6 +86,14 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       DISABLE_ADMIN_TOKEN: false,
       ADMIN_SESSION_LIFETIME: 20,
       INVITATION_ORG_NAME: "Vaultwarden",
+      JOB_SEND_PURGE_INTERVAL: 3600,
+      JOB_AUTH_REQUEST_PURGE_INTERVAL: 3600,
+      JOB_EVENT_PURGE_INTERVAL: 3600,
+      JOB_EMERGENCY_ACCESS_TIMEOUT_INTERVAL: 3600,
+      JOB_EMERGENCY_ACCESS_REMINDER_INTERVAL: 3600,
+      JOB_INCOMPLETE_2FA_NOTIFICATION_INTERVAL: 60,
+      JOB_TRASH_PURGE_INTERVAL: 86400,
+      JOB_INCOMPLETE_SSO_PURGE_INTERVAL: 86400,
     },
   })
 })
@@ -86,6 +104,73 @@ test("serverConfigLoad rejects invalid log level, proxy, public origin, and trus
   expect(result.success).toBe(false)
   expect(result).toMatchObject({ op: "serverConfigLoad", success: false })
   expect(serverConfigLoad({ IP_HEADER_TRUSTED_PROXIES: "not-an-ip" }).success).toBe(false)
+})
+
+test("serverConfigLoad validates production origin and enabled mail settings", () => {
+  const missingOrigin = serverConfigLoad({ NODE_ENV: "production" })
+  expect(missingOrigin.success).toBe(false)
+  if (missingOrigin.success) return
+  expect(missingOrigin.errorMessage).toBe("PUBLIC_ORIGIN is required in production.")
+  const insecureOrigin = serverConfigLoad({ NODE_ENV: "production", PUBLIC_ORIGIN: "http://localhost:3000" })
+  expect(insecureOrigin.success).toBe(false)
+  if (insecureOrigin.success) return
+  expect(insecureOrigin.errorMessage).toBe("PUBLIC_ORIGIN must use HTTPS in production.")
+  expect(
+    serverConfigLoad({
+      MAIL_ENABLED: "true",
+      PUBLIC_ORIGIN: "https://onewarden.example.com",
+      SMTP_HOST: "email.example.com",
+      SMTP_FROM: "auth@example.com",
+      SMTP_USERNAME: "auth@example.com",
+      SMTP_PASSWORD: "secret-password",
+    }),
+  ).toMatchObject({ success: true })
+  const missingMailSettings = serverConfigLoad({
+    MAIL_ENABLED: "true",
+    PUBLIC_ORIGIN: "https://onewarden.example.com",
+  })
+  expect(missingMailSettings.success).toBe(false)
+  if (missingMailSettings.success) return
+  expect(missingMailSettings.errorMessage).toBe(
+    "MAIL_ENABLED requires SMTP_HOST, SMTP_FROM, SMTP_USERNAME, SMTP_PASSWORD.",
+  )
+})
+
+test("serverConfigLoad does not include invalid SMTP values in errors", () => {
+  const result = serverConfigLoad({ SMTP_FROM: "smtp-password-value" })
+
+  expect(result.success).toBe(false)
+  if (result.success) return
+  expect(result.errorMessage).not.toContain("smtp-password-value")
+  expect(result.errorMessage).toContain("SMTP_FROM")
+})
+
+test("serverConfigLoad requires SMTP credentials as a pair", () => {
+  const missingPassword = serverConfigLoad({ SMTP_USERNAME: "auth@example.com" })
+  expect(missingPassword.success).toBe(false)
+  if (missingPassword.success) return
+  expect(missingPassword.errorMessage).toBe("SMTP_USERNAME and SMTP_PASSWORD must be set together.")
+  const missingUsername = serverConfigLoad({ SMTP_PASSWORD: "secret-password" })
+  expect(missingUsername.success).toBe(false)
+  if (missingUsername.success) return
+  expect(missingUsername.errorMessage).toBe("SMTP_USERNAME and SMTP_PASSWORD must be set together.")
+})
+
+test("serverConfigLoad bounds SMTP port and timeout values", () => {
+  expect(serverConfigLoad({ SMTP_PORT: "2525", SMTP_TIMEOUT: "30" })).toMatchObject({
+    success: true,
+    data: { SMTP_PORT: 2525, SMTP_TIMEOUT: 30 },
+  })
+  expect(serverConfigLoad({ SMTP_PORT: "0" }).success).toBe(false)
+  expect(serverConfigLoad({ SMTP_TIMEOUT: "121" }).success).toBe(false)
+})
+
+test("serverConfigLoad allows localhost HTTP origins only for development", () => {
+  expect(serverConfigLoad({ PUBLIC_ORIGIN: "http://localhost:3000" })).toMatchObject({
+    success: true,
+    data: { PUBLIC_ORIGIN: "http://localhost:3000" },
+  })
+  expect(serverConfigLoad({ PUBLIC_ORIGIN: "http://onewarden.example.com" }).success).toBe(false)
 })
 
 test("serverConfigLoad validates enabled push relay credentials and HTTPS endpoints", () => {
@@ -146,4 +231,17 @@ test("serverConfigLoad trims a custom attachment folder", () => {
     success: true,
     data: { ATTACHMENTS_FOLDER: "/var/lib/onewarden/attachments" },
   })
+})
+
+test("serverConfigLoad parses independent scheduled-job intervals and allows disabling them", () => {
+  expect(
+    serverConfigLoad({
+      JOB_AUTH_REQUEST_PURGE_INTERVAL: " 0 ",
+      JOB_SEND_PURGE_INTERVAL: "90",
+    }),
+  ).toMatchObject({
+    success: true,
+    data: { JOB_AUTH_REQUEST_PURGE_INTERVAL: 0, JOB_SEND_PURGE_INTERVAL: 90 },
+  })
+  expect(serverConfigLoad({ JOB_EVENT_PURGE_INTERVAL: "-1" }).success).toBe(false)
 })

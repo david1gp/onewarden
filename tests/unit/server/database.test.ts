@@ -2,13 +2,13 @@ import { afterEach, expect, test } from "bun:test"
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
-import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseMigrate } from "../../../src/server/database/databaseMigrate.js"
 import { databaseOpen } from "../../../src/server/database/databaseOpen.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { databaseTransaction } from "../../../src/server/database/databaseTransaction.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
 const temporaryDirectories: string[] = []
 
@@ -150,6 +150,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 15 },
     { version: 16 },
     { version: 17 },
+    { version: 18 },
   ])
   expect(
     result.data
@@ -220,6 +221,21 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
       match: "NONE",
     },
   ])
+  databaseClose(result.data)
+})
+
+test("databaseMigrate adds indexes for bounded trash and SSO purges", () => {
+  const result = databaseTestCreate()
+  expect(result.success).toBe(true)
+  if (!result.success) return
+
+  expect(
+    result.data
+      .query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('ciphers_deleted_at_index', 'sso_auth_created_at_index') ORDER BY name",
+      )
+      .all(),
+  ).toEqual([{ name: "ciphers_deleted_at_index" }, { name: "sso_auth_created_at_index" }])
   databaseClose(result.data)
 })
 
@@ -374,6 +390,7 @@ test("databaseTestCreate returns a migrated isolated database and reports setup 
       { version: 15 },
       { version: 16 },
       { version: 17 },
+      { version: 18 },
     ])
     databaseClose(result.data)
   }
@@ -397,6 +414,6 @@ test("serverAppCreate exposes its injected database to handlers", async () => {
   const response = await app.request("http://localhost/database-version")
 
   expect(response.status).toBe(200)
-  expect(await response.json()).toEqual({ version: 17 })
+  expect(await response.json()).toEqual({ version: 18 })
   databaseClose(databaseResult.data)
 })
