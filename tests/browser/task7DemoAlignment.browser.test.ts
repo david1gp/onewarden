@@ -105,6 +105,57 @@ test.describe("task 7 demo alignment", () => {
     await expect(item(/^AWS Console - Root Admin/)).toBeVisible()
   })
 
+  test("requests normalized-host favicons and preserves category fallbacks", async ({ page }) => {
+    const faviconRequests: string[] = []
+    const faviconPng = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    )
+
+    await page.route(/\/icons\/[^/]+\/icon\.png\?fallback=error$/u, async (route) => {
+      const requestUrl = new URL(route.request().url())
+      const path = `${requestUrl.pathname}${requestUrl.search}`
+      faviconRequests.push(path)
+
+      if (path === "/icons/aws.amazon.com/icon.png?fallback=error") {
+        await route.fulfill({ status: 404, contentType: "image/png" })
+        return
+      }
+
+      await route.fulfill({ status: 200, contentType: "image/png", body: faviconPng })
+    })
+
+    await page.goto("/demo/all-items")
+
+    const itemList = page.getByRole("list", { name: "Vault Credentials" })
+    const item = (name: RegExp) => itemList.getByRole("button", { name })
+    const successfulItem = item(/^GitHub Enterprise/)
+    const failedItem = item(/^AWS Console - Root Admin/)
+    const noUrlItem = item(/^Acme Corporate Platinum/)
+    const unsupportedUrlItem = item(/^Production Bastion Gateway/)
+
+    const successfulFavicon = successfulItem.locator("img")
+    await expect(successfulFavicon).toBeVisible()
+    await expect(successfulFavicon).toHaveAttribute("src", "/icons/github.company.internal/icon.png?fallback=error")
+    await expect(successfulFavicon).toHaveAttribute("alt", "")
+    await expect(successfulFavicon).toHaveAttribute("aria-hidden", "true")
+    await expect(successfulFavicon).toHaveAttribute("loading", "lazy")
+    await expect(successfulFavicon).toHaveAttribute("decoding", "async")
+    await expect(successfulItem.locator("svg").first()).toHaveClass(/invisible/)
+
+    await expect(failedItem.locator("img")).toHaveCount(0)
+    await expect(failedItem.locator("svg").first()).toBeVisible()
+
+    await expect(noUrlItem.locator("img")).toHaveCount(0)
+    await expect(noUrlItem.locator("svg").first()).toBeVisible()
+
+    await expect(unsupportedUrlItem.locator("img")).toHaveCount(0)
+    await expect(unsupportedUrlItem.locator("svg").first()).toBeVisible()
+    expect(faviconRequests).toContain("/icons/github.company.internal/icon.png?fallback=error")
+    expect(faviconRequests).toContain("/icons/aws.amazon.com/icon.png?fallback=error")
+    expect(faviconRequests.some((path) => path.includes("bastion.us-east-1.acme.net"))).toBe(false)
+  })
+
   test("adds, edits, clones, and saves a favorite personal item", async ({ page }) => {
     await page.goto("/demo/all-items")
 

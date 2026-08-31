@@ -1,11 +1,12 @@
 import { For, type JSX, Show } from "solid-js"
+import { Input } from "#ui/input/input/Input.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
-import { Input } from "#ui/input/input/Input.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
+import { VaultEntryFavicon } from "./VaultEntryFavicon.jsx"
 import { type VaultEntryListStateProps, vaultEntryListStateCreate } from "./vaultEntryListStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
@@ -94,8 +95,6 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
                       variant="none"
                       size="none"
                       aria-current={isSelected() ? "true" : undefined}
-                      icon={state.getCategoryIcon(item.category)}
-                      iconClass={`mt-0.5 size-7 shrink-0 rounded-md p-1.5 mr-0 ${theme.bg} ${theme.text} fill-current dark:fill-current`}
                       onClick={() => state.selectItem(item.id)}
                       class={`flex w-full items-start justify-start gap-2.5 rounded-none px-3 py-2.5 text-left font-normal transition-colors ${
                         isSelected()
@@ -103,6 +102,11 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
                           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       }`}
                     >
+                      <VaultEntryFavicon
+                        url={() => item.url}
+                        categoryIcon={() => state.getCategoryIcon(item.category)}
+                        class={`${theme.bg} ${theme.text}`}
+                      />
                       <div class="min-w-0 flex-1">
                         <div class="flex items-center justify-between gap-1">
                           <p class="truncate font-semibold text-sm text-slate-900 dark:text-slate-100">{item.title}</p>

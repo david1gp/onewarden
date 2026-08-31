@@ -52,7 +52,7 @@ export const iconConfigSchema = v.object({
   HTTP_REQUEST_BLOCK_REGEX: v.optional(iconConfigRegexSchema),
   ICON_CACHE_FOLDER: v.optional(iconConfigFolderSchema, "data/icon_cache"),
   ICON_CACHE_NEGTTL: v.optional(iconConfigNonNegativeIntegerSchema, "259200"),
-  ICON_CACHE_TTL: v.optional(iconConfigNonNegativeIntegerSchema, "2592000"),
+  ICON_CACHE_TTL: v.optional(iconConfigNonNegativeIntegerSchema, "604800"),
   ICON_DOWNLOAD_TIMEOUT: v.optional(iconConfigNonNegativeIntegerSchema, "10"),
   ICON_REDIRECT_CODE: v.pipe(
     v.optional(iconConfigNonNegativeIntegerSchema, "302"),

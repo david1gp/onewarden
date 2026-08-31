@@ -5,11 +5,14 @@ import type { MayHaveClass } from "#ui/utils/MayHaveClass.js"
 
 export interface ImgProps extends MayHaveClass {
   src: string
+  /** Empty for decorative images, which are additionally hidden from assistive technology. */
   alt: string
   zoomIn?: boolean
   invertColorsInDarkMode?: boolean
   width?: string | number
   height?: string | number
+  onLoad?: () => void
+  onError?: () => void
 }
 
 /** Lazy-loaded image with optional zoom and dark-mode invert. */
@@ -18,12 +21,15 @@ export function Img(p: ImgProps) {
     <img
       src={p.src}
       alt={p.alt}
+      aria-hidden={p.alt === "" ? "true" : undefined}
       class={classArr(p.zoomIn && classesImgZoomInOnHover5, p.invertColorsInDarkMode && classInvertBlack, p.class)}
       loading="lazy"
       decoding="async"
       draggable={false}
       width={p.width}
       height={p.height}
+      onLoad={() => p.onLoad?.()}
+      onError={() => p.onError?.()}
     />
   )
 }

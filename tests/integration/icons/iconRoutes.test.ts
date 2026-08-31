@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
-import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
-import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { iconCacheAdapterCreate } from "../../../src/server/contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigCreate } from "../../../src/server/contexts/icons/iconConfigCreate.js"
 import { iconFallbackIcon } from "../../../src/server/contexts/icons/iconFallbackIcon.js"
 import type { IconHttpAdapter } from "../../../src/server/contexts/icons/iconHttpAdapter.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 
 const testPng = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
 
@@ -25,20 +25,30 @@ test("icons retrieve a preferred link, sniff MIME, and serve the cached icon", a
       return responseCreate("missing", 404)
     },
   }
+  const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
+  const cache = iconCacheAdapterCreate({ clock })
   const app = serverAppCreate({
-    clock: clockTestCreate("2026-08-28T00:00:00.000Z"),
-    icons: { cache: iconCacheAdapterCreate(), http },
+    clock,
+    icons: { cache, http },
   })
 
   const first = await app.request("http://localhost/icons/Example.COM/icon.png")
   expect(first.status).toBe(200)
   expect(first.headers.get("content-type")).toBe("image/png")
+  expect(first.headers.get("cache-control")).toBe("public, immutable, max-age=604800")
+  expect(first.headers.get("expires")).toBe("Fri, 04 Sep 2026 00:00:00 GMT")
   expect(new Uint8Array(await first.arrayBuffer())).toEqual(testPng)
   expect(requested).toEqual(["https://example.com", "https://example.com/preferred.png"])
 
   const second = await app.request("http://localhost/icons/example.com/icon.png")
   expect(second.status).toBe(200)
   expect(new Uint8Array(await second.arrayBuffer())).toEqual(testPng)
+  expect(requested).toHaveLength(2)
+
+  const listIcon = await app.request("http://localhost/icons/example.com/icon.png?fallback=error")
+  expect(listIcon.status).toBe(200)
+  expect(listIcon.headers.get("cache-control")).toBe("public, immutable, max-age=604800")
+  expect(new Uint8Array(await listIcon.arrayBuffer())).toEqual(testPng)
   expect(requested).toHaveLength(2)
 })
 
@@ -50,15 +60,21 @@ test("icons negative-cache failures, fall back, and do not retry blocked hosts",
       throw new Error("offline")
     },
   }
-  const cache = iconCacheAdapterCreate({ clock: clockTestCreate("2026-08-28T00:00:00.000Z") })
-  const app = serverAppCreate({ icons: { cache, http } })
+  const clock = clockTestCreate("2026-08-28T00:00:00.000Z")
+  const cache = iconCacheAdapterCreate({ clock })
+  const app = serverAppCreate({ clock, icons: { cache, http } })
+
+  const listFallback = await app.request("http://localhost/icons/no-such.test/icon.png?fallback=error")
+  expect(listFallback.status).toBe(404)
+  expect(listFallback.headers.get("cache-control")).toBe("public, immutable, max-age=259200")
+  expect(new Uint8Array(await listFallback.arrayBuffer())).toEqual(iconFallbackIcon)
+  const afterFailure = requests
+  expect(afterFailure).toBeGreaterThan(0)
 
   const failed = await app.request("http://localhost/icons/no-such.test/icon.png")
   expect(failed.status).toBe(200)
   expect(failed.headers.get("content-type")).toBe("image/png")
   expect(new Uint8Array(await failed.arrayBuffer())).toEqual(iconFallbackIcon)
-  const afterFailure = requests
-  await app.request("http://localhost/icons/no-such.test/icon.png")
   expect(requests).toBe(afterFailure)
 
   const blocked = await app.request("http://localhost/icons/127.0.0.1/icon.png")
@@ -83,16 +99,25 @@ test("icons refresh an expired positive cache entry", async () => {
   }
   const app = serverAppCreate({
     clock,
-    icons: { cache, config: iconConfigCreate({ ICON_CACHE_TTL: 10 }), http },
+    icons: { cache, http },
   })
 
   const cached = await app.request("http://localhost/icons/example.com/icon.png")
   expect(new Uint8Array(await cached.arrayBuffer())).toEqual(testPng)
+  expect(cached.headers.get("cache-control")).toBe("public, immutable, max-age=604800")
+  expect(cached.headers.get("expires")).toBe("Fri, 04 Sep 2026 00:00:00 GMT")
   expect(requested).toHaveLength(0)
 
-  timestamp += 11_000
+  timestamp += 604_800_000 - 1
+  const beforeBoundary = await app.request("http://localhost/icons/example.com/icon.png")
+  expect(new Uint8Array(await beforeBoundary.arrayBuffer())).toEqual(testPng)
+  expect(requested).toHaveLength(0)
+
+  timestamp += 1
   const refreshed = await app.request("http://localhost/icons/example.com/icon.png")
   expect(new Uint8Array(await refreshed.arrayBuffer())).toEqual(refreshedPng)
+  expect(refreshed.headers.get("cache-control")).toBe("public, immutable, max-age=604800")
+  expect(refreshed.headers.get("expires")).toBe("Fri, 11 Sep 2026 00:00:00 GMT")
   expect(requested).toEqual(["https://example.com", "https://example.com/favicon.ico"])
 })
 

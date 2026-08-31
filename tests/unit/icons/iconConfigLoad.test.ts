@@ -3,7 +3,13 @@ import { iconConfigCreate } from "../../../src/server/contexts/icons/iconConfigC
 import { iconConfigLoad } from "../../../src/server/contexts/icons/iconConfigLoad.js"
 
 test("iconConfigLoad applies Vaultwarden icon defaults", () => {
-  expect(iconConfigLoad({})).toEqual({ success: true, data: iconConfigCreate() })
+  const result = iconConfigLoad({})
+
+  expect(result).toEqual({ success: true, data: iconConfigCreate() })
+  expect(result).toMatchObject({
+    success: true,
+    data: { ICON_CACHE_NEGTTL: 259200, ICON_CACHE_TTL: 604800 },
+  })
 })
 
 test("iconConfigLoad parses cache, SSRF, and redirect settings", () => {

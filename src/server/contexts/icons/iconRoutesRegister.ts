@@ -4,9 +4,9 @@ import { iconConfigCreate } from "./iconConfigCreate.js"
 import { iconContentTypeResolve } from "./iconContentTypeResolve.js"
 import { iconFallbackIcon } from "./iconFallbackIcon.js"
 import { iconGet } from "./iconGet.js"
+import { iconHostBlocked } from "./iconHostBlocked.js"
 import { iconHostValidate } from "./iconHostValidate.js"
 import { iconHttpAdapterCreate } from "./iconHttpAdapterCreate.js"
-import { iconHostBlocked } from "./iconHostBlocked.js"
 import type { IconRouteOptions } from "./iconRouteOptions.js"
 
 export function iconRoutesRegister(app: Hono<any>, options?: Partial<IconRouteOptions>): void {
@@ -19,30 +19,33 @@ export function iconRoutesRegister(app: Hono<any>, options?: Partial<IconRouteOp
     logger: options?.logger,
   }
   if (resolvedOptions.config.ICON_SERVICE === "internal") {
-    app.get("/icons/:host/icon.png", (context) => iconInternalGet(context.req.param("host"), resolvedOptions))
+    app.get("/icons/:host/icon.png", (context) =>
+      iconInternalGet(context.req.param("host"), resolvedOptions, context.req.query("fallback") === "error"),
+    )
     return
   }
   app.get("/icons/:host/icon.png", (context) => iconExternalGet(context.req.param("host"), resolvedOptions))
 }
 
-async function iconInternalGet(host: string, options: IconRouteOptions): Promise<Response> {
+async function iconInternalGet(host: string, options: IconRouteOptions, fallbackAsError: boolean): Promise<Response> {
   const hostResult = iconHostValidate(host)
-  if (!hostResult.success) return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options)
+  if (!hostResult.success) return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options, fallbackAsError)
   const path = `${hostResult.data}.png`
 
   if (await iconNegativeCacheFresh(path, options))
-    return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options)
+    return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options, fallbackAsError)
   const cached = await iconCachedRead(path, options)
   if (cached !== undefined) {
     const subtype = iconContentTypeResolve(cached) ?? "x-icon"
     return iconImageResponse(cached, subtype, options.config.ICON_CACHE_TTL, options)
   }
-  if (options.config.DISABLE_ICON_DOWNLOAD) return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options)
+  if (options.config.DISABLE_ICON_DOWNLOAD)
+    return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options, fallbackAsError)
 
   const result = await iconGet(hostResult.data, options)
   if (!result.success) {
     if (result.code !== "icons.blocked") await iconCacheWrite(`${path}.miss`, new Uint8Array(), options)
-    return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options)
+    return iconFallbackResponse(options.config.ICON_CACHE_NEGTTL, options, fallbackAsError)
   }
   await iconCacheWrite(path, result.data.bytes, options)
   return iconImageResponse(result.data.bytes, result.data.subtype, options.config.ICON_CACHE_TTL, options)
@@ -119,14 +122,21 @@ async function iconCacheWrite(path: string, bytes: Uint8Array, options: IconRout
   }
 }
 
-function iconFallbackResponse(ttl: number, options: IconRouteOptions): Response {
-  return iconImageResponse(iconFallbackIcon, "png", ttl, options)
+function iconFallbackResponse(ttl: number, options: IconRouteOptions, fallbackAsError: boolean): Response {
+  return iconImageResponse(iconFallbackIcon, "png", ttl, options, fallbackAsError ? 404 : 200)
 }
 
-function iconImageResponse(bytes: Uint8Array, subtype: string, ttl: number, options: IconRouteOptions): Response {
+function iconImageResponse(
+  bytes: Uint8Array,
+  subtype: string,
+  ttl: number,
+  options: IconRouteOptions,
+  status = 200,
+): Response {
   return iconCachedResponse(
     new Response(bytes.slice().buffer as ArrayBuffer, {
       headers: { "Content-Type": `image/${subtype}`, "X-Content-Type-Options": "nosniff" },
+      status,
     }),
     ttl,
     options,
