@@ -1,5 +1,6 @@
 import { createMemo } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import { passwordGenerate } from "../../../shared/crypto/passwordGenerate.js"
 import { cipherPasswordStrengthCalculate } from "../model/cipherPasswordStrengthCalculate.js"
 import type { CipherFormData } from "../schemas/cipherFormDataSchema.js"
 
@@ -24,20 +25,9 @@ export function cipherLoginFormSectionStateCreate(props: CipherLoginFormSectionS
   }
 
   const generatePassword = () => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-="
-    const length = 20
-    const values = new Uint32Array(length)
-    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-      crypto.getRandomValues(values)
-      let generated = ""
-      for (let i = 0; i < length; i++) {
-        const val = values[i]
-        if (val !== undefined) {
-          generated += charset[val % charset.length]
-        }
-      }
-      props.passwordSignal.set(generated)
-    }
+    const result = passwordGenerate()
+    if (!result.success) return
+    props.passwordSignal.set(result.data)
   }
 
   const updateUri = (index: number, uri: string) => {
