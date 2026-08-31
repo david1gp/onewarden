@@ -878,7 +878,7 @@ test("personal cipher import maps folders, ignores client revisions, persists hi
           name: "Imported",
           organizationID: null,
           login: { password: "encrypted-password" },
-          passwordHistory: [{ password: "old", lastUsedDate: "invalid" }],
+          passwordHistory: [{ password: "old", lastUsedDate: "2020-01-02T03:04:05.000Z" }],
           lastKnownRevisionDate: "2020-01-01T00:00:00.000Z",
         },
       ],
@@ -911,7 +911,7 @@ test("personal cipher import maps folders, ignores client revisions, persists hi
         folderId: "cipher-one",
         id: "cipher-two",
         name: "Imported",
-        passwordHistory: [{ password: "old", lastUsedDate: "1970-01-01T00:00:00.000000Z" }],
+        passwordHistory: [{ password: "old", lastUsedDate: "2020-01-02T03:04:05.000000Z" }],
       },
     ],
   })
@@ -954,6 +954,44 @@ test("personal cipher import validates the complete batch before writing", async
   expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM folders").get()?.count).toBe(0)
   expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
   expect(context.notifications).toEqual([])
+})
+
+test("personal cipher import rejects malformed dates transactionally", async () => {
+  const context = await contextCreate()
+  for (const cipher of [
+    {
+      type: 1,
+      name: "Invalid history date",
+      login: {},
+      passwordHistory: [{ password: "old", lastUsedDate: "invalid" }],
+    },
+    {
+      type: 1,
+      name: "Invalid archive date",
+      login: {},
+      archivedDate: "invalid",
+    },
+    {
+      type: 1,
+      name: "Invalid password revision date",
+      login: { passwordRevisionDate: "invalid" },
+    },
+  ]) {
+    const response = await context.app.request("https://vault.example/api/ciphers/import", {
+      body: JSON.stringify({
+        ciphers: [cipher],
+        folders: [{ name: "Should not persist" }],
+        folderRelationships: [{ key: 0, value: 0 }],
+      }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    })
+
+    expect(response.status).toBe(400)
+    expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM folders").get()?.count).toBe(0)
+    expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM ciphers").get()?.count).toBe(0)
+    expect(context.notifications).toEqual([])
+  }
 })
 
 test("personal cipher import rejects notes over the default encrypted size limit", async () => {

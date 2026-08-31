@@ -31,5 +31,12 @@ test("cipher password history import validation rejects non-string passwords", (
       "Ciphers[2].Notes": ["The password history contains a `null` value. Only strings are allowed."],
     }),
   })
-  expect(cipherPasswordHistoryValidate([{ password: "valid" }], 0).success).toBe(true)
+  expect(
+    cipherPasswordHistoryValidate([{ password: "valid", lastUsedDate: "2026-08-28T00:00:00.000Z" }], 0).success,
+  ).toBe(true)
+})
+
+test("cipher password history import validation rejects invalid or missing dates", () => {
+  expect(cipherPasswordHistoryValidate([{ password: "invalid", lastUsedDate: "invalid" }], 0).success).toBe(false)
+  expect(cipherPasswordHistoryValidate([{ password: "missing" }], 0).success).toBe(false)
 })

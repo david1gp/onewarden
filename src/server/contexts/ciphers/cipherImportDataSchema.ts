@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { isoTimestampSchema } from "../../../shared/validation/isoTimestampSchema.js"
 import { folderDataSchema } from "../folders/folderDataSchema.js"
 import { cipherDataSchema } from "./cipherDataSchema.js"
 
@@ -27,6 +28,7 @@ const cipherImportCipherDataSchema = v.strictObject({
   organizationID: v.optional(v.nullable(cipherImportIdSchema)),
   type: v.picklist([1, 2, 3, 4]),
   reprompt: v.optional(v.nullable(v.picklist([0, 1]))),
+  archivedDate: v.optional(v.nullable(isoTimestampSchema)),
 })
 
 export const cipherImportDataSchema = v.strictObject({

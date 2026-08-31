@@ -1,10 +1,12 @@
 import { type Result, type ResultErr } from "#result"
+import * as v from "valibot"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import type { CipherImportResult } from "../../../shared/api/cipherImportResultSchema.js"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import { isoTimestampSchema } from "../../../shared/validation/isoTimestampSchema.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { folderSave } from "../folders/folderSave.js"
@@ -198,6 +200,20 @@ function cipherImportPayloadValidate(data: CipherImportData, maxNoteSize: number
         `Ciphers[${cipherIndex}].Attachments2`,
       )
 
+    const archiveDateResult = cipherImportTimestampValidate(
+      cipherData.archivedDate,
+      `Ciphers[${cipherIndex}].ArchivedDate`,
+    )
+    if (!archiveDateResult.success) return archiveDateResult
+
+    if (cipherImportRecordIs(cipherData.login)) {
+      const passwordRevisionDateResult = cipherImportTimestampValidate(
+        cipherData.login.passwordRevisionDate,
+        `Ciphers[${cipherIndex}].Login.PasswordRevisionDate`,
+      )
+      if (!passwordRevisionDateResult.success) return passwordRevisionDateResult
+    }
+
     const preparedResult = cipherDataPrepare(cipherData)
     if (!preparedResult.success) return preparedResult
     if (
@@ -240,6 +256,16 @@ function cipherImportInvalid(message: string, field = ""): ResultErr {
   return apiErrorCreate("cipherImport", "platform.invalid-request", "Invalid import payload.", {
     [field]: [message],
   })
+}
+
+function cipherImportTimestampValidate(value: unknown, field: string): Result<void> {
+  if (value === undefined || value === null) return resultCreate(undefined)
+  if (v.safeParse(isoTimestampSchema, value).success) return resultCreate(undefined)
+  return cipherImportInvalid("The value must be a valid ISO-8601 timestamp.", field)
+}
+
+function cipherImportRecordIs(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function cipherImportIdIsSafe(value: string): boolean {

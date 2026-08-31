@@ -31,4 +31,4 @@ Validate untrusted runtime inputs with Valibot, derive static types from their o
 - [x] 7. Convert web-auth request interfaces and repeated inline two-factor payload types to named Valibot schemas with correctly distinguished input and output types.
 - [x] 8. Validate remaining decoded runtime inputs identified by the audit, including relevant URL/query state and extension sync payloads, at their immediate trust boundaries.
 - [x] 9. Deduplicate popup/full-window status derivation, remove non-semantic extension type aliases, and extract only narrow shared cipher mapping helpers.
-- [ ] 10. Run repository-wide type checking and tests, search for remaining unsafe runtime casts/JSON deserialization at external boundaries, and fix only regressions or uncovered instances within this scope.
+- [x] 10. Run repository-wide type checking and tests, search for remaining unsafe runtime casts/JSON deserialization at external boundaries, and fix only regressions or uncovered instances within this scope.

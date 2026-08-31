@@ -1,8 +1,14 @@
+import * as v from "valibot"
 import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { organizationPolicyFindActiveByUserAndType } from "./organizationPolicyFindActiveByUserAndType.js"
 import { organizationPolicyType } from "./organizationPolicyType.js"
+
+const organizationPolicySendOptionsSchema = v.object({
+  disableHideEmail: v.optional(v.boolean()),
+  DisableHideEmail: v.optional(v.boolean()),
+})
 
 export function organizationPolicyIsHideEmailDisabled(database: DatabaseConnection, userUuid: string): Result<boolean> {
   const policiesResult = organizationPolicyFindActiveByUserAndType(
@@ -20,9 +26,8 @@ export function organizationPolicyIsHideEmailDisabled(database: DatabaseConnecti
 
 function organizationPolicyJsonObjectParse(value: string): Record<string, unknown> | null {
   try {
-    const parsed: unknown = JSON.parse(value)
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null
-    return parsed as Record<string, unknown>
+    const parsed = v.safeParse(organizationPolicySendOptionsSchema, JSON.parse(value))
+    return parsed.success ? parsed.output : null
   } catch {
     return null
   }
