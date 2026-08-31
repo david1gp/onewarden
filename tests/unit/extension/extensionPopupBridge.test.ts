@@ -1,14 +1,14 @@
 import { expect, test } from "bun:test"
 import { extensionClipboardAdapterCreate } from "../../../src/extension/clipboard/extensionClipboardAdapterCreate.js"
 import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
-import type { ExtensionPopupLogin } from "../../../src/extension/popup/ExtensionPopupLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
 import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
-const testLogin: ExtensionPopupLogin = {
+const testLogin: ExtensionLogin = {
   id: "cipher-1",
   name: "Example Service",
   username: "user@example.com",

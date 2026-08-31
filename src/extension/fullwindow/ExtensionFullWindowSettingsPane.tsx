@@ -1,11 +1,11 @@
 import { For, Show } from "solid-js"
-import type { SignalObject } from "#ui/utils/createSignalObject.js"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
 import { SwitchSingle } from "#ui/input/switch/SwitchSingle.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import type { SignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 
@@ -21,6 +21,7 @@ const overrideFields: { field: ExtensionFullWindowSettingsField; label: string }
 ]
 
 export interface ExtensionFullWindowSettingsPaneProps {
+  idPrefix?: string
   disabled: boolean
   environmentSaveStatus: ExtensionFullWindowEnvironmentSaveStatus
   errorMessage: string | null
@@ -49,13 +50,13 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
   return (
     <div class="flex max-w-2xl flex-col gap-4">
       <CardWrapper
-        class="flex flex-col gap-5 overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50/70 p-5 dark:border-blue-900 dark:from-slate-950 dark:to-blue-950/30"
+        class="flex flex-col gap-5 overflow-hidden border-blue-200 bg-white p-5 dark:border-blue-900 dark:bg-slate-900"
         aria-label="Security settings"
       >
         <div class="flex flex-col gap-1">
           <p class="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">Security</p>
           <h2 class="text-lg font-semibold">Vault timeout</h2>
-          <p class="max-w-xl text-sm text-gray-600 dark:text-gray-300">
+          <p class="max-w-xl text-sm text-slate-600 dark:text-slate-300">
             Choose when an inactive unlocked vault should be secured and what happens afterward.
           </p>
         </div>
@@ -71,7 +72,7 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
                 </p>
               }
             >
-              <p role="status" class="text-sm text-gray-600 dark:text-gray-300">
+              <p role="status" class="text-sm text-slate-600 dark:text-slate-300">
                 Loading security settings…
               </p>
             </Show>
@@ -79,28 +80,28 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
         >
           <div class="grid gap-5 sm:grid-cols-2">
             <div class="flex flex-col gap-1.5">
-              <Label for="extension-vault-timeout">Vault timeout</Label>
+              <Label for={`${p.idPrefix ?? ""}extension-vault-timeout`}>Vault timeout</Label>
               <SelectSingleNative
-                id="extension-vault-timeout"
+                id={`${p.idPrefix ?? ""}extension-vault-timeout`}
                 disabled={p.disabled}
                 valueSignal={p.securityTimeoutSignal}
                 getOptions={p.securityTimeoutOptions}
                 valueText={p.securityTimeoutLabel}
               />
-              <p class="text-xs text-gray-600 dark:text-gray-300">Measured from when the vault was unlocked.</p>
+              <p class="text-xs text-slate-600 dark:text-slate-300">Measured from when the vault was unlocked.</p>
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <Label for="extension-vault-timeout-action">Vault timeout action</Label>
+              <Label for={`${p.idPrefix ?? ""}extension-vault-timeout-action`}>Vault timeout action</Label>
               <SwitchSingle
-                id="extension-vault-timeout-action"
+                id={`${p.idPrefix ?? ""}extension-vault-timeout-action`}
                 disabled={p.disabled}
                 valueSignal={p.securityActionSignal}
                 getOptions={p.securityActionOptions}
                 valueText={p.securityActionLabel}
                 class="w-fit p-1"
               />
-              <p class="text-xs text-gray-600 dark:text-gray-300">
+              <p class="text-xs text-slate-600 dark:text-slate-300">
                 Lock keeps your signed-in session. Log out removes it and requires a full sign-in.
               </p>
             </div>
@@ -125,20 +126,23 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
           </Show>
 
           <div>
-            <Button variant="filled" disabled={p.disabled} onClick={p.onSecuritySave}>
+            <Button variant="filledBlue" disabled={p.disabled} onClick={p.onSecuritySave}>
               {p.securitySaveStatus === "saving" ? "Saving security settings…" : "Save security settings"}
             </Button>
           </div>
         </Show>
       </CardWrapper>
 
-      <CardWrapper class="flex flex-col gap-3 p-4" aria-label="Server settings">
+      <CardWrapper
+        class="flex flex-col gap-3 border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+        aria-label="Server settings"
+      >
         <h2 class="text-base font-semibold">Server settings</h2>
 
         <div class="flex flex-col gap-1">
-          <Label for="extension-region">Region</Label>
+          <Label for={`${p.idPrefix ?? ""}extension-region`}>Region</Label>
           <SelectSingleNative
-            id="extension-region"
+            id={`${p.idPrefix ?? ""}extension-region`}
             disabled={p.disabled}
             valueSignal={p.regionSignal}
             getOptions={p.regionOptions}
@@ -148,9 +152,9 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
 
         <Show when={p.isSelfHosted}>
           <div class="flex flex-col gap-1">
-            <Label for="extension-base">Server base URL</Label>
+            <Label for={`${p.idPrefix ?? ""}extension-base`}>Server base URL</Label>
             <InputS
-              id="extension-base"
+              id={`${p.idPrefix ?? ""}extension-base`}
               type="url"
               placeholder="https://vault.example.com"
               disabled={p.disabled}
@@ -159,7 +163,7 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
           </div>
         </Show>
 
-        <p class="text-xs text-gray-600 dark:text-gray-300">
+        <p class="text-xs text-slate-600 dark:text-slate-300">
           Leave an override empty to derive it from the selected region or base URL.
         </p>
 
@@ -178,9 +182,9 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
         <For each={overrideFields}>
           {(entry) => (
             <div class="flex flex-col gap-1">
-              <Label for={`extension-${entry.field}`}>{entry.label}</Label>
+              <Label for={`${p.idPrefix ?? ""}extension-${entry.field}`}>{entry.label}</Label>
               <InputS
-                id={`extension-${entry.field}`}
+                id={`${p.idPrefix ?? ""}extension-${entry.field}`}
                 type="url"
                 placeholder="Derived"
                 disabled={p.disabled}
@@ -191,7 +195,7 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
         </For>
 
         <div>
-          <Button variant="filled" disabled={p.disabled} onClick={p.onSave}>
+          <Button variant="filledBlue" disabled={p.disabled} onClick={p.onSave}>
             {p.environmentSaveStatus === "saving" ? "Saving settings…" : "Save settings"}
           </Button>
         </div>

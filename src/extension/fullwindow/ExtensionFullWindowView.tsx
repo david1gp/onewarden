@@ -2,6 +2,7 @@ import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
@@ -19,22 +20,32 @@ import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewSta
 export interface ExtensionFullWindowViewProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
+  initialState?: { pane?: string; selectedLoginId?: string }
+  generatorOptions?: Parameters<typeof ExtensionFullWindowGeneratorPane>[0]["options"]
+  idPrefix?: string
+  root?: "main" | "div"
+  navigationLabel?: string
 }
 
 /** Full-window vault with navigation, list, detail, and server settings panes. */
 export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.Element {
-  const state = extensionFullWindowViewStateCreate(p.model, () => p.commands)
+  const state = extensionFullWindowViewStateCreate(p.model, () => p.commands, p.initialState)
 
   return (
-    <main class="flex min-h-dvh flex-col gap-3 p-4 text-gray-900 md:p-6 dark:text-gray-100">
+    <Dynamic
+      component={p.root ?? "main"}
+      class="flex min-h-dvh flex-col gap-3 bg-slate-50 p-4 text-slate-900 md:p-6 dark:bg-slate-950 dark:text-slate-100"
+    >
       <header class="flex flex-wrap items-center justify-between gap-2">
         <h1 class="text-lg font-semibold">OneWarden Vault</h1>
-        <Badge aria-label="Active site">{state.siteLabel()}</Badge>
+        <Badge role="group" aria-label="Active site">
+          {state.siteLabel()}
+        </Badge>
       </header>
 
       <nav
-        aria-label="Extension navigation"
-        class="flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900"
+        aria-label={p.navigationLabel ?? "Extension navigation"}
+        class="flex flex-wrap items-center gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-900"
       >
         <ButtonIcon
           variant={state.isVaultPane() ? "filledBlue" : "ghost"}
@@ -91,6 +102,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
       <Show when={state.isSettingsPane()}>
         <ExtensionFullWindowSettingsPane
+          idPrefix={p.idPrefix}
           disabled={state.busy()}
           environmentSaveStatus={state.environmentSaveStatus()}
           errorMessage={state.environmentSaveErrorMessage()}
@@ -116,7 +128,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
       </Show>
 
       <Show when={state.isGeneratorPane()}>
-        <ExtensionFullWindowGeneratorPane />
+        <ExtensionFullWindowGeneratorPane idPrefix={p.idPrefix} options={p.generatorOptions} />
       </Show>
 
       <Show when={state.isVaultPane()}>
@@ -141,7 +153,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               placeholder="Master password"
               valueSignal={state.masterPasswordSignal}
             />
-            <Button variant="filled" disabled={state.busy()} onClick={state.accountLogin}>
+            <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
               Log in
             </Button>
           </section>
@@ -156,7 +168,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               placeholder="Master password"
               valueSignal={state.masterPasswordSignal}
             />
-            <Button variant="filled" disabled={state.busy()} onClick={state.vaultUnlock}>
+            <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
               Unlock
             </Button>
           </section>
@@ -183,7 +195,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
               <Show when={state.siteFilterAvailable()}>
                 <Button
-                  variant={state.siteOnly() ? "filled" : "outline"}
+                  variant={state.siteOnly() ? "filledBlue" : "outline"}
                   size="sm"
                   aria-pressed={state.siteOnly() ? "true" : "false"}
                   onClick={state.siteOnlyToggle}
@@ -203,7 +215,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               <Show
                 when={!state.isEmpty()}
                 fallback={
-                  <p class="py-6 text-center text-sm text-gray-600 dark:text-gray-300">
+                  <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
                     {state.hasNoLogins() ? "Your vault is empty." : "No logins match your filters."}
                   </p>
                 }
@@ -228,7 +240,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               <Show
                 when={state.selectedLogin()}
                 fallback={
-                  <p class="py-6 text-sm text-gray-600 dark:text-gray-300">Select a login to see its details.</p>
+                  <p class="py-6 text-sm text-slate-600 dark:text-slate-300">Select a login to see its details.</p>
                 }
               >
                 {(login) => (
@@ -250,6 +262,6 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           </div>
         </Show>
       </Show>
-    </main>
+    </Dynamic>
   )
 }

@@ -1,32 +1,35 @@
 import { For, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
-import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
-import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 
 export interface ExtensionPopupLoginCardProps {
-  login: ExtensionPopupLogin
+  login: ExtensionLogin
   disabled: boolean
   fillAvailable: boolean
-  fieldIsCopied: (field: ExtensionPopupCopyableField) => boolean
-  onFill: (login: ExtensionPopupLogin) => void
-  onCopy: (login: ExtensionPopupLogin, field: ExtensionPopupCopyableField) => void
-  totpIsCopied: (login: ExtensionPopupLogin) => boolean
-  onTotpCopy: (login: ExtensionPopupLogin) => void
+  fieldIsCopied: (field: ExtensionCopyableField) => boolean
+  onFill: (login: ExtensionLogin) => void
+  onCopy: (login: ExtensionLogin, field: ExtensionCopyableField) => void
+  totpIsCopied: (login: ExtensionLogin) => boolean
+  onTotpCopy: (login: ExtensionLogin) => void
 }
 
 /** One matched login with its explicit fill and per-field copy controls. */
 export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
   return (
-    <CardWrapper class="p-3" aria-label={p.login.name}>
+    <CardWrapper
+      class="border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+      aria-label={p.login.name}
+    >
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
           <p class="truncate text-sm font-semibold">{p.login.name}</p>
-          <p class="truncate text-xs text-gray-600 dark:text-gray-300">{p.login.username ?? "No username"}</p>
+          <p class="truncate text-xs text-slate-600 dark:text-slate-300">{p.login.username ?? "No username"}</p>
         </div>
         <Show when={p.fillAvailable}>
           <Button
-            variant="filled"
+            variant="filledBlue"
             size="sm"
             disabled={p.disabled}
             aria-label={`Fill ${p.login.name}`}

@@ -1,4 +1,4 @@
-import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionPopupStatus } from "./ExtensionPopupStatus.js"
 
 /**
@@ -10,7 +10,7 @@ export interface ExtensionPopupViewModel {
   /** Hostname of the active tab, or null when no site is in scope. */
   hostname: string | null
   /** Logins matching the active site, already ordered by relevance. */
-  logins: ExtensionPopupLogin[]
+  logins: ExtensionLogin[]
   /** Message shown in the error state, and for recoverable failures elsewhere. */
   errorMessage: string | null
   /** True while a command triggered from the popup is still running. */

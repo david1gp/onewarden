@@ -3,7 +3,7 @@ import { mdiEye } from "@adaptive-ds/mdi/mdiEye.js"
 import { mdiEyeOff } from "@adaptive-ds/mdi/mdiEyeOff.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiRefresh } from "@adaptive-ds/mdi/mdiRefresh.js"
-import { Show, type JSX } from "solid-js"
+import { type JSX, Show } from "solid-js"
 import { Checkbox } from "#ui/input/check/Checkbox.jsx"
 import { Input } from "#ui/input/input/Input.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
@@ -13,12 +13,15 @@ import { Icon } from "#ui/static/icon/Icon.jsx"
 import { extensionFullWindowGeneratorPaneStateCreate } from "./extensionFullWindowGeneratorPaneStateCreate.js"
 
 /** Compact, full-window password generator with secure local generation and copy controls. */
-export function ExtensionFullWindowGeneratorPane(): JSX.Element {
-  const state = extensionFullWindowGeneratorPaneStateCreate()
+export function ExtensionFullWindowGeneratorPane(p: {
+  options?: Parameters<typeof extensionFullWindowGeneratorPaneStateCreate>[0]
+  idPrefix?: string
+}): JSX.Element {
+  const state = extensionFullWindowGeneratorPaneStateCreate(p.options)
 
   return (
     <section
-      aria-labelledby="password-generator-title"
+      aria-labelledby={`${p.idPrefix ?? ""}password-generator-title`}
       class="mx-auto flex w-full max-w-3xl flex-col gap-4 py-2 sm:py-5"
     >
       <div class="flex items-start gap-3 px-1">
@@ -26,7 +29,7 @@ export function ExtensionFullWindowGeneratorPane(): JSX.Element {
           <Icon path={mdiKey} class="size-5" />
         </span>
         <div>
-          <h2 id="password-generator-title" class="text-lg font-semibold tracking-tight">
+          <h2 id={`${p.idPrefix ?? ""}password-generator-title`} class="text-lg font-semibold tracking-tight">
             Password Generator
           </h2>
           <p class="text-sm text-slate-600 dark:text-slate-300">Create a strong password locally in your extension.</p>
@@ -35,12 +38,12 @@ export function ExtensionFullWindowGeneratorPane(): JSX.Element {
 
       <CardWrapper class="overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div class="bg-slate-50 p-3 sm:p-4 dark:bg-slate-950/60">
-          <Label for="generated-password" class="sr-only">
+          <Label for={`${p.idPrefix ?? ""}generated-password`} class="sr-only">
             Generated password
           </Label>
           <div class="flex flex-col gap-2 sm:flex-row">
             <Input
-              id="generated-password"
+              id={`${p.idPrefix ?? ""}generated-password`}
               type={state.passwordVisible() ? "text" : "password"}
               value={state.password()}
               readOnly
@@ -81,13 +84,13 @@ export function ExtensionFullWindowGeneratorPane(): JSX.Element {
           <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <Label for="password-length" class="font-medium">
+                <Label for={`${p.idPrefix ?? ""}password-length`} class="font-medium">
                   Length
                 </Label>
                 <p class="text-xs text-slate-500 dark:text-slate-400">5–128 characters</p>
               </div>
               <Input
-                id="password-length"
+                id={`${p.idPrefix ?? ""}password-length`}
                 aria-label="Password length"
                 type="number"
                 min={5}
@@ -111,37 +114,37 @@ export function ExtensionFullWindowGeneratorPane(): JSX.Element {
           <fieldset class="grid grid-cols-2 gap-x-4 gap-y-3">
             <legend class="col-span-2 mb-1 font-medium">Character groups</legend>
             <Checkbox
-              id="generator-lowercase"
+              id={`${p.idPrefix ?? ""}generator-lowercase`}
               checked={state.lowercase()}
               disabled={state.lowercaseDisabled()}
               onChange={state.lowercaseSet}
             >
               <span class="text-sm">
-                Lowercase <span class="text-slate-500">a–z</span>
+                Lowercase <span class="text-slate-500 dark:text-slate-300">a–z</span>
               </span>
             </Checkbox>
             <Checkbox
-              id="generator-uppercase"
+              id={`${p.idPrefix ?? ""}generator-uppercase`}
               checked={state.uppercase()}
               disabled={state.uppercaseDisabled()}
               onChange={state.uppercaseSet}
             >
               <span class="text-sm">
-                Uppercase <span class="text-slate-500">A–Z</span>
+                Uppercase <span class="text-slate-500 dark:text-slate-300">A–Z</span>
               </span>
             </Checkbox>
             <Checkbox
-              id="generator-numbers"
+              id={`${p.idPrefix ?? ""}generator-numbers`}
               checked={state.numbers()}
               disabled={state.numbersDisabled()}
               onChange={state.numbersSet}
             >
               <span class="text-sm">
-                Numbers <span class="text-slate-500">0–9</span>
+                Numbers <span class="text-slate-500 dark:text-slate-300">0–9</span>
               </span>
             </Checkbox>
             <Checkbox
-              id="generator-symbols"
+              id={`${p.idPrefix ?? ""}generator-symbols`}
               checked={state.symbols()}
               disabled={state.symbolsDisabled()}
               onChange={state.symbolsSet}

@@ -1,7 +1,7 @@
-import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 
 /** True when a login URI belongs to the given hostname or one of its subdomains. */
-export function extensionFullWindowLoginUriMatch(login: ExtensionFullWindowLogin, hostname: string | null): boolean {
+export function extensionFullWindowLoginUriMatch(login: ExtensionLogin, hostname: string | null): boolean {
   if (!hostname) return true
   if (!login.uri) return false
   const needle = hostname.toLowerCase()

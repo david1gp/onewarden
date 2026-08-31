@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
-import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import { ExtensionFullWindowView } from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
@@ -11,7 +11,7 @@ import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
 
-const exampleLogin: ExtensionFullWindowLogin = {
+const exampleLogin: ExtensionLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",
@@ -26,7 +26,7 @@ const exampleLogin: ExtensionFullWindowLogin = {
   ],
 }
 
-const otherLogin: ExtensionFullWindowLogin = {
+const otherLogin: ExtensionLogin = {
   id: "login-2",
   name: "Other Admin",
   username: "root@other.test",

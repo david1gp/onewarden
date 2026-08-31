@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
-import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import { extensionFullWindowLoginSearchMatch } from "../../../src/extension/fullwindow/extensionFullWindowLoginSearchMatch.js"
 import { extensionFullWindowLoginUriMatch } from "../../../src/extension/fullwindow/extensionFullWindowLoginUriMatch.js"
 import { extensionLoginSearchMatch } from "../../../src/extension/extensionLoginSearchMatch.js"
 
-const login: ExtensionFullWindowLogin = {
+const login: ExtensionLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",

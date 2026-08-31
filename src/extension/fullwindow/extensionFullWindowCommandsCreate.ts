@@ -2,14 +2,14 @@ import type { Result } from "#result"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
-import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
@@ -38,8 +38,8 @@ export function extensionFullWindowCommandsCreate(
   const onRefresh = options.onRefresh ?? (async () => {})
 
   const commonCommands = extensionCommonCommandsCreate<
-    ExtensionFullWindowLogin,
-    ExtensionFullWindowCopyableField,
+    ExtensionLogin,
+    ExtensionCopyableField,
     ExtensionFullWindowViewModel
   >({
     messageSend: sender,
@@ -64,7 +64,7 @@ export function extensionFullWindowCommandsCreate(
   }
 
   const loginAdd = () => handoffOpen({ operation: "create", cipherId: null })
-  const loginEdit = (login: ExtensionFullWindowLogin) => handoffOpen({ operation: "edit", cipherId: login.id })
+  const loginEdit = (login: ExtensionLogin) => handoffOpen({ operation: "edit", cipherId: login.id })
 
   const accountLogin = (
     credentials?: { email: string; password: string },

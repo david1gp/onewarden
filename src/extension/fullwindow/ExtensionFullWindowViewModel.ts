@@ -1,7 +1,7 @@
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
-import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import type { ExtensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import type { ExtensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 
@@ -10,7 +10,7 @@ export interface ExtensionFullWindowViewModel {
   status: ExtensionFullWindowStatus
   /** Hostname of the active tab, or null when no fillable tab exists. */
   hostname: string | null
-  logins: ExtensionFullWindowLogin[]
+  logins: ExtensionLogin[]
   errorMessage: string | null
   busy: boolean
   copiedFieldKey: string | null

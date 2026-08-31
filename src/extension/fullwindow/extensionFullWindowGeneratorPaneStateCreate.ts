@@ -5,16 +5,25 @@ import { passwordGenerate } from "../../shared/crypto/passwordGenerate.js"
 type PasswordCopyStatus = "idle" | "copying" | "copied" | "error"
 
 /** Local controls and secure generation state for the full-window password generator. */
-export function extensionFullWindowGeneratorPaneStateCreate() {
+export function extensionFullWindowGeneratorPaneStateCreate(
+  options: {
+    initialPassword?: string
+    initialPasswordVisible?: boolean
+    initialCopyStatus?: PasswordCopyStatus
+    initialErrorMessage?: string | null
+    passwordGenerate?: typeof passwordGenerate
+    clipboardWrite?: (value: string) => Promise<void>
+  } = {},
+) {
   const lengthSignal = createSignalObject(20)
   const lowercaseSignal = createSignalObject(true)
   const uppercaseSignal = createSignalObject(true)
   const numbersSignal = createSignalObject(true)
   const symbolsSignal = createSignalObject(true)
-  const passwordSignal = createSignalObject("")
-  const passwordVisibleSignal = createSignalObject(false)
-  const copyStatusSignal = createSignalObject<PasswordCopyStatus>("idle")
-  const errorMessageSignal = createSignalObject<string | null>(null)
+  const passwordSignal = createSignalObject(options.initialPassword ?? "")
+  const passwordVisibleSignal = createSignalObject(options.initialPasswordVisible ?? false)
+  const copyStatusSignal = createSignalObject<PasswordCopyStatus>(options.initialCopyStatus ?? "idle")
+  const errorMessageSignal = createSignalObject<string | null>(options.initialErrorMessage ?? null)
 
   const enabledCharacterGroupCount = createMemo(
     () =>
@@ -25,7 +34,7 @@ export function extensionFullWindowGeneratorPaneStateCreate() {
   )
 
   const passwordRegenerate = () => {
-    const result = passwordGenerate({
+    const result = (options.passwordGenerate ?? passwordGenerate)({
       length: lengthSignal.get(),
       characterPolicy: {
         lowercase: lowercaseSignal.get(),
@@ -69,19 +78,20 @@ export function extensionFullWindowGeneratorPaneStateCreate() {
 
   const passwordCopy = async () => {
     copyStatusSignal.set("copying")
-    if (!navigator.clipboard) {
+    const clipboardWrite = options.clipboardWrite ?? navigator.clipboard?.writeText.bind(navigator.clipboard)
+    if (clipboardWrite === undefined) {
       copyStatusSignal.set("error")
       return
     }
     try {
-      await navigator.clipboard.writeText(passwordSignal.get())
+      await clipboardWrite(passwordSignal.get())
       copyStatusSignal.set("copied")
     } catch {
       copyStatusSignal.set("error")
     }
   }
 
-  passwordRegenerate()
+  if (options.initialPassword === undefined) passwordRegenerate()
 
   return {
     lengthSignal,

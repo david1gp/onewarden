@@ -2,11 +2,11 @@ import type { Result } from "#result"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
-import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
-import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
 
 export type ExtensionPopupCommandsOptions = {
@@ -29,16 +29,14 @@ export function extensionPopupCommandsCreate(
   const onModelUpdate = options.onModelUpdate ?? (() => {})
   const onRefresh = options.onRefresh ?? (async () => {})
 
-  const commonCommands = extensionCommonCommandsCreate<
-    ExtensionPopupLogin,
-    ExtensionPopupCopyableField,
-    ExtensionPopupViewModel
-  >({
-    messageSend: sender,
-    clipboard,
-    onModelUpdate,
-    onRefresh,
-  })
+  const commonCommands = extensionCommonCommandsCreate<ExtensionLogin, ExtensionCopyableField, ExtensionPopupViewModel>(
+    {
+      messageSend: sender,
+      clipboard,
+      onModelUpdate,
+      onRefresh,
+    },
+  )
 
   const loginAdd = () => {
     void sender({ type: "fullWindowOpen", pane: "vault" })

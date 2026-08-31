@@ -1,5 +1,5 @@
-import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
-import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 
 /**
  * Everything the popup can ask the background service worker to do.
@@ -7,11 +7,11 @@ import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
  */
 export interface ExtensionPopupCommands {
   /** Fill the selected login into the active tab; always user-initiated. */
-  loginFill: (login: ExtensionPopupLogin) => void
+  loginFill: (login: ExtensionLogin) => void
   /** Copy one standard or custom field value to the clipboard. */
-  fieldCopy: (login: ExtensionPopupLogin, field: ExtensionPopupCopyableField) => void
+  fieldCopy: (login: ExtensionLogin, field: ExtensionCopyableField) => void
   /** Generate and copy the current TOTP code without exposing its seed. */
-  totpCopy: (login: ExtensionPopupLogin) => void
+  totpCopy: (login: ExtensionLogin) => void
   /** Open the create-login flow in the full window. */
   loginAdd: () => void
   /** Trigger a vault synchronization. */

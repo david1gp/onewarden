@@ -29,6 +29,15 @@ export function demoDirectoryStateCreate() {
       badgeVariant: "filledBlue",
     },
     {
+      id: "extension",
+      path: "/demo/extension",
+      title: "Extension Surfaces",
+      category: "Extension",
+      description: "Popup, full-window vault, generator, settings, and passkey consent visual states.",
+      badgeText: "Extension Gallery",
+      badgeVariant: "filledBlue",
+    },
+    {
       id: "all-items",
       path: "/demo/all-items",
       title: "All Items & Multi-Vault Workspace",

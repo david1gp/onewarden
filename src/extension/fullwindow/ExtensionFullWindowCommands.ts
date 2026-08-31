@@ -1,18 +1,18 @@
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
-import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
-import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 
 /** Every side effect the full-window vault may request; the background owns the implementations. */
 export interface ExtensionFullWindowCommands {
-  loginFill: (login: ExtensionFullWindowLogin) => void
-  fieldCopy: (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => void
+  loginFill: (login: ExtensionLogin) => void
+  fieldCopy: (login: ExtensionLogin, field: ExtensionCopyableField) => void
   /** Generate and copy the current TOTP code without exposing its seed. */
-  totpCopy: (login: ExtensionFullWindowLogin) => void
+  totpCopy: (login: ExtensionLogin) => void
   /** Open the normal web create page through a secure session handoff. */
   loginAdd: () => void
   /** Open the normal web edit page through a secure session handoff. */
-  loginEdit: (login: ExtensionFullWindowLogin) => void
+  loginEdit: (login: ExtensionLogin) => void
   vaultSync: () => void
   vaultLock: () => void
   vaultLogout: () => void

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
-import type { ExtensionPopupLogin } from "../../../src/extension/popup/ExtensionPopupLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import { extensionPopupLoginSearchMatch } from "../../../src/extension/popup/extensionPopupLoginSearchMatch.js"
 
-const login: ExtensionPopupLogin = {
+const login: ExtensionLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",
@@ -26,7 +26,7 @@ test("extensionPopupLoginSearchMatch rejects a query matching no searchable fiel
 })
 
 test("extensionPopupLoginSearchMatch tolerates missing username and uri", () => {
-  const sparse: ExtensionPopupLogin = { ...login, username: null, uri: null }
+  const sparse: ExtensionLogin = { ...login, username: null, uri: null }
 
   expect(extensionPopupLoginSearchMatch(sparse, "example mail")).toBe(true)
   expect(extensionPopupLoginSearchMatch(sparse, "ada")).toBe(false)

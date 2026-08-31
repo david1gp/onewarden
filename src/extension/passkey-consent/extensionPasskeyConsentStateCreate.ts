@@ -1,8 +1,10 @@
+import { onMount } from "solid-js"
+import * as v from "valibot"
 import type { Result } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import { onMount } from "solid-js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
+import { extensionPasskeyConsentSchema } from "../passkey/extensionPasskeyConsentSchema.js"
 import type { ExtensionPasskeyConsentUiModel } from "../passkey/extensionPasskeyConsentUiModelSchema.js"
 
 type Candidate = ExtensionPasskeyConsentUiModel["candidates"][number]
@@ -15,7 +17,9 @@ export function extensionPasskeyConsentStateCreate(
     close?: () => void
   } = {},
 ) {
-  const requestId = options.requestId ?? new URLSearchParams(globalThis.location?.search ?? "").get("request") ?? ""
+  const requestParam = new URLSearchParams(globalThis.location?.search ?? "").get("request")
+  const requestResult = v.safeParse(extensionPasskeyConsentSchema.entries.requestId, requestParam)
+  const requestId = options.requestId ?? (requestResult.success ? requestResult.output : "")
   const sender = options.messageSend ?? extensionRuntimeMessageSend
   const close = options.close ?? (() => globalThis.close())
   const modelSignal = createSignalObject<ExtensionPasskeyConsentUiModel | null>(null)

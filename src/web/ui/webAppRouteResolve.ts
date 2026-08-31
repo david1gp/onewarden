@@ -15,6 +15,7 @@ export type WebAppRouteName =
   | "emergency-access"
   | "admin-login"
   | "directory"
+  | "extension-demo"
   | "demo-settings"
   | "admin"
   | "all-items"
@@ -114,6 +115,9 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
   }
   if (routePath === "/demo") {
     return "directory"
+  }
+  if (routePath === "/demo/extension") {
+    return "extension-demo"
   }
   if (
     routePath === "/demo/settings" ||

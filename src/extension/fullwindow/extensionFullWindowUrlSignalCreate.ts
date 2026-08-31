@@ -1,11 +1,16 @@
+import * as v from "valibot"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
 
 /**
  * A string signal mirrored into one URL search parameter.
  * Writes are scheduled on an idle frame and replace history so typing never grows the back stack.
  */
-export function extensionFullWindowUrlSignalCreate(key: string, fallback = ""): SignalObject<string> {
-  const signal = createSignalObject(urlParamRead(key) ?? fallback)
+export function extensionFullWindowUrlSignalCreate(
+  key: string,
+  fallback = "",
+  schema: v.GenericSchema = v.string(),
+): SignalObject<string> {
+  const signal = createSignalObject(urlParamRead(key, schema) ?? fallback)
 
   return {
     get: signal.get,
@@ -16,9 +21,13 @@ export function extensionFullWindowUrlSignalCreate(key: string, fallback = ""): 
   }
 }
 
-function urlParamRead(key: string): string | null {
+function urlParamRead(key: string, schema: v.GenericSchema): string | null {
   if (typeof window === "undefined") return null
-  return new URLSearchParams(window.location.search).get(key)
+  const value = new URLSearchParams(window.location.search).get(key)
+  if (value === null) return null
+  const parsed = v.safeParse(schema, value)
+  if (!parsed.success || typeof parsed.output !== "string") return null
+  return parsed.output
 }
 
 function urlParamWriteScheduled(key: string, value: string): void {

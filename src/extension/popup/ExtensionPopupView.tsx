@@ -2,6 +2,7 @@ import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
@@ -16,6 +17,8 @@ import { extensionPopupViewStateCreate } from "./extensionPopupViewStateCreate.j
 export interface ExtensionPopupViewProps {
   model: ExtensionPopupViewModel
   commands: ExtensionPopupCommands
+  root?: "main" | "div"
+  navigationLabel?: string
 }
 
 /** Browser-action popup showing the vault filtered to the active site. */
@@ -26,17 +29,22 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   )
 
   return (
-    <main class="flex w-90 flex-col gap-3 p-3 text-gray-900 dark:text-gray-100">
+    <Dynamic
+      component={p.root ?? "main"}
+      class="flex w-90 flex-col gap-3 bg-slate-50 p-3 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+    >
       <header class="flex items-center justify-between gap-2">
         <h1 class="text-sm font-semibold">OneWarden</h1>
-        <Badge aria-label="Active site">{state.siteLabel()}</Badge>
+        <Badge role="group" aria-label="Active site">
+          {state.siteLabel()}
+        </Badge>
       </header>
 
       <Separator />
 
       <nav
-        aria-label="Extension navigation"
-        class="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900"
+        aria-label={p.navigationLabel ?? "Extension navigation"}
+        class="flex items-center gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-900"
       >
         <ButtonIcon
           variant="filledBlue"
@@ -45,7 +53,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           aria-current="page"
           disabled={state.busy()}
           onClick={state.fullVaultOpen}
-          class="min-h-10 flex-1"
+          class="min-h-10 flex-1 px-2"
         >
           Vault
         </ButtonIcon>
@@ -55,7 +63,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           icon={mdiKey}
           disabled={state.busy()}
           onClick={state.generatorOpen}
-          class="min-h-10 flex-1"
+          class="min-h-10 flex-1 px-2"
         >
           Generator
         </ButtonIcon>
@@ -65,7 +73,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           icon={mdiCog}
           disabled={state.busy()}
           onClick={state.settingsOpen}
-          class="min-h-10 flex-1"
+          class="min-h-10 flex-1 px-2"
         >
           Settings
         </ButtonIcon>
@@ -80,7 +88,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       <Show when={state.isLoggedOut()}>
         <section class="flex flex-col gap-2 py-4">
           <p class="text-sm">Sign in to use your vault on this site.</p>
-          <Button variant="filled" disabled={state.busy()} onClick={state.accountLogin}>
+          <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
             Log in
           </Button>
         </section>
@@ -95,7 +103,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             placeholder="Master password"
             valueSignal={state.masterPasswordSignal}
           />
-          <Button variant="filled" disabled={state.busy()} onClick={state.vaultUnlock}>
+          <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
             Unlock
           </Button>
         </section>
@@ -148,7 +156,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
 
         <Show when={state.isEmpty()}>
-          <p class="py-4 text-center text-sm text-gray-600 dark:text-gray-300">
+          <p class="py-4 text-center text-sm text-slate-600 dark:text-slate-300">
             {state.hasNoLogins() ? "No logins saved for this site." : "No logins match your search."}
           </p>
         </Show>
@@ -174,6 +182,6 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           </Button>
         </Show>
       </footer>
-    </main>
+    </Dynamic>
   )
 }

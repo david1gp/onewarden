@@ -3,6 +3,7 @@ import { webAppRouteResolve } from "../../../src/web/ui/webAppRouteResolve.js"
 
 const demoRouteAliases = [
   { paths: ["/demo"], route: "directory" },
+  { paths: ["/demo/extension"], route: "extension-demo" },
   { paths: ["/demo/admin"], route: "admin" },
   { paths: ["/demo/all", "/demo/all-items", "/demo/vault"], route: "all-items" },
   { paths: ["/demo/login", "/demo/selected-login"], route: "login" },

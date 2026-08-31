@@ -217,6 +217,7 @@ function webPathIsSpaRoute(path: string): boolean {
     "/two-factor-challenge",
     "/2fa-challenge",
     "/demo",
+    "/demo/extension",
     "/demo/settings",
     "/demo/settings/account",
     "/demo/settings/profile",

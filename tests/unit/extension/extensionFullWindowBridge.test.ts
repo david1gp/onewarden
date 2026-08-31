@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { extensionClipboardAdapterCreate } from "../../../src/extension/clipboard/extensionClipboardAdapterCreate.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../../../src/extension/fullwindow/ExtensionFullWindowEnvironmentSettings.js"
-import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
@@ -10,7 +10,7 @@ import type { ExtensionLockPolicy } from "../../../src/extension/storage/extensi
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
-const testLogin: ExtensionFullWindowLogin = {
+const testLogin: ExtensionLogin = {
   id: "cipher-2",
   name: "Bank Login",
   username: "bankuser",

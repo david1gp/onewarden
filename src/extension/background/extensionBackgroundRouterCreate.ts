@@ -20,7 +20,6 @@ import {
 } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeResponseSchema } from "../messaging/extensionRuntimeResponseSchema.js"
 import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
-import type { ExtensionPopupLogin } from "../popup/ExtensionPopupLogin.js"
 import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
 import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
@@ -445,7 +444,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         ? extensionPopupViewModelCreate({
             ...shared,
             status: "ready",
-            logins: logins as ExtensionPopupLogin[],
+            logins,
           })
         : extensionFullWindowViewModelCreate({
             ...shared,

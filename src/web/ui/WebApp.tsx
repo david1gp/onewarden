@@ -23,6 +23,7 @@ import { DemoSelectedSecureNote } from "../demo/DemoSelectedSecureNote.jsx"
 import { DemoSelectedSshKey } from "../demo/DemoSelectedSshKey.jsx"
 import { DemoSettings } from "../demo/DemoSettings.jsx"
 import { DemoTrash } from "../demo/DemoTrash.jsx"
+import { ExtensionDemo } from "../demo/extension/ExtensionDemo.jsx"
 import { vaultDemoData } from "../demo/vaultDemoData.js"
 import { vaultSvgIcons } from "../demo/vaultSvgIcons.js"
 import { EmergencyAccessView } from "../emergencyAccess/ui/EmergencyAccessView.jsx"
@@ -94,6 +95,9 @@ export function WebApp(): JSX.Element {
         </Match>
         <Match when={state.currentRoute() === "directory"}>
           <DemoDirectory />
+        </Match>
+        <Match when={state.currentRoute() === "extension-demo"}>
+          <ExtensionDemo />
         </Match>
         <Match when={state.currentRoute() === "demo-settings"}>
           <DemoSettings />

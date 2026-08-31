@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
-import type { ExtensionPopupLogin } from "../../../src/extension/popup/ExtensionPopupLogin.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import { ExtensionPopupView } from "../../../src/extension/popup/ExtensionPopupView.jsx"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
 import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
 
-const exampleLogin: ExtensionPopupLogin = {
+const exampleLogin: ExtensionLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",
@@ -22,7 +22,7 @@ const exampleLogin: ExtensionPopupLogin = {
   ],
 }
 
-const otherLogin: ExtensionPopupLogin = {
+const otherLogin: ExtensionLogin = {
   id: "login-2",
   name: "Example Admin",
   username: "root@example.com",

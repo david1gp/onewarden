@@ -1,18 +1,22 @@
 import { createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
+import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
-import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
 import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 import { extensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
+import { extensionFullWindowLoginIdSchema } from "./extensionFullWindowLoginIdSchema.js"
 import { extensionFullWindowLoginSearchMatch } from "./extensionFullWindowLoginSearchMatch.js"
 import { extensionFullWindowLoginUriMatch } from "./extensionFullWindowLoginUriMatch.js"
+import { extensionFullWindowPaneSchema } from "./extensionFullWindowPaneSchema.js"
+import { extensionFullWindowSiteFilterSchema } from "./extensionFullWindowSiteFilterSchema.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
 const regionLabels: Record<string, string> = {
@@ -39,11 +43,16 @@ const actionLabels: Record<string, string> = { lock: "Lock", logout: "Log out" }
 export function extensionFullWindowViewStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: { pane?: string; selectedLoginId?: string },
 ) {
   const searchQuerySignal = extensionFullWindowUrlSignalCreate("q")
-  const selectedLoginIdSignal = extensionFullWindowUrlSignalCreate("login")
-  const paneSignal = extensionFullWindowUrlSignalCreate("pane", extensionFullWindowPane.vault)
-  const siteOnlySignal = extensionFullWindowUrlSignalCreate("site")
+  const selectedLoginIdSignal = initialState
+    ? createSignalObject(initialState.selectedLoginId ?? "")
+    : extensionFullWindowUrlSignalCreate("login", "", extensionFullWindowLoginIdSchema)
+  const paneSignal = initialState
+    ? createSignalObject(initialState.pane ?? extensionFullWindowPane.vault)
+    : extensionFullWindowUrlSignalCreate("pane", extensionFullWindowPane.vault, extensionFullWindowPaneSchema)
+  const siteOnlySignal = extensionFullWindowUrlSignalCreate("site", "", extensionFullWindowSiteFilterSchema)
   const emailSignal = createSignalObject("")
   const masterPasswordSignal = createSignalObject("")
 
@@ -63,11 +72,24 @@ export function extensionFullWindowViewStateCreate(
   const fillAvailable = createMemo(() => model().fillAvailable)
   const lockPolicy = createMemo(() => model().lockPolicy)
 
-  const isLoading = createMemo(() => status() === extensionFullWindowStatus.loading)
-  const isLocked = createMemo(() => status() === extensionFullWindowStatus.locked)
-  const isLoggedOut = createMemo(() => status() === extensionFullWindowStatus.loggedOut)
-  const isError = createMemo(() => status() === extensionFullWindowStatus.error)
-  const isReady = createMemo(() => status() === extensionFullWindowStatus.ready)
+  const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
+  const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
+  const isVaultPane = createMemo(() => !isGeneratorPane() && !isSettingsPane())
+
+  const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
+  const siteFilterAvailable = createMemo(() => hostname() !== null)
+  const siteLabel = createMemo(() => hostname() ?? "No active site")
+  const visibleLogins = createMemo(() =>
+    model()
+      .logins.filter((login) => !siteOnly() || extensionFullWindowLoginUriMatch(login, hostname()))
+      .filter((login) => extensionFullWindowLoginSearchMatch(login, searchQuerySignal.get())),
+  )
+  const { isLoading, isLocked, isLoggedOut, isError, isReady, isEmpty, hasNoLogins } = extensionVaultStatusStateCreate(
+    status,
+    extensionFullWindowStatus,
+    visibleLogins,
+    () => model().logins,
+  )
 
   const securitySaveStatus = createMemo(() => model().securitySaveStatus)
   const securityErrorMessage = createMemo(() => {
@@ -79,22 +101,6 @@ export function extensionFullWindowViewStateCreate(
   const securityPolicy = createMemo(() =>
     securityTouchedSignal.get() ? securitySignal.get() : (lockPolicy() ?? defaultLockPolicy),
   )
-
-  const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
-  const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
-  const isVaultPane = createMemo(() => !isGeneratorPane() && !isSettingsPane())
-
-  const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
-  const siteFilterAvailable = createMemo(() => hostname() !== null)
-  const siteLabel = createMemo(() => hostname() ?? "No active site")
-
-  const visibleLogins = createMemo(() =>
-    model()
-      .logins.filter((login) => !siteOnly() || extensionFullWindowLoginUriMatch(login, hostname()))
-      .filter((login) => extensionFullWindowLoginSearchMatch(login, searchQuerySignal.get())),
-  )
-  const isEmpty = createMemo(() => isReady() && visibleLogins().length === 0)
-  const hasNoLogins = createMemo(() => model().logins.length === 0)
 
   const selectedLogin = createMemo(
     () => visibleLogins().find((login) => login.id === selectedLoginIdSignal.get()) ?? null,
@@ -145,22 +151,21 @@ export function extensionFullWindowViewStateCreate(
     environmentTouchedSignal.set(true)
   }
 
-  const fieldIsCopied = (field: ExtensionFullWindowCopyableField) => model().copiedFieldKey === field.key
-  const totpIsCopied = (login: ExtensionFullWindowLogin) => model().copiedFieldKey === `totp:${login.id}`
+  const fieldIsCopied = (field: ExtensionCopyableField) => model().copiedFieldKey === field.key
+  const totpIsCopied = (login: ExtensionLogin) => model().copiedFieldKey === `totp:${login.id}`
 
-  const loginSelect = (login: ExtensionFullWindowLogin) => selectedLoginIdSignal.set(login.id)
+  const loginSelect = (login: ExtensionLogin) => selectedLoginIdSignal.set(login.id)
   const loginDeselect = () => selectedLoginIdSignal.set("")
   const vaultPaneOpen = () => paneSignal.set(extensionFullWindowPane.vault)
   const generatorPaneOpen = () => paneSignal.set(extensionFullWindowPane.generator)
   const settingsPaneOpen = () => paneSignal.set(extensionFullWindowPane.settings)
   const siteOnlyToggle = () => siteOnlySignal.set(siteOnly() ? "" : "1")
 
-  const loginFill = (login: ExtensionFullWindowLogin) => commands().loginFill(login)
-  const fieldCopy = (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) =>
-    commands().fieldCopy(login, field)
-  const totpCopy = (login: ExtensionFullWindowLogin) => commands().totpCopy(login)
+  const loginFill = (login: ExtensionLogin) => commands().loginFill(login)
+  const fieldCopy = (login: ExtensionLogin, field: ExtensionCopyableField) => commands().fieldCopy(login, field)
+  const totpCopy = (login: ExtensionLogin) => commands().totpCopy(login)
   const loginAdd = () => commands().loginAdd()
-  const loginEdit = (login: ExtensionFullWindowLogin) => commands().loginEdit(login)
+  const loginEdit = (login: ExtensionLogin) => commands().loginEdit(login)
   const vaultSync = () => commands().vaultSync()
   const vaultLock = () => commands().vaultLock()
   const vaultLogout = () => commands().vaultLogout()
