@@ -276,7 +276,7 @@ export function extensionBitwardenApiClientCreate(
       if (!bodyResult.success) return Promise.resolve(bodyResult)
       return jsonRequest(
         fetchImplementation,
-        apiUrlCreate(environment, "/session-handoffs"),
+        apiUrlCreate(environment, "/extension/handoffs"),
         op,
         {
           method: "POST",
