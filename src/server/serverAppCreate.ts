@@ -228,7 +228,9 @@ export function serverAppCreate(options?: ServerAppOptions): Hono<ServerAppEnvir
           notification: options?.events?.notification,
         }))
   const eventAdapter = eventAdapterSource === undefined ? undefined : eventAdapterSafeCreate(eventAdapterSource)
-  const identityMail = identityOptions?.mail ?? identityMailAdapterCreate(identityClock)
+  const identityMail =
+    identityOptions?.mail ??
+    identityMailAdapterCreate(identityClock, identityOptions?.publicOrigin ?? options?.web?.publicOrigin)
   const push =
     options?.push?.adapter ??
     identityOptions?.push ??

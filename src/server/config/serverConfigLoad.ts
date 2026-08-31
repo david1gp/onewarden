@@ -8,13 +8,28 @@ import { type ServerConfig, serverConfigSchema } from "./serverConfigSchema.js"
 export function serverConfigLoad(source: Readonly<Record<string, string | undefined>> = Bun.env): Result<ServerConfig> {
   const op = "serverConfigLoad"
   const result = v.safeParse(serverConfigSchema, source)
-  if (!result.success) return resultErrorCreate(op, v.summarize(result.issues))
+  if (!result.success) return resultErrorCreate(op, serverConfigIssuesSummarize(result.issues))
   const invalidTrustedProxy = serverConfigTrustedProxyInvalidEntry(result.output.IP_HEADER_TRUSTED_PROXIES)
   if (invalidTrustedProxy !== undefined)
-    return resultErrorCreate(
-      op,
-      `Invalid IP_HEADER_TRUSTED_PROXIES entry \`${invalidTrustedProxy}\`, expected an IP or CIDR range`,
-    )
+    return resultErrorCreate(op, "IP_HEADER_TRUSTED_PROXIES contains an invalid IP or CIDR range.")
+  const isProduction = source.NODE_ENV?.trim().toLowerCase() === "production"
+  if (isProduction && result.output.PUBLIC_ORIGIN === undefined)
+    return resultErrorCreate(op, "PUBLIC_ORIGIN is required in production.")
+  const mailEnabled = source.MAIL_ENABLED?.trim().toLowerCase() === "true"
+  if (mailEnabled) {
+    if (result.output.PUBLIC_ORIGIN === undefined) return resultErrorCreate(op, "MAIL_ENABLED requires PUBLIC_ORIGIN.")
+    const missingMailSettings = serverConfigMailMissingSettings(result.output)
+    if (missingMailSettings.length > 0)
+      return resultErrorCreate(op, `MAIL_ENABLED requires ${missingMailSettings.join(", ")}.`)
+  }
+  if (isProduction && result.output.PUBLIC_ORIGIN !== undefined) {
+    if (new URL(result.output.PUBLIC_ORIGIN).protocol !== "https:")
+      return resultErrorCreate(op, "PUBLIC_ORIGIN must use HTTPS in production.")
+  }
+  const smtpUsernameConfigured = result.output.SMTP_USERNAME !== undefined && result.output.SMTP_USERNAME.length > 0
+  const smtpPasswordConfigured = result.output.SMTP_PASSWORD !== undefined && result.output.SMTP_PASSWORD.length > 0
+  if (smtpUsernameConfigured !== smtpPasswordConfigured)
+    return resultErrorCreate(op, "SMTP_USERNAME and SMTP_PASSWORD must be set together.")
   if (result.output.PUSH_ENABLED) {
     if (result.output.PUSH_INSTALLATION_ID === "" || result.output.PUSH_INSTALLATION_KEY === "")
       return resultErrorCreate(op, "Push notifications require PUSH_INSTALLATION_ID and PUSH_INSTALLATION_KEY.")
@@ -38,4 +53,23 @@ function serverConfigTrustedProxyInvalidEntry(value: string): string | undefined
     if (identityClientIpTrustedProxyParse(entry) === undefined) return entry.trim()
   }
   return undefined
+}
+
+function serverConfigMailMissingSettings(config: ServerConfig): string[] {
+  const missing: string[] = []
+  if (config.SMTP_HOST === undefined) missing.push("SMTP_HOST")
+  if (config.SMTP_FROM === undefined) missing.push("SMTP_FROM")
+  if (config.SMTP_USERNAME === undefined || config.SMTP_USERNAME.length === 0) missing.push("SMTP_USERNAME")
+  if (config.SMTP_PASSWORD === undefined || config.SMTP_PASSWORD.length === 0) missing.push("SMTP_PASSWORD")
+  return missing
+}
+
+function serverConfigIssuesSummarize(issues: readonly v.BaseIssue<unknown>[]): string {
+  return issues
+    .map((issue) => {
+      const path = issue.path?.map((item) => String(item.key)).join(".") || "configuration"
+      const message = issue.message.split(": Received", 1)[0]
+      return `${path}: ${message}`
+    })
+    .join("; ")
 }

@@ -2,6 +2,7 @@ import type { Result } from "#result"
 import type { IdentityMailMessage } from "./identityMailMessage.js"
 
 export type IdentityMailAdapter = {
+  close?: () => Promise<Result<void>>
   messages?: IdentityMailMessage[]
   sendRegisterVerifyEmail: (email: string, token: string) => Promise<Result<void>>
   sendWelcome: (email: string) => Promise<Result<void>>
@@ -12,6 +13,7 @@ export type IdentityMailAdapter = {
   sendVerifyEmail?: (email: string, userId: string, token?: string) => Promise<Result<void>>
   sendDeleteAccount?: (email: string, userId: string, token?: string) => Promise<Result<void>>
   sendPasswordHint?: (email: string, hint: string | null) => Promise<Result<void>>
+  sendSendOtp?: (email: string, token: string) => Promise<Result<void>>
   sendTwoFactorToken?: (email: string, token: string) => Promise<Result<void>>
   sendProtectedActionToken?: (email: string, token: string) => Promise<Result<void>>
   sendIncompleteTwoFactorLogin?: (

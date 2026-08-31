@@ -55,6 +55,7 @@
     "corvu": "^0.7.2",
     "hono": "4.13.2",
     "jose": "^6.2.10",
+    "nodemailer": "^9.0.6",
     "solid-js": "1.9.15",
     "tailwind-merge": "^3.6.0",
     "valibot": "1.4.2"
@@ -70,6 +71,7 @@
     "@tailwindcss/vite": "4.3.3",
     "@types/bun": "1.3.14",
     "@types/chrome": "^0.2.7",
+    "@types/nodemailer": "^8.0.1",
     "babel-preset-solid": "^1.9.15",
     "happy-dom": "20.11.12",
     "tailwindcss": "4.3.3",

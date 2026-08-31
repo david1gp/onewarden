@@ -1,5 +1,6 @@
-export type IdentityMailMessage = {
-  recipient: string
+import type { IdentityMailEnvelope } from "./identityMailEnvelope.js"
+
+export type IdentityMailMessage = IdentityMailEnvelope & {
   kind:
     | "invite"
     | "inviteAccepted"
@@ -14,9 +15,11 @@ export type IdentityMailMessage = {
     | "verifyEmail"
     | "deleteAccount"
     | "passwordHint"
+    | "sendOtp"
     | "twoFactorToken"
     | "protectedActionToken"
     | "incompleteTwoFactor"
+    | "smtpTest"
     | "emergencyAccessInvite"
     | "emergencyAccessInviteAccepted"
     | "emergencyAccessInviteConfirmed"

@@ -7,6 +7,7 @@ import { identityConfigCreate } from "../../../src/server/contexts/identity/iden
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import type { IdentityMailAdapter } from "../../../src/server/contexts/identity/identityMailAdapter.js"
+import { identityMailAdapterSmtpCreate } from "../../../src/server/contexts/identity/identityMailAdapterSmtpCreate.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
 import { eventType } from "../../../src/server/contexts/events/eventType.js"
@@ -255,6 +256,44 @@ test("admin invite, user listing, diagnostics, configuration, SMTP test, and bac
   const backup = await request(backupApp, "/admin/config/backup_db", "POST", backupCookie)
   expect(backup.status).toBe(200)
   expect(await backup.text()).toBe("Backup to '/tmp/onewarden-backup.sqlite3' was successful")
+})
+
+test("admin SMTP test uses the identity SMTP adapter transport", async () => {
+  const database = databaseCreate()
+  const sent: { from?: unknown; html?: unknown; subject?: unknown; text?: unknown; to?: unknown }[] = []
+  const mail = identityMailAdapterSmtpCreate({
+    config: {
+      SMTP_FROM: "auth@example.com",
+      SMTP_HOST: "smtp.example.com",
+      SMTP_PASSWORD: "smtp-secret-password",
+      SMTP_PORT: 587,
+      SMTP_TIMEOUT: 7,
+      SMTP_USERNAME: "auth@example.com",
+    },
+    transport: {
+      close: () => undefined,
+      sendMail: async (message) => {
+        sent.push(message)
+        return undefined
+      },
+    },
+  })
+  const app = serverAppCreate({
+    database,
+    admin: { config: { ADMIN_TOKEN: "admin-secret" } },
+    identity: { config: identityConfigCreate({ MAIL_ENABLED: true }), mail },
+  })
+  const cookie = await adminLogin(app, "admin-secret")
+
+  const response = await request(app, "/admin/test/smtp", "POST", cookie, { email: "test@example.com" })
+
+  expect(response.status).toBe(200)
+  expect(sent).toHaveLength(1)
+  expect(sent[0]).toMatchObject({
+    from: "auth@example.com",
+    subject: "OneWarden SMTP Test",
+    to: "test@example.com",
+  })
 })
 
 test("admin backup endpoint creates the configured operational backup bundle", async () => {

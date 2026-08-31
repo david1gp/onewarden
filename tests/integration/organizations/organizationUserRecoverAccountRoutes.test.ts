@@ -257,7 +257,17 @@ test("managed account recovery mutates credentials only after mail and logs out 
 
   expect(response.status).toBe(200)
   expect(await response.text()).toBe("")
-  expect(context.mail.messages).toContainEqual({
+  const resetMessage = context.mail.messages.find((message) => message.kind === "adminResetPassword")
+  expect({
+    kind: resetMessage?.kind,
+    organizationName: resetMessage?.organizationName,
+    recipient: resetMessage?.recipient,
+    targetEmail: resetMessage?.targetEmail,
+    timestamp: resetMessage?.timestamp,
+    token: resetMessage?.token,
+    userId: resetMessage?.userId,
+    userName: resetMessage?.userName,
+  }).toEqual({
     kind: "adminResetPassword",
     organizationName: "Recovery Organization",
     recipient: "target@example.com",

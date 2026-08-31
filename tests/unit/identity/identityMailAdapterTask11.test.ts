@@ -15,7 +15,19 @@ test("deterministic mail adapter records every lifecycle message with stable fie
   await mail.sendDeleteAccount?.("delete@example.com", "user-1", "333333")
   await mail.sendPasswordHint?.("hint@example.com", "a hint")
 
-  expect(mail.messages).toEqual([
+  expect(
+    mail.messages.map((message) => {
+      const base = {
+        kind: message.kind,
+        recipient: message.recipient,
+        targetEmail: message.targetEmail,
+        timestamp: message.timestamp,
+        token: message.token,
+        userId: message.userId,
+      }
+      return message.actingEmail === undefined ? base : { ...base, actingEmail: message.actingEmail }
+    }),
+  ).toEqual([
     {
       kind: "registerVerify",
       recipient: "register@example.com",
