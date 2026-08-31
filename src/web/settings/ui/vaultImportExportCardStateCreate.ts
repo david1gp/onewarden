@@ -149,7 +149,8 @@ export function vaultImportExportCardStateCreate(props: VaultImportExportCardPro
       session: props.session,
       rawContent: content,
       format: importFormat.get(),
-      password: importFilePassword.get() || importMasterPassword.get() || undefined,
+      filePassword: importFilePassword.get() || undefined,
+      masterPassword: importMasterPassword.get() || undefined,
       apiClient,
     })
     isImporting.set(false)

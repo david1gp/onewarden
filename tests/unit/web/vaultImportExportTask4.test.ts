@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import { base64Decode } from "../../../src/shared/crypto/base64Decode.js"
 import { bitwardenCipherStringEncrypt } from "../../../src/shared/crypto/bitwardenCipherStringEncrypt.js"
 import type { webAuthSessionCreate } from "../../../src/web/auth/model/webAuthSessionCreate.js"
+import { webAuthUserKeysGenerate } from "../../../src/web/auth/model/webAuthUserKeysGenerate.js"
 import { bitwardenPortableEncryptedJsonEnvelopeDecrypt } from "../../../src/web/settings/model/bitwardenPortableEncryptedJsonEnvelopeDecrypt.js"
 import { vaultExportExecute } from "../../../src/web/settings/model/vaultExportExecute.js"
 import { vaultImportExecute } from "../../../src/web/settings/model/vaultImportExecute.js"
@@ -11,7 +12,9 @@ import portableFixtures from "../../fixtures/bitwardenPortableEncryptedJsonTask4
 const userKey = new Uint8Array(64)
 const exportPassword = "fixture-password"
 
-function testSession(): ReturnType<typeof webAuthSessionCreate> {
+function testSession(
+  options: { userKey?: Uint8Array | null; encryptedUserKey?: string; kdfIterations?: number } = {},
+): ReturnType<typeof webAuthSessionCreate> {
   return {
     session: () => ({
       email: "user@example.test",
@@ -21,12 +24,12 @@ function testSession(): ReturnType<typeof webAuthSessionCreate> {
       expiresAt: Date.now() + 60_000,
       userId: "user-id",
       kdf: 0,
-      kdfIterations: 600_000,
+      kdfIterations: options.kdfIterations ?? 600_000,
       kdfMemory: null,
       kdfParallelism: null,
-      encryptedUserKey: "wrapped-user-key",
+      encryptedUserKey: options.encryptedUserKey ?? "wrapped-user-key",
     }),
-    getUserKey: () => userKey,
+    getUserKey: () => (options.userKey === undefined ? userKey : options.userKey),
   } as ReturnType<typeof webAuthSessionCreate>
 }
 
@@ -72,7 +75,7 @@ test("portable PBKDF2 and Argon2id fixtures decrypt through the validated JSON a
       session: testSession(),
       rawContent: JSON.stringify(envelope),
       format: "json",
-      password: exportPassword,
+      filePassword: exportPassword,
       apiClient: importApiClient(calls),
     })
     expect(importResult.success).toBe(true)
@@ -86,7 +89,7 @@ test("portable import does not persist plaintext after password or integrity fai
     session: testSession(),
     rawContent: JSON.stringify(portableFixtures.pbkdf2),
     format: "json",
-    password: "wrong-password",
+    filePassword: "wrong-password",
     apiClient: importApiClient(wrongPasswordCalls),
   })
   expect(wrongPasswordResult.success).toBe(false)
@@ -101,7 +104,7 @@ test("portable import does not persist plaintext after password or integrity fai
     session: testSession(),
     rawContent: JSON.stringify(tampered),
     format: "json",
-    password: exportPassword,
+    filePassword: exportPassword,
     apiClient: importApiClient(tamperedCalls),
   })
   expect(tamperedResult.success).toBe(false)
@@ -132,7 +135,7 @@ test("portable import rejects account-encrypted, malformed, unsupported, and uns
       session: testSession(),
       rawContent: JSON.stringify(input.value),
       format: "json",
-      password: exportPassword,
+      filePassword: exportPassword,
       apiClient: importApiClient(calls),
     })
     expect(result.success).toBe(false)
@@ -151,6 +154,64 @@ test("portable import rejects account-encrypted, malformed, unsupported, and uns
   expect(missingPasswordResult.success).toBe(false)
   if (!missingPasswordResult.success) expect(missingPasswordResult.errorMessage).toContain("password is required")
   expect(missingPasswordCalls.count).toBe(0)
+})
+
+test("locked portable import uses distinct file and master passwords", async () => {
+  const masterPassword = "account-master-password"
+  const keysResult = await webAuthUserKeysGenerate(masterPassword, "user@example.test", {
+    kdfType: 0,
+    iterations: 1_000,
+    memory: null,
+    parallelism: null,
+  })
+  expect(keysResult.success).toBe(true)
+  if (!keysResult.success) return
+
+  const calls = { count: 0, payload: null as unknown }
+  const result = await vaultImportExecute({
+    session: testSession({
+      userKey: null,
+      encryptedUserKey: keysResult.data.wrappedUserKey,
+      kdfIterations: 1_000,
+    }),
+    rawContent: JSON.stringify(portableFixtures.pbkdf2),
+    format: "json",
+    filePassword: exportPassword,
+    masterPassword,
+    apiClient: importApiClient(calls),
+  })
+
+  expect(result.success).toBe(true)
+  expect(calls.count).toBe(1)
+})
+
+test("locked portable import does not use the file password as the master password", async () => {
+  const keysResult = await webAuthUserKeysGenerate("account-master-password", "user@example.test", {
+    kdfType: 0,
+    iterations: 1_000,
+    memory: null,
+    parallelism: null,
+  })
+  expect(keysResult.success).toBe(true)
+  if (!keysResult.success) return
+
+  const calls = { count: 0, payload: null as unknown }
+  const result = await vaultImportExecute({
+    session: testSession({
+      userKey: null,
+      encryptedUserKey: keysResult.data.wrappedUserKey,
+      kdfIterations: 1_000,
+    }),
+    rawContent: JSON.stringify(portableFixtures.pbkdf2),
+    format: "json",
+    filePassword: exportPassword,
+    masterPassword: "wrong-master-password",
+    apiClient: importApiClient(calls),
+  })
+
+  expect(result.success).toBe(false)
+  if (!result.success) expect(result.errorMessage).toContain("Invalid master password")
+  expect(calls.count).toBe(0)
 })
 
 test("portable export emits the current Bitwarden PBKDF2 envelope and round-trips", async () => {

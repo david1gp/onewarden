@@ -9,7 +9,7 @@ export const bitwardenFido2CredentialSchema = v.looseObject({
   rpId: v.string(),
   userHandle: v.optional(v.nullable(v.string())),
   userName: v.optional(v.nullable(v.string())),
-  counter: v.number(),
+  counter: v.pipe(v.number(), v.safeInteger(), v.minValue(0)),
   rpName: v.optional(v.nullable(v.string())),
   userDisplayName: v.optional(v.nullable(v.string())),
   discoverable: v.boolean(),

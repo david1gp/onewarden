@@ -1,7 +1,12 @@
 import { expect, test } from "bun:test"
+import * as v from "valibot"
 import { extensionFido2CredentialEncrypt } from "../../../src/extension/crypto/extensionFido2CredentialEncrypt.js"
 import { bitwardenCipherStringEncrypt } from "../../../src/shared/crypto/bitwardenCipherStringEncrypt.js"
 import type { webAuthSessionCreate } from "../../../src/web/auth/model/webAuthSessionCreate.js"
+import {
+  type BitwardenJsonPayload,
+  bitwardenJsonPayloadSchema,
+} from "../../../src/web/settings/model/bitwardenJsonPayloadSchema.js"
 import { vaultExportExecute } from "../../../src/web/settings/model/vaultExportExecute.js"
 import { vaultImportExecute } from "../../../src/web/settings/model/vaultImportExecute.js"
 import { webSettingsApiClientCreate } from "../../../src/web/settings/model/webSettingsApiClientCreate.js"
@@ -233,6 +238,133 @@ test("validated Bitwarden JSON export round-trips supported data and excludes or
   expect(payload.items[0]?.login?.fido2Credentials?.[0]?.counter).toBe(7)
 })
 
+test("validated Bitwarden JSON FIDO2 counter boundaries round-trip and invalid counters never persist", async () => {
+  for (const counter of [0, Number.MAX_SAFE_INTEGER]) {
+    const payload = structuredClone(task2Fixture) as BitwardenJsonPayload
+    payload.items[0]!.login!.fido2Credentials![0]!.counter = counter
+    expect(v.safeParse(bitwardenJsonPayloadSchema, payload).success).toBe(true)
+
+    const imported = { value: null as unknown }
+    const importResult = await vaultImportExecute({
+      session: testSession(),
+      rawContent: JSON.stringify(payload),
+      format: "json",
+      apiClient: apiClientCreate({ imported }),
+    })
+    expect(importResult.success).toBe(true)
+    if (!importResult.success || imported.value === null || typeof imported.value !== "object") return
+
+    const importedPayload = imported.value as {
+      folders: Array<Record<string, unknown>>
+      ciphers: Array<Record<string, unknown>>
+    }
+    const exportResult = await vaultExportExecute({
+      session: testSession(),
+      format: "json-decrypted",
+      apiClient: apiClientCreate({
+        sync: {
+          folders: importedPayload.folders.map((folder, index) => ({ ...folder, id: `folder-${index}` })),
+          ciphers: importedPayload.ciphers.map((cipher, index) => ({ ...cipher, id: `cipher-${index}` })),
+        },
+      }),
+    })
+    expect(exportResult.success).toBe(true)
+    if (!exportResult.success) return
+    const exportedPayload = JSON.parse(exportResult.data.content) as BitwardenJsonPayload
+    expect(exportedPayload.items[0]!.login!.fido2Credentials![0]!.counter).toBe(counter)
+  }
+
+  for (const counter of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    const payload = structuredClone(task2Fixture) as BitwardenJsonPayload
+    payload.items[0]!.login!.fido2Credentials![0]!.counter = counter
+    expect(v.safeParse(bitwardenJsonPayloadSchema, payload).success).toBe(false)
+
+    const imported = { value: null as unknown }
+    const importResult = await vaultImportExecute({
+      session: testSession(),
+      rawContent: JSON.stringify(payload),
+      format: "json",
+      apiClient: apiClientCreate({ imported }),
+    })
+    expect(importResult.success).toBe(false)
+    expect(imported.value).toBeNull()
+  }
+})
+
+test("validated Bitwarden JSON import and export distinguish empty strings from null", async () => {
+  const payload = structuredClone(task2Fixture) as BitwardenJsonPayload
+  payload.folders[0]!.name = ""
+  payload.items[0]!.name = ""
+  payload.items[0]!.notes = ""
+  delete payload.items[0]!.login!.fido2Credentials
+  payload.items[0]!.login!.uris![0]!.uri = ""
+  payload.items[0]!.login!.username = ""
+  payload.items[0]!.login!.password = ""
+  payload.items[0]!.login!.totp = ""
+  payload.items[0]!.fields![0]!.name = ""
+  payload.items[0]!.fields![0]!.value = ""
+  payload.items[0]!.fields![1]!.name = null
+  payload.items[0]!.fields![1]!.value = null
+  payload.items[0]!.passwordHistory![0]!.password = ""
+  payload.items[2]!.card!.brand = ""
+  payload.items[2]!.card!.number = null
+  payload.items[3]!.notes = ""
+  payload.items[3]!.identity!.firstName = ""
+  payload.items[3]!.identity!.middleName = null
+
+  const imported = { value: null as unknown }
+  const importResult = await vaultImportExecute({
+    session: testSession(),
+    rawContent: JSON.stringify(payload),
+    format: "json",
+    apiClient: apiClientCreate({ imported }),
+  })
+
+  expect(importResult.success).toBe(true)
+  if (!importResult.success || imported.value === null || typeof imported.value !== "object") return
+
+  const importedPayload = imported.value as {
+    folders: Array<Record<string, unknown>>
+    ciphers: Array<Record<string, unknown>>
+  }
+  expect(importedPayload.folders[0]?.name).toEqual(expect.any(String))
+  expect(importedPayload.ciphers[0]?.notes).toEqual(expect.any(String))
+  expect(importedPayload.ciphers[2]?.card).toMatchObject({ brand: expect.any(String), number: null })
+  expect(importedPayload.ciphers[3]?.identity).toMatchObject({ firstName: expect.any(String), middleName: null })
+
+  for (const item of payload.items) item.folderId = "folder-id"
+  const roundTripSync = {
+    folders: [{ id: "folder-id", name: await encrypted(payload.folders[0]!.name) }],
+    ciphers: await Promise.all(payload.items.map((item) => encryptedItem(item as FixtureItem))),
+  }
+
+  const exportResult = await vaultExportExecute({
+    session: testSession(),
+    format: "json-decrypted",
+    apiClient: apiClientCreate({
+      sync: {
+        ...roundTripSync,
+      },
+    }),
+  })
+
+  expect(exportResult.success).toBe(true)
+  if (!exportResult.success) return
+  const exportedPayload = JSON.parse(exportResult.data.content) as typeof task2Fixture
+  expect(exportedPayload.folders[0]?.name).toBe("")
+  expect(exportedPayload.items[0]).toMatchObject({
+    name: "",
+    notes: "",
+  })
+  expect(exportedPayload.items[0]?.login).toMatchObject({ username: "", password: "", totp: "" })
+  expect(exportedPayload.items[0]?.login?.uris?.[0]?.uri).toBe("")
+  expect(exportedPayload.items[0]?.fields?.[0]).toMatchObject({ name: "", value: "" })
+  expect(exportedPayload.items[0]?.fields?.[1]).toMatchObject({ name: null, value: null })
+  expect(exportedPayload.items[0]?.passwordHistory?.[0]?.password).toBe("")
+  expect(exportedPayload.items[2]?.card).toMatchObject({ brand: "", number: null })
+  expect(exportedPayload.items[3]).toMatchObject({ notes: "", identity: { firstName: "", middleName: null } })
+})
+
 test("validated Bitwarden JSON import rejects unsupported types and malformed folder references", async () => {
   const unsupported = structuredClone(task2Fixture)
   unsupported.items[0]!.type = 5
@@ -273,6 +405,105 @@ test("validated Bitwarden JSON import rejects unsupported types and malformed fo
     apiClient: apiClientCreate({ imported: { value: null } }),
   })
   expect(duplicateFolderResult.success).toBe(false)
+})
+
+test("validated Bitwarden JSON item payloads match their type", async () => {
+  const payload = structuredClone(task2Fixture) as BitwardenJsonPayload
+  const payloadKeys = ["login", "secureNote", "card", "identity"] as const
+  const matchingPayloadKeyByType = {
+    1: "login",
+    2: "secureNote",
+    3: "card",
+    4: "identity",
+  } as const
+
+  const omittedUnrelatedPayload = structuredClone(payload)
+  for (const item of omittedUnrelatedPayload.items) {
+    const matchingPayloadKey = matchingPayloadKeyByType[item.type]
+    for (const payloadKey of payloadKeys) {
+      if (payloadKey !== matchingPayloadKey) delete (item as Record<string, unknown>)[payloadKey]
+    }
+  }
+  expect(v.safeParse(bitwardenJsonPayloadSchema, omittedUnrelatedPayload).success).toBe(true)
+
+  const discriminatorCases = [
+    { itemIndex: 0, matching: "login", wrong: "card", wrongValue: payload.items[2]!.card },
+    { itemIndex: 1, matching: "secureNote", wrong: "identity", wrongValue: payload.items[3]!.identity },
+    { itemIndex: 2, matching: "card", wrong: "login", wrongValue: payload.items[0]!.login },
+    { itemIndex: 3, matching: "identity", wrong: "secureNote", wrongValue: payload.items[1]!.secureNote },
+  ] as const
+
+  for (const discriminatorCase of discriminatorCases) {
+    const missingPayload = structuredClone(payload)
+    delete (missingPayload.items[discriminatorCase.itemIndex] as Record<string, unknown>)[discriminatorCase.matching]
+    expect(v.safeParse(bitwardenJsonPayloadSchema, missingPayload).success).toBe(false)
+
+    const inconsistentPayload = structuredClone(payload)
+    ;(inconsistentPayload.items[discriminatorCase.itemIndex] as Record<string, unknown>)[discriminatorCase.wrong] =
+      structuredClone(discriminatorCase.wrongValue)
+    expect(v.safeParse(bitwardenJsonPayloadSchema, inconsistentPayload).success).toBe(false)
+
+    for (const invalidPayload of [missingPayload, inconsistentPayload]) {
+      const imported = { value: null as unknown }
+      const importResult = await vaultImportExecute({
+        session: testSession(),
+        rawContent: JSON.stringify(invalidPayload),
+        format: "json",
+        apiClient: apiClientCreate({ imported }),
+      })
+      expect(importResult.success).toBe(false)
+      expect(imported.value).toBeNull()
+    }
+  }
+})
+
+test("validated Bitwarden JSON import accepts valid dates and rejects malformed dates", async () => {
+  const valid = structuredClone(task2Fixture) as BitwardenJsonPayload
+  valid.folders[0]!.revisionDate = "2026-08-28T01:00:00.123456+01:00"
+  valid.items[0]!.login!.passwordRevisionDate = "2026-08-28T01:00:00.123456+01:00"
+  valid.items[0]!.passwordHistory![0]!.lastUsedDate = "2026-08-28T01:00:00.123456+01:00"
+  valid.items[0]!.creationDate = null
+  valid.items[0]!.revisionDate = "2026-08-28T01:00:00Z"
+  valid.items[0]!.deletedDate = null
+  valid.items[0]!.archivedDate = null
+  expect(v.safeParse(bitwardenJsonPayloadSchema, valid).success).toBe(true)
+
+  const invalidPayloads = [
+    (payload: typeof valid) => {
+      payload.folders[0]!.revisionDate = "invalid"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.login!.passwordRevisionDate = "2026-02-30T00:00:00Z"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.passwordHistory![0]!.lastUsedDate = "invalid"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.creationDate = "invalid"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.revisionDate = "invalid"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.deletedDate = "invalid"
+    },
+    (payload: typeof valid) => {
+      payload.items[0]!.archivedDate = "invalid"
+    },
+  ]
+
+  for (const mutate of invalidPayloads) {
+    const payload = structuredClone(valid)
+    mutate(payload)
+    expect(v.safeParse(bitwardenJsonPayloadSchema, payload).success).toBe(false)
+    const result = await vaultImportExecute({
+      session: testSession(),
+      rawContent: JSON.stringify(payload),
+      format: "json",
+      apiClient: apiClientCreate({ imported: { value: null } }),
+    })
+    expect(result.success).toBe(false)
+  }
 })
 
 test("validated Bitwarden JSON export rejects unsupported personal cipher types", async () => {

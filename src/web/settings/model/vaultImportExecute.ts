@@ -19,7 +19,8 @@ export interface VaultImportExecuteOptions {
   session: ReturnType<typeof webAuthSessionCreate>
   rawContent: string
   format: "json" | "csv"
-  password?: string
+  filePassword?: string
+  masterPassword?: string
   apiClient?: ReturnType<typeof webSettingsApiClientCreate>
 }
 
@@ -39,7 +40,7 @@ async function encryptOptional(
   userKey: Uint8Array,
   failure: { errorMessage: string | null },
 ): Promise<string | null> {
-  if (value === null || value === undefined || value === "") return null
+  if (value === null || value === undefined) return null
   return encryptString(value, userKey, failure)
 }
 
@@ -77,13 +78,16 @@ export async function vaultImportExecute(
           { code: "platform.unsupported", statusCode: 400 },
         )
       }
-      if (!options.password) {
+      if (!options.filePassword) {
         return resultErrorCreate(op, "A password is required for password-protected JSON import.", {
           code: "platform.invalid-request",
           statusCode: 400,
         })
       }
-      const decryptedPayloadResult = await bitwardenPortableEncryptedJsonEnvelopeDecrypt(rawPayload, options.password)
+      const decryptedPayloadResult = await bitwardenPortableEncryptedJsonEnvelopeDecrypt(
+        rawPayload,
+        options.filePassword,
+      )
       if (!decryptedPayloadResult.success) return decryptedPayloadResult
       jsonPayload = decryptedPayloadResult.data
     } else {
@@ -147,7 +151,7 @@ export async function vaultImportExecute(
   }
 
   let userKey = options.session.getUserKey()
-  if (userKey === null && options.password) {
+  if (userKey === null && options.masterPassword) {
     const kdfMetadata = {
       kdfType: currentSession.kdf,
       iterations: currentSession.kdfIterations,
@@ -155,7 +159,7 @@ export async function vaultImportExecute(
       parallelism: currentSession.kdfParallelism,
     }
     const unlockResult = await webAuthUserKeyUnlock(
-      options.password,
+      options.masterPassword,
       currentSession.email,
       kdfMetadata,
       currentSession.encryptedUserKey,

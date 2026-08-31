@@ -217,7 +217,7 @@ test("Bitwarden fixtures cross adapters, client, and server with additive round 
     session,
     rawContent: JSON.stringify(portableFixtures.pbkdf2),
     format: "json",
-    password: "fixture-password",
+    filePassword: "fixture-password",
     apiClient,
   })
   expect(portableImport).toMatchObject({ success: true, data: { cipherCount: 1, folderCount: 1, warnings: [] } })
