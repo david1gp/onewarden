@@ -1,5 +1,6 @@
 import { createEffect, createMemo, onCleanup } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import type { VaultCollection } from "../../vault/model/vaultCollectionSchema.js"
 import { cipherApiClientCreate } from "../actions/cipherApiClientCreate.js"
 import { cipherCardBrandDetect } from "../model/cipherCardBrandDetect.js"
 import { cipherCardFormat } from "../model/cipherCardFormat.js"
@@ -10,6 +11,7 @@ import type { CipherItem } from "../schemas/cipherItemSchema.js"
 
 export interface CipherDetailViewStateProps {
   item: () => CipherItem | null
+  collections?: () => readonly VaultCollection[]
   onToggleFavorite?: (id: string) => Promise<void> | void
   onEdit?: (id: string) => void
   onDelete?: (id: string, hard: boolean) => Promise<void> | void
@@ -32,7 +34,6 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   const copiedField = createSignalObject<string | null>(null)
 
   // Dialog open signals
-  const isHistoryDialogOpen = createSignalObject(false)
   const isShareDialogOpen = createSignalObject(false)
   const isDeleteDialogOpen = createSignalObject(false)
   const deleteHardMode = createSignalObject(false)
@@ -154,9 +155,6 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   const isDeleted = createMemo(() => !!displayedItem.get()?.deletedDate)
   const isArchived = createMemo(() => !!displayedItem.get()?.archivedDate)
   const canViewPassword = createMemo(() => displayedItem.get()?.viewPassword !== false)
-  const passwordHistoryCount = createMemo(() => displayedItem.get()?.passwordHistory?.length ?? 0)
-
-  const openHistoryDialog = () => isHistoryDialogOpen.set(true)
   const openShareDialog = () => isShareDialogOpen.set(true)
 
   const openDeleteDialog = (hard: boolean) => {
@@ -377,6 +375,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   }
 
   return {
+    collections: () => props.collections?.() ?? [],
     item: displayedItem.get,
     itemId: () => displayedItem.get()?.id ?? null,
     isPasswordRevealed: isPasswordRevealed.get,
@@ -396,8 +395,6 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isDeleted,
     isArchived,
     canViewPassword,
-    passwordHistoryCount,
-    isHistoryDialogOpen,
     isShareDialogOpen,
     isDeleteDialogOpen,
     deleteHardMode: deleteHardMode.get,
@@ -409,7 +406,6 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     toggleCvvReveal,
     toggleSsnReveal,
     togglePassportReveal,
-    openHistoryDialog,
     openShareDialog,
     openDeleteDialog,
     handleConfirmDelete,

@@ -10,7 +10,7 @@ import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { CipherAttachmentsSection } from "./CipherAttachmentsSection.jsx"
 import { CipherCustomFieldsView } from "./CipherCustomFieldsView.jsx"
 import { CipherDeleteDialog } from "./CipherDeleteDialog.jsx"
-import { CipherPasswordHistoryDialog } from "./CipherPasswordHistoryDialog.jsx"
+import { CipherPasswordHistoryList } from "./CipherPasswordHistoryList.jsx"
 import { CipherShareDialog } from "./CipherShareDialog.jsx"
 import { type CipherDetailViewStateProps, cipherDetailViewStateCreate } from "./cipherDetailViewStateCreate.js"
 
@@ -120,6 +120,13 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
               {/* Action Toolbar */}
               <div class="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
+                <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
+                  <Button variant="contrast" size="sm" class="h-8 w-full text-sm" onClick={() => state.editItem()}>
+                    <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
+                    Edit
+                  </Button>
+                </Show>
+
                 <Show when={item().edit !== false}>
                   <ButtonIcon
                     variant="outline"
@@ -137,11 +144,6 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 </Show>
 
                 <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
-                  <Button variant="contrast" size="sm" class="h-8 w-full text-sm" onClick={() => state.editItem()}>
-                    <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
-                    Edit
-                  </Button>
-
                   <Button
                     variant="ghost"
                     size="sm"
@@ -203,169 +205,157 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     (item().login?.uris && item().login!.uris!.length > 0))
                 }
               >
-                <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  {/* Username Field */}
-                  <Show when={item().login?.username}>
-                    <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Username
-                        </p>
-                        <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
-                          {item().login?.username}
-                        </p>
+                <div class="space-y-4">
+                  <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                    {/* Username Field */}
+                    <Show when={item().login?.username}>
+                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
+                        <div class="min-w-0 flex-1">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Username
+                          </p>
+                          <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
+                            {item().login?.username}
+                          </p>
+                        </div>
+                        <ButtonIcon
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          icon={state.copiedField() === "username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                          iconClass={`size-3.5 fill-current dark:fill-current ${
+                            state.copiedField() === "username"
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-slate-600 dark:text-slate-400"
+                          }`}
+                          onClick={() => state.copyToClipboard("username", item().login?.username ?? "")}
+                          aria-label={state.copiedField() === "username" ? "Copied username" : "Copy username"}
+                        >
+                          {state.copiedField() === "username" ? "Copied" : "Copy"}
+                        </ButtonIcon>
                       </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass={`size-3.5 fill-current dark:fill-current ${
-                          state.copiedField() === "username"
-                            ? "text-emerald-700 dark:text-emerald-300"
-                            : "text-slate-600 dark:text-slate-400"
-                        }`}
-                        onClick={() => state.copyToClipboard("username", item().login?.username ?? "")}
-                        aria-label={state.copiedField() === "username" ? "Copied username" : "Copy username"}
-                      >
-                        {state.copiedField() === "username" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
-                  </Show>
+                    </Show>
 
-                  {/* Password Field */}
-                  <Show when={item().login?.password}>
-                    <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
+                    {/* Password Field */}
+                    <Show when={item().login?.password}>
+                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
+                        <div class="min-w-0 flex-1">
                           <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                             Password
                           </p>
-                          <Show when={item().passwordStrength}>
-                            <Badge variant="filledGreen" class="px-1.5 py-0 text-sm">
-                              {item().passwordStrength}
-                            </Badge>
+                          <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
+                            {state.canViewPassword() && state.isPasswordRevealed()
+                              ? item().login?.password
+                              : "••••••••••••••••••••"}
+                          </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1.5">
+                          <Show when={state.canViewPassword()}>
+                            <ButtonIcon
+                              variant="ghost"
+                              size="sm"
+                              class="h-8 text-sm"
+                              icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                              iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
+                              onClick={() => state.togglePasswordReveal()}
+                              aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
+                            >
+                              {state.isPasswordRevealed() ? "Hide" : "Show"}
+                            </ButtonIcon>
+                            <ButtonIcon
+                              variant="subtle"
+                              size="sm"
+                              class="h-8 text-sm"
+                              icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                              iconClass={`size-3.5 fill-current dark:fill-current ${
+                                state.copiedField() === "password"
+                                  ? "text-emerald-700 dark:text-emerald-300"
+                                  : "text-slate-600 dark:text-slate-400"
+                              }`}
+                              onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
+                              aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
+                            >
+                              {state.copiedField() === "password" ? "Copied" : "Copy"}
+                            </ButtonIcon>
                           </Show>
                         </div>
-                        <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
-                          {state.canViewPassword() && state.isPasswordRevealed()
-                            ? item().login?.password
-                            : "••••••••••••••••••••"}
-                        </p>
                       </div>
-                      <div class="flex shrink-0 items-center gap-1.5">
-                        {/* History Button */}
-                        <Show when={state.canViewPassword()}>
-                          <ButtonIcon
-                            variant="ghost"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={vaultSvgIcons.history}
-                            iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                            onClick={() => state.openHistoryDialog()}
-                            aria-label="View password history"
-                          >
-                            {state.passwordHistoryCount() > 0 ? `History (${state.passwordHistoryCount()})` : "History"}
-                          </ButtonIcon>
+                    </Show>
 
-                          <ButtonIcon
-                            variant="ghost"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={state.isPasswordRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                            iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
-                            onClick={() => state.togglePasswordReveal()}
-                            aria-label={state.isPasswordRevealed() ? "Hide password" : "Show password"}
-                          >
-                            {state.isPasswordRevealed() ? "Hide" : "Show"}
-                          </ButtonIcon>
-                          <ButtonIcon
-                            variant="subtle"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                            iconClass={`size-3.5 fill-current dark:fill-current ${
-                              state.copiedField() === "password"
-                                ? "text-emerald-700 dark:text-emerald-300"
-                                : "text-slate-600 dark:text-slate-400"
-                            }`}
-                            onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
-                            aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
-                          >
-                            {state.copiedField() === "password" ? "Copied" : "Copy"}
-                          </ButtonIcon>
-                        </Show>
-                      </div>
-                    </div>
-                  </Show>
-
-                  {/* TOTP Field */}
-                  <Show when={item().login?.totp}>
-                    <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            One-Time Password (2FA)
+                    {/* TOTP Field */}
+                    <Show when={item().login?.totp}>
+                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                              One-Time Password (2FA)
+                            </p>
+                            <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
+                          </div>
+                          <p class="truncate font-mono font-bold text-blue-700 text-lg tracking-wider select-all dark:text-blue-300">
+                            {item().login?.totp}
                           </p>
-                          <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
                         </div>
-                        <p class="truncate font-mono font-bold text-blue-700 text-lg tracking-wider select-all dark:text-blue-300">
-                          {item().login?.totp}
-                        </p>
-                      </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "totp" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass={`size-3.5 fill-current dark:fill-current ${
-                          state.copiedField() === "totp"
-                            ? "text-emerald-700 dark:text-emerald-300"
-                            : "text-slate-600 dark:text-slate-400"
-                        }`}
-                        onClick={() => state.copyToClipboard("totp", item().login?.totp?.replace(/\s+/g, "") ?? "")}
-                        aria-label={state.copiedField() === "totp" ? "Copied OTP" : "Copy OTP"}
-                      >
-                        {state.copiedField() === "totp" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
-                  </Show>
-
-                  {/* URI / Website Field */}
-                  <Show when={item().login?.uris && item().login!.uris!.length > 0}>
-                    <div class="group flex items-center justify-between gap-2">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Website
-                        </p>
-                        <LinkTextExternal
-                          href={item().login?.uris?.[0]?.uri ?? "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="inline-flex max-w-full items-center gap-1 font-medium text-blue-700 text-sm dark:text-blue-300"
+                        <ButtonIcon
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          icon={state.copiedField() === "totp" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                          iconClass={`size-3.5 fill-current dark:fill-current ${
+                            state.copiedField() === "totp"
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-slate-600 dark:text-slate-400"
+                          }`}
+                          onClick={() => state.copyToClipboard("totp", item().login?.totp?.replace(/\s+/g, "") ?? "")}
+                          aria-label={state.copiedField() === "totp" ? "Copied OTP" : "Copy OTP"}
                         >
-                          <span class="truncate">{item().login?.uris?.[0]?.uri}</span>
-                          <Icon path={vaultSvgIcons.externalLink} class="size-3 shrink-0" />
-                        </LinkTextExternal>
+                          {state.copiedField() === "totp" ? "Copied" : "Copy"}
+                        </ButtonIcon>
                       </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "uri" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass={`size-3.5 fill-current dark:fill-current ${
-                          state.copiedField() === "uri"
-                            ? "text-emerald-700 dark:text-emerald-300"
-                            : "text-slate-600 dark:text-slate-400"
-                        }`}
-                        onClick={() => state.copyToClipboard("uri", item().login?.uris?.[0]?.uri ?? "")}
-                        aria-label={state.copiedField() === "uri" ? "Copied URL" : "Copy URL"}
-                      >
-                        {state.copiedField() === "uri" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
+                    </Show>
+
+                    {/* URI / Website Field */}
+                    <Show when={item().login?.uris && item().login!.uris!.length > 0}>
+                      <div class="group flex items-center justify-between gap-2">
+                        <div class="min-w-0 flex-1">
+                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            Website
+                          </p>
+                          <LinkTextExternal
+                            href={item().login?.uris?.[0]?.uri ?? "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex max-w-full items-center gap-1 font-medium text-blue-700 text-sm dark:text-blue-300"
+                          >
+                            <span class="truncate">{item().login?.uris?.[0]?.uri}</span>
+                            <Icon path={vaultSvgIcons.externalLink} class="size-3 shrink-0" />
+                          </LinkTextExternal>
+                        </div>
+                        <ButtonIcon
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          icon={state.copiedField() === "uri" ? vaultSvgIcons.check : vaultSvgIcons.copy}
+                          iconClass={`size-3.5 fill-current dark:fill-current ${
+                            state.copiedField() === "uri"
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-slate-600 dark:text-slate-400"
+                          }`}
+                          onClick={() => state.copyToClipboard("uri", item().login?.uris?.[0]?.uri ?? "")}
+                          aria-label={state.copiedField() === "uri" ? "Copied URL" : "Copy URL"}
+                        >
+                          {state.copiedField() === "uri" ? "Copied" : "Copy"}
+                        </ButtonIcon>
+                      </div>
+                    </Show>
+                  </CardWrapper>
+                  <Show when={state.canViewPassword() && (item().passwordHistory?.length ?? 0) > 0}>
+                    <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                      <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100">Password History</h3>
+                      <CipherPasswordHistoryList entries={() => item().passwordHistory ?? []} />
+                    </CardWrapper>
                   </Show>
-                </CardWrapper>
+                </div>
               </Show>
 
               {/* Type 3: Payment Card Details */}
@@ -805,10 +795,10 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
             </div>
 
             {/* Sibling Dialogs */}
-            <CipherPasswordHistoryDialog openSignal={state.isHistoryDialogOpen} item={state.item} />
             <CipherShareDialog
               openSignal={state.isShareDialogOpen}
               item={state.item}
+              collections={state.collections}
               onShare={state.handleShareSubmit}
             />
             <CipherDeleteDialog

@@ -134,6 +134,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
                   <VaultEntryDetail
                     item={state.selectedItem}
                     cipherItem={state.selectedCipherItem}
+                    collections={state.collections}
                     onToggleFavorite={state.toggleFavorite}
                     onEdit={() => state.startEdit()}
                     onClone={state.cloneItem}
@@ -155,6 +156,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             <VaultEntryDetail
               item={state.selectedItem}
               cipherItem={state.selectedCipherItem}
+              collections={state.collections}
               enableFavoriteAction
               onToggleFavorite={state.toggleFavorite}
               onEdit={state.openEditDialog}

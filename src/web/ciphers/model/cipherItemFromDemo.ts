@@ -74,6 +74,7 @@ export function cipherItemFromDemo(demo: VaultItem): CipherItem {
     collectionIds: demo.collectionIds ?? [],
     reprompt: 0,
     fields,
+    passwordHistory: demo.passwordHistory ?? [],
     login,
     secureNote: type === 2 ? { type: 0 } : null,
     card,

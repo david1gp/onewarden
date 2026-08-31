@@ -15,6 +15,7 @@ export const vaultDemoData: readonly VaultItem[] = [
     folder: "Engineering",
     username: "alex.rivera@acme.internal",
     password: "wz9!kP#7mX2$vL9@qR5*tY8",
+    passwordHistory: [{ password: "vL7!nR#4kW9$pT2@xM6", lastUsedDate: "2026-06-03T15:24:00Z" }],
     url: "https://github.company.internal/login",
     totp: "492 018",
     passwordStrength: "Very Strong",

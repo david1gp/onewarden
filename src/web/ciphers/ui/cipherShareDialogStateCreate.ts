@@ -1,10 +1,12 @@
 import { createEffect } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import type { VaultCollection } from "../../vault/model/vaultCollectionSchema.js"
 import type { CipherItem } from "../schemas/cipherItemSchema.js"
 
 export interface CipherShareDialogStateProps {
   openSignal?: SignalObject<boolean>
   item: () => CipherItem | null
+  collections?: () => readonly VaultCollection[]
   onShare?: (organizationId: string, collectionIds: string[]) => Promise<void> | void
   onClose?: () => void
 }
@@ -14,7 +16,7 @@ export function cipherShareDialogStateCreate(props: CipherShareDialogStateProps)
   const openSignal = props.openSignal ?? internalOpen
 
   const organizationId = createSignalObject(props.item()?.organizationId ?? "")
-  const collectionIdsText = createSignalObject(props.item()?.collectionIds?.join(", ") ?? "")
+  const collectionIds = createSignalObject<string[]>([...(props.item()?.collectionIds ?? [])])
   const isSharing = createSignalObject(false)
   const errorMessage = createSignalObject<string | null>(null)
 
@@ -22,7 +24,7 @@ export function cipherShareDialogStateCreate(props: CipherShareDialogStateProps)
     const it = props.item()
     if (it) {
       organizationId.set(it.organizationId ?? "")
-      collectionIdsText.set(it.collectionIds?.join(", ") ?? "")
+      collectionIds.set([...(it.collectionIds ?? [])])
     }
   })
 
@@ -46,13 +48,7 @@ export function cipherShareDialogStateCreate(props: CipherShareDialogStateProps)
       return
     }
 
-    const rawCollections = collectionIdsText.get()
-    const collections = rawCollections
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean)
-
-    if (collections.length === 0) {
+    if (collectionIds.get().length === 0) {
       errorMessage.set("At least one Collection ID is required.")
       return
     }
@@ -62,7 +58,7 @@ export function cipherShareDialogStateCreate(props: CipherShareDialogStateProps)
     isSharing.set(true)
     errorMessage.set(null)
     try {
-      await props.onShare(orgId, collections)
+      await props.onShare(orgId, collectionIds.get())
       handleClose()
     } catch (err: any) {
       errorMessage.set(err?.message ?? "Failed to share cipher to organization.")
@@ -74,7 +70,9 @@ export function cipherShareDialogStateCreate(props: CipherShareDialogStateProps)
   return {
     isOpen: openSignal.get,
     organizationId,
-    collectionIdsText,
+    collectionIds,
+    collectionOptions: () => (props.collections?.() ?? []).map((collection) => collection.id),
+    collectionName: (id: string) => props.collections?.().find((collection) => collection.id === id)?.name ?? id,
     isSharing: isSharing.get,
     errorMessage: errorMessage.get,
     itemName: () => props.item()?.name ?? "Cipher",

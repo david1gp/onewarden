@@ -54,6 +54,7 @@ function vaultItemFromCipher(cipher: CipherItem): VaultItem {
     favorite: cipher.favorite,
     username: cipher.login?.username ?? undefined,
     password: cipher.login?.password ?? undefined,
+    passwordHistory: cipher.passwordHistory ?? undefined,
     totp: cipher.login?.totp ?? undefined,
     url: cipher.login?.uris?.[0]?.uri ?? undefined,
     notes: cipher.notes ?? undefined,

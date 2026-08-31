@@ -2,11 +2,13 @@ import { createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { cipherItemFromDemo } from "../ciphers/model/cipherItemFromDemo.js"
 import type { CipherItem } from "../ciphers/schemas/cipherItemSchema.js"
+import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 import type { VaultItem } from "./vaultItemSchema.js"
 
 export interface VaultEntryDetailStateProps {
   item: () => VaultItem | null
   cipherItem?: () => CipherItem | null
+  collections?: () => readonly VaultCollection[]
   enableFavoriteAction?: boolean
   onToggleFavorite?: (id: string) => unknown
   onEdit?: (id: string) => void
@@ -57,6 +59,7 @@ export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
 
   return {
     cipherItem,
+    collections: () => props.collections?.() ?? [],
     toggleFavorite: async () => {
       if (!props.enableFavoriteAction) return
       const item = props.item()

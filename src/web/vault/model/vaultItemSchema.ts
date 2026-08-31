@@ -16,6 +16,14 @@ const vaultItemDataSchema = v.object({
   collectionIds: v.optional(v.array(v.string())),
   username: v.optional(v.string()),
   password: v.optional(v.string()),
+  passwordHistory: v.optional(
+    v.array(
+      v.object({
+        password: v.string(),
+        lastUsedDate: v.string(),
+      }),
+    ),
+  ),
   url: v.optional(v.string()),
   totp: v.optional(v.string()),
   notes: v.optional(v.string()),

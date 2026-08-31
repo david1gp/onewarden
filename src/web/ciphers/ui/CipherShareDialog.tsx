@@ -1,6 +1,7 @@
-import Dialog from "@corvu/dialog"
 import { mdiClose } from "@adaptive-ds/mdi/mdiClose.js"
+import Dialog from "@corvu/dialog"
 import { type JSX, Show } from "solid-js"
+import { CheckMultiple } from "#ui/input/check/CheckMultiple.jsx"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { LabelAsterix } from "#ui/input/label/LabelAsterix.jsx"
@@ -64,17 +65,18 @@ export function CipherShareDialog(props: CipherShareDialogStateProps): JSX.Eleme
 
             <div class="space-y-1">
               <Label for="cipher-share-collections" class="text-sm font-medium">
-                Collection IDs (comma-separated)
+                Collections
               </Label>
-              <InputS
+              <CheckMultiple
                 id="cipher-share-collections"
-                type="text"
-                placeholder="e.g. col-dev, col-general"
-                valueSignal={state.collectionIdsText}
-                class="h-9 w-full text-sm"
+                valueSignal={state.collectionIds}
+                getOptions={state.collectionOptions}
+                valueText={state.collectionName}
+                class="w-full text-sm"
+                optionClass="w-full"
               />
               <p class="text-sm text-slate-600 dark:text-slate-400">
-                Specify one or more collection IDs that members of your organization can access.
+                Select one or more collections that members of your organization can access.
               </p>
             </div>
 

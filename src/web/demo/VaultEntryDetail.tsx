@@ -8,6 +8,7 @@ export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element
   return (
     <CipherDetailView
       item={state.cipherItem}
+      collections={state.collections}
       onToggleFavorite={state.toggleFavorite}
       onEdit={state.editItem}
       onDelete={state.deleteItem}
