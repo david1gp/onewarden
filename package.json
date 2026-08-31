@@ -40,6 +40,7 @@
     "test:integration": "bun test --conditions=browser tests/integration",
     "test:compatibility": "bun test --conditions=browser tests/compatibility",
     "test:browser": "playwright test",
+    "test:e2e:mailcow": "bun test tests/e2e/task5Mailcow.e2e.test.ts",
     "test": "bun run test:unit && bun run test:integration && bun run test:compatibility",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test"
   },
@@ -53,6 +54,7 @@
     "@tanstack/solid-router": "^1.170.30",
     "clsx": "^2.1.1",
     "corvu": "^0.7.2",
+    "hash-wasm": "^4.12.0",
     "hono": "4.13.2",
     "jose": "^6.2.10",
     "nodemailer": "^9.0.6",
@@ -74,6 +76,7 @@
     "@types/nodemailer": "^8.0.1",
     "babel-preset-solid": "^1.9.15",
     "happy-dom": "20.11.12",
+    "imapflow": "^1.7.6",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vite": "8.2.2",
