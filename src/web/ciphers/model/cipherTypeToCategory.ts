@@ -1,7 +1,6 @@
 import type { CipherCategory } from "../schemas/cipherCategorySchema.js"
-import type { CipherType } from "../schemas/cipherTypeSchema.js"
 
-export function cipherTypeToCategory(type: CipherType): Exclude<CipherCategory, "password" | "server"> {
+export function cipherTypeToCategory(type: number): Exclude<CipherCategory, "password" | "server"> {
   switch (type) {
     case 1:
       return "login"

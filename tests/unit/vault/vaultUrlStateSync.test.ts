@@ -19,3 +19,9 @@ test("vaultUrlStateParse ignores invalid category and uses fallback", () => {
 
   expect(parsed.category).toBeUndefined()
 })
+
+test("vaultUrlStateParse preserves search precedence and rejects malformed identifiers", () => {
+  expect(vaultUrlStateParse("search=primary&q=secondary").search).toBe("primary")
+  expect(vaultUrlStateParse("?search=&q=secondary").search).toBe("")
+  expect(vaultUrlStateParse(`?category=login&item=${"x".repeat(257)}`)).toEqual({})
+})

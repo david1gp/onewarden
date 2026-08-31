@@ -5,6 +5,7 @@ import { cipherItemFromDemo } from "../../../src/web/ciphers/model/cipherItemFro
 import { cipherItemFromWire } from "../../../src/web/ciphers/model/cipherItemFromWire.js"
 import { cipherItemToWire } from "../../../src/web/ciphers/model/cipherItemToWire.js"
 import { cipherPasswordStrengthCalculate } from "../../../src/web/ciphers/model/cipherPasswordStrengthCalculate.js"
+import type { CipherFormData } from "../../../src/web/ciphers/schemas/cipherFormDataSchema.js"
 import type { VaultItem } from "../../../src/web/demo/vaultItemSchema.js"
 import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 
@@ -105,6 +106,36 @@ describe("cipherItemFromWire and cipherItemToWire", () => {
     expect(cipher.card?.cardholderName).toBe("Alex J. Rivera")
     expect(cipher.card?.expMonth).toBe("09")
     expect(cipher.card?.expYear).toBe("29")
+  })
+
+  test("keeps category/type conversion aligned with wire type mapping", () => {
+    const mappings = [
+      ["login", 1],
+      ["secureNote", 2],
+      ["creditCard", 3],
+      ["identity", 4],
+      ["sshKey", 5],
+    ] as const
+
+    for (const [category, type] of mappings) {
+      const demoItem: VaultItem = {
+        id: `demo-${type}`,
+        title: `Demo ${type}`,
+        category,
+        favorite: false,
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      }
+      const formData: CipherFormData = {
+        type,
+        name: `Form ${type}`,
+        favorite: false,
+        fields: [],
+      }
+
+      expect(cipherItemFromDemo(demoItem).type).toBe(type)
+      expect(cipherItemToWire(formData).type).toBe(type)
+    }
   })
 
   test("transforms wire attachments, password history, collections, deletedDate and archivedDate", () => {

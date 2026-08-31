@@ -93,3 +93,27 @@ test("vaultSyncModelMap maps sync response payload to presentation models", () =
   expect(item3?.id).toBe("cip-3")
   expect(item3?.category).toBe("sshKey")
 })
+
+test("vaultSyncModelMap keeps every cipher type aligned with its vault category", () => {
+  const syncData: VaultSyncResponse = {
+    profile: {
+      id: "user-123",
+      name: "Alice Smith",
+      email: "alice@example.com",
+      organizations: [],
+    },
+    folders: [],
+    collections: [],
+    ciphers: [
+      { id: "login", type: 1, name: "Login", favorite: false },
+      { id: "secure-note", type: 2, name: "Secure note", favorite: false },
+      { id: "card", type: 3, name: "Card", favorite: false },
+      { id: "identity", type: 4, name: "Identity", favorite: false },
+      { id: "ssh-key", type: 5, name: "SSH key", favorite: false },
+    ],
+  }
+
+  const mapped = vaultSyncModelMap(syncData)
+
+  expect(mapped.items.map((item) => item.category)).toEqual(["login", "secureNote", "creditCard", "identity", "sshKey"])
+})

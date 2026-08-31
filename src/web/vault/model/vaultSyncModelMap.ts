@@ -1,6 +1,6 @@
+import { cipherTypeToCategory } from "../../ciphers/model/cipherTypeToCategory.js"
 import type { VaultCollection } from "./vaultCollectionSchema.js"
 import type { VaultFolder } from "./vaultFolderSchema.js"
-import type { VaultItemCategory } from "./vaultItemCategorySchema.js"
 import type { VaultItemCustomField } from "./vaultItemCustomFieldSchema.js"
 import type { VaultItem } from "./vaultItemSchema.js"
 import type { VaultSyncResponse } from "./vaultSyncResponseSchema.js"
@@ -31,11 +31,7 @@ export function vaultSyncModelMap(sync: VaultSyncResponse): VaultMappedSyncData 
 
   const items: VaultItem[] = []
   for (const cipher of sync.ciphers ?? []) {
-    let category: VaultItemCategory = "login"
-    if (cipher.type === 2) category = "secureNote"
-    else if (cipher.type === 3) category = "creditCard"
-    else if (cipher.type === 4) category = "identity"
-    else if (cipher.type === 5) category = "sshKey"
+    const category = cipherTypeToCategory(cipher.type)
 
     const vaultName = cipher.organizationId ? (orgMap.get(cipher.organizationId) ?? "Organization") : "Personal"
     const folderName = cipher.folderId ? (folderMap.get(cipher.folderId) ?? null) : null
