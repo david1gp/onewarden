@@ -1,26 +1,52 @@
-import { createResult, createResultError, type Result } from "#result"
-import type { Organization } from "../schemas/organizationSchema.js"
-import type { OrganizationMember } from "../schemas/organizationMemberSchema.js"
-import type { OrganizationCollection } from "../schemas/organizationCollectionSchema.js"
+import * as v from "valibot"
+import { createResult, createResultError, type Result, type ResultErr } from "#result"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
+import { type OrganizationCollection, organizationCollectionSchema } from "../schemas/organizationCollectionSchema.js"
+import { organizationCollectionListResponseSchema } from "../schemas/organizationCollectionListResponseSchema.js"
 import type { OrganizationCreateInput } from "../schemas/organizationCreateInputSchema.js"
-import type { OrganizationUpdateInput } from "../schemas/organizationUpdateInputSchema.js"
-import type { OrganizationMemberInviteInput } from "../schemas/organizationMemberInviteInputSchema.js"
-import type { OrganizationMemberUpdateInput } from "../schemas/organizationMemberUpdateInputSchema.js"
 import type { OrganizationCollectionInput } from "../schemas/organizationCollectionInputSchema.js"
-import type { OrganizationGroup } from "../schemas/organizationGroupSchema.js"
-import type { OrganizationGroupInput } from "../schemas/organizationGroupInputSchema.js"
-import type { OrganizationPolicy } from "../schemas/organizationPolicySchema.js"
-import type { OrganizationPolicyInput } from "../schemas/organizationPolicyInputSchema.js"
-import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
-import type { OrganizationDomain } from "../schemas/organizationDomainSchema.js"
 import type { OrganizationDomainInput } from "../schemas/organizationDomainInputSchema.js"
-import type { OrganizationSso } from "../schemas/organizationSsoSchema.js"
+import { type OrganizationDomain, organizationDomainSchema } from "../schemas/organizationDomainSchema.js"
+import { organizationDomainListResponseSchema } from "../schemas/organizationDomainListResponseSchema.js"
+import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
+import { organizationEventListResponseSchema } from "../schemas/organizationEventListResponseSchema.js"
+import type { OrganizationGroupInput } from "../schemas/organizationGroupInputSchema.js"
+import { type OrganizationGroup, organizationGroupSchema } from "../schemas/organizationGroupSchema.js"
+import { organizationGroupListResponseSchema } from "../schemas/organizationGroupListResponseSchema.js"
+import { organizationGroupMemberIdsResponseSchema } from "../schemas/organizationGroupMemberIdsResponseSchema.js"
+import type { OrganizationMemberInviteInput } from "../schemas/organizationMemberInviteInputSchema.js"
+import { type OrganizationMember, organizationMemberSchema } from "../schemas/organizationMemberSchema.js"
+import { organizationMemberListResponseSchema } from "../schemas/organizationMemberListResponseSchema.js"
+import type { OrganizationMemberUpdateInput } from "../schemas/organizationMemberUpdateInputSchema.js"
+import type { OrganizationPolicyInput } from "../schemas/organizationPolicyInputSchema.js"
+import { type OrganizationPolicy, organizationPolicySchema } from "../schemas/organizationPolicySchema.js"
+import { organizationPolicyListResponseSchema } from "../schemas/organizationPolicyListResponseSchema.js"
+import { type Organization, organizationSchema } from "../schemas/organizationSchema.js"
+import { organizationSyncResponseSchema } from "../schemas/organizationSyncResponseSchema.js"
+import { type OrganizationSso, organizationSsoSchema } from "../schemas/organizationSsoSchema.js"
 import type { OrganizationSsoInput } from "../schemas/organizationSsoInputSchema.js"
+import type { OrganizationUpdateInput } from "../schemas/organizationUpdateInputSchema.js"
 
 export interface OrganizationApiClientOptions {
   baseUrl?: string
   fetchFn?: typeof fetch
   token?: () => string | null
+}
+
+async function organizationResponseParse<TSchema extends v.GenericSchema>(
+  op: string,
+  response: Response,
+  schema: TSchema,
+  errorMessage: string,
+  useResponseText = false,
+): Promise<Result<v.InferOutput<TSchema>>> {
+  return webApiResponseParse(op, response, schema, {
+    errorResultTransform: (result: ResultErr, text: string) => ({
+      ...result,
+      errorMessage: useResponseText && text ? text : errorMessage,
+      op,
+    }),
+  })
 }
 
 export function organizationApiClientCreate(options: OrganizationApiClientOptions = {}) {
@@ -45,10 +71,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to load sync profile (${response.status})`)
-      }
-      const data = (await response.json()) as { profile?: { organizations?: Organization[] } }
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationSyncResponseSchema,
+        `Failed to load sync profile (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      const data = responseResult.data
       const orgs: Organization[] = (data.profile?.organizations ?? []).map((org) => ({
         billingEmail: org.billingEmail ?? null,
         hasPublicAndPrivateKeys: org.hasPublicAndPrivateKeys,
@@ -76,11 +106,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to get organization (${response.status})`)
-      }
-      const data = (await response.json()) as Organization
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationSchema,
+        `Failed to get organization (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting organization")
     }
@@ -101,12 +132,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "POST",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to create organization (${response.status})`)
-      }
-      const data = (await response.json()) as Organization
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationSchema,
+        `Failed to create organization (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error creating organization")
     }
@@ -123,12 +155,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "PUT",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to update organization (${response.status})`)
-      }
-      const data = (await response.json()) as Organization
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationSchema,
+        `Failed to update organization (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error updating organization")
     }
@@ -146,11 +179,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         },
       )
-      if (!response.ok) {
-        return createResultError(op, `Failed to load organization members (${response.status})`)
-      }
-      const data = (await response.json()) as { data?: OrganizationMember[] }
-      return createResult(data.data ?? [])
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationMemberListResponseSchema,
+        `Failed to load organization members (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      return createResult(responseResult.data.data ?? [])
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading members")
     }
@@ -169,11 +205,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         },
       )
-      if (!response.ok) {
-        return createResultError(op, `Failed to get organization member (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationMember
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationMemberSchema,
+        `Failed to get organization member (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting member")
     }
@@ -355,11 +392,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         })
       }
-      if (!response.ok) {
-        return createResultError(op, `Failed to load collections (${response.status})`)
-      }
-      const data = (await response.json()) as { data?: OrganizationCollection[] }
-      return createResult(data.data ?? [])
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationCollectionListResponseSchema,
+        `Failed to load collections (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      return createResult(responseResult.data.data ?? [])
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading collections")
     }
@@ -382,12 +422,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "POST",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to create collection (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationCollection
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationCollectionSchema,
+        `Failed to create collection (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error creating collection")
     }
@@ -414,12 +455,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "PUT",
         },
       )
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to update collection (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationCollection
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationCollectionSchema,
+        `Failed to update collection (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error updating collection")
     }
@@ -463,11 +505,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         })
       }
-      if (!response.ok) {
-        return createResultError(op, `Failed to load groups (${response.status})`)
-      }
-      const data = (await response.json()) as { data?: OrganizationGroup[] }
-      return createResult(data.data ?? [])
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationGroupListResponseSchema,
+        `Failed to load groups (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      return createResult(responseResult.data.data ?? [])
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading groups")
     }
@@ -492,11 +537,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           },
         )
       }
-      if (!response.ok) {
-        return createResultError(op, `Failed to get group (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationGroup
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationGroupSchema,
+        `Failed to get group (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting group")
     }
@@ -520,12 +566,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "POST",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to create group (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationGroup
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationGroupSchema,
+        `Failed to create group (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error creating group")
     }
@@ -553,12 +600,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "PUT",
         },
       )
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to update group (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationGroup
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationGroupSchema,
+        `Failed to update group (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error updating group")
     }
@@ -594,11 +642,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         },
       )
-      if (!response.ok) {
-        return createResultError(op, `Failed to load group members (${response.status})`)
-      }
-      const data = (await response.json()) as string[]
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationGroupMemberIdsResponseSchema,
+        `Failed to load group members (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading group members")
     }
@@ -662,11 +711,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to load policies (${response.status})`)
-      }
-      const data = (await response.json()) as { data?: OrganizationPolicy[] }
-      return createResult(data.data ?? [])
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationPolicyListResponseSchema,
+        `Failed to load policies (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      return createResult(responseResult.data.data ?? [])
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading policies")
     }
@@ -682,11 +734,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         },
       )
-      if (!response.ok) {
-        return createResultError(op, `Failed to get policy (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationPolicy
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationPolicySchema,
+        `Failed to get policy (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting policy")
     }
@@ -713,12 +766,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "PUT",
         },
       )
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to update policy (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationPolicy
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationPolicySchema,
+        `Failed to update policy (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error updating policy")
     }
@@ -748,10 +802,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to load organization events (${response.status})`)
-      }
-      const data = (await response.json()) as { continuationToken?: string | null; data?: OrganizationEvent[] }
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationEventListResponseSchema,
+        `Failed to load organization events (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      const data = responseResult.data
       return createResult({
         continuationToken: data.continuationToken ?? null,
         data: data.data ?? [],
@@ -784,10 +842,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to load member events (${response.status})`)
-      }
-      const data = (await response.json()) as { continuationToken?: string | null; data?: OrganizationEvent[] }
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationEventListResponseSchema,
+        `Failed to load member events (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      const data = responseResult.data
       return createResult({
         continuationToken: data.continuationToken ?? null,
         data: data.data ?? [],
@@ -806,11 +868,14 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to load domains (${response.status})`)
-      }
-      const data = (await response.json()) as { data?: OrganizationDomain[] }
-      return createResult(data.data ?? [])
+      const responseResult = await organizationResponseParse(
+        op,
+        response,
+        organizationDomainListResponseSchema,
+        `Failed to load domains (${response.status})`,
+      )
+      if (!responseResult.success) return responseResult
+      return createResult(responseResult.data.data ?? [])
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error loading domains")
     }
@@ -829,11 +894,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "GET",
         },
       )
-      if (!response.ok) {
-        return createResultError(op, `Failed to get domain (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationDomain
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationDomainSchema,
+        `Failed to get domain (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting domain")
     }
@@ -850,12 +916,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "POST",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to create domain (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationDomain
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationDomainSchema,
+        `Failed to create domain (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error creating domain")
     }
@@ -874,12 +941,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
           method: "POST",
         },
       )
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to verify domain (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationDomain
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationDomainSchema,
+        `Failed to verify domain (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error verifying domain")
     }
@@ -914,11 +982,12 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(false),
         method: "GET",
       })
-      if (!response.ok) {
-        return createResultError(op, `Failed to get SSO configuration (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationSso
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationSsoSchema,
+        `Failed to get SSO configuration (${response.status})`,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting SSO configuration")
     }
@@ -940,12 +1009,13 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
         headers: buildHeaders(true),
         method: "POST",
       })
-      if (!response.ok) {
-        const errorText = await response.text()
-        return createResultError(op, errorText || `Failed to save SSO configuration (${response.status})`)
-      }
-      const data = (await response.json()) as OrganizationSso
-      return createResult(data)
+      return organizationResponseParse(
+        op,
+        response,
+        organizationSsoSchema,
+        `Failed to save SSO configuration (${response.status})`,
+        true,
+      )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error saving SSO configuration")
     }

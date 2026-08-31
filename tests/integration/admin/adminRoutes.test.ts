@@ -187,6 +187,48 @@ test("admin disabled and enabled authentication preserve the upstream boundary",
   expect(expired.headers.get("set-cookie")).toContain("VW_ADMIN=;")
 })
 
+test("admin login validates form fields and preserves successful redirects", async () => {
+  const database = databaseCreate()
+  const app = appCreate(database)
+
+  const redirected = await app.request("https://vault.example/admin/", {
+    body: new URLSearchParams({ redirect: "///users", token: "admin-secret" }).toString(),
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    method: "POST",
+  })
+
+  expect(redirected.status).toBe(303)
+  expect(redirected.headers.get("location")).toBe("/admin/users")
+  expect(redirected.headers.get("set-cookie")).toContain("VW_ADMIN=")
+})
+
+test("admin login rejects malformed form fields without issuing a session", async () => {
+  const database = databaseCreate()
+  const app = appCreate(database)
+  const malformedToken = new FormData()
+  malformedToken.append("token", new Blob(["admin-secret"], { type: "text/plain" }), "token.txt")
+  const malformedRedirect = new FormData()
+  malformedRedirect.append("redirect", new Blob(["users"], { type: "text/plain" }), "redirect.txt")
+  malformedRedirect.append("token", "admin-secret")
+
+  const requests = [
+    new Request("https://vault.example/admin/", {
+      body: new URLSearchParams().toString(),
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    }),
+    new Request("https://vault.example/admin/", { body: malformedToken, method: "POST" }),
+    new Request("https://vault.example/admin/", { body: malformedRedirect, method: "POST" }),
+  ]
+
+  for (const request of requests) {
+    const response = await app.fetch(request)
+    expect(response.status).toBe(401)
+    expect(await response.text()).toContain("Invalid admin token")
+    expect(response.headers.get("set-cookie")).toBeNull()
+  }
+})
+
 test("admin sessions use configured identity signing keys when admin keys are omitted", async () => {
   const database = databaseCreate()
   const keyPairResult = rsaKeyPairGenerate()

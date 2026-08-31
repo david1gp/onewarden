@@ -1,6 +1,9 @@
 import { createMemo } from "solid-js"
+import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { base64UrlDecode } from "../../../shared/crypto/base64UrlDecode.js"
 import { twoFactorProviderType } from "../model/twoFactorProviderType.js"
+import { twoFactorWebAuthnChallengeResponseSchema } from "../model/twoFactorWebAuthnChallengeResponseSchema.js"
 import type { webAuthSessionCreate } from "../model/webAuthSessionCreate.js"
 import { webAuthSessionDefault } from "../model/webAuthSessionDefault.js"
 
@@ -54,8 +57,11 @@ export function authTwoFactorChallengeCardStateCreate(props: AuthTwoFactorChalle
   const obscuredEmail = createMemo(() => {
     const providers2 = pending?.challenge?.TwoFactorProviders2
     if (providers2 && typeof providers2 === "object") {
-      const emailObj = providers2[String(twoFactorProviderType.email)] as { Email?: string } | undefined
-      if (emailObj?.Email) return emailObj.Email
+      const emailResult = v.safeParse(
+        v.object({ Email: v.pipe(v.string(), v.minLength(1)) }),
+        providers2[String(twoFactorProviderType.email)],
+      )
+      if (emailResult.success) return emailResult.output.Email
     }
     const rawEmail = pending?.email
     if (!rawEmail) return null
@@ -94,20 +100,41 @@ export function authTwoFactorChallengeCardStateCreate(props: AuthTwoFactorChalle
       }
 
       const providers2 = pending?.challenge?.TwoFactorProviders2
-      const webauthnData = providers2
-        ? (providers2[String(twoFactorProviderType.webauthn)] as { Challenge?: unknown } | undefined)
-        : undefined
-      const challengeObj = webauthnData?.Challenge ?? {}
+      const webauthnDataResult = v.safeParse(
+        v.object({ Challenge: twoFactorWebAuthnChallengeResponseSchema }),
+        providers2?.[String(twoFactorProviderType.webauthn)],
+      )
+      if (!webauthnDataResult.success) {
+        webAuthnStatus.set("The WebAuthn challenge was invalid.")
+        return
+      }
+      const challenge = webauthnDataResult.output.Challenge
+      const challengeBytesResult = base64UrlDecode(challenge.challenge)
+      if (!challengeBytesResult.success) {
+        webAuthnStatus.set("The WebAuthn challenge was invalid.")
+        return
+      }
+      const allowCredentials = []
+      for (const credential of challenge.allowCredentials ?? []) {
+        const credentialIdResult = base64UrlDecode(credential.id)
+        if (!credentialIdResult.success) {
+          webAuthnStatus.set("A WebAuthn credential identifier was invalid.")
+          return
+        }
+        allowCredentials.push({
+          id: Uint8Array.from(credentialIdResult.data),
+          transports: credential.transports,
+          type: credential.type,
+        })
+      }
 
       const credential = await navigator.credentials.get({
         publicKey: {
-          challenge: new Uint8Array(32),
+          challenge: Uint8Array.from(challengeBytesResult.data),
           timeout: 60000,
-          userVerification: "preferred",
-          ...(typeof challengeObj === "object" && challengeObj !== null
-            ? (challengeObj as Record<string, unknown>)
-            : {}),
-        } as PublicKeyCredentialRequestOptions,
+          userVerification: challenge.userVerification ?? "preferred",
+          allowCredentials,
+        },
       })
 
       if (!credential) {

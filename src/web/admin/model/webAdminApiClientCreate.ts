@@ -1,5 +1,7 @@
 import * as v from "valibot"
 import { type Result, resultTryParsingFetchErr } from "#result"
+import { webApiResponseEmptyParse } from "../../../shared/api/webApiResponseEmptyParse.js"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { type AdminConfig, adminConfigSchema } from "./adminConfigSchema.js"
@@ -11,59 +13,6 @@ const adminUsersListSchema = v.array(adminUserSchema)
 const adminOrganizationsListSchema = v.array(adminOrganizationSchema)
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-
-async function responseJsonParse<TSchema extends v.GenericSchema>(
-  op: string,
-  response: Response,
-  schema: TSchema,
-): Promise<Result<v.InferOutput<TSchema>>> {
-  let text: string
-  try {
-    text = await response.text()
-  } catch {
-    return resultErrorCreate(op, "Failed to read server response.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
-  }
-
-  if (!response.ok) {
-    return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-  }
-
-  let json: unknown
-  try {
-    json = JSON.parse(text)
-  } catch {
-    return resultErrorCreate(op, "Server returned invalid JSON response.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  const parsed = v.safeParse(schema, json)
-  if (!parsed.success) {
-    return resultErrorCreate(op, "Server response did not match expected schema.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  return resultCreate(parsed.output)
-}
-
-async function responseEmptyParse(op: string, response: Response): Promise<Result<void>> {
-  if (response.ok) {
-    return resultCreate(undefined)
-  }
-  let text = ""
-  try {
-    text = await response.text()
-  } catch {
-    // ignore
-  }
-  return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-}
 
 export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: FetchImplementation } = {}) {
   const baseUrl = options.baseUrl ?? ""
@@ -108,7 +57,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const usersList = async (): Promise<Result<AdminUser[]>> => {
@@ -127,7 +76,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, adminUsersListSchema)
+    return webApiResponseParse(op, response, adminUsersListSchema)
   }
 
   const userInvite = async (email: string): Promise<Result<AdminUser>> => {
@@ -148,7 +97,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, adminUserSchema)
+    return webApiResponseParse(op, response, adminUserSchema)
   }
 
   const userDeauth = async (userId: string): Promise<Result<void>> => {
@@ -164,7 +113,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const userDisable = async (userId: string): Promise<Result<void>> => {
@@ -180,7 +129,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const userEnable = async (userId: string): Promise<Result<void>> => {
@@ -196,7 +145,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const userDelete = async (userId: string): Promise<Result<void>> => {
@@ -212,7 +161,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const userRemove2fa = async (userId: string): Promise<Result<void>> => {
@@ -228,7 +177,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const userResendInvite = async (userId: string): Promise<Result<void>> => {
@@ -244,7 +193,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const organizationsList = async (): Promise<Result<AdminOrganization[]>> => {
@@ -263,7 +212,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, adminOrganizationsListSchema)
+    return webApiResponseParse(op, response, adminOrganizationsListSchema)
   }
 
   const diagnosticsGet = async (): Promise<Result<AdminDiagnostics>> => {
@@ -280,7 +229,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, adminDiagnosticsSchema)
+    return webApiResponseParse(op, response, adminDiagnosticsSchema)
   }
 
   const organizationDelete = async (orgId: string): Promise<Result<void>> => {
@@ -296,7 +245,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const diagnosticsConfigGet = async (): Promise<Result<AdminConfig>> => {
@@ -315,7 +264,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseJsonParse(op, response, adminConfigSchema)
+    return webApiResponseParse(op, response, adminConfigSchema)
   }
 
   const configUpdate = async (config: AdminConfig): Promise<Result<void>> => {
@@ -336,7 +285,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const configDelete = async (): Promise<Result<void>> => {
@@ -352,7 +301,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const smtpTest = async (email: string): Promise<Result<void>> => {
@@ -373,7 +322,7 @@ export function webAdminApiClientCreate(options: { baseUrl?: string; fetch?: Fet
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const backupDatabase = async (): Promise<Result<string>> => {

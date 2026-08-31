@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result, resultTryParsingFetchErr } from "#result"
+import { type Result, type ResultErr, resultTryParsingFetchErr } from "#result"
 import {
   type BitwardenPasswordTokenResponse,
   bitwardenPasswordTokenResponseSchema,
@@ -8,6 +8,7 @@ import {
   type BitwardenPreloginResponse,
   bitwardenPreloginResponseSchema,
 } from "../../../shared/api/bitwardenPreloginResponseSchema.js"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import {
@@ -26,44 +27,56 @@ import {
 } from "./twoFactorWebAuthnChallengeResponseSchema.js"
 import { type TwoFactorWebAuthnResponse, twoFactorWebAuthnResponseSchema } from "./twoFactorWebAuthnResponseSchema.js"
 import { type TwoFactorYubikeyResponse, twoFactorYubikeyResponseSchema } from "./twoFactorYubikeyResponseSchema.js"
-
-export interface WebAuthLoginRequest {
-  username: string
-  passwordHashB64: string
-  clientId?: string
-  deviceName?: string
-  deviceType?: string
-  deviceIdentifier?: string
-  twoFactorProvider?: string | number
-  twoFactorToken?: string
-  twoFactorRemember?: "1" | "0"
-}
-
-export interface WebAuthRegisterRequest {
-  email: string
-  masterPasswordHash: string
-  userSymmetricKey: string
-  masterPasswordHint?: string | null
-  name?: string | null
-  kdf?: number
-  kdfIterations?: number
-  kdfMemory?: number | null
-  kdfParallelism?: number | null
-  keys?: {
-    encryptedPrivateKey: string
-    publicKey: string
-  }
-}
-
-export interface WebAuthVerifyEmailRequest {
-  userId: string
-  token: string
-}
-
-export interface WebAuthVerificationEmailSendRequest {
-  email: string
-  name?: string | null
-}
+import { type WebAuthLoginRequestInput, webAuthLoginRequestSchema } from "./webAuthLoginRequestSchema.js"
+import { type WebAuthRegisterRequestInput, webAuthRegisterRequestSchema } from "./webAuthRegisterRequestSchema.js"
+import {
+  type WebAuthVerificationEmailSendRequestInput,
+  webAuthVerificationEmailSendRequestSchema,
+} from "./webAuthVerificationEmailSendRequestSchema.js"
+import {
+  type WebAuthVerifyEmailRequestInput,
+  webAuthVerifyEmailRequestSchema,
+} from "./webAuthVerifyEmailRequestSchema.js"
+import {
+  type WebAuthTwoFactorAuthenticatorActivateRequestInput,
+  webAuthTwoFactorAuthenticatorActivateRequestSchema,
+} from "./webAuthTwoFactorAuthenticatorActivateRequestSchema.js"
+import {
+  type WebAuthTwoFactorAuthenticatorDisableRequestInput,
+  webAuthTwoFactorAuthenticatorDisableRequestSchema,
+} from "./webAuthTwoFactorAuthenticatorDisableRequestSchema.js"
+import {
+  type WebAuthTwoFactorDisableRequestInput,
+  webAuthTwoFactorDisableRequestSchema,
+} from "./webAuthTwoFactorDisableRequestSchema.js"
+import {
+  type WebAuthTwoFactorDuoActivateRequestInput,
+  webAuthTwoFactorDuoActivateRequestSchema,
+} from "./webAuthTwoFactorDuoActivateRequestSchema.js"
+import {
+  type WebAuthTwoFactorEmailActivateRequestInput,
+  webAuthTwoFactorEmailActivateRequestSchema,
+} from "./webAuthTwoFactorEmailActivateRequestSchema.js"
+import {
+  type WebAuthTwoFactorEmailLoginSendRequestInput,
+  webAuthTwoFactorEmailLoginSendRequestSchema,
+} from "./webAuthTwoFactorEmailLoginSendRequestSchema.js"
+import {
+  type WebAuthTwoFactorEmailSendRequestInput,
+  webAuthTwoFactorEmailSendRequestSchema,
+} from "./webAuthTwoFactorEmailSendRequestSchema.js"
+import {
+  type WebAuthTwoFactorWebAuthnActivateRequestInput,
+  webAuthTwoFactorWebAuthnActivateRequestSchema,
+} from "./webAuthTwoFactorWebAuthnActivateRequestSchema.js"
+import {
+  type WebAuthTwoFactorWebAuthnDeleteRequestInput,
+  webAuthTwoFactorWebAuthnDeleteRequestSchema,
+} from "./webAuthTwoFactorWebAuthnDeleteRequestSchema.js"
+import {
+  type WebAuthTwoFactorYubikeyActivateRequestInput,
+  webAuthTwoFactorYubikeyActivateRequestSchema,
+} from "./webAuthTwoFactorYubikeyActivateRequestSchema.js"
 
 const registerResponseSchema = v.object({
   object: v.literal("register"),
@@ -79,56 +92,29 @@ const twoFactorDisableResponseSchema = v.object({
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-async function responseJsonParse<TSchema extends v.GenericSchema>(
+function requestValidationParse<TSchema extends v.GenericSchema>(
   op: string,
-  response: Response,
+  input: unknown,
   schema: TSchema,
-): Promise<Result<v.InferOutput<TSchema>>> {
-  let text: string
+): Result<v.InferOutput<TSchema>> {
+  const parsed = v.safeParse(schema, input)
+  if (parsed.success) return resultCreate(parsed.output)
+  return resultErrorCreate(op, v.summarize(parsed.issues), { code: "platform.invalid-request", statusCode: 400 })
+}
+
+function twoFactorChallengeErrorResultTransform(result: ResultErr, text: string): ResultErr {
+  if (result.statusCode !== 400) return result
   try {
-    text = await response.text()
+    const challengeCheck = v.safeParse(twoFactorChallengeSchema, JSON.parse(text))
+    if (!challengeCheck.success) return result
+    return resultErrorCreate(result.op, challengeCheck.output.error_description ?? "Two factor required.", {
+      code: "auth.two-factor-required",
+      statusCode: 400,
+      errorData: JSON.stringify(challengeCheck.output),
+    })
   } catch {
-    return resultErrorCreate(op, "Failed to read server response.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
+    return result
   }
-  if (!response.ok) {
-    if (response.status === 400) {
-      try {
-        const parsedBody = JSON.parse(text)
-        const challengeCheck = v.safeParse(twoFactorChallengeSchema, parsedBody)
-        if (challengeCheck.success) {
-          return resultErrorCreate(op, challengeCheck.output.error_description ?? "Two factor required.", {
-            code: "auth.two-factor-required",
-            statusCode: 400,
-            errorData: JSON.stringify(challengeCheck.output),
-          })
-        }
-      } catch {
-        // Fall back to standard error parsing
-      }
-    }
-    return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-  }
-  let body: unknown
-  try {
-    body = JSON.parse(text)
-  } catch {
-    return resultErrorCreate(op, "Server response was not valid JSON.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-  const parsed = v.safeParse(schema, body)
-  if (!parsed.success) {
-    return resultErrorCreate(op, "Server response did not match expected schema.", {
-      code: "platform.internal",
-      statusCode: 500,
-      errorData: v.summarize(parsed.issues),
-    })
-  }
-  return resultCreate(parsed.output)
 }
 
 export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: FetchImplementation } = {}) {
@@ -141,6 +127,13 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     accept: "application/json",
     ...extraHeaders,
   })
+
+  const responseJsonParse = <TSchema extends v.GenericSchema>(
+    op: string,
+    response: Response,
+    schema: TSchema,
+  ): Promise<Result<v.InferOutput<TSchema>>> =>
+    webApiResponseParse(op, response, schema, { errorResultTransform: twoFactorChallengeErrorResultTransform })
 
   const prelogin = async (email: string): Promise<Result<BitwardenPreloginResponse>> => {
     const op = "webAuthApiClient.prelogin"
@@ -156,26 +149,29 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     }
   }
 
-  const login = async (request: WebAuthLoginRequest): Promise<Result<BitwardenPasswordTokenResponse>> => {
+  const login = async (request: WebAuthLoginRequestInput): Promise<Result<BitwardenPasswordTokenResponse>> => {
     const op = "webAuthApiClient.login"
+    const requestResult = requestValidationParse(op, request, webAuthLoginRequestSchema)
+    if (!requestResult.success) return requestResult
+    const normalizedRequest = requestResult.data
     const formParams: Record<string, string> = {
       grant_type: "password",
-      username: request.username.trim().toLowerCase(),
-      password: request.passwordHashB64,
-      client_id: request.clientId ?? "web",
-      device_identifier: request.deviceIdentifier ?? "web-browser",
-      device_name: request.deviceName ?? "Web Browser",
-      device_type: request.deviceType ?? "6",
+      username: normalizedRequest.username,
+      password: normalizedRequest.passwordHashB64,
+      client_id: normalizedRequest.clientId,
+      device_identifier: normalizedRequest.deviceIdentifier,
+      device_name: normalizedRequest.deviceName,
+      device_type: normalizedRequest.deviceType,
       scope: "api offline_access",
     }
-    if (request.twoFactorProvider !== undefined) {
-      formParams.two_factor_provider = String(request.twoFactorProvider)
+    if (normalizedRequest.twoFactorProvider !== undefined) {
+      formParams.two_factor_provider = normalizedRequest.twoFactorProvider
     }
-    if (request.twoFactorToken !== undefined) {
-      formParams.two_factor_token = request.twoFactorToken
+    if (normalizedRequest.twoFactorToken !== undefined) {
+      formParams.two_factor_token = normalizedRequest.twoFactorToken
     }
-    if (request.twoFactorRemember !== undefined) {
-      formParams.two_factor_remember = request.twoFactorRemember
+    if (normalizedRequest.twoFactorRemember !== undefined) {
+      formParams.two_factor_remember = normalizedRequest.twoFactorRemember
     }
 
     const form = new URLSearchParams(formParams)
@@ -196,20 +192,23 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
   }
 
   const register = async (
-    request: WebAuthRegisterRequest,
+    request: WebAuthRegisterRequestInput,
   ): Promise<Result<{ object: "register"; captchaBypassToken?: string }>> => {
     const op = "webAuthApiClient.register"
+    const requestResult = requestValidationParse(op, request, webAuthRegisterRequestSchema)
+    if (!requestResult.success) return requestResult
+    const normalizedRequest = requestResult.data
     const payload = {
-      email: request.email.trim().toLowerCase(),
-      masterPasswordHash: request.masterPasswordHash,
-      key: request.userSymmetricKey,
-      masterPasswordHint: request.masterPasswordHint ?? null,
-      name: request.name ?? null,
-      kdf: request.kdf ?? 0,
-      kdfIterations: request.kdfIterations ?? 600_000,
-      kdfMemory: request.kdfMemory ?? null,
-      kdfParallelism: request.kdfParallelism ?? null,
-      keys: request.keys ?? null,
+      email: normalizedRequest.email,
+      masterPasswordHash: normalizedRequest.masterPasswordHash,
+      key: normalizedRequest.userSymmetricKey,
+      masterPasswordHint: normalizedRequest.masterPasswordHint,
+      name: normalizedRequest.name,
+      kdf: normalizedRequest.kdf,
+      kdfIterations: normalizedRequest.kdfIterations,
+      kdfMemory: normalizedRequest.kdfMemory,
+      kdfParallelism: normalizedRequest.kdfParallelism,
+      keys: normalizedRequest.keys,
     }
 
     try {
@@ -225,46 +224,29 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
   }
 
   const sendVerificationEmail = async (
-    request: WebAuthVerificationEmailSendRequest,
+    request: WebAuthVerificationEmailSendRequestInput,
   ): Promise<Result<{ token?: string; userId?: string }>> => {
     const op = "webAuthApiClient.sendVerificationEmail"
+    const requestResult = requestValidationParse(op, request, webAuthVerificationEmailSendRequestSchema)
+    if (!requestResult.success) return requestResult
+    const normalizedRequest = requestResult.data
     try {
       const response = await fetchFn(`${baseUrl}/identity/accounts/register/send-verification-email`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ email: request.email.trim().toLowerCase(), name: request.name ?? null }),
+        body: JSON.stringify(normalizedRequest),
       })
       if (response.status === 204) {
         return resultCreate({})
       }
-      let text: string
-      try {
-        text = await response.text()
-      } catch {
-        return resultErrorCreate(op, "Failed to read verification response.", {
-          code: "platform.unavailable",
-          statusCode: 503,
-        })
-      }
-      if (!response.ok) {
-        return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-      }
-      let body: unknown
-      try {
-        body = JSON.parse(text)
-      } catch {
-        body = text
-      }
-      if (typeof body === "string") return resultCreate({ token: body })
-      const parsed = v.safeParse(v.object({ userId: v.optional(v.string()), token: v.optional(v.string()) }), body)
-      if (!parsed.success) {
-        return resultErrorCreate(op, "Server response did not match expected verification response.", {
-          code: "platform.internal",
-          statusCode: 500,
-          errorData: v.summarize(parsed.issues),
-        })
-      }
-      return resultCreate(parsed.output)
+      const result = await webApiResponseParse(
+        op,
+        response,
+        v.union([v.string(), v.object({ userId: v.optional(v.string()), token: v.optional(v.string()) })]),
+      )
+      if (!result.success) return result
+      if (typeof result.data === "string") return resultCreate({ token: result.data })
+      return resultCreate(result.data)
     } catch {
       return resultErrorCreate(op, "Failed to send verification email.", {
         code: "platform.unavailable",
@@ -273,13 +255,15 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     }
   }
 
-  const verifyEmailToken = async (request: WebAuthVerifyEmailRequest): Promise<Result<void>> => {
+  const verifyEmailToken = async (request: WebAuthVerifyEmailRequestInput): Promise<Result<void>> => {
     const op = "webAuthApiClient.verifyEmailToken"
+    const requestResult = requestValidationParse(op, request, webAuthVerifyEmailRequestSchema)
+    if (!requestResult.success) return requestResult
     try {
       const response = await fetchFn(`${baseUrl}/api/accounts/verify-email-token`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(request),
+        body: JSON.stringify(requestResult.data),
       })
       if (response.ok) {
         return resultCreate(undefined)
@@ -334,17 +318,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorDisable = async (
     accessToken: string,
-    payload: { type: number | string; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorDisableRequestInput,
   ): Promise<Result<v.InferOutput<typeof twoFactorDisableResponseSchema>>> => {
     const op = "webAuthApiClient.twoFactorDisable"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorDisableRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/disable`, {
         method: "POST",
         headers: authHeaders(accessToken),
-        body: JSON.stringify({
-          type: payload.type,
-          masterPasswordHash: payload.masterPasswordHash ?? null,
-        }),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorDisableResponseSchema)
     } catch {
@@ -395,18 +378,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorAuthenticatorActivate = async (
     accessToken: string,
-    payload: { key: string; token: string | number; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorAuthenticatorActivateRequestInput,
   ): Promise<Result<TwoFactorAuthenticatorResponse>> => {
     const op = "webAuthApiClient.twoFactorAuthenticatorActivate"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorAuthenticatorActivateRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/authenticator`, {
         method: "PUT",
         headers: authHeaders(accessToken),
-        body: JSON.stringify({
-          key: payload.key,
-          token: String(payload.token),
-          masterPasswordHash: payload.masterPasswordHash ?? null,
-        }),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorAuthenticatorResponseSchema)
     } catch {
@@ -419,14 +400,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorAuthenticatorDisable = async (
     accessToken: string,
-    payload: { key: string; masterPasswordHash: string; type: number | string },
+    payload: WebAuthTwoFactorAuthenticatorDisableRequestInput,
   ): Promise<Result<v.InferOutput<typeof twoFactorDisableResponseSchema>>> => {
     const op = "webAuthApiClient.twoFactorAuthenticatorDisable"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorAuthenticatorDisableRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/authenticator`, {
         method: "DELETE",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorDisableResponseSchema)
     } catch {
@@ -437,17 +420,17 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     }
   }
 
-  const twoFactorEmailLoginSend = async (payload: {
-    email?: string
-    deviceIdentifier?: string
-    masterPasswordHash?: string
-  }): Promise<Result<void>> => {
+  const twoFactorEmailLoginSend = async (
+    payload: WebAuthTwoFactorEmailLoginSendRequestInput,
+  ): Promise<Result<void>> => {
     const op = "webAuthApiClient.twoFactorEmailLoginSend"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorEmailLoginSendRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/send-email-login`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       if (response.ok) return resultCreate(undefined)
       const text = await response.text()
@@ -482,14 +465,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorEmailSend = async (
     accessToken: string,
-    payload: { email: string; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorEmailSendRequestInput,
   ): Promise<Result<void>> => {
     const op = "webAuthApiClient.twoFactorEmailSend"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorEmailSendRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/send-email`, {
         method: "POST",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       if (response.ok) return resultCreate(undefined)
       const text = await response.text()
@@ -504,14 +489,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorEmailActivate = async (
     accessToken: string,
-    payload: { email: string; token: string; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorEmailActivateRequestInput,
   ): Promise<Result<TwoFactorEmailResponse>> => {
     const op = "webAuthApiClient.twoFactorEmailActivate"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorEmailActivateRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/email`, {
         method: "PUT",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorEmailResponseSchema)
     } catch {
@@ -544,14 +531,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorDuoActivate = async (
     accessToken: string,
-    payload: { host: string; clientId: string; clientSecret: string; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorDuoActivateRequestInput,
   ): Promise<Result<TwoFactorDuoResponse>> => {
     const op = "webAuthApiClient.twoFactorDuoActivate"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorDuoActivateRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/duo`, {
         method: "PUT",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorDuoResponseSchema)
     } catch {
@@ -584,29 +573,23 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorYubikeyActivate = async (
     accessToken: string,
-    payload: {
-      key1?: string | null
-      key2?: string | null
-      key3?: string | null
-      key4?: string | null
-      key5?: string | null
-      nfc?: boolean
-      masterPasswordHash?: string
-    },
+    payload: WebAuthTwoFactorYubikeyActivateRequestInput,
   ): Promise<Result<TwoFactorYubikeyResponse>> => {
     const op = "webAuthApiClient.twoFactorYubikeyActivate"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorYubikeyActivateRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/yubikey`, {
         method: "PUT",
         headers: authHeaders(accessToken),
         body: JSON.stringify({
-          key1: payload.key1 ?? undefined,
-          key2: payload.key2 ?? undefined,
-          key3: payload.key3 ?? undefined,
-          key4: payload.key4 ?? undefined,
-          key5: payload.key5 ?? undefined,
-          nfc: payload.nfc ?? false,
-          masterPasswordHash: payload.masterPasswordHash ?? null,
+          key1: payloadResult.data.key1 ?? undefined,
+          key2: payloadResult.data.key2 ?? undefined,
+          key3: payloadResult.data.key3 ?? undefined,
+          key4: payloadResult.data.key4 ?? undefined,
+          key5: payloadResult.data.key5 ?? undefined,
+          nfc: payloadResult.data.nfc,
+          masterPasswordHash: payloadResult.data.masterPasswordHash,
         }),
       })
       return responseJsonParse(op, response, twoFactorYubikeyResponseSchema)
@@ -660,14 +643,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorWebAuthnActivate = async (
     accessToken: string,
-    payload: { id: number | string; name: string; deviceResponse: unknown; masterPasswordHash?: string },
+    payload: WebAuthTwoFactorWebAuthnActivateRequestInput,
   ): Promise<Result<TwoFactorWebAuthnResponse>> => {
     const op = "webAuthApiClient.twoFactorWebAuthnActivate"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorWebAuthnActivateRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/webauthn`, {
         method: "PUT",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorWebAuthnResponseSchema)
     } catch {
@@ -680,14 +665,16 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
   const twoFactorWebAuthnDelete = async (
     accessToken: string,
-    payload: { id: number | string; masterPasswordHash: string },
+    payload: WebAuthTwoFactorWebAuthnDeleteRequestInput,
   ): Promise<Result<TwoFactorWebAuthnResponse>> => {
     const op = "webAuthApiClient.twoFactorWebAuthnDelete"
+    const payloadResult = requestValidationParse(op, payload, webAuthTwoFactorWebAuthnDeleteRequestSchema)
+    if (!payloadResult.success) return payloadResult
     try {
       const response = await fetchFn(`${baseUrl}/api/two-factor/webauthn`, {
         method: "DELETE",
         headers: authHeaders(accessToken),
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadResult.data),
       })
       return responseJsonParse(op, response, twoFactorWebAuthnResponseSchema)
     } catch {

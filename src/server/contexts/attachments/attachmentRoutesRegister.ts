@@ -8,11 +8,11 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
 import { requestQueryParse } from "../../../shared/validation/requestQueryParse.js"
+import { requestValidationParse } from "../../../shared/validation/requestValidationParse.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationDatabaseRequestContextResolve } from "../authentication/authenticationDatabaseRequestContextResolve.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
-import type { Attachment } from "./attachment.js"
 import type { Cipher } from "../ciphers/cipher.js"
 import { cipherAccessFindByUser } from "../ciphers/cipherAccessFindByUser.js"
 import { cipherFindByUuid } from "../ciphers/cipherFindByUuid.js"
@@ -22,17 +22,19 @@ import { cipherToJson } from "../ciphers/cipherToJson.js"
 import { cipherUpdateType } from "../ciphers/cipherUpdateType.js"
 import { cipherUserRevisionUpdate } from "../ciphers/cipherUserRevisionUpdate.js"
 import { cipherUserUuidsFind } from "../ciphers/cipherUserUuidsFind.js"
+import { eventType } from "../events/eventType.js"
 import { pushRelayCipherUpdate } from "../push/pushRelayCipherUpdate.js"
+import type { Attachment } from "./attachment.js"
 import { attachmentDelete } from "./attachmentDelete.js"
 import { attachmentDownloadTokenVerify } from "./attachmentDownloadTokenVerify.js"
-import { attachmentFindById } from "./attachmentFindById.js"
 import { attachmentFileStorageAdapterCreate } from "./attachmentFileStorageAdapterCreate.js"
+import { attachmentFindById } from "./attachmentFindById.js"
+import { type AttachmentMultipart, attachmentMultipartSchema } from "./attachmentMultipartSchema.js"
 import type { AttachmentRouteOptions } from "./attachmentRouteOptions.js"
 import { attachmentSave } from "./attachmentSave.js"
 import { attachmentSizeByOrganization } from "./attachmentSizeByOrganization.js"
 import { attachmentSizeByUser } from "./attachmentSizeByUser.js"
 import { attachmentToJson } from "./attachmentToJson.js"
-import { eventType } from "../events/eventType.js"
 
 const attachmentCipherPathSchema = v.object({ cipher_id: v.string() })
 const attachmentPathSchema = v.object({ cipher_id: v.string(), attachment_id: v.string() })
@@ -462,7 +464,7 @@ async function attachmentLegacyUpload(
   database: NonNullable<AttachmentRouteOptions["database"]>,
   cipher: Cipher,
   userUuid: string,
-  multipart: { file: unknown; key: string | undefined },
+  multipart: AttachmentMultipart,
   options: AttachmentRouteOptions,
   storage: NonNullable<AttachmentRouteOptions["storage"]>,
   notification: ReturnType<typeof cipherNotificationAdapterCreate>,
@@ -498,23 +500,28 @@ async function attachmentLegacyUpload(
 
 async function attachmentMultipartParse(
   context: Context<AuthenticationEnvironment>,
-): Promise<Result<{ file: unknown; key: string | undefined }>> {
+): Promise<Result<AttachmentMultipart>> {
   let body: FormData
   try {
     body = await context.req.raw.formData()
   } catch {
     return attachmentErrorCreate("attachmentMultipartParse", "Invalid multipart request.")
   }
+  if (typeof body.get !== "function")
+    return attachmentErrorCreate("attachmentMultipartParse", "Invalid multipart request.")
   const file = body.get("data")
   if (file === null) return attachmentErrorCreate("attachmentMultipartParse", "Multipart data is not provided.")
   const key = body.get("key")
-  return resultCreate({ file, key: typeof key === "string" ? key : undefined })
+  const parsed = requestValidationParse(
+    "attachmentMultipartParse",
+    { file, key: key === null ? undefined : key },
+    attachmentMultipartSchema,
+  )
+  if (!parsed.success) return parsed
+  return resultCreate(parsed.data)
 }
 
-async function attachmentFileRead(value: unknown): Promise<Result<{ bytes: Uint8Array; name: string }>> {
-  if (typeof value !== "object" || value === null || !("arrayBuffer" in value))
-    return attachmentErrorCreate("attachmentFileRead", "Attachment file is not provided.")
-  const file = value as { arrayBuffer?: () => Promise<ArrayBuffer>; name?: unknown }
+async function attachmentFileRead(file: File): Promise<Result<{ bytes: Uint8Array; name: string }>> {
   if (typeof file.arrayBuffer !== "function" || typeof file.name !== "string")
     return attachmentErrorCreate("attachmentFileRead", "Attachment file is not provided.")
   try {

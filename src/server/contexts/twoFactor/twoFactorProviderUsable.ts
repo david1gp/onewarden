@@ -1,8 +1,10 @@
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import { twoFactorDuoCredentialsResolve } from "./twoFactorDuoCredentialsResolve.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorWebAuthnOriginResolve } from "./twoFactorWebAuthnOriginResolve.js"
 import { twoFactorWebAuthnRegistrationsRead } from "./twoFactorWebAuthnRegistrationsRead.js"
+import { twoFactorYubikeyDataSchema } from "./twoFactorYubikeyDataSchema.js"
 
 export function twoFactorProviderUsable(
   type: number,
@@ -67,11 +69,12 @@ function twoFactorWebAuthnDataUsable(data: string): boolean {
 }
 
 function twoFactorYubikeyDataUsable(data: string): boolean {
-  try {
-    const parsed = JSON.parse(data) as { keys?: unknown; Keys?: unknown }
-    const keys = parsed.keys ?? parsed.Keys
-    return Array.isArray(keys) && keys.length > 0 && keys.every((key) => typeof key === "string" && key.length === 12)
-  } catch {
-    return false
-  }
+  const dataResult = twoFactorPersistedJsonParse(
+    "twoFactorYubikeyDataUsable",
+    data,
+    twoFactorYubikeyDataSchema,
+    "Yubikey metadata is invalid",
+  )
+  if (!dataResult.success) return false
+  return dataResult.data.keys.length > 0 && dataResult.data.keys.every((key) => key.length === 12)
 }

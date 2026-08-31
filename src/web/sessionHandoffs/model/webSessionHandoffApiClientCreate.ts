@@ -1,6 +1,5 @@
-import * as v from "valibot"
-import { type Result, resultTryParsingFetchErr } from "#result"
-import { resultCreate } from "../../../shared/result/resultCreate.js"
+import { type Result } from "#result"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffConsumeRequest } from "../../../shared/sessionHandoff/sessionHandoffConsumeRequestSchema.js"
 import {
@@ -36,33 +35,7 @@ export function webSessionHandoffApiClientCreate(options: { baseUrl?: string; fe
         statusCode: 503,
       })
     }
-    let text: string
-    try {
-      text = await response.text()
-    } catch {
-      return resultErrorCreate(op, "Session handoff response could not be read.", {
-        code: "platform.unavailable",
-        statusCode: 503,
-      })
-    }
-    if (!response.ok) return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    let input: unknown
-    try {
-      input = JSON.parse(text)
-    } catch {
-      return resultErrorCreate(op, "Session handoff response was invalid.", {
-        code: "platform.internal",
-        statusCode: 500,
-      })
-    }
-    const parsed = v.safeParse(sessionHandoffConsumeResponseSchema, input)
-    if (!parsed.success) {
-      return resultErrorCreate(op, "Session handoff response was invalid.", {
-        code: "platform.internal",
-        statusCode: 500,
-      })
-    }
-    return resultCreate(parsed.output)
+    return webApiResponseParse(op, response, sessionHandoffConsumeResponseSchema)
   }
 
   return { consume }

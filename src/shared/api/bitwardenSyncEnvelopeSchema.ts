@@ -5,8 +5,14 @@ import { bitwardenEncryptedLoginSchema } from "./bitwardenEncryptedLoginSchema.j
 const bitwardenSyncCipherSchema = v.looseObject({
   id: v.string(),
   type: v.number(),
+  revisionDate: v.optional(v.string()),
+  deletedDate: v.optional(v.nullable(v.string())),
+  organizationId: v.optional(v.nullable(v.string())),
+  folderId: v.optional(v.nullable(v.string())),
   name: v.string(),
   notes: v.nullable(v.string()),
+  key: v.optional(v.nullable(v.string())),
+  collectionIds: v.optional(v.array(v.string())),
   login: v.nullish(bitwardenEncryptedLoginSchema),
   fields: v.nullish(v.array(bitwardenEncryptedLoginCipherFieldSchema)),
 })

@@ -3,6 +3,10 @@ import * as v from "valibot"
 import { type Result } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
+import { base64Decode } from "../../../shared/crypto/base64Decode.js"
+import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
+import { passwordHashVerify } from "../../../shared/crypto/passwordHashVerify.js"
+import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestValidationParse } from "../../../shared/validation/requestValidationParse.js"
@@ -12,41 +16,42 @@ import { authenticationContextGet } from "../authentication/authenticationContex
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
 import { authenticationTrustedDeviceClearAllByUser } from "../authentication/authenticationTrustedDeviceClearAllByUser.js"
+import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
+import { eventType } from "../events/eventType.js"
 import type { IdentityRouteOptions } from "../identity/identityRouteOptions.js"
+import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserFindByEmail } from "../identity/identityUserFindByEmail.js"
 import { identityUserFindByUuid } from "../identity/identityUserFindByUuid.js"
-import { passwordHashVerify } from "../../../shared/crypto/passwordHashVerify.js"
 import { twoFactorAdaptersCreate } from "./twoFactorAdaptersCreate.js"
-import { twoFactorEmailTokenCreate } from "./twoFactorEmailTokenCreate.js"
+import { twoFactorBase32Decode } from "./twoFactorBase32Decode.js"
+import { twoFactorBase32Encode } from "./twoFactorBase32Encode.js"
+import { twoFactorDuoDataSchema } from "./twoFactorDuoDataSchema.js"
+import type { TwoFactorEmailData } from "./twoFactorEmailData.js"
+import { twoFactorEmailDataSchema } from "./twoFactorEmailDataSchema.js"
 import { twoFactorEmailLoginValidate } from "./twoFactorEmailLoginValidate.js"
+import { twoFactorEmailTokenCreate } from "./twoFactorEmailTokenCreate.js"
 import { twoFactorEmailTokenInvalidate } from "./twoFactorEmailTokenInvalidate.js"
 import { twoFactorEmailTokenSend } from "./twoFactorEmailTokenSend.js"
-import type { TwoFactorEmailData } from "./twoFactorEmailData.js"
 import { twoFactorPasswordOrOtpValidate } from "./twoFactorPasswordOrOtpValidate.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProtectedActionCreate } from "./twoFactorProtectedActionCreate.js"
 import { twoFactorProtectedActionValidate } from "./twoFactorProtectedActionValidate.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorProviderUsable } from "./twoFactorProviderUsable.js"
+import type { TwoFactorRecord } from "./twoFactorRecord.js"
 import { twoFactorRecordDelete } from "./twoFactorRecordDelete.js"
 import { twoFactorRecordFindByUser } from "./twoFactorRecordFindByUser.js"
 import { twoFactorRecordFindByUserAndType } from "./twoFactorRecordFindByUserAndType.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
 import { twoFactorRecoveryCodeEnsure } from "./twoFactorRecoveryCodeEnsure.js"
 import { twoFactorTotpCodeValidate } from "./twoFactorTotpCodeValidate.js"
-import { twoFactorWebAuthnChallengeCreate } from "./twoFactorWebAuthnChallengeCreate.js"
 import { twoFactorWebAuthnChallengeConsume } from "./twoFactorWebAuthnChallengeConsume.js"
+import { twoFactorWebAuthnChallengeCreate } from "./twoFactorWebAuthnChallengeCreate.js"
 import { twoFactorWebAuthnOriginResolve } from "./twoFactorWebAuthnOriginResolve.js"
 import { twoFactorWebAuthnRegistrationsRead } from "./twoFactorWebAuthnRegistrationsRead.js"
 import { twoFactorWebAuthnStateRead } from "./twoFactorWebAuthnStateRead.js"
-import type { IdentityUser } from "../identity/identityUser.js"
-import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
-import { base64Decode } from "../../../shared/crypto/base64Decode.js"
-import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
-import { twoFactorBase32Decode } from "./twoFactorBase32Decode.js"
-import { twoFactorBase32Encode } from "./twoFactorBase32Encode.js"
-import type { TwoFactorRecord } from "./twoFactorRecord.js"
-import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
-import { eventType } from "../events/eventType.js"
+import { twoFactorWebAuthnU2fDeleteDataSchema } from "./twoFactorWebAuthnU2fDeleteDataSchema.js"
+import { twoFactorYubikeyDataSchema } from "./twoFactorYubikeyDataSchema.js"
 
 const passwordOrOtpSchema = v.object({
   masterPasswordHash: v.nullish(v.string()),
@@ -1037,19 +1042,12 @@ function twoFactorUserFindByDevice(
 }
 
 function twoFactorEmailDataRead(data: string): Result<TwoFactorEmailData> {
-  try {
-    const parsed = JSON.parse(data) as Partial<TwoFactorEmailData>
-    if (
-      typeof parsed.email !== "string" ||
-      (typeof parsed.last_token !== "string" && parsed.last_token !== null) ||
-      typeof parsed.token_sent !== "number" ||
-      typeof parsed.attempts !== "number"
-    )
-      return resultErrorCreate("twoFactorEmailDataRead", "Could not decode EmailTokenData from string")
-    return resultCreate(parsed as TwoFactorEmailData)
-  } catch {
-    return resultErrorCreate("twoFactorEmailDataRead", "Could not decode EmailTokenData from string")
-  }
+  return twoFactorPersistedJsonParse(
+    "twoFactorEmailDataRead",
+    data,
+    twoFactorEmailDataSchema,
+    "Could not decode EmailTokenData from string",
+  )
 }
 
 function twoFactorDuoStatus(
@@ -1059,25 +1057,18 @@ function twoFactorDuoStatus(
 ): { enabled: boolean; host: string | null; clientSecret: string | null; clientId: string | null } {
   const recordResult = twoFactorRecordFindByUserAndType(database, userUuid, twoFactorProviderType.duo)
   if (recordResult.success && recordResult.data !== null && recordResult.data.data !== "") {
-    try {
-      const data = JSON.parse(recordResult.data.data) as { host?: unknown; ik?: unknown; sk?: unknown }
-      if (
-        typeof data.host !== "string" ||
-        data.host.trim() === "" ||
-        typeof data.ik !== "string" ||
-        data.ik.trim() === "" ||
-        typeof data.sk !== "string" ||
-        data.sk.trim() === ""
-      )
-        return twoFactorDuoGlobalStatus(options, undefined, true)
-      return {
-        enabled: true,
-        host: maskValue(data.host.trim()),
-        clientSecret: maskValue(data.sk.trim()),
-        clientId: maskValue(data.ik.trim()),
-      }
-    } catch {
-      return twoFactorDuoGlobalStatus(options, undefined, true)
+    const dataResult = twoFactorPersistedJsonParse(
+      "twoFactorDuoStatus",
+      recordResult.data.data,
+      twoFactorDuoDataSchema,
+      "Duo credentials are invalid",
+    )
+    if (!dataResult.success) return twoFactorDuoGlobalStatus(options, undefined, true)
+    return {
+      enabled: true,
+      host: maskValue(dataResult.data.host.trim()),
+      clientSecret: maskValue(dataResult.data.sk.trim()),
+      clientId: maskValue(dataResult.data.ik.trim()),
     }
   }
   const global = twoFactorDuoGlobalConfigured(options)
@@ -1121,16 +1112,12 @@ function twoFactorYubikeyConfigured(options: IdentityRouteOptions): boolean {
 }
 
 function twoFactorYubikeyDataRead(data: string): Result<{ keys: string[]; nfc: boolean }> {
-  try {
-    const parsed = JSON.parse(data) as { keys?: unknown; Keys?: unknown; nfc?: unknown; Nfc?: unknown }
-    const keys = parsed.keys ?? parsed.Keys
-    const nfc = parsed.nfc ?? parsed.Nfc
-    if (!Array.isArray(keys) || !keys.every((key) => typeof key === "string") || typeof nfc !== "boolean")
-      return resultErrorCreate("twoFactorYubikeyDataRead", "Yubikey metadata is invalid")
-    return resultCreate({ keys: keys as string[], nfc })
-  } catch {
-    return resultErrorCreate("twoFactorYubikeyDataRead", "Yubikey metadata is invalid")
-  }
+  return twoFactorPersistedJsonParse(
+    "twoFactorYubikeyDataRead",
+    data,
+    twoFactorYubikeyDataSchema,
+    "Yubikey metadata is invalid",
+  )
 }
 
 function yubikeyResponseKeys(keys: string[]): Record<string, string> {
@@ -1201,14 +1188,14 @@ function twoFactorWebAuthnU2fRegistrationDelete(
   const recordResult = twoFactorRecordFindByUserAndType(database, userUuid, twoFactorProviderType.u2f)
   if (!recordResult.success) return recordResult
   if (recordResult.data === null) return resultCreate(undefined)
-  let registrations: unknown
-  try {
-    registrations = JSON.parse(recordResult.data.data)
-  } catch {
-    return resultErrorCreate("twoFactorWebAuthnU2fRegistrationDelete", "Error parsing U2F data")
-  }
-  if (!Array.isArray(registrations))
-    return resultErrorCreate("twoFactorWebAuthnU2fRegistrationDelete", "Error parsing U2F data")
+  const registrationsResult = twoFactorPersistedJsonParse(
+    "twoFactorWebAuthnU2fRegistrationDelete",
+    recordResult.data.data,
+    twoFactorWebAuthnU2fDeleteDataSchema,
+    "Error parsing U2F data",
+  )
+  if (!registrationsResult.success) return registrationsResult
+  const registrations = registrationsResult.data
   const filtered = registrations.filter(
     (registration) => !twoFactorWebAuthnU2fCredentialMatches(registration, credentialId),
   )

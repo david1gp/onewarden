@@ -38,6 +38,7 @@ import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.j
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import type { ExtensionSyncStorage } from "../storage/extensionSyncStorageSchema.js"
 import type { ExtensionAlarmsAdapter } from "./extensionAlarmsAdapter.js"
+import { extensionSyncCacheSnapshotSchema } from "./extensionSyncCacheSnapshotSchema.js"
 import { type ExtensionSyncSnapshot, extensionSyncSnapshotSchema } from "./extensionSyncSnapshotSchema.js"
 import { extensionTimeoutAlarmName } from "./extensionTimeoutAlarmName.js"
 
@@ -160,7 +161,7 @@ function jsonEncode<T>(op: string, value: T, errorMessage = "Sync data could not
 
 function jsonDecode(op: string, text: string): Result<unknown> {
   try {
-    return resultCreate(JSON.parse(text) as unknown)
+    return resultCreate(JSON.parse(text))
   } catch {
     return internal(op, "Stored sync data is not valid JSON.")
   }
@@ -217,34 +218,22 @@ function syncCipherWireCreate(
   cipher: BitwardenSyncEnvelope["ciphers"][number],
   revisionDate: number,
 ): BitwardenEncryptedLoginCipher | null {
-  const rawCipher = cipher as unknown as Record<string, unknown>
   if (cipher.type !== 1 || cipher.login === undefined || cipher.login === null) return null
   const revision =
-    typeof rawCipher.revisionDate === "string" && rawCipher.revisionDate.length > 0
-      ? rawCipher.revisionDate
-      : String(revisionDate)
-  const folderId =
-    rawCipher.folderId === null || typeof rawCipher.folderId === "string" ? (rawCipher.folderId ?? null) : null
-  const organizationId =
-    typeof rawCipher.organizationId === "string" || rawCipher.organizationId === null ? rawCipher.organizationId : null
-  const key = typeof rawCipher.key === "string" || rawCipher.key === null ? rawCipher.key : null
-  const collectionIds = Array.isArray(rawCipher.collectionIds)
-    ? rawCipher.collectionIds.filter((value): value is string => typeof value === "string")
-    : undefined
+    cipher.revisionDate !== undefined && cipher.revisionDate.length > 0 ? cipher.revisionDate : String(revisionDate)
   return {
-    ...rawCipher,
+    ...cipher,
     object: "cipherDetails",
     id: cipher.id,
     type: 1,
     revisionDate: revision,
-    deletedDate:
-      typeof rawCipher.deletedDate === "string" || rawCipher.deletedDate === null ? rawCipher.deletedDate : null,
-    organizationId,
-    folderId,
+    deletedDate: cipher.deletedDate ?? null,
+    organizationId: cipher.organizationId ?? null,
+    folderId: cipher.folderId ?? null,
     name: cipher.name,
     notes: cipher.notes,
-    key,
-    ...(collectionIds === undefined ? {} : { collectionIds }),
+    ...(cipher.key === undefined ? {} : { key: cipher.key }),
+    ...(cipher.collectionIds === undefined ? {} : { collectionIds: cipher.collectionIds }),
     login: cipher.login,
     fields: cipher.fields ?? [],
   }
@@ -464,16 +453,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     if (!snapshotBytesResult.success) return snapshotBytesResult
     const snapshotValueResult = textDecode(op, snapshotBytesResult.data)
     if (!snapshotValueResult.success) return snapshotValueResult
-    if (
-      snapshotValueResult.data === null ||
-      typeof snapshotValueResult.data !== "object" ||
-      Array.isArray(snapshotValueResult.data)
-    )
-      return internal(op, "Stored sync snapshot is invalid.")
-    const snapshotParsed = v.safeParse(extensionSyncSnapshotSchema, {
-      ...(snapshotValueResult.data as Record<string, unknown>),
-      ciphers: [],
-    })
+    const snapshotParsed = v.safeParse(extensionSyncCacheSnapshotSchema, snapshotValueResult.data)
     if (!snapshotParsed.success) return internal(op, "Stored sync snapshot is invalid.")
 
     const ciphers: ExtensionPersonalLoginCipher[] = []
@@ -496,11 +476,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     revisionDate: number,
   ): Promise<Result<ExtensionSyncSnapshot>> => {
     const ciphers: ExtensionPersonalLoginCipher[] = []
-    const organizationKeysResult = await options.vaultSession.organizationKeysReplace(envelope.profile)
-    if (!organizationKeysResult.success) return organizationKeysResult
     const profileParsed = v.safeParse(extensionProfileSchema, envelope.profile)
     if (!profileParsed.success)
       return internal("extensionBackgroundService.syncSnapshotCreate", "Sync profile is invalid.")
+    const organizationKeysResult = await options.vaultSession.organizationKeysReplace(profileParsed.output)
+    if (!organizationKeysResult.success) return organizationKeysResult
     const authorizedOrganizationIds = new Set(
       profileParsed.output.organizations
         .filter((organization) => organization.status === 2)

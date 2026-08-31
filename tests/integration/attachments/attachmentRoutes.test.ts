@@ -1,19 +1,19 @@
 import { afterEach, expect, test } from "bun:test"
-import { attachmentFindById } from "../../../src/server/contexts/attachments/attachmentFindById.js"
 import { attachmentFileStorageAdapterCreate } from "../../../src/server/contexts/attachments/attachmentFileStorageAdapterCreate.js"
+import { attachmentFindById } from "../../../src/server/contexts/attachments/attachmentFindById.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityTokenBundleCreate } from "../../../src/server/contexts/identity/identityTokenBundleCreate.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
-import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
+import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
 
 const date = "2026-08-28T00:00:00.000Z"
 const keyPairResult = rsaKeyPairGenerate()
@@ -157,6 +157,16 @@ function uploadForm(bytes: Uint8Array, name: string, key?: string): { body: Uint
     text,
   ]
   if (key !== undefined) fields.push(`--${boundary}`, 'Content-Disposition: form-data; name="key"', "", key)
+  fields.push(`--${boundary}--`, "")
+  return {
+    body: new TextEncoder().encode(fields.join("\r\n")),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  }
+}
+
+function multipartForm(parts: string[]): { body: Uint8Array; contentType: string } {
+  const boundary = "onewarden-task16-malformed-boundary"
+  const fields = parts.flatMap((part) => [`--${boundary}`, part])
   fields.push(`--${boundary}--`, "")
   return {
     body: new TextEncoder().encode(fields.join("\r\n")),
@@ -336,6 +346,98 @@ test("attachment quota, declared-size leeway, and hard cipher deletion clean up 
   })
   expect(hardDelete.status).toBe(200)
   expect(await context.storage.read("cipher-one", "attachment-two")).toEqual({ success: true, data: null })
+})
+
+test("attachment multipart validation rejects malformed fields without changing storage", async () => {
+  const context = await contextCreate()
+  const cipherResponse = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(cipherData()),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(cipherResponse.status).toBe(200)
+
+  const missingData = multipartForm(['Content-Disposition: form-data; name="key"\r\n\r\nattachment-key'])
+  const stringData = multipartForm([
+    'Content-Disposition: form-data; name="data"\r\n\r\nnot-a-file',
+    'Content-Disposition: form-data; name="key"\r\n\r\nattachment-key',
+  ])
+  const fileKey = multipartForm([
+    'Content-Disposition: form-data; name="data"; filename="attachment.bin"\r\nContent-Type: application/octet-stream\r\n\r\nhello',
+    'Content-Disposition: form-data; name="key"; filename="key.txt"\r\nContent-Type: text/plain\r\n\r\nattachment-key',
+  ])
+  const missingKey = multipartForm([
+    'Content-Disposition: form-data; name="data"; filename="attachment.bin"\r\nContent-Type: application/octet-stream\r\n\r\nhello',
+  ])
+  const emptyFilename = multipartForm([
+    'Content-Disposition: form-data; name="data"; filename=""\r\nContent-Type: application/octet-stream\r\n\r\nhello',
+    'Content-Disposition: form-data; name="key"\r\n\r\nattachment-key',
+  ])
+
+  const requests: Array<{ expectedMessage: string; init: RequestInit }> = [
+    {
+      expectedMessage: "Multipart data is not provided.",
+      init: {
+        body: missingData.body as unknown as BodyInit,
+        headers: { "content-type": missingData.contentType },
+        method: "POST",
+      },
+    },
+    {
+      expectedMessage: "Invalid request.",
+      init: {
+        body: stringData.body as unknown as BodyInit,
+        headers: { "content-type": stringData.contentType },
+        method: "POST",
+      },
+    },
+    {
+      expectedMessage: "Invalid request.",
+      init: {
+        body: fileKey.body as unknown as BodyInit,
+        headers: { "content-type": fileKey.contentType },
+        method: "POST",
+      },
+    },
+    {
+      expectedMessage: "No attachment key provided",
+      init: {
+        body: missingKey.body as unknown as BodyInit,
+        headers: { "content-type": missingKey.contentType },
+        method: "POST",
+      },
+    },
+    {
+      expectedMessage: "Attachment file is not provided.",
+      init: {
+        body: emptyFilename.body as unknown as BodyInit,
+        headers: { "content-type": emptyFilename.contentType },
+        method: "POST",
+      },
+    },
+    {
+      expectedMessage: "Invalid multipart request.",
+      init: {
+        body: "not multipart",
+        headers: { "content-type": "text/plain" },
+        method: "POST",
+      },
+    },
+  ]
+  for (const { expectedMessage, init } of requests) {
+    const request = new Request("https://vault.example/api/ciphers/cipher-one/attachment", {
+      ...init,
+      headers: { authorization: `Bearer ${context.token}`, ...init.headers },
+    })
+    const response = await context.app.fetch(request)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ message: expectedMessage, object: "error" })
+  }
+
+  expect(context.database.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM attachments").get()).toEqual({
+    count: 0,
+  })
+  expect(await context.storage.read("cipher-one", "attachment-one")).toEqual({ success: true, data: null })
 })
 
 test("organization members can attach files to organization-owned ciphers", async () => {

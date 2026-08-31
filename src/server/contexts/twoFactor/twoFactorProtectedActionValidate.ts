@@ -5,13 +5,9 @@ import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStr
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
+import { twoFactorProtectedActionDataSchema } from "./twoFactorProtectedActionDataSchema.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
-
-type TwoFactorProtectedActionData = {
-  token: string
-  token_sent: number
-  attempts: number
-}
 
 export function twoFactorProtectedActionValidate(
   database: DatabaseConnection,
@@ -38,12 +34,13 @@ export function twoFactorProtectedActionValidate(
         )
         return
       }
-      let data: Partial<TwoFactorProtectedActionData>
-      try {
-        const parsed = JSON.parse(row.data) as Partial<TwoFactorProtectedActionData>
-        if (typeof parsed !== "object" || parsed === null) throw new Error("invalid data")
-        data = parsed
-      } catch {
+      const dataResult = twoFactorPersistedJsonParse(
+        op,
+        row.data,
+        twoFactorProtectedActionDataSchema,
+        "Protected action token is invalid",
+      )
+      if (!dataResult.success) {
         database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
         validationResult = resultErrorCreate(op, "Protected action token is invalid", {
           code: "platform.invalid-request",
@@ -51,21 +48,7 @@ export function twoFactorProtectedActionValidate(
         })
         return
       }
-      if (
-        typeof data.token !== "string" ||
-        typeof data.token_sent !== "number" ||
-        !Number.isSafeInteger(data.token_sent) ||
-        typeof data.attempts !== "number" ||
-        !Number.isSafeInteger(data.attempts) ||
-        data.attempts < 0
-      ) {
-        database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
-        validationResult = resultErrorCreate(op, "Protected action token is invalid", {
-          code: "platform.invalid-request",
-          statusCode: 400,
-        })
-        return
-      }
+      const data = dataResult.data
       const limit = config.EMAIL_ATTEMPTS_LIMIT ?? 3
       const attempts = Math.min(Number.MAX_SAFE_INTEGER, data.attempts + 1)
       if (attempts >= limit) {

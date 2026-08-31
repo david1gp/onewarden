@@ -1,5 +1,7 @@
 import { onMount } from "solid-js"
+import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { base64UrlDecode } from "../../../shared/crypto/base64UrlDecode.js"
 import { twoFactorProviderType } from "../model/twoFactorProviderType.js"
 import type { TwoFactorWebAuthnKey } from "../model/twoFactorWebAuthnKeySchema.js"
 import type { webAuthSessionCreate } from "../model/webAuthSessionCreate.js"
@@ -279,6 +281,34 @@ export function authTwoFactorSetupViewStateCreate(props: AuthTwoFactorSetupViewP
     }
 
     const challenge = challengeRes.data
+    const challengeBytesResult = base64UrlDecode(challenge.challenge)
+    if (!challengeBytesResult.success) {
+      webAuthnStatus.set("The WebAuthn challenge was invalid.")
+      return
+    }
+    const rp = challenge.rp
+    const user = challenge.user
+    const userId = user?.id ?? challenge.userId
+    const userIdBytesResult = userId === undefined ? undefined : base64UrlDecode(userId)
+    if (userIdBytesResult !== undefined && !userIdBytesResult.success) {
+      webAuthnStatus.set("The WebAuthn user identifier was invalid.")
+      return
+    }
+    const challengeBytes = Uint8Array.from(challengeBytesResult.data)
+    const userIdBytes = userIdBytesResult === undefined ? new Uint8Array(16) : Uint8Array.from(userIdBytesResult.data)
+    const excludeCredentials = []
+    for (const credential of challenge.excludeCredentials ?? []) {
+      const credentialIdResult = base64UrlDecode(credential.id)
+      if (!credentialIdResult.success) {
+        webAuthnStatus.set("A WebAuthn credential identifier was invalid.")
+        return
+      }
+      excludeCredentials.push({
+        id: Uint8Array.from(credentialIdResult.data),
+        transports: credential.transports,
+        type: credential.type,
+      })
+    }
     webAuthnStatus.set("Waiting for security key interaction...")
 
     try {
@@ -291,22 +321,24 @@ export function authTwoFactorSetupViewStateCreate(props: AuthTwoFactorSetupViewP
 
       const cred = await navigator.credentials.create({
         publicKey: {
-          challenge: new Uint8Array(32),
+          challenge: challengeBytes,
           rp: {
-            name: challenge.rpName ?? "OneWarden",
-            id: challenge.rpId ?? (typeof window !== "undefined" ? window.location.hostname : undefined),
+            name: rp?.name ?? challenge.rpName ?? "OneWarden",
+            id: rp?.id ?? challenge.rpId ?? (typeof window !== "undefined" ? window.location.hostname : undefined),
           },
           user: {
-            id: new Uint8Array(16),
-            name: challenge.userName ?? session.session()?.email ?? "user",
-            displayName: challenge.userDisplayName ?? "User",
+            id: userIdBytes,
+            name: user?.name ?? challenge.userName ?? session.session()?.email ?? "user",
+            displayName: user?.displayName ?? challenge.userDisplayName ?? "User",
           },
-          pubKeyCredParams: (challenge.pubKeyCredParams as unknown as PublicKeyCredentialParameters[]) ?? [
+          pubKeyCredParams: challenge.pubKeyCredParams ?? [
             { alg: -7, type: "public-key" },
             { alg: -257, type: "public-key" },
           ],
           timeout: challenge.timeout ?? 60000,
-          attestation: (challenge.attestation as AttestationConveyancePreference) ?? "direct",
+          attestation: challenge.attestation ?? "direct",
+          authenticatorSelection: challenge.authenticatorSelection,
+          excludeCredentials,
         },
       })
 
@@ -347,13 +379,19 @@ export function authTwoFactorSetupViewStateCreate(props: AuthTwoFactorSetupViewP
     try {
       parsedResponse = JSON.parse(rawResponse)
     } catch {
-      parsedResponse = rawResponse
+      errorMessage.set("Registration response must be valid JSON.")
+      return
+    }
+    const responseResult = v.safeParse(v.record(v.string(), v.unknown()), parsedResponse)
+    if (!responseResult.success) {
+      errorMessage.set("Registration response must be a JSON object.")
+      return
     }
 
     const nextId = webAuthnKeys.get().length + 1
     isActionLoading.set(true)
     const result = await session.webauthnTwoFactorActivate(
-      { id: nextId, name, deviceResponse: parsedResponse },
+      { id: nextId, name, deviceResponse: responseResult.output },
       masterPasswordPrompt.get() || undefined,
     )
     isActionLoading.set(false)

@@ -6,6 +6,7 @@ import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import { requestValidationParse } from "../../../shared/validation/requestValidationParse.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
@@ -27,6 +28,7 @@ import { adminCookieValueResolve } from "./adminCookieValueResolve.js"
 import type { AdminDiagnosticsAdapter } from "./adminDiagnosticsAdapter.js"
 import { adminDiagnosticsAdapterCreate } from "./adminDiagnosticsAdapterCreate.js"
 import { adminIssuerResolve } from "./adminIssuerResolve.js"
+import { adminLoginFormSchema } from "./adminLoginFormSchema.js"
 import { adminOrganizationJsonCreate } from "./adminOrganizationJsonCreate.js"
 import type { AdminRouteOptions } from "./adminRouteOptions.js"
 import { eventType } from "../events/eventType.js"
@@ -80,13 +82,16 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
   }
 
   const login = async (context: Context<any>): Promise<Response> => {
-    let body: Record<string, unknown>
+    let body: unknown
     try {
-      body = (await context.req.parseBody()) as Record<string, unknown>
+      body = await context.req.parseBody()
     } catch {
       return adminLoginResponse("Invalid admin token, please try again.", undefined, context, 401)
     }
-    const token = typeof body.token === "string" ? body.token : ""
+    const bodyResult = requestValidationParse("adminLoginFormParse", body, adminLoginFormSchema)
+    if (!bodyResult.success)
+      return adminLoginResponse("Invalid admin token, please try again.", undefined, context, 401)
+    const token = bodyResult.data.token
     const validResult = await adminTokenValidate(token, options.config.ADMIN_TOKEN)
     if (!validResult.success || !validResult.data)
       return adminLoginResponse(
@@ -107,7 +112,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
       adminCookieSecure(context),
       options.config.ADMIN_SESSION_LIFETIME,
     )
-    const redirect = typeof body.redirect === "string" ? body.redirect.trim().replace(/^\/+/, "") : ""
+    const redirect = bodyResult.data.redirect?.trim().replace(/^\/+/, "") ?? ""
     if (redirect.length > 0)
       return new Response(null, { headers: { location: `/admin/${redirect}`, "set-cookie": cookie }, status: 303 })
     return adminSettingsResponse(options, cookie)

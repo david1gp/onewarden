@@ -1,8 +1,10 @@
+import * as v from "valibot"
 import { type Result, resultTryParsingFetchErr } from "#result"
-import { resultCreate } from "../../../shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { base64Encode } from "../../../shared/crypto/base64Encode.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
+import { resultCreate } from "../../../shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { webAuthSessionDefault } from "../../auth/model/webAuthSessionDefault.js"
 import { cipherItemFromWire } from "../model/cipherItemFromWire.js"
 import { cipherItemToWire } from "../model/cipherItemToWire.js"
@@ -13,6 +15,17 @@ export interface CipherApiClientOptions {
   baseUrl?: string
   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   accessToken?: () => string | null
+}
+
+const cipherApiResponseSchema = v.record(v.string(), v.unknown())
+const cipherApiListResponseSchema = v.object({
+  data: v.optional(v.array(cipherApiResponseSchema)),
+})
+
+async function cipherApiItemResponseParse(op: string, response: Response): Promise<Result<CipherItem>> {
+  const bodyResult = await webApiResponseParse(op, response, cipherApiResponseSchema)
+  if (!bodyResult.success) return bodyResult
+  return resultCreate(cipherItemFromWire(bodyResult.data))
 }
 
 export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
@@ -43,8 +56,9 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as { data?: Record<string, unknown>[] }
-        const items = (body.data ?? []).map(cipherItemFromWire)
+        const bodyResult = await webApiResponseParse(op, res, cipherApiListResponseSchema)
+        if (!bodyResult.success) return bodyResult
+        const items = (bodyResult.data.data ?? []).map(cipherItemFromWire)
         return resultCreate(items)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to fetch ciphers.")
@@ -62,8 +76,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to fetch cipher details.")
       }
@@ -82,8 +95,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to create cipher.")
       }
@@ -102,8 +114,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to update cipher.")
       }
@@ -172,8 +183,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to restore cipher.")
       }
@@ -191,8 +201,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? `Failed to ${archived ? "archive" : "unarchive"} cipher.`)
       }
@@ -238,8 +247,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to share cipher to organization.")
       }
@@ -257,8 +265,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to update collections.")
       }
@@ -301,8 +308,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await res.text()
           return resultTryParsingFetchErr(op, text, res.status, res.statusText)
         }
-        const body = (await res.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(body))
+        return cipherApiItemResponseParse(op, res)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to upload attachment.")
       }
@@ -339,8 +345,9 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await getRes.text()
           return resultTryParsingFetchErr(op, text, getRes.status, getRes.statusText)
         }
-        const existing = (await getRes.json()) as Record<string, unknown>
-        const item = cipherItemFromWire(existing)
+        const existingResult = await webApiResponseParse(op, getRes, cipherApiResponseSchema)
+        if (!existingResult.success) return existingResult
+        const item = cipherItemFromWire(existingResult.data)
 
         const clonedData: CipherFormData = {
           type: item.type,
@@ -394,8 +401,7 @@ export function cipherApiClientCreate(options: CipherApiClientOptions = {}) {
           const text = await createRes.text()
           return resultTryParsingFetchErr(op, text, createRes.status, createRes.statusText)
         }
-        const createdBody = (await createRes.json()) as Record<string, unknown>
-        return resultCreate(cipherItemFromWire(createdBody))
+        return cipherApiItemResponseParse(op, createRes)
       } catch (err: any) {
         return resultErrorCreate(op, err?.message ?? "Failed to clone cipher.")
       }

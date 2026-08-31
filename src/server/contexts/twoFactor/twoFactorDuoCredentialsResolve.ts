@@ -3,26 +3,21 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { TwoFactorDuoCredentials } from "./twoFactorAdapters.js"
+import { twoFactorDuoDataSchema } from "./twoFactorDuoDataSchema.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 
 export function twoFactorDuoCredentialsResolve(
   data: string,
   config: Pick<IdentityConfig, "DUO_ENABLED" | "DUO_HOST" | "DUO_IKEY" | "DUO_SKEY">,
 ): Result<TwoFactorDuoCredentials> {
   const op = "twoFactorDuoCredentialsResolve"
-  try {
-    const parsed = JSON.parse(data) as { host?: unknown; ik?: unknown; sk?: unknown }
-    if (
-      typeof parsed.host === "string" &&
-      parsed.host.trim() !== "" &&
-      typeof parsed.ik === "string" &&
-      parsed.ik.trim() !== "" &&
-      typeof parsed.sk === "string" &&
-      parsed.sk.trim() !== ""
-    )
-      return resultCreate({ clientId: parsed.ik.trim(), clientSecret: parsed.sk.trim(), host: parsed.host.trim() })
-  } catch {
-    // An empty or legacy record can fall back to the global Duo configuration.
-  }
+  const dataResult = twoFactorPersistedJsonParse(op, data, twoFactorDuoDataSchema, "Duo credentials are invalid")
+  if (dataResult.success)
+    return resultCreate({
+      clientId: dataResult.data.ik.trim(),
+      clientSecret: dataResult.data.sk.trim(),
+      host: dataResult.data.host.trim(),
+    })
 
   if (
     (config.DUO_ENABLED ?? true) &&

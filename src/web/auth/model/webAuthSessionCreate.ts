@@ -1,17 +1,21 @@
+import * as v from "valibot"
 import { type Result } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffConsumeResponse } from "../../../shared/sessionHandoff/sessionHandoffConsumeResponseSchema.js"
-import { type TwoFactorChallenge } from "./twoFactorChallengeSchema.js"
+import { type TwoFactorChallenge, twoFactorChallengeSchema } from "./twoFactorChallengeSchema.js"
 import { webAuthApiClientCreate } from "./webAuthApiClientCreate.js"
 import { webAuthMasterKeyDerive } from "./webAuthMasterKeyDerive.js"
 import { webAuthMasterPasswordHashDerive } from "./webAuthMasterPasswordHashDerive.js"
 import type { WebAuthSession } from "./webAuthSessionSchema.js"
 import { webAuthStorageCreate } from "./webAuthStorageCreate.js"
 import { webAuthUserIdResolve } from "./webAuthUserIdResolve.js"
-import { webAuthUserKeyUnlock } from "./webAuthUserKeyUnlock.js"
 import { webAuthUserKeysGenerate } from "./webAuthUserKeysGenerate.js"
+import { webAuthUserKeyUnlock } from "./webAuthUserKeyUnlock.js"
+import type { WebAuthTwoFactorDuoActivatePayload } from "./webAuthTwoFactorDuoActivatePayloadSchema.js"
+import type { WebAuthTwoFactorWebAuthnActivatePayload } from "./webAuthTwoFactorWebAuthnActivatePayloadSchema.js"
+import type { WebAuthTwoFactorYubikeyActivatePayload } from "./webAuthTwoFactorYubikeyActivatePayloadSchema.js"
 
 export type WebAuthStatus = "unauthenticated" | "locked" | "unlocked"
 
@@ -280,17 +284,18 @@ export function webAuthSessionCreate(
     if (!tokenResult.success) {
       if (tokenResult.code === "auth.two-factor-required" && tokenResult.errorData) {
         try {
-          const challenge = JSON.parse(tokenResult.errorData) as TwoFactorChallenge
+          const challengeResult = v.safeParse(twoFactorChallengeSchema, JSON.parse(tokenResult.errorData))
+          if (!challengeResult.success) return tokenResult
           pendingTwoFactor.set({
             email,
             masterPassword: password,
             passwordHashB64,
             kdfMetadata,
             rememberEmail: loginOptions.rememberEmail,
-            challenge,
+            challenge: challengeResult.output,
           })
         } catch {
-          // Ignore json parse error
+          // Ignore invalid challenge data and preserve the original login error.
         }
       }
       return tokenResult
@@ -636,10 +641,7 @@ export function webAuthSessionCreate(
     return apiClient.twoFactorDuoGet(token, hash)
   }
 
-  const duoTwoFactorActivate = async (
-    payload: { host: string; clientId: string; clientSecret: string },
-    password?: string,
-  ) => {
+  const duoTwoFactorActivate = async (payload: WebAuthTwoFactorDuoActivatePayload, password?: string) => {
     const token = currentAccessToken()
     if (!token)
       return resultErrorCreate("webAuthSession.twoFactor", "Unauthorized", {
@@ -671,17 +673,7 @@ export function webAuthSessionCreate(
     return apiClient.twoFactorYubikeyGet(token, hash)
   }
 
-  const yubikeyTwoFactorActivate = async (
-    payload: {
-      key1?: string | null
-      key2?: string | null
-      key3?: string | null
-      key4?: string | null
-      key5?: string | null
-      nfc?: boolean
-    },
-    password?: string,
-  ) => {
+  const yubikeyTwoFactorActivate = async (payload: WebAuthTwoFactorYubikeyActivatePayload, password?: string) => {
     const token = currentAccessToken()
     if (!token)
       return resultErrorCreate("webAuthSession.twoFactor", "Unauthorized", {
@@ -729,10 +721,7 @@ export function webAuthSessionCreate(
     return apiClient.twoFactorWebAuthnChallengeGet(token, hash)
   }
 
-  const webauthnTwoFactorActivate = async (
-    payload: { id: number | string; name: string; deviceResponse: unknown },
-    password?: string,
-  ) => {
+  const webauthnTwoFactorActivate = async (payload: WebAuthTwoFactorWebAuthnActivatePayload, password?: string) => {
     const token = currentAccessToken()
     if (!token)
       return resultErrorCreate("webAuthSession.twoFactor", "Unauthorized", {

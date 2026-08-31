@@ -1,22 +1,14 @@
 import * as v from "valibot"
-import type { BitwardenSyncEnvelope } from "../../shared/api/bitwardenSyncEnvelopeSchema.js"
+import { bitwardenSyncEnvelopeSchema } from "../../shared/api/bitwardenSyncEnvelopeSchema.js"
 import { extensionPersonalLoginCipherSchema } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 
 const extensionSyncSnapshotDataSchema = v.looseObject({
-  profile: v.unknown(),
-  folders: v.array(v.unknown()),
-  collections: v.array(v.unknown()),
-  policies: v.array(v.unknown()),
-  domains: v.nullish(v.unknown()),
-  sends: v.array(v.unknown()),
-  userDecryption: v.optional(v.unknown()),
-  object: v.literal("sync"),
-  continuationToken: v.nullish(v.string()),
+  ...bitwardenSyncEnvelopeSchema.entries,
+  profile: extensionProfileSchema,
   ciphers: v.array(extensionPersonalLoginCipherSchema),
 })
 
 export const extensionSyncSnapshotSchema = extensionSyncSnapshotDataSchema
 
-export type ExtensionSyncSnapshot = Omit<BitwardenSyncEnvelope, "ciphers"> & {
-  ciphers: v.InferOutput<typeof extensionPersonalLoginCipherSchema>[]
-}
+export type ExtensionSyncSnapshot = v.InferOutput<typeof extensionSyncSnapshotSchema>

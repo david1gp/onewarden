@@ -1,6 +1,7 @@
 import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import * as v from "valibot"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
@@ -8,6 +9,8 @@ import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import type { IdentityUser } from "../identity/identityUser.js"
 import { twoFactorEmailTokenCreate } from "./twoFactorEmailTokenCreate.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
+import { twoFactorProtectedActionDataSchema } from "./twoFactorProtectedActionDataSchema.js"
 import { twoFactorProtectedActionInvalidate } from "./twoFactorProtectedActionInvalidate.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
@@ -35,21 +38,18 @@ export async function twoFactorProtectedActionCreate(
         .query<{ data: string }, [string]>("SELECT data FROM twofactor WHERE uuid = ? LIMIT 1")
         .get(existing.uuid)
       if (existingData === null) return resultErrorCreate(op, "Protected action token not found.")
-      let tokenSent: number
-      try {
-        const parsed = JSON.parse(existingData.data) as { token_sent?: unknown }
-        if (typeof parsed.token_sent !== "number" || !Number.isSafeInteger(parsed.token_sent))
-          return resultErrorCreate(op, "Protected action token is invalid", {
-            code: "platform.invalid-request",
-            statusCode: 400,
-          })
-        tokenSent = parsed.token_sent
-      } catch {
+      const tokenSentResult = twoFactorPersistedJsonParse(
+        op,
+        existingData.data,
+        v.pick(twoFactorProtectedActionDataSchema, ["token_sent"]),
+        "Protected action token is invalid",
+      )
+      if (!tokenSentResult.success)
         return resultErrorCreate(op, "Protected action token is invalid", {
           code: "platform.invalid-request",
           statusCode: 400,
         })
-      }
+      const tokenSent = tokenSentResult.data.token_sent
       const elapsed = Math.floor(clock.now().getTime() / 1_000) - tokenSent
       if (elapsed < 30)
         return resultErrorCreate(op, `Please wait ${30 - elapsed} seconds before requesting another code.`, {

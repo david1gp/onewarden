@@ -1,38 +1,42 @@
 import { type KeyInput } from "jose"
+import * as v from "valibot"
 import { type Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
-import type { Identifier } from "../../../shared/identifier/identifier.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
+import type { Identifier } from "../../../shared/identifier/identifier.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { authenticationTrustedDeviceCreate } from "../authentication/authenticationTrustedDeviceCreate.js"
+import { authenticationTrustedDeviceValidate } from "../authentication/authenticationTrustedDeviceValidate.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityDevice } from "../identity/identityDevice.js"
 import type { IdentityTokenRequest } from "../identity/identityTokenRequestSchema.js"
 import type { IdentityUser } from "../identity/identityUser.js"
-import { authenticationTrustedDeviceCreate } from "../authentication/authenticationTrustedDeviceCreate.js"
-import { authenticationTrustedDeviceValidate } from "../authentication/authenticationTrustedDeviceValidate.js"
+import type { TwoFactorAdapters } from "./twoFactorAdapters.js"
+import { twoFactorAdaptersCreate } from "./twoFactorAdaptersCreate.js"
+import { twoFactorDuoCredentialsResolve } from "./twoFactorDuoCredentialsResolve.js"
+import { twoFactorEmailDataSchema } from "./twoFactorEmailDataSchema.js"
+import { twoFactorEmailLoginValidate } from "./twoFactorEmailLoginValidate.js"
 import { twoFactorIncompleteComplete } from "./twoFactorIncompleteComplete.js"
 import { twoFactorIncompleteMark } from "./twoFactorIncompleteMark.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorProviderUsable } from "./twoFactorProviderUsable.js"
 import type { TwoFactorRecord } from "./twoFactorRecord.js"
-import type { TwoFactorAdapters } from "./twoFactorAdapters.js"
-import { twoFactorAdaptersCreate } from "./twoFactorAdaptersCreate.js"
 import { twoFactorRecordFindByUser } from "./twoFactorRecordFindByUser.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
-import { twoFactorEmailLoginValidate } from "./twoFactorEmailLoginValidate.js"
-import { twoFactorDuoCredentialsResolve } from "./twoFactorDuoCredentialsResolve.js"
 import { twoFactorRecoveryCodeConsume } from "./twoFactorRecoveryCodeConsume.js"
 import { twoFactorTotpCodeValidate } from "./twoFactorTotpCodeValidate.js"
+import type { TwoFactorWebAuthnAuthentication } from "./twoFactorWebAuthnAuthentication.js"
 import { twoFactorWebAuthnChallengeConsume } from "./twoFactorWebAuthnChallengeConsume.js"
 import { twoFactorWebAuthnChallengeCreate } from "./twoFactorWebAuthnChallengeCreate.js"
-import type { TwoFactorWebAuthnAuthentication } from "./twoFactorWebAuthnAuthentication.js"
 import { twoFactorWebAuthnRegistrationCounterUpdate } from "./twoFactorWebAuthnRegistrationCounterUpdate.js"
+import { twoFactorWebAuthnResponseSchema } from "./twoFactorWebAuthnResponseSchema.js"
 import { twoFactorWebAuthnStateRead } from "./twoFactorWebAuthnStateRead.js"
 import { twoFactorYubikeyLoginValidate } from "./twoFactorYubikeyLoginValidate.js"
-import type { EventAdapter } from "../events/eventAdapter.js"
-import { eventType } from "../events/eventType.js"
 
 type TwoFactorLoginOptions = {
   clock: Clock
@@ -232,7 +236,10 @@ async function twoFactorRecordLoginValidate(
     } catch {
       return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
     }
-    const validationResult = await adapters.webauthn?.loginValidate?.(response, stateResult.data)
+    const responseResult = v.safeParse(twoFactorWebAuthnResponseSchema, response)
+    if (!responseResult.success)
+      return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn assertion was invalid")
+    const validationResult = await adapters.webauthn?.loginValidate?.(responseResult.output, stateResult.data)
     if (validationResult === undefined)
       return resultErrorCreate("twoFactorWebAuthnLoginValidate", "Webauthn adapter unavailable")
     return validationResult
@@ -320,12 +327,13 @@ function twoFactorRecoveryValidate(user: IdentityUser, token: string): Result<un
 }
 
 function twoFactorEmailAddressRead(data: string): string | null {
-  try {
-    const parsed = JSON.parse(data) as { email?: unknown }
-    return typeof parsed.email === "string" ? parsed.email : null
-  } catch {
-    return null
-  }
+  const dataResult = twoFactorPersistedJsonParse(
+    "twoFactorEmailAddressRead",
+    data,
+    twoFactorEmailDataSchema,
+    "Email token data is invalid",
+  )
+  return dataResult.success ? dataResult.data.email : null
 }
 
 function twoFactorEmailObscure(email: string): string {

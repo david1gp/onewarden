@@ -1,5 +1,8 @@
 import * as v from "valibot"
-import { type Result, resultTryParsingFetchErr } from "#result"
+import { type Result, type ResultErr } from "#result"
+import { webApiAuthenticatedHeadersCreate } from "../../../shared/api/webApiAuthenticatedHeadersCreate.js"
+import { webApiResponseEmptyParse } from "../../../shared/api/webApiResponseEmptyParse.js"
+import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { type SendAccessResponse, sendAccessResponseSchema } from "./sendAccessResponseSchema.js"
@@ -17,69 +20,26 @@ const sendListResponseSchema = v.object({
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-async function responseJsonParse<TSchema extends v.GenericSchema>(
-  op: string,
-  response: Response,
-  schema: TSchema,
-): Promise<Result<v.InferOutput<TSchema>>> {
-  let text: string
+function sendResponseErrorTransform(result: ResultErr, text: string): ResultErr {
   try {
-    text = await response.text()
+    const parsed = v.safeParse(v.looseObject({ message: v.string() }), JSON.parse(text))
+    if (parsed.success) return { ...result, errorMessage: parsed.output.message }
   } catch {
-    return resultErrorCreate(op, "Failed to read server response.", {
-      code: "platform.unavailable",
-      statusCode: 503,
-    })
+    // Fall through to the shared response parser.
   }
-
-  if (!response.ok) {
-    const result = resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    try {
-      const parsed = v.safeParse(v.looseObject({ message: v.string() }), JSON.parse(text))
-      if (parsed.success) return { ...result, errorMessage: parsed.output.message }
-    } catch {
-      // Fall through to the shared response parser.
-    }
-    return result
-  }
-
-  let json: unknown
-  try {
-    json = JSON.parse(text)
-  } catch {
-    return resultErrorCreate(op, "Server returned invalid JSON response.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  const parsed = v.safeParse(schema, json)
-  if (!parsed.success) {
-    return resultErrorCreate(op, "Server response did not match expected schema.", {
-      code: "platform.internal",
-      statusCode: 500,
-    })
-  }
-
-  return resultCreate(parsed.output)
-}
-
-async function responseEmptyParse(op: string, response: Response): Promise<Result<void>> {
-  if (response.ok) {
-    return resultCreate(undefined)
-  }
-  let text = ""
-  try {
-    text = await response.text()
-  } catch {
-    // ignore
-  }
-  return resultTryParsingFetchErr(op, text, response.status, response.statusText)
+  return result
 }
 
 export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: FetchImplementation } = {}) {
   const baseUrl = options.baseUrl ?? ""
   const fetchImpl = options.fetch ?? fetch
+
+  const responseJsonParse = <TSchema extends v.GenericSchema>(
+    op: string,
+    response: Response,
+    schema: TSchema,
+  ): Promise<Result<v.InferOutput<TSchema>>> =>
+    webApiResponseParse(op, response, schema, { errorResultTransform: sendResponseErrorTransform })
 
   const sendList = async (accessToken: string): Promise<Result<SendItem[]>> => {
     const op = "webSendApiClient.sendList"
@@ -87,10 +47,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error fetching sends.", {
@@ -109,10 +66,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/${encodeURIComponent(sendId)}`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error fetching send.", {
@@ -129,11 +83,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -160,10 +110,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
 
       response = await fetchImpl(`${baseUrl}/api/sends/file`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
         body: formData,
       })
     } catch {
@@ -185,11 +132,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/${encodeURIComponent(sendId)}`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken, "application/json"),
         body: JSON.stringify(payload),
       })
     } catch {
@@ -207,10 +150,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/${encodeURIComponent(sendId)}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error deleting send.", {
@@ -218,7 +158,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
         statusCode: 503,
       })
     }
-    return responseEmptyParse(op, response)
+    return webApiResponseEmptyParse(op, response)
   }
 
   const sendRemovePassword = async (accessToken: string, sendId: string): Promise<Result<SendItem>> => {
@@ -227,10 +167,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/${encodeURIComponent(sendId)}/remove-password`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error removing send password.", {
@@ -328,7 +265,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/access`, {
         method: "POST",
-        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error accessing Send.", {
@@ -366,16 +303,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
         statusCode: 503,
       })
     }
-    if (!response.ok) {
-      const text = await response.text().catch(() => "")
-      return resultTryParsingFetchErr(op, text, response.status, response.statusText)
-    }
-    try {
-      const json = (await response.json()) as { url: string }
-      return resultCreate(json)
-    } catch {
-      return resultErrorCreate(op, "Invalid access file response JSON.")
-    }
+    return responseJsonParse(op, response, v.object({ url: v.string() }))
   }
 
   const sendAccessFileAuthenticated = async (accessToken: string, fileId: string): Promise<Result<{ url: string }>> => {
@@ -384,7 +312,7 @@ export function webSendApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     try {
       response = await fetchImpl(`${baseUrl}/api/sends/access/file/${encodeURIComponent(fileId)}`, {
         method: "POST",
-        headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
       })
     } catch {
       return resultErrorCreate(op, "Network error requesting file download url.", {

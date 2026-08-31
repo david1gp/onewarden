@@ -4,19 +4,31 @@ import { type CipherItem, cipherItemSchema } from "../schemas/cipherItemSchema.j
 import { type CipherType, cipherTypeSchema } from "../schemas/cipherTypeSchema.js"
 import { cipherPasswordStrengthCalculate } from "./cipherPasswordStrengthCalculate.js"
 
+const cipherWireRecordSchema = v.record(v.string(), v.unknown())
+
 export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
   const typeResult = v.safeParse(cipherTypeSchema, wire.type)
   const type: CipherType = typeResult.success ? typeResult.output : 1
 
   const fieldsRaw = Array.isArray(wire.fields) ? wire.fields : []
-  const fields = fieldsRaw.map((f: any) => ({
-    name: typeof f.name === "string" ? f.name : (f.label ?? ""),
-    value: typeof f.value === "string" ? f.value : "",
-    type: typeof f.type === "number" && f.type >= 0 && f.type <= 3 ? (f.type as 0 | 1 | 2 | 3) : 0,
-    linkedId: typeof f.linkedId === "number" ? f.linkedId : undefined,
-  }))
+  const fields = fieldsRaw.flatMap((value) => {
+    const f = cipherWireRecordRead(value)
+    if (f === null) return []
+    const type =
+      typeof f.type === "number" && f.type >= 0 && f.type <= 3 && Number.isInteger(f.type)
+        ? (f.type as 0 | 1 | 2 | 3)
+        : 0
+    return [
+      {
+        name: typeof f.name === "string" ? f.name : typeof f.label === "string" ? f.label : "",
+        value: typeof f.value === "string" ? f.value : "",
+        type,
+        linkedId: typeof f.linkedId === "number" ? f.linkedId : undefined,
+      },
+    ]
+  })
 
-  const rawLogin = wire.login as Record<string, unknown> | null | undefined
+  const rawLogin = cipherWireRecordRead(wire.login)
   const fido2CredentialsResult = v.safeParse(
     v.nullable(v.array(bitwardenFido2CredentialSchema)),
     rawLogin?.fido2Credentials,
@@ -27,10 +39,17 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
         password: typeof rawLogin.password === "string" ? rawLogin.password : null,
         totp: typeof rawLogin.totp === "string" ? rawLogin.totp : null,
         uris: Array.isArray(rawLogin.uris)
-          ? rawLogin.uris.map((u: any) => ({
-              uri: typeof u.uri === "string" ? u.uri : "",
-              match: typeof u.match === "number" ? u.match : null,
-            }))
+          ? rawLogin.uris.flatMap((value) => {
+              const u = cipherWireRecordRead(value)
+              return u === null
+                ? []
+                : [
+                    {
+                      uri: typeof u.uri === "string" ? u.uri : "",
+                      match: typeof u.match === "number" ? u.match : null,
+                    },
+                  ]
+            })
           : typeof rawLogin.uri === "string"
             ? [{ uri: rawLogin.uri, match: null }]
             : null,
@@ -39,7 +58,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
       }
     : null
 
-  const rawCard = wire.card as Record<string, unknown> | null | undefined
+  const rawCard = cipherWireRecordRead(wire.card)
   const card = rawCard
     ? {
         cardholderName: typeof rawCard.cardholderName === "string" ? rawCard.cardholderName : null,
@@ -51,7 +70,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
       }
     : null
 
-  const rawIdentity = wire.identity as Record<string, unknown> | null | undefined
+  const rawIdentity = cipherWireRecordRead(wire.identity)
   const identity = rawIdentity
     ? {
         title: typeof rawIdentity.title === "string" ? rawIdentity.title : null,
@@ -75,7 +94,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
       }
     : null
 
-  const rawSecureNote = wire.secureNote as Record<string, unknown> | null | undefined
+  const rawSecureNote = cipherWireRecordRead(wire.secureNote)
   const secureNote = rawSecureNote
     ? {
         type: typeof rawSecureNote.type === "number" ? rawSecureNote.type : 0,
@@ -83,28 +102,40 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     : null
 
   const rawAttachments = Array.isArray(wire.attachments) ? wire.attachments : []
-  const attachments = rawAttachments.map((a: any) => ({
-    id: typeof a.id === "string" ? a.id : "",
-    fileName: typeof a.fileName === "string" ? a.fileName : "",
-    key: typeof a.key === "string" ? a.key : null,
-    size: typeof a.size === "string" || typeof a.size === "number" ? String(a.size) : null,
-    sizeName: typeof a.sizeName === "string" ? a.sizeName : null,
-    url: typeof a.url === "string" ? a.url : null,
-  }))
+  const attachments = rawAttachments.flatMap((value) => {
+    const a = cipherWireRecordRead(value)
+    return a === null
+      ? []
+      : [
+          {
+            id: typeof a.id === "string" ? a.id : "",
+            fileName: typeof a.fileName === "string" ? a.fileName : "",
+            key: typeof a.key === "string" ? a.key : null,
+            size: typeof a.size === "string" || typeof a.size === "number" ? String(a.size) : null,
+            sizeName: typeof a.sizeName === "string" ? a.sizeName : null,
+            url: typeof a.url === "string" ? a.url : null,
+          },
+        ]
+  })
 
   const rawPasswordHistory = Array.isArray(wire.passwordHistory) ? wire.passwordHistory : []
-  const passwordHistory = rawPasswordHistory
-    .filter((h: any) => typeof h?.password === "string")
-    .map((h: any) => ({
-      password: h.password,
-      lastUsedDate: typeof h.lastUsedDate === "string" ? h.lastUsedDate : "1970-01-01T00:00:00.000000Z",
-    }))
+  const passwordHistory = rawPasswordHistory.flatMap((value) => {
+    const h = cipherWireRecordRead(value)
+    return h === null || typeof h.password !== "string"
+      ? []
+      : [
+          {
+            password: h.password,
+            lastUsedDate: typeof h.lastUsedDate === "string" ? h.lastUsedDate : "1970-01-01T00:00:00.000000Z",
+          },
+        ]
+  })
 
   const collectionIds = Array.isArray(wire.collectionIds)
-    ? wire.collectionIds.filter((c: any) => typeof c === "string")
+    ? wire.collectionIds.filter((c): c is string => typeof c === "string")
     : null
 
-  const rawPermissions = wire.permissions as Record<string, unknown> | null | undefined
+  const rawPermissions = cipherWireRecordRead(wire.permissions)
   const permissions = rawPermissions
     ? {
         delete: typeof rawPermissions.delete === "boolean" ? rawPermissions.delete : null,
@@ -174,4 +205,9 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     permissions: { delete: false, restore: false },
     passwordStrength: null,
   }
+}
+
+function cipherWireRecordRead(value: unknown): Record<string, unknown> | null {
+  const result = v.safeParse(cipherWireRecordSchema, value)
+  return result.success ? result.output : null
 }

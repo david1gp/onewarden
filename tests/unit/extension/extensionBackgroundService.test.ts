@@ -261,6 +261,118 @@ test("extensionBackgroundServiceCreate performs conditional and manual sync whil
   expect(syncCalls).toBe(2)
 })
 
+test("extensionBackgroundServiceCreate accepts valid decrypted sync cache payloads and rejects malformed ones", async () => {
+  const context = serviceCreate()
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+
+  const validSnapshotPayloadResult = await context.vaultSession.encryptedPayloadEncrypt(
+    JSON.stringify({
+      profile: {},
+      folders: [],
+      collections: [],
+      policies: [],
+      sends: [],
+      object: "sync",
+      ciphers: [{ legacy: true }],
+    }),
+  )
+  const validCipherPayloadResult = await context.vaultSession.encryptedPayloadEncrypt(
+    JSON.stringify(plainCipherCreate()),
+  )
+  expect(validSnapshotPayloadResult.success).toBe(true)
+  expect(validCipherPayloadResult.success).toBe(true)
+  if (!validSnapshotPayloadResult.success || !validCipherPayloadResult.success) return
+  expect(
+    await context.storage.syncCacheSave({
+      snapshot: validSnapshotPayloadResult.data,
+      ciphers: [
+        { id: "cipher-id", revisionDate: plainCipherCreate().revisionDate, payload: validCipherPayloadResult.data },
+      ],
+      lastRevisionDate: 123,
+      lastSyncedAt: nowValue,
+    }),
+  ).toMatchObject({ success: true })
+
+  const validResult = await service.syncSnapshotLoad()
+  expect(validResult).toMatchObject({ success: true, data: { object: "sync", ciphers: [{ id: "cipher-id" }] } })
+
+  const malformedSnapshotPayloadResult = await context.vaultSession.encryptedPayloadEncrypt("not-json")
+  expect(malformedSnapshotPayloadResult.success).toBe(true)
+  if (!malformedSnapshotPayloadResult.success) return
+  expect(
+    await context.storage.syncCacheSave({
+      snapshot: malformedSnapshotPayloadResult.data,
+      ciphers: [],
+      lastRevisionDate: 123,
+      lastSyncedAt: nowValue,
+    }),
+  ).toMatchObject({ success: true })
+  const malformedSnapshotResult = await service.syncSnapshotLoad()
+  expect(malformedSnapshotResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+
+  const malformedCipherPayloadResult = await context.vaultSession.encryptedPayloadEncrypt(
+    JSON.stringify({ ...plainCipherCreate(), login: { ...plainCipherCreate().login, username: 42 } }),
+  )
+  expect(malformedCipherPayloadResult.success).toBe(true)
+  if (!malformedCipherPayloadResult.success || !validSnapshotPayloadResult.success) return
+  expect(
+    await context.storage.syncCacheSave({
+      snapshot: validSnapshotPayloadResult.data,
+      ciphers: [
+        { id: "cipher-id", revisionDate: plainCipherCreate().revisionDate, payload: malformedCipherPayloadResult.data },
+      ],
+      lastRevisionDate: 123,
+      lastSyncedAt: nowValue,
+    }),
+  ).toMatchObject({ success: true })
+  const malformedCipherResult = await service.syncSnapshotLoad()
+  expect(malformedCipherResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+})
+
+test("extensionBackgroundServiceCreate validates the sync profile before replacing organization keys", async () => {
+  const context = serviceCreate()
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () =>
+        resultCreate({
+          profile: { organizations: "malformed" },
+          folders: [],
+          collections: [],
+          policies: [],
+          ciphers: [],
+          sends: [],
+          object: "sync",
+        } as unknown as BitwardenSyncEnvelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const result = await service.fullSync()
+  expect(result).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+})
+
 test("extensionBackgroundServiceCreate syncs authorized organization login ciphers with their permissions", async () => {
   const context = serviceCreate()
   const envelope: BitwardenSyncEnvelope = {

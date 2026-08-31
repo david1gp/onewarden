@@ -1,3 +1,4 @@
+import * as v from "valibot"
 import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
@@ -5,10 +6,25 @@ import { hibpBreachSyntheticResponseCreate } from "./hibpBreachSyntheticResponse
 import { hibpBreachUrlCreate } from "./hibpBreachUrlCreate.js"
 import type { HibpRouteOptions } from "./hibpRouteOptions.js"
 
+const hibpBreachSchema = v.union([
+  v.looseObject({
+    Name: v.string(),
+    Domain: v.string(),
+    PwnCount: v.optional(v.number()),
+  }),
+  v.looseObject({
+    name: v.string(),
+    domain: v.string(),
+    pwnCount: v.optional(v.number()),
+  }),
+])
+const hibpBreachListSchema = v.array(hibpBreachSchema)
+type HibpBreachList = v.InferOutput<typeof hibpBreachListSchema>
+
 export async function hibpBreachGet(
   username: string,
   options: Pick<HibpRouteOptions, "apiKey" | "http">,
-): Promise<Result<unknown>> {
+): Promise<Result<HibpBreachList>> {
   const op = "hibpBreachGet"
   const apiKey = options.apiKey?.trim()
   if (apiKey === undefined || apiKey === "") return resultCreate(hibpBreachSyntheticResponseCreate(username))
@@ -36,9 +52,13 @@ export async function hibpBreachGet(
     })
   if (!response.ok) return upstreamError()
 
+  let body: unknown
   try {
-    return resultCreate(await response.json())
+    body = await response.json()
   } catch {
     return upstreamError()
   }
+  const parsed = v.safeParse(hibpBreachListSchema, body)
+  if (!parsed.success) return upstreamError()
+  return resultCreate(parsed.output)
 }

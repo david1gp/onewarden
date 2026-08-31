@@ -82,11 +82,11 @@ test("webAuthApiClient makes prelogin, login, registration, and email verificati
   const prelogin = await client.prelogin("user@example.com")
   expect(prelogin.success).toBe(true)
 
-  const login = await client.login({ username: "user@example.com", passwordHashB64: "hash123" })
+  const login = await client.login({ username: " User@Example.COM ", passwordHashB64: "hash123", twoFactorProvider: 5 })
   expect(login.success).toBe(true)
 
   const register = await client.register({
-    email: "user@example.com",
+    email: " User@Example.COM ",
     masterPasswordHash: "hash123",
     userSymmetricKey: "2.iv|ciphertext|mac",
   })
@@ -98,5 +98,71 @@ test("webAuthApiClient makes prelogin, login, registration, and email verificati
   const verifyToken = await client.verifyEmailToken({ userId: "user-123", token: "sample-token" })
   expect(verifyToken.success).toBe(true)
 
+  const loginRequest = requests.find((request) => request.url.endsWith("/identity/connect/token"))
+  if (!loginRequest) throw new Error("Login request was not captured.")
+  expect(Object.fromEntries(new URLSearchParams(loginRequest.body))).toEqual({
+    grant_type: "password",
+    username: "user@example.com",
+    password: "hash123",
+    client_id: "web",
+    device_identifier: "web-browser",
+    device_name: "Web Browser",
+    device_type: "6",
+    scope: "api offline_access",
+    two_factor_provider: "5",
+  })
+
+  const registerRequest = requests.find((request) => request.url.endsWith("/identity/accounts/register"))
+  if (!registerRequest) throw new Error("Register request was not captured.")
+  expect(JSON.parse(registerRequest.body)).toEqual({
+    email: "user@example.com",
+    masterPasswordHash: "hash123",
+    key: "2.iv|ciphertext|mac",
+    masterPasswordHint: null,
+    name: null,
+    kdf: 0,
+    kdfIterations: 600_000,
+    kdfMemory: null,
+    kdfParallelism: null,
+    keys: null,
+  })
+
   expect(requests).toHaveLength(5)
+})
+
+test("webAuthApiClient rejects invalid JSON and invalid two-factor challenge responses", async () => {
+  let responseBody = "not-json"
+  let responseStatus = 200
+  const client = webAuthApiClientCreate({
+    fetch: async () => new Response(responseBody, { status: responseStatus }),
+  })
+
+  const invalidJson = await client.prelogin("user@example.com")
+  expect(invalidJson).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+
+  responseBody = JSON.stringify({ error: "invalid_grant", TwoFactorProviders: "not-an-array" })
+  responseStatus = 400
+  const invalidChallenge = await client.login({ username: "user@example.com", passwordHashB64: "hash123" })
+  expect(invalidChallenge).toMatchObject({ success: false, statusCode: 400 })
+  if (!invalidChallenge.success) expect(invalidChallenge.code).not.toBe("auth.two-factor-required")
+})
+
+test("webAuthApiClient rejects invalid request inputs before making requests", async () => {
+  let requestCount = 0
+  const client = webAuthApiClientCreate({
+    fetch: async () => {
+      requestCount += 1
+      return new Response(null, { status: 204 })
+    },
+  })
+
+  const invalidLogin = await client.login({
+    username: "user@example.com",
+    passwordHashB64: 123 as unknown as string,
+  })
+  expect(invalidLogin).toMatchObject({ success: false, code: "platform.invalid-request", statusCode: 400 })
+
+  const invalidVerification = await client.verifyEmailToken({ userId: "user-123", token: null as unknown as string })
+  expect(invalidVerification).toMatchObject({ success: false, code: "platform.invalid-request", statusCode: 400 })
+  expect(requestCount).toBe(0)
 })

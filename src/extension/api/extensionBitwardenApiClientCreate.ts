@@ -113,7 +113,7 @@ async function responseJsonParse<TSchema extends v.GenericSchema>(
 
   let body: unknown
   try {
-    body = JSON.parse(text) as unknown
+    body = JSON.parse(text)
   } catch {
     return resultErrorCreate(op, "Bitwarden response was not valid JSON.", {
       code: "platform.internal",

@@ -11,6 +11,8 @@ import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorRecordFindByUserAndType } from "./twoFactorRecordFindByUserAndType.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
 import { twoFactorWebAuthnRegistrationsRead } from "./twoFactorWebAuthnRegistrationsRead.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
+import { twoFactorWebAuthnU2fDataSchema } from "./twoFactorWebAuthnU2fDataSchema.js"
 
 type LegacyU2fRegistration = {
   counter: number
@@ -90,55 +92,34 @@ export function twoFactorWebAuthnU2fMigrate(database: DatabaseConnection): Resul
 
 function legacyU2fRegistrationsRead(data: string): Result<LegacyU2fRegistration[]> {
   const op = "twoFactorWebAuthnU2fMigrate"
-  try {
-    const parsed: unknown = JSON.parse(data)
-    if (!Array.isArray(parsed)) return resultErrorCreate(op, "Webauthn U2F data is invalid.")
-    const registrations: LegacyU2fRegistration[] = []
-    for (const entry of parsed) {
-      if (typeof entry !== "object" || entry === null || Array.isArray(entry))
-        return resultErrorCreate(op, "Webauthn U2F registration is invalid.")
-      const value = entry as Record<string, unknown>
-      const id = value.id
-      const name = value.name
-      const counter = value.counter
-      const nested = value.reg
-      if (
-        typeof id !== "number" ||
-        !Number.isSafeInteger(id) ||
-        id < 1 ||
-        id > 5 ||
-        typeof name !== "string" ||
-        typeof counter !== "number" ||
-        !Number.isSafeInteger(counter) ||
-        counter < 0 ||
-        typeof nested !== "object" ||
-        nested === null ||
-        Array.isArray(nested)
-      )
-        return resultErrorCreate(op, "Webauthn U2F registration is invalid.")
-      const registration = nested as Record<string, unknown>
-      const keyHandleResult = legacyBytesRead(registration.keyHandle ?? registration.key_handle)
-      const publicKeyResult = legacyBytesRead(registration.pubKey ?? registration.pub_key)
-      if (
-        !keyHandleResult.success ||
-        !publicKeyResult.success ||
-        publicKeyResult.data.length !== 65 ||
-        publicKeyResult.data[0] !== 4
-      )
-        return resultErrorCreate(op, "Webauthn U2F key is invalid.")
-      registrations.push({
-        counter,
-        id,
-        migrated: value.migrated === true,
-        name,
-        reg: { keyHandle: keyHandleResult.data, pubKey: publicKeyResult.data },
-        source: value,
-      })
-    }
-    return resultCreate(registrations)
-  } catch {
-    return resultErrorCreate(op, "Webauthn U2F data is invalid.")
+  const parsedResult = twoFactorPersistedJsonParse(
+    op,
+    data,
+    twoFactorWebAuthnU2fDataSchema,
+    "Webauthn U2F data is invalid.",
+  )
+  if (!parsedResult.success) return parsedResult
+  const registrations: LegacyU2fRegistration[] = []
+  for (const value of parsedResult.data) {
+    const keyHandleResult = legacyBytesRead(value.reg.keyHandle ?? value.reg.key_handle)
+    const publicKeyResult = legacyBytesRead(value.reg.pubKey ?? value.reg.pub_key)
+    if (
+      !keyHandleResult.success ||
+      !publicKeyResult.success ||
+      publicKeyResult.data.length !== 65 ||
+      publicKeyResult.data[0] !== 4
+    )
+      return resultErrorCreate(op, "Webauthn U2F key is invalid.")
+    registrations.push({
+      counter: value.counter,
+      id: value.id,
+      migrated: value.migrated === true,
+      name: value.name,
+      reg: { keyHandle: keyHandleResult.data, pubKey: publicKeyResult.data },
+      source: value,
+    })
   }
+  return resultCreate(registrations)
 }
 
 function legacyBytesRead(value: unknown): Result<Uint8Array> {

@@ -1,6 +1,8 @@
+import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { type WebAuthApiClient, webAuthApiClientCreate } from "../model/webAuthApiClientCreate.js"
 import { webAuthVerificationUserIdResolve } from "../model/webAuthVerificationUserIdResolve.js"
+import { type AuthVerifyEmailUrlQuery, authVerifyEmailUrlQuerySchema } from "./authVerifyEmailUrlQuerySchema.js"
 
 export interface AuthVerifyEmailViewProps {
   apiClient?: WebAuthApiClient
@@ -11,18 +13,31 @@ export interface AuthVerifyEmailViewProps {
   onNavigateToLogin?: () => void
 }
 
-function urlQueryParamsRead(): { userId: string; token: string; email: string } {
+function urlQueryParamsRead(): AuthVerifyEmailUrlQuery {
   if (typeof window === "undefined") return { userId: "", token: "", email: "" }
   try {
     const params = new URLSearchParams(window.location.search)
     return {
-      userId: params.get("userId") ?? params.get("user_id") ?? "",
-      token: params.get("token") ?? "",
-      email: params.get("email") ?? "",
+      userId:
+        urlQueryParamRead(
+          authVerifyEmailUrlQuerySchema.entries.userId,
+          params.get("userId") ?? params.get("user_id"),
+        ) ?? "",
+      token: urlQueryParamRead(authVerifyEmailUrlQuerySchema.entries.token, params.get("token")) ?? "",
+      email: urlQueryParamRead(authVerifyEmailUrlQuerySchema.entries.email, params.get("email")) ?? "",
     }
   } catch {
     return { userId: "", token: "", email: "" }
   }
+}
+
+function urlQueryParamRead<TSchema extends v.GenericSchema>(
+  schema: TSchema,
+  value: string | null,
+): v.InferOutput<TSchema> | undefined {
+  if (value === null) return undefined
+  const parsed = v.safeParse(schema, value)
+  return parsed.success ? parsed.output : undefined
 }
 
 export function authVerifyEmailViewStateCreate(props: AuthVerifyEmailViewProps = {}) {

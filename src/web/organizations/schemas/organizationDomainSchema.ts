@@ -1,7 +1,7 @@
 import * as v from "valibot"
 
 export const organizationDomainSchema = v.object({
-  creationDate: v.string(),
+  creationDate: v.optional(v.string()),
   domainName: v.string(),
   id: v.string(),
   jobRunCount: v.optional(v.number()),

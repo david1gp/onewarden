@@ -6,6 +6,8 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { TwoFactorEmailData } from "./twoFactorEmailData.js"
+import { twoFactorEmailDataSchema } from "./twoFactorEmailDataSchema.js"
+import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 
 export function twoFactorEmailLoginValidate(
@@ -30,28 +32,18 @@ export function twoFactorEmailLoginValidate(
         return
       }
 
-      let emailData: TwoFactorEmailData
-      try {
-        const parsed = JSON.parse(row.data) as Partial<TwoFactorEmailData>
-        if (
-          typeof parsed.email !== "string" ||
-          (typeof parsed.last_token !== "string" && parsed.last_token !== null) ||
-          typeof parsed.token_sent !== "number" ||
-          !Number.isSafeInteger(parsed.token_sent) ||
-          typeof parsed.attempts !== "number" ||
-          !Number.isSafeInteger(parsed.attempts) ||
-          parsed.attempts < 0
-        ) {
-          database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
-          validationResult = twoFactorEmailValidationError(op, "Could not decode EmailTokenData from string")
-          return
-        }
-        emailData = parsed as TwoFactorEmailData
-      } catch {
+      const emailDataResult = twoFactorPersistedJsonParse(
+        op,
+        row.data,
+        twoFactorEmailDataSchema,
+        "Could not decode EmailTokenData from string",
+      )
+      if (!emailDataResult.success) {
         database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
         validationResult = twoFactorEmailValidationError(op, "Could not decode EmailTokenData from string")
         return
       }
+      const emailData: TwoFactorEmailData = emailDataResult.data
 
       if (emailData.last_token === null) {
         validationResult = twoFactorEmailValidationError(op, "No token available!")

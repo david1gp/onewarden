@@ -239,7 +239,10 @@ test("webAuthApiClient makes two-factor challenge and setup API requests", async
   if (!authKey.success) throw new Error(authKey.errorMessage)
   expect(authKey.data.key).toBe("JBSWY3DPEHPK3PXP")
 
-  const authActivate = await client.twoFactorAuthenticatorActivate(token, { key: "JBSWY3DPEHPK3PXP", token: "123456" })
+  const authActivate = await client.twoFactorAuthenticatorActivate(token, {
+    key: "JBSWY3DPEHPK3PXP",
+    token: 123456,
+  })
   expect(authActivate.success).toBe(true)
 
   const authDisable = await client.twoFactorAuthenticatorDisable(token, {
@@ -299,4 +302,42 @@ test("webAuthApiClient makes two-factor challenge and setup API requests", async
 
   const deviceSettings = await client.twoFactorDeviceVerificationSettingsGet(token)
   expect(deviceSettings.success).toBe(true)
+
+  const authActivateRequest = requests.find(
+    (request) => request.url.endsWith("/api/two-factor/authenticator") && request.method === "PUT",
+  )
+  if (!authActivateRequest) throw new Error("Authenticator activation request was not captured.")
+  expect(JSON.parse(authActivateRequest.body)).toEqual({
+    key: "JBSWY3DPEHPK3PXP",
+    token: "123456",
+    masterPasswordHash: null,
+  })
+
+  const yubikeyActivateRequest = requests.find((request) => request.url.endsWith("/api/two-factor/yubikey"))
+  if (!yubikeyActivateRequest) throw new Error("YubiKey activation request was not captured.")
+  expect(JSON.parse(yubikeyActivateRequest.body)).toEqual({
+    key1: "abcdefghijkl",
+    nfc: false,
+    masterPasswordHash: null,
+  })
+
+  const disableRequest = requests.find((request) => request.url.endsWith("/api/two-factor/disable"))
+  if (!disableRequest) throw new Error("Two-factor disable request was not captured.")
+  expect(JSON.parse(disableRequest.body)).toEqual({ type: 1, masterPasswordHash: null })
+})
+
+test("webAuthApiClient rejects invalid two-factor request inputs before making requests", async () => {
+  let requestCount = 0
+  const client = webAuthApiClientCreate({
+    fetch: async () => {
+      requestCount += 1
+      return new Response(null, { status: 204 })
+    },
+  })
+
+  const invalid = await client.twoFactorYubikeyActivate("mock-access-token", {
+    key1: 123 as unknown as string,
+  })
+  expect(invalid).toMatchObject({ success: false, code: "platform.invalid-request", statusCode: 400 })
+  expect(requestCount).toBe(0)
 })

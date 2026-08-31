@@ -95,6 +95,12 @@ test("extensionBitwardenApiClientCreate returns errors for invalid responses and
   const invalidResult = await invalidClient.sync({ accessToken: "access-token" })
   expect(invalidResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
 
+  const malformedCipherClient = extensionBitwardenApiClientCreate(environmentResult.data, {
+    fetch: async () => Response.json({ ...sync, ciphers: [{ ...cipher, revisionDate: 42 }] }),
+  })
+  const malformedCipherResult = await malformedCipherClient.sync({ accessToken: "access-token" })
+  expect(malformedCipherResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+
   const failedClient = extensionBitwardenApiClientCreate(environmentResult.data, {
     fetch: async () => {
       throw new Error("network down")

@@ -11,7 +11,7 @@ import { extensionOrganizationKeyDecrypt } from "../crypto/extensionOrganization
 import { extensionPersonalLoginCipherDecrypt } from "../crypto/extensionPersonalLoginCipherDecrypt.js"
 import { extensionPersonalLoginCipherEncrypt } from "../crypto/extensionPersonalLoginCipherEncrypt.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
-import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
+import type { ExtensionProfile } from "../crypto/extensionProfileSchema.js"
 import { extensionUserKeyUnlock } from "../crypto/extensionUserKeyUnlock.js"
 import { extensionUserPrivateKeyDecrypt } from "../crypto/extensionUserPrivateKeyDecrypt.js"
 import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
@@ -110,22 +110,14 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
       return extensionPersonalLoginCipherDecrypt(cipher, userKey, organizationKeys)
     })
 
-  const organizationKeysReplace = (profile: unknown): Promise<Result<void>> =>
+  const organizationKeysReplace = (profile: ExtensionProfile): Promise<Result<void>> =>
     operationRun(async () => {
       const op = "extensionVaultSession.organizationKeysReplace"
       if (userKey === null) {
         return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
       }
-      const parsed = v.safeParse(extensionProfileSchema, profile)
-      if (!parsed.success) {
-        return resultErrorCreate(op, "Sync profile is invalid.", {
-          code: "platform.invalid-request",
-          statusCode: 400,
-          errorData: v.summarize(parsed.issues),
-        })
-      }
       const nextKeys = new Map<string, Uint8Array>()
-      for (const organization of parsed.output.organizations) {
+      for (const organization of profile.organizations) {
         if (organization.status !== 2) continue
         if (organization.key === undefined || organization.key === null || organization.key.length === 0) continue
         if (userPrivateKey === null) {

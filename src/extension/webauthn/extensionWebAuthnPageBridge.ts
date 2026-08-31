@@ -42,7 +42,7 @@ export function extensionWebAuthnPageBridgeInstall(
   }
 
   const credentials = context.navigator.credentials
-  if (credentials === undefined) return () => {}
+  if (credentials === undefined || credentials === null) return () => {}
   const originalCreate = credentials.create
   const originalGet = credentials.get
   const nativeCreate = credentials.create.bind(credentials)
