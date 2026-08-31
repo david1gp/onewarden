@@ -8,8 +8,8 @@ import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionCborEncode } from "./extensionCborEncode.js"
 import { extensionPasskeyAuthenticatorDataCreate } from "./extensionPasskeyAuthenticatorDataCreate.js"
 import { extensionPasskeyCredentialCreateRequestSchema } from "./extensionPasskeyCredentialCreateRequestSchema.js"
-import { extensionPasskeyCredentialIdDecode } from "./extensionPasskeyCredentialIdDecode.js"
 import { extensionPasskeyCredentialIdCreate } from "./extensionPasskeyCredentialIdCreate.js"
+import { extensionPasskeyCredentialIdDecode } from "./extensionPasskeyCredentialIdDecode.js"
 import { extensionPasskeyRpIdNormalize } from "./extensionPasskeyRpIdNormalize.js"
 
 type ExtensionPasskeyCredentialCreateResult = {

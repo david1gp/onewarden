@@ -1,8 +1,8 @@
 import { type Result } from "#result"
 import { base64UrlDecode } from "../../shared/crypto/base64UrlDecode.js"
+import { sha256Digest } from "../../shared/crypto/sha256Digest.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
-import { sha256Digest } from "../../shared/crypto/sha256Digest.js"
 
 export async function extensionPasskeyClientDataHashCreate(clientDataJSON: string): Promise<Result<Uint8Array>> {
   const op = "extensionPasskeyClientDataHashCreate"

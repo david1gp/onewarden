@@ -1,6 +1,6 @@
 import { type Result } from "#result"
-import { resultCreate } from "../../shared/result/resultCreate.js"
 import { secureRandomBytes } from "../../shared/crypto/secureRandomBytes.js"
+import { resultCreate } from "../../shared/result/resultCreate.js"
 
 export function extensionPasskeyCredentialIdCreate(): Result<{ id: string; bytes: Uint8Array }> {
   const randomResult = secureRandomBytes(16)
