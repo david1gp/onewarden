@@ -13,11 +13,13 @@ import type { BitwardenPasswordTokenResponse } from "../../../src/shared/api/bit
 import type { BitwardenPreloginResponse } from "../../../src/shared/api/bitwardenPreloginResponseSchema.js"
 import type { BitwardenRefreshTokenResponse } from "../../../src/shared/api/bitwardenRefreshTokenResponseSchema.js"
 import type { BitwardenSyncEnvelope } from "../../../src/shared/api/bitwardenSyncEnvelopeSchema.js"
+import type { BitwardenEncryptedLoginCipher } from "../../../src/shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import organizationFixture from "../../fixtures/extensionOrganizationFixtures.json"
 import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 const passwordLogin = fixtures.passwordLogin
-const userKey = new Uint8Array(passwordLogin.userKey)
+const userKey = Uint8Array.from({ length: 64 }, (_, index) => index)
 const nowValue = 1_756_368_000_000
 
 const prelogin: BitwardenPreloginResponse = {
@@ -54,6 +56,20 @@ function tokenCreate(): BitwardenPasswordTokenResponse {
         Salt: passwordLogin.email,
       },
       Object: "userDecryptionOptions",
+    },
+  }
+}
+
+function organizationTokenCreate(): BitwardenPasswordTokenResponse {
+  return {
+    ...tokenCreate(),
+    AccountKeys: {
+      publicKeyEncryptionKeyPair: {
+        wrappedPrivateKey: organizationFixture.userPrivateKeyEnc,
+        publicKey: null,
+        Object: "publicKeyEncryptionKeyPair",
+      },
+      Object: "privateKeys",
     },
   }
 }
@@ -243,6 +259,104 @@ test("extensionBackgroundServiceCreate performs conditional and manual sync whil
   expect(syncCalls).toBe(1)
   expect((await service.manualSync()).success).toBe(true)
   expect(syncCalls).toBe(2)
+})
+
+test("extensionBackgroundServiceCreate syncs authorized organization login ciphers with their permissions", async () => {
+  const context = serviceCreate()
+  const envelope: BitwardenSyncEnvelope = {
+    profile: {
+      organizations: [
+        { id: organizationFixture.organizationId, key: organizationFixture.organizationKeyEnc, status: 2 },
+      ],
+    },
+    folders: [],
+    collections: [],
+    policies: [],
+    ciphers: [organizationFixture.cipher as unknown as BitwardenEncryptedLoginCipher],
+    sends: [],
+    object: "sync",
+  }
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(organizationTokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate(envelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const syncResult = await service.fullSync()
+  expect(syncResult.success).toBe(true)
+  if (!syncResult.success) return
+  expect(syncResult.data.snapshot.ciphers).toHaveLength(1)
+  expect(syncResult.data.snapshot.ciphers[0]).toMatchObject({
+    id: "organization-cipher",
+    organizationId: organizationFixture.organizationId,
+    name: "Organization fixture login",
+    login: { username: "organization-user", password: "organization-password" },
+    edit: true,
+    viewPassword: true,
+  })
+})
+
+test("extensionBackgroundServiceCreate excludes ciphers from unconfirmed organizations", async () => {
+  const context = serviceCreate()
+  const pendingCipher = {
+    ...organizationFixture.cipher,
+    id: "pending-organization-cipher",
+    organizationId: "00000000-0000-4000-8000-000000000011",
+  } as unknown as BitwardenEncryptedLoginCipher
+  const missingStatusCipher = {
+    ...organizationFixture.cipher,
+    id: "missing-status-organization-cipher",
+    organizationId: "00000000-0000-4000-8000-000000000012",
+  } as unknown as BitwardenEncryptedLoginCipher
+  const envelope: BitwardenSyncEnvelope = {
+    profile: {
+      organizations: [
+        { id: organizationFixture.organizationId, key: organizationFixture.organizationKeyEnc, status: 2 },
+        {
+          id: "00000000-0000-4000-8000-000000000011",
+          key: organizationFixture.organizationKeyEnc,
+          status: 1,
+        },
+        { id: "00000000-0000-4000-8000-000000000012", key: organizationFixture.organizationKeyEnc },
+      ],
+    },
+    folders: [],
+    collections: [],
+    policies: [],
+    ciphers: [
+      organizationFixture.cipher as unknown as BitwardenEncryptedLoginCipher,
+      pendingCipher,
+      missingStatusCipher,
+    ],
+    sends: [],
+    object: "sync",
+  }
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(organizationTokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate(envelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const syncResult = await service.fullSync()
+  expect(syncResult).toMatchObject({ success: true, data: { snapshot: { ciphers: [{ id: "organization-cipher" }] } } })
 })
 
 test("extensionBackgroundServiceCreate applies inactivity and restart lock/logout actions through alarms", async () => {

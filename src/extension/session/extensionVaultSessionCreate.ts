@@ -4,6 +4,7 @@ import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEn
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
+import { extensionOrganizationKeyDecrypt } from "../crypto/extensionOrganizationKeyDecrypt.js"
 import { extensionPersonalLoginCipherDecrypt } from "../crypto/extensionPersonalLoginCipherDecrypt.js"
 import { extensionPersonalLoginCipherEncrypt } from "../crypto/extensionPersonalLoginCipherEncrypt.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
@@ -11,17 +12,25 @@ import { extensionEncryptedPayloadDecrypt } from "../crypto/extensionEncryptedPa
 import { extensionEncryptedPayloadEncrypt } from "../crypto/extensionEncryptedPayloadEncrypt.js"
 import type { ExtensionEncryptedPayload } from "../storage/extensionEncryptedPayloadSchema.js"
 import { extensionUserKeyUnlock } from "../crypto/extensionUserKeyUnlock.js"
+import { extensionUserPrivateKeyDecrypt } from "../crypto/extensionUserPrivateKeyDecrypt.js"
+import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 
 export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () => number = Date.now) {
   let userKey: Uint8Array | null = null
+  let userPrivateKey: Uint8Array | null = null
+  let organizationKeys = new Map<string, Uint8Array>()
   let operationChain: Promise<void> = Promise.resolve()
 
   const clearUserKey = (): void => {
     userKey?.fill(0)
+    userPrivateKey?.fill(0)
+    for (const key of organizationKeys.values()) key.fill(0)
     userKey = null
+    userPrivateKey = null
+    organizationKeys = new Map()
   }
 
   const operationRun = <T>(operation: () => Promise<Result<T>>): Promise<Result<T>> => {
@@ -48,13 +57,29 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
       }
       const userKeyResult = await extensionUserKeyUnlock(parsed.output)
       if (!userKeyResult.success) return userKeyResult
+      const accountPrivateKey = parsed.output.token.AccountKeys?.publicKeyEncryptionKeyPair.wrappedPrivateKey
+      const encryptedPrivateKey =
+        accountPrivateKey !== undefined && accountPrivateKey !== null && accountPrivateKey.length > 0
+          ? accountPrivateKey
+          : parsed.output.token.PrivateKey
+      let userPrivateKeyResult: Result<Uint8Array> | null = null
+      if (encryptedPrivateKey !== null && encryptedPrivateKey !== undefined && encryptedPrivateKey.length > 0) {
+        userPrivateKeyResult = await extensionUserPrivateKeyDecrypt(encryptedPrivateKey, userKeyResult.data)
+        if (!userPrivateKeyResult.success) {
+          userKeyResult.data.fill(0)
+          return userPrivateKeyResult
+        }
+      }
+      const privateKeyBytes = userPrivateKeyResult?.success ? userPrivateKeyResult.data : null
       const stateResult = await storage.sessionStateSave({ status: "unlocked", unlockedAt: now() })
       if (!stateResult.success) {
         userKeyResult.data.fill(0)
+        privateKeyBytes?.fill(0)
         return stateResult
       }
       clearUserKey()
       userKey = userKeyResult.data
+      userPrivateKey = privateKeyBytes
       return resultCreate(undefined)
     })
 
@@ -80,7 +105,40 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
           statusCode: 401,
         })
       }
-      return extensionPersonalLoginCipherDecrypt(cipher, userKey)
+      return extensionPersonalLoginCipherDecrypt(cipher, userKey, organizationKeys)
+    })
+
+  const organizationKeysReplace = (profile: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionVaultSession.organizationKeysReplace"
+      if (userKey === null) {
+        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
+      }
+      const parsed = v.safeParse(extensionProfileSchema, profile)
+      if (!parsed.success) {
+        return resultErrorCreate(op, "Sync profile is invalid.", {
+          code: "platform.invalid-request",
+          statusCode: 400,
+          errorData: v.summarize(parsed.issues),
+        })
+      }
+      const nextKeys = new Map<string, Uint8Array>()
+      for (const organization of parsed.output.organizations) {
+        if (organization.status !== 2) continue
+        if (organization.key === undefined || organization.key === null || organization.key.length === 0) continue
+        if (userPrivateKey === null) {
+          return resultErrorCreate(op, "Organization private key is unavailable.", {
+            code: "platform.unauthorized",
+            statusCode: 401,
+          })
+        }
+        const keyResult = await extensionOrganizationKeyDecrypt(organization.key, userPrivateKey)
+        if (!keyResult.success) return keyResult
+        nextKeys.set(organization.id, keyResult.data)
+      }
+      for (const key of organizationKeys.values()) key.fill(0)
+      organizationKeys = nextKeys
+      return resultCreate(undefined)
     })
 
   const personalLoginCipherEncrypt = (
@@ -124,6 +182,7 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
     lock,
     logout,
     personalLoginCipherDecrypt,
+    organizationKeysReplace,
     personalLoginCipherEncrypt,
     encryptedPayloadEncrypt,
     encryptedPayloadDecrypt,

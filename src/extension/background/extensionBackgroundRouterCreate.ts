@@ -221,7 +221,7 @@ function extensionLoginViewDataCreate(cipher: ExtensionPersonalLoginCipher): Ext
   if (cipher.login.username !== null) {
     copyableFields.push({ key: "username", label: "Username", value: cipher.login.username })
   }
-  if (cipher.login.password !== null) {
+  if (cipher.viewPassword !== false && cipher.login.password !== null) {
     copyableFields.push({ key: "password", label: "Password", value: cipher.login.password, sensitive: true })
   }
   if (uri !== null) copyableFields.push({ key: "uri", label: "URI", value: uri })
@@ -483,7 +483,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     try {
       return await options.scripting.executeScript(
         { tabId, ...(request.frameId === undefined ? {} : { frameId: request.frameId }) },
-        { username: cipher.login.username, password: cipher.login.password },
+        { username: cipher.login.username, password: cipher.viewPassword === false ? null : cipher.login.password },
       )
     } catch {
       return unavailable(op, "Active page could not be filled.")

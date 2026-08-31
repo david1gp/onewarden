@@ -15,6 +15,7 @@ import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLogin
 import { extensionCreateLoginRequestSchema } from "../create/extensionCreateLoginRequestSchema.js"
 import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
+import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import {
   type ExtensionPersonalLoginCipher,
   extensionPersonalLoginCipherSchema,
@@ -172,23 +173,32 @@ function syncCipherWireCreate(
 ): BitwardenEncryptedLoginCipher | null {
   const rawCipher = cipher as unknown as Record<string, unknown>
   if (cipher.type !== 1 || cipher.login === undefined || cipher.login === null) return null
-  if (rawCipher.organizationId !== undefined && rawCipher.organizationId !== null) return null
   const revision =
     typeof rawCipher.revisionDate === "string" && rawCipher.revisionDate.length > 0
       ? rawCipher.revisionDate
       : String(revisionDate)
   const folderId =
     rawCipher.folderId === null || typeof rawCipher.folderId === "string" ? (rawCipher.folderId ?? null) : null
+  const organizationId =
+    typeof rawCipher.organizationId === "string" || rawCipher.organizationId === null ? rawCipher.organizationId : null
+  const key = typeof rawCipher.key === "string" || rawCipher.key === null ? rawCipher.key : null
+  const collectionIds = Array.isArray(rawCipher.collectionIds)
+    ? rawCipher.collectionIds.filter((value): value is string => typeof value === "string")
+    : undefined
   return {
+    ...rawCipher,
     object: "cipherDetails",
     id: cipher.id,
     type: 1,
     revisionDate: revision,
-    deletedDate: null,
-    organizationId: null,
+    deletedDate:
+      typeof rawCipher.deletedDate === "string" || rawCipher.deletedDate === null ? rawCipher.deletedDate : null,
+    organizationId,
     folderId,
     name: cipher.name,
     notes: cipher.notes,
+    key,
+    ...(collectionIds === undefined ? {} : { collectionIds }),
     login: cipher.login,
     fields: cipher.fields ?? [],
   }
@@ -525,9 +535,21 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     revisionDate: number,
   ): Promise<Result<ExtensionSyncSnapshot>> => {
     const ciphers: ExtensionPersonalLoginCipher[] = []
+    const organizationKeysResult = await options.vaultSession.organizationKeysReplace(envelope.profile)
+    if (!organizationKeysResult.success) return organizationKeysResult
+    const profileParsed = v.safeParse(extensionProfileSchema, envelope.profile)
+    if (!profileParsed.success)
+      return internal("extensionBackgroundService.syncSnapshotCreate", "Sync profile is invalid.")
+    const authorizedOrganizationIds = new Set(
+      profileParsed.output.organizations
+        .filter((organization) => organization.status === 2)
+        .map((organization) => organization.id),
+    )
     for (const cipher of envelope.ciphers) {
       const wireCipher = syncCipherWireCreate(cipher, revisionDate)
       if (wireCipher === null) continue
+      const organizationId = wireCipher.organizationId ?? null
+      if (organizationId !== null && !authorizedOrganizationIds.has(organizationId)) continue
       const decryptedResult = await options.vaultSession.personalLoginCipherDecrypt(wireCipher)
       if (!decryptedResult.success) return decryptedResult
       ciphers.push(decryptedResult.data)

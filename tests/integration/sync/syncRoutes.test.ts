@@ -17,6 +17,7 @@ import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
+import organizationFixture from "../../fixtures/extensionOrganizationFixtures.json"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -154,6 +155,7 @@ async function contextCreate(): Promise<{
       deletionDate: "9999-12-31T23:59:59.999Z",
       disabled: false,
       hideEmail: null,
+      emails: null,
     }).success,
   ).toBe(true)
   const clock = clockTestCreate(currentDate)
@@ -240,6 +242,37 @@ test("sync hides SSH ciphers for clients before the SSH-compatible version and c
   expect((await excludedDomainsResponse.json()).domains).toBeNull()
 })
 
+test("sync includes confirmed organization login ciphers with access permissions", async () => {
+  const context = await contextCreate()
+  const organizationId = organizationFixture.organizationId
+  databaseOrganizationCipherSeed(context.database, organizationId)
+
+  const response = await context.app.request("https://vault.example/api/sync", {
+    headers: { authorization: `Bearer ${context.token}`, "Bitwarden-Client-Version": "2024.12.0" },
+  })
+  expect(response.status).toBe(200)
+  const body = (await response.json()) as {
+    ciphers: { id: string; organizationId: string; key: string; edit: boolean; viewPassword: boolean }[]
+    profile: { organizations: { id: string; key: string; status: number }[] }
+  }
+  expect(body.profile.organizations).toContainEqual(
+    expect.objectContaining({
+      id: organizationId,
+      key: organizationFixture.organizationKeyEnc,
+      status: organizationMembershipStatus.confirmed,
+    }),
+  )
+  expect(body.ciphers).toContainEqual(
+    expect.objectContaining({
+      id: "sync-organization-cipher",
+      organizationId,
+      key: organizationFixture.cipher.key,
+      edit: true,
+      viewPassword: true,
+    }),
+  )
+})
+
 test("domain settings aliases persist equivalent domains, exclusions, profile composition, and revision dates", async () => {
   const context = await contextCreate()
   const updateResponse = await context.app.request("https://vault.example/api/settings/domains", {
@@ -310,4 +343,42 @@ function databaseProfileCompositionSeed(database: DatabaseConnection): void {
     "encrypted-secret",
     0,
   ])
+}
+
+function databaseOrganizationCipherSeed(database: DatabaseConnection, organizationId: string): void {
+  database.run(
+    "INSERT INTO organizations (uuid, name, billing_email, private_key, public_key) VALUES (?, ?, ?, ?, ?)",
+    [organizationId, "Sync organization", "billing@example.com", "organization-private-key", "organization-public-key"],
+  )
+  database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, akey, status, atype, access_all) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [
+      "sync-organization-membership",
+      "sync-user",
+      organizationId,
+      organizationFixture.organizationKeyEnc,
+      organizationMembershipStatus.confirmed,
+      organizationMembershipType.user,
+      1,
+    ],
+  )
+  const cipher = organizationFixture.cipher
+  expect(
+    cipherSave(database, {
+      uuid: "sync-organization-cipher",
+      createdAt: cipher.creationDate,
+      updatedAt: cipher.revisionDate,
+      userUuid: null,
+      organizationUuid: organizationId,
+      key: cipher.key,
+      type: cipher.type,
+      name: cipher.name,
+      notes: cipher.notes,
+      fields: JSON.stringify(cipher.fields),
+      data: JSON.stringify(cipher.login),
+      passwordHistory: null,
+      deletedAt: null,
+      reprompt: 0,
+    }).success,
+  ).toBe(true)
 }

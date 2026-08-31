@@ -1,21 +1,21 @@
 import * as v from "valibot"
 
-const bitwardenPasswordTokenKdfSchema = v.object({
+const bitwardenPasswordTokenKdfSchema = v.looseObject({
   KdfType: v.number(),
   Iterations: v.number(),
   Memory: v.nullable(v.number()),
   Parallelism: v.nullable(v.number()),
 })
 
-const bitwardenPasswordTokenUnlockSchema = v.object({
+const bitwardenPasswordTokenUnlockSchema = v.looseObject({
   Kdf: bitwardenPasswordTokenKdfSchema,
-  MasterKeyEncryptedUserKey: v.string(),
-  MasterKeyWrappedUserKey: v.string(),
+  MasterKeyEncryptedUserKey: v.optional(v.string()),
+  MasterKeyWrappedUserKey: v.optional(v.string()),
   Salt: v.string(),
 })
 
-const bitwardenPasswordTokenAccountKeysSchema = v.object({
-  publicKeyEncryptionKeyPair: v.object({
+const bitwardenPasswordTokenAccountKeysSchema = v.looseObject({
+  publicKeyEncryptionKeyPair: v.looseObject({
     wrappedPrivateKey: v.nullable(v.string()),
     publicKey: v.nullable(v.string()),
     Object: v.literal("publicKeyEncryptionKeyPair"),
@@ -38,7 +38,7 @@ export const bitwardenPasswordTokenResponseSchema = v.looseObject({
   MasterPasswordPolicy: v.looseObject({ Object: v.literal("masterPasswordPolicy") }),
   scope: v.string(),
   AccountKeys: v.nullable(bitwardenPasswordTokenAccountKeysSchema),
-  UserDecryptionOptions: v.object({
+  UserDecryptionOptions: v.looseObject({
     HasMasterPassword: v.boolean(),
     MasterPasswordUnlock: v.nullable(bitwardenPasswordTokenUnlockSchema),
     Object: v.literal("userDecryptionOptions"),

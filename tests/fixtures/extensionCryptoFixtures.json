@@ -8,20 +8,22 @@
       "memory": null,
       "parallelism": null
     },
-    "masterKey": [
-      33, 118, 243, 123, 185, 4, 184, 155, 110, 136, 149, 89, 202, 76, 209, 206, 239, 172, 242, 45, 212, 138, 51, 3,
-      145, 19, 29, 222, 3, 90, 93, 47
-    ],
-    "masterPasswordHash": [
-      62, 179, 248, 16, 224, 102, 81, 110, 238, 232, 59, 220, 190, 232, 24, 219, 209, 247, 43, 96, 111, 143, 125, 238,
-      136, 129, 80, 127, 122, 76, 205, 150
-    ],
-    "userKey": [
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-      31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
-      59, 60, 61, 62, 63
-    ],
+    "masterKeySha256": "295e35a163b3c4b7362aa81905168228243569ddc0caeef629b092d8347c474d",
+    "masterPasswordHashSha256": "8702dd683e9c0c641bb7e44e68d8ebb613b4ba660497d742bde582fe4ede676d",
+    "userKeySha256": "fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108",
     "userKeyEnc": "2.Dw4NDAsKCQgHBgUEAwIBAA==|rW+026GclEdqJCakiU6owKkmg0RITIq+byx6oK4PyZchSTT2AnWmAlPdIgsr8tycftFPivnSoMSiJ/s4DIadljdQkGVRkmcKlPa210wu940=|/JczXl/ea2oCdjznCyLra3gWxsnkkSPL+rIkZHYEuoI=",
     "fieldEnc": "2.EBESExQVFhcYGRobHB0eHw==|xICsnGRD+ACs6f/ge+bStw==|qRrQThax5Onxb0HIpWbXqtTJGTrEE6b5jTv75+wL+eo="
+  },
+  "argon2Login": {
+    "email": "User@example.com",
+    "password": "correct horse battery staple",
+    "kdf": {
+      "kdfType": 1,
+      "iterations": 3,
+      "memory": 64,
+      "parallelism": 2
+    },
+    "masterKeySha256": "49efd574a5bf04049f99fd36b68d7b9edd6f564d476c7f546cf2c9c98375a1c4",
+    "userKeyEnc": "2.Z+O6ztuQrOw7pfTISExxhg==|vIhthsybew+lFU7COKSTH0dyCmxWcjgIioFXOj+yrXTJKJAKqL4UdEOptHpQXzXX4bIa8Tz9G95zD0/iS2vujPdN6xejHxf3kWlfgBKbC8Y=|mytl76AqXXS53hg1vyINlE1P+aRlzp+65vjvIBVSSts="
   }
 }

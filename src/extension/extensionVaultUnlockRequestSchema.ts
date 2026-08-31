@@ -4,7 +4,7 @@ import { bitwardenPreloginResponseSchema } from "../shared/api/bitwardenPrelogin
 import { extensionEmailSchema } from "./extensionEmailSchema.js"
 import { extensionPasswordSchema } from "./extensionPasswordSchema.js"
 
-export const extensionVaultUnlockRequestSchema = v.object({
+export const extensionVaultUnlockRequestSchema = v.looseObject({
   email: extensionEmailSchema,
   password: extensionPasswordSchema,
   prelogin: v.optional(bitwardenPreloginResponseSchema),

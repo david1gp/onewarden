@@ -36,6 +36,14 @@ export const extensionPersonalLoginCipherSchema = v.looseObject({
   favorite: v.optional(v.boolean()),
   key: v.optional(nullableStringSchema),
   collectionIds: v.optional(v.array(v.string())),
+  edit: v.optional(v.boolean()),
+  viewPassword: v.optional(v.boolean()),
+  permissions: v.optional(
+    v.looseObject({
+      delete: v.optional(v.boolean()),
+      restore: v.optional(v.boolean()),
+    }),
+  ),
   login: extensionPersonalLoginCipherLoginSchema,
   fields: v.array(extensionPersonalLoginCipherFieldSchema),
 })

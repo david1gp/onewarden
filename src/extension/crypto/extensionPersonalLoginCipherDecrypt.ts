@@ -6,23 +6,16 @@ import {
 } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionCipherKeyResolve } from "./extensionCipherKeyResolve.js"
 import { extensionEncStringDecryptText } from "./extensionEncStringDecryptText.js"
 import { extensionPersonalLoginCipherMap } from "./extensionPersonalLoginCipherMap.js"
-import {
-  type ExtensionPersonalLoginCipher,
-  extensionPersonalLoginCipherSchema,
-} from "./extensionPersonalLoginCipherSchema.js"
-
-function unsupportedResult(message: string): Result<ExtensionPersonalLoginCipher> {
-  return resultErrorCreate("extensionPersonalLoginCipherDecrypt", message, {
-    code: "extension.unsupported",
-    statusCode: 400,
-  })
-}
+import type { ExtensionPersonalLoginCipher } from "./extensionPersonalLoginCipherSchema.js"
+import { extensionPersonalLoginCipherSchema } from "./extensionPersonalLoginCipherSchema.js"
 
 export async function extensionPersonalLoginCipherDecrypt(
   cipher: BitwardenEncryptedLoginCipher,
   userKey: Uint8Array,
+  organizationKeys: ReadonlyMap<string, Uint8Array> = new Map(),
 ): Promise<Result<ExtensionPersonalLoginCipher>> {
   const op = "extensionPersonalLoginCipherDecrypt"
   const parsed = v.safeParse(bitwardenEncryptedLoginCipherSchema, cipher)
@@ -34,19 +27,28 @@ export async function extensionPersonalLoginCipherDecrypt(
     })
   }
   const encryptedCipher = parsed.output
-  if (encryptedCipher.organizationId !== undefined && encryptedCipher.organizationId !== null) {
-    return unsupportedResult("Organization ciphers are not supported.")
-  }
   if (Array.isArray(encryptedCipher.login.fido2Credentials) && encryptedCipher.login.fido2Credentials.length > 0) {
-    return unsupportedResult("Passkey fields are not supported.")
+    return resultErrorCreate(op, "Passkey fields are not supported.", {
+      code: "extension.unsupported",
+      statusCode: 400,
+    })
   }
-  if (encryptedCipher.key !== undefined && encryptedCipher.key !== null) {
-    return unsupportedResult("Cipher-specific keys are not supported.")
+  if (encryptedCipher.login.totp !== null) {
+    return resultErrorCreate(op, "TOTP fields are not supported.", {
+      code: "extension.unsupported",
+      statusCode: 400,
+    })
   }
-  if (encryptedCipher.login.totp !== null) return unsupportedResult("TOTP fields are not supported.")
 
-  const decryptedResult = await extensionPersonalLoginCipherMap(encryptedCipher, (value) =>
-    extensionEncStringDecryptText(value, userKey),
+  const cipherKeyResult = await extensionCipherKeyResolve(encryptedCipher, userKey, organizationKeys)
+  if (!cipherKeyResult.success) return cipherKeyResult
+  const cipherForMapping =
+    encryptedCipher.viewPassword === false
+      ? { ...encryptedCipher, login: { ...encryptedCipher.login, password: null } }
+      : encryptedCipher
+
+  const decryptedResult = await extensionPersonalLoginCipherMap(cipherForMapping, (value) =>
+    extensionEncStringDecryptText(value, cipherKeyResult.data),
   )
   if (!decryptedResult.success) return decryptedResult
   const outputResult = v.safeParse(extensionPersonalLoginCipherSchema, decryptedResult.data)

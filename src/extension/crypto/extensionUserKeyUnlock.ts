@@ -75,6 +75,17 @@ function topLevelPreloginKdfRead(prelogin: BitwardenPreloginResponse): KdfMetada
   }
 }
 
+function userKeyAliasRead(
+  unlock: NonNullable<BitwardenPasswordTokenResponse["UserDecryptionOptions"]["MasterPasswordUnlock"]>,
+  legacyKey: string | undefined,
+): string | null {
+  const aliases = [unlock.MasterKeyEncryptedUserKey, unlock.MasterKeyWrappedUserKey, legacyKey]
+  for (const alias of aliases) {
+    if (typeof alias === "string" && alias.length > 0) return alias
+  }
+  return null
+}
+
 export async function extensionUserKeyUnlock(request: unknown): Promise<Result<Uint8Array>> {
   const op = "extensionUserKeyUnlock"
   const parsed = v.safeParse(extensionVaultUnlockRequestSchema, request)
@@ -109,10 +120,8 @@ export async function extensionUserKeyUnlock(request: unknown): Promise<Result<U
   }
   if (normalizedEmailRead(unlock.Salt) !== email)
     return invalidResult(op, "Vault unlock salt does not match the account email.")
-  if (unlock.MasterKeyEncryptedUserKey.length === 0) {
-    if (unlock.MasterKeyWrappedUserKey.length > 0) {
-      return unsupportedResult(op, "Wrapped user keys are not supported by this extension path.")
-    }
+  const encryptedUserKey = userKeyAliasRead(unlock, token.Key)
+  if (encryptedUserKey === null) {
     return invalidResult(op, "Token does not contain an encrypted user key.")
   }
 
@@ -137,7 +146,7 @@ export async function extensionUserKeyUnlock(request: unknown): Promise<Result<U
   encryptionKeyResult.data.fill(0)
   authenticationKeyResult.data.fill(0)
 
-  const userKeyResult = await extensionEncStringDecrypt(unlock.MasterKeyEncryptedUserKey, stretchedMasterKey)
+  const userKeyResult = await extensionEncStringDecrypt(encryptedUserKey, stretchedMasterKey)
   stretchedMasterKey.fill(0)
   if (!userKeyResult.success) return userKeyResult
   if (userKeyResult.data.byteLength !== 64) {

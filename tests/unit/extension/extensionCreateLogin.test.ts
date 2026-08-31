@@ -21,7 +21,7 @@ import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.
 import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 
 const passwordLogin = fixtures.passwordLogin
-const userKey = new Uint8Array(passwordLogin.userKey)
+const userKey = Uint8Array.from({ length: 64 }, (_, index) => index)
 const nowValue = 1_756_368_000_000
 
 const prelogin: BitwardenPreloginResponse = {
