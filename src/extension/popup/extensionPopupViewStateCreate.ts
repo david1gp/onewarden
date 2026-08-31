@@ -3,9 +3,9 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
 import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
-import { extensionPopupLoginSearchMatch } from "./extensionPopupLoginSearchMatch.js"
 import { extensionPopupStatus } from "./ExtensionPopupStatus.js"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
+import { extensionPopupLoginSearchMatch } from "./extensionPopupLoginSearchMatch.js"
 
 /** Component-local view state and command glue for the popup vault view. */
 export function extensionPopupViewStateCreate(
@@ -36,10 +36,12 @@ export function extensionPopupViewStateCreate(
   const siteLabel = createMemo(() => hostname() ?? "No active site")
 
   const fieldIsCopied = (field: ExtensionPopupCopyableField) => model().copiedFieldKey === field.key
+  const totpIsCopied = (login: ExtensionPopupLogin) => model().copiedFieldKey === `totp:${login.id}`
 
   const loginFill = (login: ExtensionPopupLogin) => commands().loginFill(login)
   const fieldCopy = (login: ExtensionPopupLogin, field: ExtensionPopupCopyableField) =>
     commands().fieldCopy(login, field)
+  const totpCopy = (login: ExtensionPopupLogin) => commands().totpCopy(login)
   const loginAdd = () => commands().loginAdd()
   const vaultSync = () => commands().vaultSync()
   const vaultLock = () => commands().vaultLock()
@@ -71,8 +73,10 @@ export function extensionPopupViewStateCreate(
     hasNoLogins,
     visibleLogins,
     fieldIsCopied,
+    totpIsCopied,
     loginFill,
     fieldCopy,
+    totpCopy,
     loginAdd,
     vaultSync,
     vaultLock,

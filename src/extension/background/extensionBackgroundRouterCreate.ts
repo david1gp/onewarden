@@ -1,35 +1,36 @@
 import * as v from "valibot"
 import { type Result } from "#result"
-import { type ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
+import { resultCreate } from "../../shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { totpCodeCreate } from "../../shared/totp/totpCodeCreate.js"
+import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import {
   type ExtensionEnvironmentSource,
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
-import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
-import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
-import { extensionFullWindowViewModelCreate } from "../fullwindow/extensionFullWindowViewModelCreate.js"
-import type { ExtensionFullWindowViewModel } from "../fullwindow/ExtensionFullWindowViewModel.js"
-import type { ExtensionPopupLogin } from "../popup/ExtensionPopupLogin.js"
-import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
-import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
+import { type ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
-import { extensionActiveTabContextSchema, type ExtensionActiveTabContext } from "./extensionActiveTabContextSchema.js"
-import type { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
-import type { ExtensionRuntimeAdapter } from "./extensionRuntimeAdapter.js"
-import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
-import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
-import type { ExtensionScriptingAdapter } from "./extensionScriptingAdapter.js"
-import { extensionPersonalLoginSiteMatch } from "./extensionPersonalLoginSiteMatch.js"
 import type { ExtensionLoginFillData } from "../fill/extensionLoginFillDataSchema.js"
 import type { ExtensionLoginFillRequest } from "../fill/extensionLoginFillRequestSchema.js"
+import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
+import type { ExtensionFullWindowViewModel } from "../fullwindow/ExtensionFullWindowViewModel.js"
+import { extensionFullWindowViewModelCreate } from "../fullwindow/extensionFullWindowViewModelCreate.js"
 import {
-  extensionRuntimeMessageSchema,
   type ExtensionRuntimeMessage,
+  extensionRuntimeMessageSchema,
 } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeResponseSchema } from "../messaging/extensionRuntimeResponseSchema.js"
+import type { ExtensionPopupLogin } from "../popup/ExtensionPopupLogin.js"
+import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
+import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
-import { resultCreate } from "../../shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { type ExtensionActiveTabContext, extensionActiveTabContextSchema } from "./extensionActiveTabContextSchema.js"
+import type { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
+import { extensionPersonalLoginSiteMatch } from "./extensionPersonalLoginSiteMatch.js"
+import type { ExtensionRuntimeAdapter } from "./extensionRuntimeAdapter.js"
+import type { ExtensionScriptingAdapter } from "./extensionScriptingAdapter.js"
+import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
+import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
 
 type ExtensionBackgroundService = Pick<
   ReturnType<typeof extensionBackgroundServiceCreate>,
@@ -55,6 +56,7 @@ type ExtensionBackgroundRouterOptions = {
   tabs: ExtensionTabsAdapter
   windows: ExtensionWindowsAdapter
   scripting: ExtensionScriptingAdapter
+  now?: () => number
   fullWindowPath?: string
 }
 
@@ -63,6 +65,7 @@ type ExtensionLoginViewData = {
   name: string
   username: string | null
   uri: string | null
+  totpAvailable: boolean
   copyableFields: {
     key: string
     label: string
@@ -224,18 +227,29 @@ function extensionLoginViewDataCreate(cipher: ExtensionPersonalLoginCipher): Ext
   if (cipher.viewPassword !== false && cipher.login.password !== null) {
     copyableFields.push({ key: "password", label: "Password", value: cipher.login.password, sensitive: true })
   }
-  if (uri !== null) copyableFields.push({ key: "uri", label: "URI", value: uri })
+  const savedUris = cipher.login.uris.length === 0 && cipher.login.uri !== undefined ? [{ uri }] : cipher.login.uris
+  for (const [index, savedUri] of savedUris.entries()) {
+    if (savedUri.uri === null) continue
+    copyableFields.push({ key: `uri:${index}`, label: `URI ${index + 1}`, value: savedUri.uri })
+  }
   if (cipher.notes !== null) copyableFields.push({ key: "notes", label: "Notes", value: cipher.notes })
-  for (const field of cipher.fields) {
-    if (field.name === null || field.value === null) continue
+  for (const [index, field] of cipher.fields.entries()) {
+    if (field.value === null) continue
     copyableFields.push({
-      key: `custom:${field.name}`,
-      label: field.name,
+      key: `custom:${index}`,
+      label: field.name ?? `Custom field ${index + 1}`,
       value: field.value,
       ...(field.type === 1 ? { sensitive: true } : {}),
     })
   }
-  return { id: cipher.id, name: cipher.name, username: cipher.login.username, uri, copyableFields }
+  return {
+    id: cipher.id,
+    name: cipher.name,
+    username: cipher.login.username,
+    uri,
+    totpAvailable: cipher.login.totp !== null && cipher.login.totp.trim() !== "",
+    copyableFields,
+  }
 }
 
 function extensionLoginViewDataListCreate(
@@ -260,6 +274,7 @@ function syncCommandResultCreate<
 }
 
 export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRouterOptions) {
+  const now = options.now ?? Date.now
   let initializePromise: Promise<Result<void>> | null = null
 
   const initialize = (): Promise<Result<void>> => {
@@ -490,6 +505,28 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     }
   }
 
+  const totpCopy = async (request: { loginId: string }): Promise<Result<string>> => {
+    const op = "extensionBackgroundRouter.totpCopy"
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    const snapshotResult = await options.service.syncSnapshotLoad()
+    if (!snapshotResult.success) return snapshotResult
+    const snapshot = snapshotResult.data
+    if (snapshot === null) return unavailable(op, "Vault data is unavailable.")
+    const cipher = snapshot.ciphers.find((entry) => entry.id === request.loginId)
+    if (cipher === undefined) return invalid(op, "Selected login could not be found.")
+    if (cipher.login.totp === null || cipher.login.totp.trim() === "") {
+      return invalid(op, "Selected login has no TOTP code.")
+    }
+    const codeResult = await totpCodeCreate(cipher.login.totp, now() / 1_000)
+    if (codeResult.success) return codeResult
+    return resultErrorCreate(op, codeResult.errorMessage, {
+      code: codeResult.code,
+      errorData: codeResult.errorData,
+      statusCode: codeResult.statusCode,
+    })
+  }
+
   const messageHandle = async (input: unknown): Promise<Result<unknown>> => {
     const parsed = v.safeParse(extensionRuntimeMessageSchema, input)
     if (!parsed.success)
@@ -537,6 +574,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return activeTabContextLookup()
       case "loginFill":
         return loginFill(message.request)
+      case "totpCopy":
+        return totpCopy(message.request)
       case "fullWindowOpen":
         return fullWindowOpen()
     }

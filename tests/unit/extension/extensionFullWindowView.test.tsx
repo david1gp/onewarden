@@ -1,21 +1,22 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
-import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
-import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
-import { extensionFullWindowEnvironmentSettingsCreate } from "../../../src/extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
 import { ExtensionFullWindowView } from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
+import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
+import { extensionFullWindowEnvironmentSettingsCreate } from "../../../src/extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
+import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
 
 const exampleLogin: ExtensionFullWindowLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",
   uri: "https://example.com/login",
+  totpAvailable: true,
   copyableFields: [
     { key: "username", label: "Username", value: "ada@example.com" },
     { key: "password", label: "Password", value: "s3cret", sensitive: true },
@@ -184,6 +185,22 @@ test("extensionFullWindowView copies standard and custom fields without renderin
 
   expect(copied).toEqual(["username", "password", "uri", "notes", "custom:API key"])
   expect(root.container.textContent).not.toContain("s3cret")
+
+  root.unmount()
+})
+
+test("extensionFullWindowView exposes only a generated TOTP-code copy action", () => {
+  const copied: string[] = []
+  const root = fullWindowRender(
+    { status: "ready", logins: [exampleLogin] },
+    { totpCopy: (login) => copied.push(login.id) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
+  fireEvent.click(root.getByRole("button", { name: "Copy TOTP code of Example Mail" }))
+
+  expect(copied).toEqual(["login-1"])
+  expect(root.container.textContent).not.toContain("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
 
   root.unmount()
 })

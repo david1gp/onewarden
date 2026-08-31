@@ -11,10 +11,10 @@ async function nullableStringMap(value: string | null, map: StringMap): Promise<
   return map(value)
 }
 
-export async function extensionPersonalLoginCipherMap(
-  cipher: PersonalLoginCipher,
+export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLoginCipher>(
+  cipher: Cipher,
   map: StringMap,
-): Promise<Result<PersonalLoginCipher>> {
+): Promise<Result<Cipher>> {
   const nameResult = await map(cipher.name)
   if (!nameResult.success) return nameResult
   const notesResult = await nullableStringMap(cipher.notes, map)
@@ -23,6 +23,8 @@ export async function extensionPersonalLoginCipherMap(
   if (!usernameResult.success) return usernameResult
   const passwordResult = await nullableStringMap(cipher.login.password, map)
   if (!passwordResult.success) return passwordResult
+  const totpResult = await nullableStringMap(cipher.login.totp, map)
+  if (!totpResult.success) return totpResult
 
   const uris: Array<{ uri: string | null; match?: number | null }> = []
   for (const uri of cipher.login.uris) {
@@ -52,9 +54,10 @@ export async function extensionPersonalLoginCipherMap(
       ...cipher.login,
       username: usernameResult.data,
       password: passwordResult.data,
+      totp: totpResult.data,
       uris,
       ...(legacyUriResult.data === undefined ? {} : { uri: legacyUriResult.data }),
     },
     fields,
-  })
+  } as Cipher)
 }

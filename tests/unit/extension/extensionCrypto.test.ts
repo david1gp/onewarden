@@ -2,6 +2,8 @@ import { expect, test } from "bun:test"
 import * as v from "valibot"
 import { extensionEncStringDecrypt } from "../../../src/extension/crypto/extensionEncStringDecrypt.js"
 import { extensionEncStringEncrypt } from "../../../src/extension/crypto/extensionEncStringEncrypt.js"
+import { extensionFido2CredentialDecrypt } from "../../../src/extension/crypto/extensionFido2CredentialDecrypt.js"
+import { extensionFido2CredentialEncrypt } from "../../../src/extension/crypto/extensionFido2CredentialEncrypt.js"
 import { extensionMasterKeyDerive } from "../../../src/extension/crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../../../src/extension/crypto/extensionMasterPasswordHashDerive.js"
 import { extensionPersonalLoginCipherDecrypt } from "../../../src/extension/crypto/extensionPersonalLoginCipherDecrypt.js"
@@ -92,6 +94,7 @@ function plainCipherCreate() {
       uris: [{ uri: "https://example.test/login", match: 0, uriMetadata: "preserved" }],
       uri: "https://example.test/login",
       totp: null,
+      fido2Credentials: [fixtures.fido2Credential.plain],
       loginMetadata: "preserved",
     },
     fields: [
@@ -178,6 +181,31 @@ test("extension EncString decrypts the Bitwarden wire fixture and encrypts a rou
   expect(new TextDecoder().decode(roundTripResult.data)).toBe("fixture secret")
 })
 
+test("extension decrypts a compatible per-field encrypted FIDO2 credential fixture", async () => {
+  const decryptedResult = await extensionFido2CredentialDecrypt(fixtures.fido2Credential.encrypted, userKey)
+  expect(decryptedResult).toEqual({ success: true, data: fixtures.fido2Credential.plain })
+})
+
+test("extension FIDO2 credential crypto preserves absent and null optional fields", async () => {
+  const plain = {
+    ...fixtures.fido2Credential.plain,
+    userHandle: null,
+    userName: null,
+  }
+  delete (plain as { rpName?: string }).rpName
+  delete (plain as { userDisplayName?: string }).userDisplayName
+  const encryptedResult = await extensionFido2CredentialEncrypt(plain, userKey)
+  expect(encryptedResult.success).toBe(true)
+  if (!encryptedResult.success) return
+  expect(encryptedResult.data.userHandle).toBeNull()
+  expect(encryptedResult.data.userName).toBeNull()
+  expect("rpName" in encryptedResult.data).toBe(false)
+  expect("userDisplayName" in encryptedResult.data).toBe(false)
+
+  const decryptedResult = await extensionFido2CredentialDecrypt(encryptedResult.data, userKey)
+  expect(decryptedResult).toEqual({ success: true, data: plain })
+})
+
 test("extension personal login mapping encrypts only supported nested fields", async () => {
   const plainCipher = plainCipherCreate()
   const encryptedResult = await extensionPersonalLoginCipherEncrypt(plainCipher, userKey)
@@ -190,6 +218,15 @@ test("extension personal login mapping encrypts only supported nested fields", a
   expect(encryptedResult.data.login.password).not.toBe(plainCipher.login.password)
   expect(encryptedResult.data.login.uris[0]?.uri).not.toBe(plainCipher.login.uris[0]?.uri)
   expect(encryptedResult.data.login.uri).not.toBe(plainCipher.login.uri)
+  expect(encryptedResult.data.login.fido2Credentials?.[0]?.credentialId).not.toBe(
+    plainCipher.login.fido2Credentials[0]?.credentialId,
+  )
+  expect(encryptedResult.data.login.fido2Credentials?.[0]?.counter.startsWith("2.")).toBe(true)
+  expect(encryptedResult.data.login.fido2Credentials?.[0]?.discoverable.startsWith("2.")).toBe(true)
+  expect(encryptedResult.data.login.fido2Credentials?.[0]?.creationDate).toBe(
+    plainCipher.login.fido2Credentials[0]?.creationDate,
+  )
+  expect(encryptedResult.data.login.fido2Credentials?.[0]?.credentialMetadata).toEqual({ preserved: true })
   expect(encryptedResult.data.fields[0]?.name).not.toBe(plainCipher.fields[0]?.name)
   expect(encryptedResult.data.fields[0]?.value).not.toBe(plainCipher.fields[0]?.value)
   expect(encryptedResult.data.login.uris[0]?.match).toBe(plainCipher.login.uris[0]?.match)
@@ -335,8 +372,26 @@ test("extension crypto returns explicit unsupported Results for unsupported mode
   expect(encStringResult).toMatchObject({ success: false, code: "extension.unsupported", statusCode: 400 })
 
   const totpResult = await extensionPersonalLoginCipherEncrypt(
-    { ...plainCipherCreate(), login: { ...plainCipherCreate().login, totp: "unsupported" } },
+    {
+      ...plainCipherCreate(),
+      login: {
+        ...plainCipherCreate().login,
+        totp: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      },
+    },
     userKey,
   )
-  expect(totpResult).toMatchObject({ success: false, code: "extension.unsupported", statusCode: 400 })
+  expect(totpResult.success).toBe(true)
+  if (!totpResult.success) return
+  expect(totpResult.data.login.totp).not.toBe("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
+  const decryptedTotpResult = await extensionPersonalLoginCipherDecrypt(totpResult.data, userKey)
+  expect(decryptedTotpResult).toMatchObject({
+    success: true,
+    data: { login: { totp: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" } },
+  })
+  const hiddenTotpResult = await extensionPersonalLoginCipherDecrypt(
+    { ...totpResult.data, viewPassword: false },
+    userKey,
+  )
+  expect(hiddenTotpResult).toMatchObject({ success: true, data: { login: { totp: null } } })
 })

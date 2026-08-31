@@ -97,6 +97,8 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
                     fieldIsCopied={state.fieldIsCopied}
                     onFill={state.loginFill}
                     onCopy={state.fieldCopy}
+                    totpIsCopied={state.totpIsCopied}
+                    onTotpCopy={state.totpCopy}
                   />
                 </li>
               )}

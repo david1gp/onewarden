@@ -1,17 +1,18 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
-import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
 import type { ExtensionPopupLogin } from "../../../src/extension/popup/ExtensionPopupLogin.js"
 import { ExtensionPopupView } from "../../../src/extension/popup/ExtensionPopupView.jsx"
-import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
+import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
+import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
 
 const exampleLogin: ExtensionPopupLogin = {
   id: "login-1",
   name: "Example Mail",
   username: "ada@example.com",
   uri: "https://example.com/login",
+  totpAvailable: true,
   copyableFields: [
     { key: "username", label: "Username", value: "ada@example.com" },
     { key: "password", label: "Password", value: "s3cret", sensitive: true },
@@ -181,6 +182,21 @@ test("extensionPopupView copies standard and custom fields without rendering sec
 
   expect(copied).toEqual(["username", "password", "uri", "notes", "custom:API key"])
   expect(root.container.textContent).not.toContain("s3cret")
+
+  root.unmount()
+})
+
+test("extensionPopupView exposes only a generated TOTP-code copy action", () => {
+  const copied: string[] = []
+  const root = popupRender(
+    { status: "ready", hostname: "example.com", logins: [exampleLogin] },
+    { totpCopy: (login) => copied.push(login.id) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Copy TOTP code of Example Mail" }))
+
+  expect(copied).toEqual(["login-1"])
+  expect(root.container.textContent).not.toContain("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
 
   root.unmount()
 })

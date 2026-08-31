@@ -1,6 +1,6 @@
 /** One copyable value shown on an extension login presentation. */
 export interface ExtensionCopyableField {
-  /** Stable key within a login, e.g. `username`, `password`, `uri`, `notes` or `custom:<name>`. */
+  /** Stable key within a login, e.g. `username`, `password`, `uri:<index>`, `notes` or `custom:<index>`. */
   key: string
   label: string
   value: string

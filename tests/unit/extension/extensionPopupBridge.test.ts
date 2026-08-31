@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { extensionClipboardAdapterCreate } from "../../../src/extension/clipboard/extensionClipboardAdapterCreate.js"
 import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
-import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import type { ExtensionPopupLogin } from "../../../src/extension/popup/ExtensionPopupLogin.js"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
+import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
 const testLogin: ExtensionPopupLogin = {
   id: "cipher-1",
@@ -94,6 +94,32 @@ test("popup commands copy standard/custom fields to clipboard without exposing s
   expect(currentModel.copiedFieldKey).toBe("password")
   // Verify sensitive value is not stored in error or popup model
   expect(currentModel.errorMessage).toBeNull()
+})
+
+test("popup commands request a generated TOTP code and copy only the result", async () => {
+  let copiedText = ""
+  const sentMessages: ExtensionRuntimeMessage[] = []
+  const clipboard = extensionClipboardAdapterCreate({
+    writeText: async (text) => {
+      copiedText = text
+    },
+  })
+  const commands = extensionPopupCommandsCreate(
+    {},
+    {
+      clipboard,
+      messageSend: async (message) => {
+        sentMessages.push(message)
+        return resultCreate("123456")
+      },
+    },
+  )
+
+  commands.totpCopy(testLogin)
+  await new Promise((r) => setTimeout(r, 10))
+
+  expect(sentMessages[0]).toEqual({ type: "totpCopy", request: { loginId: "cipher-1" } })
+  expect(copiedText).toBe("123456")
 })
 
 test("popup commands handle unlock failure by updating model error and clearing busy", async () => {

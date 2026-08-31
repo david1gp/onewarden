@@ -6,6 +6,8 @@ export interface ExtensionLogin {
   name: string
   username: string | null
   uri: string | null
+  /** True when a background-only TOTP seed is available for generated-code copy. */
+  totpAvailable?: boolean
   /** Standard and custom fields the user may copy, in display order. */
   copyableFields: ExtensionCopyableField[]
 }

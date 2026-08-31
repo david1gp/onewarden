@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test"
 import { extensionBackgroundRouterCreate } from "../../../src/extension/background/extensionBackgroundRouterCreate.js"
+import type { ExtensionPersonalLoginCipher } from "../../../src/extension/crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
+import { extensionRuntimeMessageSend } from "../../../src/extension/messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
-import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
+import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
 import { extensionStorageKeys } from "../../../src/extension/storage/extensionStorageKeys.js"
-import type { ExtensionPersonalLoginCipher } from "../../../src/extension/crypto/extensionPersonalLoginCipherSchema.js"
-import { extensionRuntimeMessageSend } from "../../../src/extension/messaging/extensionRuntimeMessageSend.js"
-import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 type RouterOptions = Parameters<typeof extensionBackgroundRouterCreate>[0]
@@ -52,10 +52,20 @@ function routerCreate() {
     login: {
       username: "user",
       password: "password",
+      totp: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
       uri: "https://example.test/login",
-      uris: [{ uri: "https://example.test/login", match: 0 }],
+      uris: [
+        { uri: "https://example.test/login", match: 0 },
+        { uri: "https://example.test/account", match: 0 },
+      ],
     },
-    fields: [{ name: "Recovery code", value: "secret", type: 1 }],
+    fields: [
+      { name: "Recovery code", value: "secret-1", type: 1 },
+      { name: "Recovery code", value: "secret-2", type: 1 },
+      { name: null, value: "unnamed", type: 0 },
+      { name: "Empty", value: "", type: 0 },
+      { name: "Linked", value: null, type: 2 },
+    ],
   } as unknown as ExtensionPersonalLoginCipher
   let listener: RuntimeListener = () => undefined
   const service = {
@@ -106,6 +116,7 @@ function routerCreate() {
         return resultCreate({ status: "filled", usernameFilled: true, passwordFilled: true })
       },
     },
+    now: () => 59_000,
     windows: {
       create: async (data) => {
         createdWindows.push({ url: data.url })
@@ -151,8 +162,32 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
     data: {
       status: "ready",
       hostname: "example.test",
-      logins: [{ id: "matching-login" }],
+      logins: [
+        {
+          id: "matching-login",
+          copyableFields: [
+            { key: "username", label: "Username", value: "user" },
+            { key: "password", label: "Password", value: "password", sensitive: true },
+            { key: "uri:0", label: "URI 1", value: "https://example.test/login" },
+            { key: "uri:1", label: "URI 2", value: "https://example.test/account" },
+            { key: "notes", label: "Notes", value: "A note" },
+            { key: "custom:0", label: "Recovery code", value: "secret-1", sensitive: true },
+            { key: "custom:1", label: "Recovery code", value: "secret-2", sensitive: true },
+            { key: "custom:2", label: "Custom field 3", value: "unnamed" },
+            { key: "custom:3", label: "Empty", value: "" },
+          ],
+        },
+      ],
     },
+  })
+  expect(JSON.stringify(response)).not.toContain("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
+  const responseData = response.success
+    ? (response.data as { status?: string; logins?: { totpAvailable?: boolean }[] })
+    : null
+  expect(responseData?.status === "ready" ? responseData.logins?.[0]?.totpAvailable : null).toBe(true)
+  expect(await context.router.messageHandle({ type: "totpCopy", request: { loginId: "matching-login" } })).toEqual({
+    success: true,
+    data: "287082",
   })
 
   let listenerResponse: unknown

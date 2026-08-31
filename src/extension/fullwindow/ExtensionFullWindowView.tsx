@@ -217,6 +217,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     fieldIsCopied={state.fieldIsCopied}
                     onFill={state.loginFill}
                     onCopy={state.fieldCopy}
+                    totpIsCopied={state.totpIsCopied}
+                    onTotpCopy={state.totpCopy}
                     onClose={state.loginDeselect}
                   />
                 )}

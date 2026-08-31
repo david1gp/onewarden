@@ -22,6 +22,10 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
   v.strictObject({ type: v.literal("logout") }),
   v.strictObject({ type: v.literal("activeTabContextLookup") }),
   v.strictObject({ type: v.literal("loginFill"), request: extensionLoginFillRequestSchema }),
+  v.strictObject({
+    type: v.literal("totpCopy"),
+    request: v.strictObject({ loginId: v.pipe(v.string(), v.minLength(1)) }),
+  }),
   v.strictObject({ type: v.literal("fullWindowOpen") }),
 ])
 

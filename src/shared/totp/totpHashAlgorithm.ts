@@ -1,0 +1,1 @@
+export type TotpHashAlgorithm = "SHA-1" | "SHA-256" | "SHA-512"

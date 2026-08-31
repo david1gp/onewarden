@@ -1,19 +1,19 @@
 import { createEffect, createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
+import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
-import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
-import { extensionFullWindowLoginSearchMatch } from "./extensionFullWindowLoginSearchMatch.js"
-import { extensionFullWindowLoginUriMatch } from "./extensionFullWindowLoginUriMatch.js"
+import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
 import { extensionFullWindowStatus } from "./ExtensionFullWindowStatus.js"
-import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
-import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
+import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
+import { extensionFullWindowLoginSearchMatch } from "./extensionFullWindowLoginSearchMatch.js"
+import { extensionFullWindowLoginUriMatch } from "./extensionFullWindowLoginUriMatch.js"
+import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
 const regionLabels: Record<string, string> = {
   us: "Bitwarden US",
@@ -106,6 +106,7 @@ export function extensionFullWindowViewStateCreate(
   }
 
   const fieldIsCopied = (field: ExtensionFullWindowCopyableField) => model().copiedFieldKey === field.key
+  const totpIsCopied = (login: ExtensionFullWindowLogin) => model().copiedFieldKey === `totp:${login.id}`
 
   const loginSelect = (login: ExtensionFullWindowLogin) => selectedLoginIdSignal.set(login.id)
   const loginDeselect = () => selectedLoginIdSignal.set("")
@@ -117,6 +118,7 @@ export function extensionFullWindowViewStateCreate(
   const loginFill = (login: ExtensionFullWindowLogin) => commands().loginFill(login)
   const fieldCopy = (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) =>
     commands().fieldCopy(login, field)
+  const totpCopy = (login: ExtensionFullWindowLogin) => commands().totpCopy(login)
   const loginAdd = () => {
     createPaneOpen()
     commands().loginAdd()
@@ -195,8 +197,10 @@ export function extensionFullWindowViewStateCreate(
     loginSelect,
     loginDeselect,
     fieldIsCopied,
+    totpIsCopied,
     loginFill,
     fieldCopy,
+    totpCopy,
     loginAdd,
     loginCreate,
     loginDraftSave,

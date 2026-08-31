@@ -1,0 +1,32 @@
+{
+  "base32": [
+    { "encoded": "MY", "padded": "MY======", "bytes": [102] },
+    { "encoded": "MZXW6", "padded": "MZXW6===", "bytes": [102, 111, 111] },
+    { "encoded": "MZXW6YTBOI", "padded": "MZXW6YTBOI======", "bytes": [102, 111, 111, 98, 97, 114] }
+  ],
+  "rfc6238": [
+    {
+      "algorithm": "SHA-1",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+      "timeSeconds": 59,
+      "code": "94287082"
+    },
+    {
+      "algorithm": "SHA-256",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+      "timeSeconds": 59,
+      "code": "46119246"
+    },
+    {
+      "algorithm": "SHA-512",
+      "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+      "timeSeconds": 59,
+      "code": "90693936"
+    }
+  ],
+  "customUri": {
+    "uri": "otpauth://totp/Example%20Service:alice?issuer=Example%20Service&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA&algorithm=SHA256&digits=8&period=60",
+    "beforeRollover": { "timeSeconds": 59, "code": "18920136" },
+    "afterRollover": { "timeSeconds": 60, "code": "46119246" }
+  }
+}

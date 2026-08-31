@@ -1,15 +1,15 @@
 import { expect, test } from "bun:test"
-import { resultCreate } from "../../../src/shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { extensionClipboardAdapterCreate } from "../../../src/extension/clipboard/extensionClipboardAdapterCreate.js"
-import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
 import type { ExtensionCreateLoginRequest } from "../../../src/extension/create/extensionCreateLoginRequestSchema.js"
-import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
+import { extensionFullWindowCreateStatus } from "../../../src/extension/fullwindow/ExtensionFullWindowCreateStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../../../src/extension/fullwindow/ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "../../../src/extension/fullwindow/ExtensionFullWindowLogin.js"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
+import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
-import { extensionFullWindowCreateStatus } from "../../../src/extension/fullwindow/ExtensionFullWindowCreateStatus.js"
+import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 
 const testLogin: ExtensionFullWindowLogin = {
   id: "cipher-2",
@@ -149,6 +149,32 @@ test("full-window commands copy fields using clipboard adapter and manage timeou
 
   expect(copiedText).toBe("1234")
   expect(currentModel.copiedFieldKey).toBe("custom:PIN")
+})
+
+test("full-window commands request a generated TOTP code and copy only the result", async () => {
+  let copiedText = ""
+  const sentMessages: ExtensionRuntimeMessage[] = []
+  const clipboard = extensionClipboardAdapterCreate({
+    writeText: async (text) => {
+      copiedText = text
+    },
+  })
+  const commands = extensionFullWindowCommandsCreate(
+    {},
+    {
+      clipboard,
+      messageSend: async (message) => {
+        sentMessages.push(message)
+        return resultCreate("654321")
+      },
+    },
+  )
+
+  commands.totpCopy(testLogin)
+  await new Promise((r) => setTimeout(r, 10))
+
+  expect(sentMessages[0]).toEqual({ type: "totpCopy", request: { loginId: "cipher-2" } })
+  expect(copiedText).toBe("654321")
 })
 
 test("full-window shared commands send typed messages, update busy state, and refresh", async () => {

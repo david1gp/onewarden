@@ -2,8 +2,8 @@ import type { Result } from "#result"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
-import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
+import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import type { ExtensionPopupCopyableField } from "./ExtensionPopupCopyableField.js"
 import type { ExtensionPopupLogin } from "./ExtensionPopupLogin.js"
@@ -66,6 +66,7 @@ export function extensionPopupCommandsCreate(
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
+    totpCopy: commonCommands.totpCopy,
     loginAdd,
     vaultSync: commonCommands.vaultSync,
     vaultLock: commonCommands.vaultLock,

@@ -3,13 +3,13 @@ import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardA
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
 import type { ExtensionCreateLoginRequest } from "../create/extensionCreateLoginRequestSchema.js"
-import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
+import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowCopyableField } from "./ExtensionFullWindowCopyableField.js"
 import { extensionFullWindowCreateStatus } from "./ExtensionFullWindowCreateStatus.js"
-import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
+import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "./extensionFullWindowEnvironmentSettingsCreate.js"
@@ -143,6 +143,7 @@ export function extensionFullWindowCommandsCreate(
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
+    totpCopy: commonCommands.totpCopy,
     loginAdd,
     loginCreate,
     loginDraftSave,

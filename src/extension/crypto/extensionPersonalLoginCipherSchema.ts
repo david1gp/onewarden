@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { bitwardenFido2CredentialSchema } from "../../shared/api/bitwardenFido2CredentialSchema.js"
 
 const nullableStringSchema = v.nullable(v.string())
 
@@ -13,6 +14,7 @@ const extensionPersonalLoginCipherLoginSchema = v.looseObject({
   uris: v.array(extensionPersonalLoginCipherUriSchema),
   uri: v.optional(nullableStringSchema),
   totp: nullableStringSchema,
+  fido2Credentials: v.optional(v.nullable(v.array(bitwardenFido2CredentialSchema))),
 })
 
 const extensionPersonalLoginCipherFieldSchema = v.looseObject({

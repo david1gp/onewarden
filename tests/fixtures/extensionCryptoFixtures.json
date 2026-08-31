@@ -25,5 +25,39 @@
     },
     "masterKeySha256": "49efd574a5bf04049f99fd36b68d7b9edd6f564d476c7f546cf2c9c98375a1c4",
     "userKeyEnc": "2.Z+O6ztuQrOw7pfTISExxhg==|vIhthsybew+lFU7COKSTH0dyCmxWcjgIioFXOj+yrXTJKJAKqL4UdEOptHpQXzXX4bIa8Tz9G95zD0/iS2vujPdN6xejHxf3kWlfgBKbC8Y=|mytl76AqXXS53hg1vyINlE1P+aRlzp+65vjvIBVSSts="
+  },
+  "fido2Credential": {
+    "plain": {
+      "credentialId": "credential-id",
+      "keyType": "public-key",
+      "keyAlgorithm": "ECDSA",
+      "keyCurve": "P-256",
+      "keyValue": "fixture-key-placeholder",
+      "rpId": "example.test",
+      "userHandle": "dXNlci1oYW5kbGU",
+      "userName": "user@example.test",
+      "counter": 7,
+      "rpName": "Example",
+      "userDisplayName": "Example User",
+      "discoverable": true,
+      "creationDate": "2026-08-30T12:34:56.000Z",
+      "credentialMetadata": { "preserved": true }
+    },
+    "encrypted": {
+      "credentialId": "2.1Q6L1KTDgCFbAsXTFYkGCw==|ongTakw7ekXBUs5dn/DIsA==|uJmeaLpBN3nVZUA4Tc73teL5evE8PNzUjl4JH/KmyBg=",
+      "keyType": "2.fBgAXunxZjYl07Mvj1yV8g==|Z9h/z6PR4mXZozIWNkCQ8g==|1p5a3mY4/eBPMQTxYxIVpuS8Wh/GRh03SowH1Lcc79E=",
+      "keyAlgorithm": "2.puXmXFTVZWRS14SFjkBx8g==|ZEqIxWF1T80guutg49bbUQ==|0w+CZ1cYHc+I999QJiARiFB9RqvXZJWTs+nPanxtd8o=",
+      "keyCurve": "2.uw5QHk742EG8HcYoOPECBw==|7Yz3bA6EoClTSovw2jwF2w==|wkYt0HrVwSvZZknAs83wUm5cdo7IbfKyoJUxTM/RKTc=",
+      "keyValue": "2.tbDx3K5ZXkZZKI0EnOAxOA==|B1Zct4XR45g81K1f6jaHWfw/0hJBybHNYBUQlvBUN7k=|MJwH7csxwwINfbKxDItp7qTsc2lS8NM+DOH2Va8sVko=",
+      "rpId": "2./abOB0SFHVrm7h5FzI2gZg==|ujvv8s+lqNnZpyM9xJklqA==|ZI+itEs1zVb/edAb1pGliQS73FvG8c8hgsrPWf18kZM=",
+      "userHandle": "2.lhyl8M97QMsdmJ2ZjvZArw==|W4SUK4uDdnAH26hyx0S8Cg==|fRgEDMfZwyxGTerUh+DLLAvtD0WMjteKeXhbHGGzAXA=",
+      "userName": "2.OvZCiyIZ1yjPtt80y+tdPw==|M8N6oqDSQyU78KflnwAbivnnFwmnzrnsCzGR6tYUaGU=|gYPNCDbevjB4S6NAi+cYjb2B9Jm9NLvZuQrA/Tm6+SE=",
+      "counter": "2.c2bmXQP4pXHlIJ1Ab/bRiA==|/0otAtbDP3e2wsq7pT4mgA==|zyY9QjFJkodQbXvAxYqRcHk6I8q1XjR8J0ClxmS4s30=",
+      "rpName": "2.jrd/E9SDTak+M+c8cAzRWw==|aXviX9zQr6H3eDhDTRlb2A==|aMs0mqC95lyz7D91PYHiJppN8UDkTAnamWnXH9YT1Oc=",
+      "userDisplayName": "2.8SQnMkNus/yW8yTjK8drYQ==|rPQR1E9eh41XulA5jwNSpg==|aHXhGq0M+uZNMmxyUF03mKC1g/BGuRua1NaSstWlsO4=",
+      "discoverable": "2.qqGLf/nHUx9/4ycSz/oxYw==|fnxc1LuF8uRJQxcbmYZAjw==|JZ0QAAdKi3UC3bzb72C924gPcbUT9Nao7CXIeMrYVRs=",
+      "creationDate": "2026-08-30T12:34:56.000Z",
+      "credentialMetadata": { "preserved": true }
+    }
   }
 }

@@ -11,6 +11,8 @@ export interface ExtensionPopupLoginCardProps {
   fieldIsCopied: (field: ExtensionPopupCopyableField) => boolean
   onFill: (login: ExtensionPopupLogin) => void
   onCopy: (login: ExtensionPopupLogin, field: ExtensionPopupCopyableField) => void
+  totpIsCopied: (login: ExtensionPopupLogin) => boolean
+  onTotpCopy: (login: ExtensionPopupLogin) => void
 }
 
 /** One matched login with its explicit fill and per-field copy controls. */
@@ -34,7 +36,7 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
           </Button>
         </Show>
       </div>
-      <Show when={p.login.copyableFields.length > 0}>
+      <Show when={p.login.copyableFields.length > 0 || p.login.totpAvailable}>
         <div class="mt-2 flex flex-wrap gap-1">
           <For each={p.login.copyableFields}>
             {(field) => (
@@ -49,6 +51,17 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
               </Button>
             )}
           </For>
+          <Show when={p.login.totpAvailable}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={p.disabled}
+              aria-label={`Copy TOTP code of ${p.login.name}`}
+              onClick={() => p.onTotpCopy(p.login)}
+            >
+              {p.totpIsCopied(p.login) ? "TOTP code copied" : "TOTP code"}
+            </Button>
+          </Show>
         </div>
       </Show>
     </CardWrapper>

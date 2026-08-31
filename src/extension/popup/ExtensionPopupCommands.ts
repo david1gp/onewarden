@@ -10,6 +10,8 @@ export interface ExtensionPopupCommands {
   loginFill: (login: ExtensionPopupLogin) => void
   /** Copy one standard or custom field value to the clipboard. */
   fieldCopy: (login: ExtensionPopupLogin, field: ExtensionPopupCopyableField) => void
+  /** Generate and copy the current TOTP code without exposing its seed. */
+  totpCopy: (login: ExtensionPopupLogin) => void
   /** Open the create-login flow in the full window. */
   loginAdd: () => void
   /** Trigger a vault synchronization. */

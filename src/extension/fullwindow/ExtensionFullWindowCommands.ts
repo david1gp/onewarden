@@ -7,6 +7,8 @@ import type { ExtensionFullWindowLogin } from "./ExtensionFullWindowLogin.js"
 export interface ExtensionFullWindowCommands {
   loginFill: (login: ExtensionFullWindowLogin) => void
   fieldCopy: (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => void
+  /** Generate and copy the current TOTP code without exposing its seed. */
+  totpCopy: (login: ExtensionFullWindowLogin) => void
   loginAdd: () => void
   /** Create one personal login entry from the full-window editor. */
   loginCreate: (request: ExtensionCreateLoginRequest) => void

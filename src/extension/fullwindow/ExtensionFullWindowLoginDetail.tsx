@@ -12,6 +12,8 @@ export interface ExtensionFullWindowLoginDetailProps {
   fieldIsCopied: (field: ExtensionFullWindowCopyableField) => boolean
   onFill: (login: ExtensionFullWindowLogin) => void
   onCopy: (login: ExtensionFullWindowLogin, field: ExtensionFullWindowCopyableField) => void
+  totpIsCopied: (login: ExtensionFullWindowLogin) => boolean
+  onTotpCopy: (login: ExtensionFullWindowLogin) => void
   onClose: () => void
 }
 
@@ -46,7 +48,7 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
       <Separator />
 
       <Show
-        when={p.login.copyableFields.length > 0}
+        when={p.login.copyableFields.length > 0 || p.login.totpAvailable}
         fallback={<p class="text-sm text-gray-600 dark:text-gray-300">No copyable fields.</p>}
       >
         <ul class="flex list-none flex-col gap-1">
@@ -66,6 +68,20 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
               </li>
             )}
           </For>
+          <Show when={p.login.totpAvailable}>
+            <li class="flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate text-sm">TOTP code</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={p.disabled}
+                aria-label={`Copy TOTP code of ${p.login.name}`}
+                onClick={() => p.onTotpCopy(p.login)}
+              >
+                {p.totpIsCopied(p.login) ? "Copied" : "Copy"}
+              </Button>
+            </li>
+          </Show>
         </ul>
       </Show>
     </CardWrapper>

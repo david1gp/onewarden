@@ -27,6 +27,7 @@ type ExtensionCommonCommandsOptions<ViewModel extends ExtensionCommonViewModel> 
 type ExtensionCommonCommands<Login extends ExtensionCommonLogin, Field extends ExtensionCommonCopyableField> = {
   loginFill: (login: Login) => void
   fieldCopy: (login: Login, field: Field) => void
+  totpCopy: (login: Login) => void
   vaultSync: () => void
   vaultLock: () => void
   vaultLogout: () => void
@@ -65,6 +66,30 @@ export function extensionCommonCommandsCreate<
     })
   }
 
+  const totpCopy = (login: Login) => {
+    void messageSend({ type: "totpCopy", request: { loginId: login.id } }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({ ...prev, errorMessage: res.errorMessage }))
+        return
+      }
+      if (typeof res.data !== "string") {
+        onModelUpdate((prev) => ({ ...prev, errorMessage: "TOTP code generation failed." }))
+        return
+      }
+      const copyResult = await clipboard.copyText(res.data)
+      if (!copyResult.success) {
+        onModelUpdate((prev) => ({ ...prev, errorMessage: copyResult.errorMessage }))
+        return
+      }
+      const copiedKey = `totp:${login.id}`
+      onModelUpdate((prev) => ({ ...prev, copiedFieldKey: copiedKey }))
+      if (copyTimeoutId !== null) clearTimeout(copyTimeoutId)
+      copyTimeoutId = setTimeout(() => {
+        onModelUpdate((prev) => (prev.copiedFieldKey === copiedKey ? { ...prev, copiedFieldKey: null } : prev))
+      }, 2000)
+    })
+  }
+
   const vaultSync = () => {
     onModelUpdate((prev) => ({ ...prev, busy: true }))
     void messageSend({ type: "manualSync" }).then(async () => {
@@ -97,5 +122,5 @@ export function extensionCommonCommandsCreate<
     })
   }
 
-  return { loginFill, fieldCopy, vaultSync, vaultLock, vaultLogout, vaultUnlock }
+  return { loginFill, fieldCopy, totpCopy, vaultSync, vaultLock, vaultLogout, vaultUnlock }
 }
