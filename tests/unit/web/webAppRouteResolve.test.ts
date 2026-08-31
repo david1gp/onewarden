@@ -15,6 +15,27 @@ const demoRouteAliases = [
   { paths: ["/demo/locked", "/demo/lock"], route: "locked" },
 ]
 
+const demoSettingsPaths = [
+  "/demo/settings",
+  "/demo/settings/account",
+  "/demo/settings/profile",
+  "/demo/settings/security",
+  "/demo/settings/two-factor",
+  "/demo/settings/2fa",
+  "/demo/settings/two-factor-setup",
+  "/demo/settings/email",
+  "/demo/settings/devices",
+  "/demo/settings/sessions",
+  "/demo/settings/emergency",
+  "/demo/settings/tools",
+  "/demo/settings/import",
+  "/demo/settings/export",
+  "/demo/settings/appearance",
+  "/demo/settings/theme",
+  "/demo/settings/danger",
+  "/demo/settings/delete-account",
+]
+
 test("demo route aliases resolve to their canonical vault experiences", () => {
   for (const { paths, route } of demoRouteAliases) {
     for (const path of paths) {
@@ -28,4 +49,12 @@ test("demo route aliases resolve to their canonical vault experiences", () => {
 test("session handoff target routes resolve to cipher create and edit pages", () => {
   expect(webAppRouteResolve("/ciphers/new")).toBe("cipher-create")
   expect(webAppRouteResolve("/ciphers/cipher-one/edit")).toBe("cipher-edit")
+})
+
+test("demo settings section routes resolve to the demo settings experience", () => {
+  for (const path of demoSettingsPaths) {
+    expect(webAppRouteResolve(path)).toBe("demo-settings")
+    expect(webAppRouteResolve(`${path}/`)).toBe("demo-settings")
+    expect(webAppRouteResolve(path.toUpperCase())).toBe("demo-settings")
+  }
 })
