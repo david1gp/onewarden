@@ -40,3 +40,4 @@ Add a light/dark mode toggle at the bottom of the demo sidebar, ensure light mod
 - The mobile Details toolbar now wraps so every action, including Trash, stays within the 390px viewport; desktop and both themes remain intact.
 - The page root chain now has explicit light/dark canvas backgrounds, eliminating the white region below short dark-mode mobile content.
 - Final browser verification passes at desktop and mobile sizes for switching, persistence, contrast, spacing, full-height backgrounds, no horizontal overflow, and all Details toolbar actions.
+- Feature and plan commits are pushed to `main`; clean-worktree frontend/backend deployment and production health checks completed successfully.
