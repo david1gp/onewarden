@@ -1,6 +1,7 @@
 import * as v from "valibot"
 import { type Result } from "#result"
 import type { BitwardenEncryptedLoginCipherCreateRequest } from "../../shared/api/bitwardenEncryptedLoginCipherCreateRequestSchema.js"
+import { type BitwardenEncryptedCipher, bitwardenEncryptedCipherSchema } from "../../shared/api/bitwardenEncryptedCipherSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
@@ -13,10 +14,8 @@ import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessio
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
 import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
-import {
-  type ExtensionPersonalLoginCipher,
-  extensionPersonalLoginCipherSchema,
-} from "../crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
+import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import { extensionEmailSchema } from "../extensionEmailSchema.js"
 import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
@@ -217,31 +216,30 @@ function passkeyCipherWriteAllowed(cipher: ExtensionPersonalLoginCipher): Result
 function syncCipherWireCreate(
   cipher: BitwardenSyncEnvelope["ciphers"][number],
   revisionDate: number,
-): BitwardenEncryptedLoginCipher | null {
-  if (cipher.type !== 1 || cipher.login === undefined || cipher.login === null) return null
+): BitwardenEncryptedCipher | null {
   const revision =
     cipher.revisionDate !== undefined && cipher.revisionDate.length > 0 ? cipher.revisionDate : String(revisionDate)
-  return {
+  const parsed = v.safeParse(bitwardenEncryptedCipherSchema, {
     ...cipher,
     object: "cipherDetails",
     id: cipher.id,
-    type: 1,
     revisionDate: revision,
     deletedDate: cipher.deletedDate ?? null,
     organizationId: cipher.organizationId ?? null,
     folderId: cipher.folderId ?? null,
     name: cipher.name,
-    notes: cipher.notes,
+    notes: cipher.notes ?? null,
     ...(cipher.key === undefined ? {} : { key: cipher.key }),
     ...(cipher.collectionIds === undefined ? {} : { collectionIds: cipher.collectionIds }),
-    login: cipher.login,
-    fields: cipher.fields ?? [],
-  }
+    ...(cipher.fields === undefined || cipher.fields === null ? { fields: [] } : { fields: cipher.fields }),
+    ...(cipher.type === 1 && (cipher.login === undefined || cipher.login === null) ? { login: null } : {}),
+  })
+  return parsed.success ? parsed.output : null
 }
 
-function syncCipherPlainRead(cipher: BitwardenEncryptedLoginCipher): ExtensionPersonalLoginCipher | null {
+function syncCipherPlainRead(cipher: BitwardenEncryptedCipher): ExtensionCipher | null {
   if (!/^2\.[^|]+\|[^|]+\|[^|]+$/u.test(cipher.name)) {
-    const parsed = v.safeParse(extensionPersonalLoginCipherSchema, cipher)
+    const parsed = v.safeParse(extensionCipherSchema, cipher)
     if (parsed.success) return parsed.output
   }
   return null
@@ -456,13 +454,13 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     const snapshotParsed = v.safeParse(extensionSyncCacheSnapshotSchema, snapshotValueResult.data)
     if (!snapshotParsed.success) return internal(op, "Stored sync snapshot is invalid.")
 
-    const ciphers: ExtensionPersonalLoginCipher[] = []
+    const ciphers: ExtensionCipher[] = []
     for (const encryptedCipher of cache.ciphers) {
       const cipherBytesResult = await options.vaultSession.encryptedPayloadDecrypt(encryptedCipher.payload)
       if (!cipherBytesResult.success) return cipherBytesResult
       const cipherValueResult = textDecode(op, cipherBytesResult.data)
       if (!cipherValueResult.success) return cipherValueResult
-      const cipherParsed = v.safeParse(extensionPersonalLoginCipherSchema, cipherValueResult.data)
+      const cipherParsed = v.safeParse(extensionCipherSchema, cipherValueResult.data)
       if (!cipherParsed.success || cipherParsed.output.id !== encryptedCipher.id) {
         return internal(op, "Stored sync cipher is invalid.")
       }
@@ -475,12 +473,16 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     envelope: BitwardenSyncEnvelope,
     revisionDate: number,
   ): Promise<Result<ExtensionSyncSnapshot>> => {
-    const ciphers: ExtensionPersonalLoginCipher[] = []
+    const ciphers: ExtensionCipher[] = []
     const profileParsed = v.safeParse(extensionProfileSchema, envelope.profile)
     if (!profileParsed.success)
       return internal("extensionBackgroundService.syncSnapshotCreate", "Sync profile is invalid.")
     const organizationKeysResult = await options.vaultSession.organizationKeysReplace(profileParsed.output)
     if (!organizationKeysResult.success) return organizationKeysResult
+    const foldersResult = await options.vaultSession.foldersDecrypt(envelope.folders)
+    if (!foldersResult.success) return foldersResult
+    const collectionsResult = await options.vaultSession.collectionsDecrypt(envelope.collections)
+    if (!collectionsResult.success) return collectionsResult
     const authorizedOrganizationIds = new Set(
       profileParsed.output.organizations
         .filter((organization) => organization.status === 2)
@@ -496,11 +498,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         ciphers.push(plainCipher)
         continue
       }
-      const decryptedResult = await options.vaultSession.personalLoginCipherDecrypt(wireCipher)
+      const decryptedResult = await options.vaultSession.cipherDecrypt(wireCipher)
       if (!decryptedResult.success) return decryptedResult
       ciphers.push(decryptedResult.data)
     }
-    const snapshot = { ...envelope, ciphers }
+    const snapshot = { ...envelope, folders: foldersResult.data, collections: collectionsResult.data, ciphers }
     const parsed = v.safeParse(extensionSyncSnapshotSchema, snapshot)
     if (!parsed.success) return internal("extensionBackgroundService.syncSnapshotCreate", "Sync snapshot is invalid.")
     return resultCreate(parsed.output)
@@ -521,7 +523,12 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       if (!cipherTextResult.success) return cipherTextResult
       const payloadResult = await options.vaultSession.encryptedPayloadEncrypt(cipherTextResult.data)
       if (!payloadResult.success) return payloadResult
-      encryptedCiphers.push({ id: cipher.id, revisionDate: cipher.revisionDate, payload: payloadResult.data })
+      encryptedCiphers.push({
+        id: cipher.id,
+        revisionDate: cipher.revisionDate,
+        type: cipher.type,
+        payload: payloadResult.data,
+      })
     }
     const lastSyncedAt = now()
     if (!timestampValid(lastSyncedAt))

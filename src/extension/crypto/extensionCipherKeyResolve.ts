@@ -1,11 +1,11 @@
 import type { Result } from "#result"
-import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
+import type { BitwardenEncryptedCipher } from "../../shared/api/bitwardenEncryptedCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionEncStringDecrypt } from "./extensionEncStringDecrypt.js"
 
 export async function extensionCipherKeyResolve(
-  cipher: BitwardenEncryptedLoginCipher,
+  cipher: Pick<BitwardenEncryptedCipher, "organizationId" | "key">,
   userKey: Uint8Array,
   organizationKeys: ReadonlyMap<string, Uint8Array> = new Map(),
 ): Promise<Result<Uint8Array>> {
