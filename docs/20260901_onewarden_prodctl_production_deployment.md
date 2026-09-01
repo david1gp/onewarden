@@ -26,4 +26,4 @@ Deploy the current OneWarden release at `https://onewarden.contentoren.de` throu
 - [x] 3. Provision dedicated R2 storage and create the complete app-owned `.env.production` without exposing secrets. The scoped R2 credentials pass an AWS SDK bucket request; R2 does not use `AWS_SESSION_TOKEN`.
 - [x] 4. Provision the dedicated Zitadel project/client and place its credentials in `.env.production`.
 - [x] 5. Deploy committed OneWarden `HEAD` with prodctl and verify service, database migration, R2 access, and public health.
-- [~] 6. Test Zitadel login through the public web UI with `ssotest` and report the result. The first attempt reached Zitadel but exposed a missing registered browser connector redirect URI.
+- [x] 6. Test Zitadel login through the public web UI with `ssotest`; first-login master-password setup, vault unlock, reload lock, and subsequent unlock all pass.
