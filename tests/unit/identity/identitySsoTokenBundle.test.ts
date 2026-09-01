@@ -2,8 +2,8 @@ import { afterEach, expect, test } from "bun:test"
 import { decodeJwt, SignJWT } from "jose"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
-import { identitySsoTokenBundleCreate } from "../../../src/server/contexts/identity/identitySsoTokenBundleCreate.js"
 import type { IdentitySsoAuthenticatedUser } from "../../../src/server/contexts/identity/identitySsoAuthenticatedUserSchema.js"
+import { identitySsoTokenBundleCreate } from "../../../src/server/contexts/identity/identitySsoTokenBundleCreate.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
@@ -83,24 +83,24 @@ afterEach(() => {
   databases.splice(0)
 })
 
-test("SSO token bundle preserves provider JWT validity windows and wrapper claims", async () => {
-  const providerAccess = await new SignJWT({ nbf: now + 10 })
+test("SSO token bundle ignores unverified provider access and refresh JWT timing claims", async () => {
+  const providerAccess = await new SignJWT({ nbf: now + 365 * 24 * 60 * 60 })
     .setProtectedHeader({ typ: "JWT", alg: "RS256" })
     .setIssuer("https://idp.example")
-    .setIssuedAt(now + 10)
-    .setExpirationTime(now + 3_600)
+    .setIssuedAt(now + 365 * 24 * 60 * 60)
+    .setExpirationTime(now + 365 * 24 * 60 * 60)
     .sign(keyPair.privateKey)
-  const providerRefresh = await new SignJWT({ nbf: now + 20 })
+  const providerRefresh = await new SignJWT({ nbf: now + 365 * 24 * 60 * 60 })
     .setProtectedHeader({ typ: "JWT", alg: "RS256" })
     .setIssuer("https://idp.example")
-    .setIssuedAt(now + 20)
-    .setExpirationTime(now + 86_400)
+    .setIssuedAt(now + 365 * 24 * 60 * 60)
+    .setExpirationTime(now + 365 * 24 * 60 * 60)
     .sign(keyPair.privateKey)
   const result = await identitySsoTokenBundleCreate(
     userCreate(),
     deviceCreate(7),
     "web",
-    authenticatedUser(providerAccess, providerRefresh, null),
+    authenticatedUser(providerAccess, providerRefresh, 3_600),
     "https://vault.example",
     keyPair.privateKey,
     clockTestCreate(now * 1_000),
@@ -110,15 +110,15 @@ test("SSO token bundle preserves provider JWT validity windows and wrapper claim
   expect(result.success).toBe(true)
   if (!result.success) return
   expect(result.data.accessClaims).toMatchObject({
-    nbf: now + 10,
+    nbf: now,
     exp: now + 3_600,
     iss: "https://vault.example|login",
     sub: "sso-user",
     scope: ["api", "offline_access"],
   })
   expect(result.data.refreshClaims).toEqual({
-    nbf: now + 20,
-    exp: now + 86_400,
+    nbf: now,
+    exp: now + 30 * 24 * 60 * 60,
     iss: "https://vault.example|login",
     sub: "sso",
     device_token: "local-device-refresh",
@@ -128,7 +128,7 @@ test("SSO token bundle preserves provider JWT validity windows and wrapper claim
   expect(decodeJwt(result.data.refreshToken) as Record<string, unknown>).toEqual(result.data.refreshClaims)
 })
 
-test("SSO token bundle falls back to opaque provider expiry and preserves an access-token refresh wrapper", async () => {
+test("SSO token bundle uses validated provider expiry and a safe default for opaque access tokens", async () => {
   const result = await identitySsoTokenBundleCreate(
     userCreate(),
     deviceCreate(7),
@@ -150,9 +150,28 @@ test("SSO token bundle falls back to opaque provider expiry and preserves an acc
     sub: "sso",
   })
   expect(result.data.expiresIn).toBe(3_600)
+
+  const defaulted = await identitySsoTokenBundleCreate(
+    userCreate(),
+    deviceCreate(7),
+    "cli",
+    authenticatedUser("opaque-access", null, null),
+    "https://vault.example",
+    keyPair.privateKey,
+    clockTestCreate(now * 1_000),
+    identityConfigCreate({ SSO_AUTHORITY: "https://idp.example" }),
+  )
+  expect(defaulted).toMatchObject({
+    success: true,
+    data: {
+      accessClaims: { nbf: now, exp: now + 60 * 60 },
+      refreshClaims: { nbf: now, exp: now + 60 * 60, token: { Access: "opaque-access" } },
+      expiresIn: 60 * 60,
+    },
+  })
 })
 
-test("SSO auth-only-not-session issues local session windows and rejects an opaque token without expiry", async () => {
+test("SSO auth-only-not-session uses local session windows without provider token timing claims", async () => {
   const authOnly = await identitySsoTokenBundleCreate(
     userCreate(),
     deviceCreate(0),
@@ -173,16 +192,4 @@ test("SSO auth-only-not-session issues local session windows and rejects an opaq
       token: null,
     })
   }
-
-  const invalid = await identitySsoTokenBundleCreate(
-    userCreate(),
-    deviceCreate(7),
-    "web",
-    authenticatedUser("opaque-access", null, null),
-    "https://vault.example",
-    keyPair.privateKey,
-    clockTestCreate(now * 1_000),
-    identityConfigCreate({ SSO_AUTHORITY: "https://idp.example" }),
-  )
-  expect(invalid).toMatchObject({ success: false, errorMessage: "Non jwt access_token and empty expires_in" })
 })

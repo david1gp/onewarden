@@ -3,6 +3,7 @@ import * as v from "valibot"
 import type { ResultErr } from "#result"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { sendAccessTokenCreate } from "../sends/sendAccessTokenCreate.js"
 import { twoFactorRoutesRegister } from "../twoFactor/twoFactorRoutesRegister.js"
 import { identityAccountRegisterVerificationDataSchema } from "./identityAccountRegisterVerificationDataSchema.js"
@@ -30,7 +31,7 @@ import { identitySsoPrevalidateTokenCreate } from "./identitySsoPrevalidateToken
 import { identityTasksRoutesRegister } from "./identityTasksRoutesRegister.js"
 import { identityTokenRequestParse } from "./identityTokenRequestParse.js"
 
-export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOptions): void {
+export function identityRoutesRegister(app: Hono<AuthenticationEnvironment>, options: IdentityRouteOptions): void {
   const sso = options.sso ?? identitySsoAdapterCreate(options.config, options.publicOrigin, options.clock)
   const token = async (context: Context) => {
     let form: unknown
@@ -225,6 +226,8 @@ export function identityRoutesRegister(app: Hono<any>, options: IdentityRouteOpt
   }
 
   const authorize = async (context: Context) => {
+    if (!options.config.SSO_ENABLED)
+      return apiErrorResponseCreate(identityDomainErrorCreate("identitySsoAuthorize", "SSO sign-in is not available"))
     const query = context.req.query()
     const normalized: Record<string, string> = {}
     const aliases: Record<string, string> = {

@@ -1,5 +1,5 @@
-import { type KeyInput } from "jose"
-import { type Result } from "#result"
+import type { KeyInput } from "jose"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
@@ -7,13 +7,13 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import { identityDeviceFindByRefreshToken } from "./identityDeviceFindByRefreshToken.js"
 import { identityDeviceSave } from "./identityDeviceSave.js"
-import type { IdentityRefreshTokenResponse } from "./identityRefreshTokenResponseSchema.js"
 import { identityRefreshTokenClaimsDecode } from "./identityRefreshTokenClaimsDecode.js"
+import type { IdentityRefreshTokenResponse } from "./identityRefreshTokenResponseSchema.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
-import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
-import { identitySsoOrganizationConfigResolve } from "./identitySsoOrganizationConfigResolve.js"
-import { identityTokenBundleCreate } from "./identityTokenBundleCreate.js"
 import type { IdentitySsoAuthenticatedUser } from "./identitySsoAuthenticatedUserSchema.js"
+import { identitySsoOrganizationConfigResolve } from "./identitySsoOrganizationConfigResolve.js"
+import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
+import { identityTokenBundleCreate } from "./identityTokenBundleCreate.js"
 import { identityUserFindByUuid } from "./identityUserFindByUuid.js"
 
 type IdentityRefreshLoginOptions = {
@@ -113,7 +113,7 @@ export async function identityRefreshLogin(
       const authenticatedUser: IdentitySsoAuthenticatedUser = {
         refresh_token: null,
         access_token: token.Access,
-        expires_in: Math.max(0, claimsResult.data.exp - now),
+        expires_in: null,
         identifier: "refresh",
         email: userResult.data.email,
         email_verified: true,

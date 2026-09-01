@@ -2,38 +2,38 @@ import type { KeyInput } from "jose"
 import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
+import type { Identifier } from "../../../shared/identifier/identifier.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import type { EventAdapter } from "../events/eventAdapter.js"
+import { eventType } from "../events/eventType.js"
 import { organizationDomainEmailVerified } from "../organizations/organizationDomainEmailVerified.js"
+import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
-import type { IdentityPasswordTokenResponse } from "./identityPasswordTokenResponseSchema.js"
 import { identityDeviceResolve } from "./identityDeviceResolve.js"
 import { identityDeviceSave } from "./identityDeviceSave.js"
+import { identityDeviceTypeParse } from "./identityDeviceTypeParse.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityEmailDomainAllowed } from "./identityEmailDomainAllowed.js"
+import type { IdentityPasswordTokenResponse } from "./identityPasswordTokenResponseSchema.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
 import { identitySsoAuthConsume } from "./identitySsoAuthConsume.js"
 import { identitySsoAuthDelete } from "./identitySsoAuthDelete.js"
-import { identitySsoAuthFindByCode } from "./identitySsoAuthFindByCode.js"
 import type { IdentitySsoAuthenticatedUser } from "./identitySsoAuthenticatedUserSchema.js"
+import { identitySsoAuthFindByCode } from "./identitySsoAuthFindByCode.js"
 import { identitySsoAuthResponseSave } from "./identitySsoAuthResponseSave.js"
 import { identitySsoCodeVerifierValidate } from "./identitySsoCodeVerifierValidate.js"
 import { identitySsoEmailCanonicalize } from "./identitySsoEmailCanonicalize.js"
+import { identitySsoOrganizationConfigResolve } from "./identitySsoOrganizationConfigResolve.js"
+import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
 import { identitySsoUserFindByEmail } from "./identitySsoUserFindByEmail.js"
 import { identitySsoUserFindByIdentifier } from "./identitySsoUserFindByIdentifier.js"
 import { identitySsoUserSave } from "./identitySsoUserSave.js"
-import { identitySsoTokenBundleCreate } from "./identitySsoTokenBundleCreate.js"
-import { identitySsoOrganizationConfigResolve } from "./identitySsoOrganizationConfigResolve.js"
 import type { IdentityTokenRequest } from "./identityTokenRequestSchema.js"
 import type { IdentityUser } from "./identityUser.js"
 import { identityUserSave } from "./identityUserSave.js"
 import { identityUserTokenResponseCreate } from "./identityUserTokenResponseCreate.js"
-import type { PushRelayAdapter } from "../push/pushRelayAdapter.js"
-import type { EventAdapter } from "../events/eventAdapter.js"
-import { eventType } from "../events/eventType.js"
-import { identityDeviceTypeParse } from "./identityDeviceTypeParse.js"
 
 type IdentitySsoLoginOptions = {
   clock: Clock
@@ -47,6 +47,31 @@ type IdentitySsoLoginOptions = {
   push?: PushRelayAdapter
   sso: IdentitySsoAdapter
   event?: EventAdapter
+}
+
+type IdentitySsoLoginData = IdentityTokenRequest & { code: string; codeVerifier: string }
+
+const identitySsoLoginLockTails = new WeakMap<DatabaseConnection, Map<string, Promise<void>>>()
+
+async function identitySsoLoginLockAcquire(database: DatabaseConnection, code: string): Promise<() => void> {
+  let locks = identitySsoLoginLockTails.get(database)
+  if (locks === undefined) {
+    locks = new Map()
+    identitySsoLoginLockTails.set(database, locks)
+  }
+  const lockMap = locks
+  const previous = locks.get(code) ?? Promise.resolve()
+  let release!: () => void
+  const current = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const tail = previous.then(() => current)
+  locks.set(code, tail)
+  await previous
+  return () => {
+    release()
+    if (lockMap.get(code) === tail) lockMap.delete(code)
+  }
 }
 
 function identitySsoUserCreate(
@@ -122,6 +147,21 @@ export async function identitySsoLogin(
   if (!rateLimitResult.success) return rateLimitResult
   if (data.code === undefined) return identityDomainErrorCreate(op, "Got no code in OIDC data")
   if (data.codeVerifier === undefined) return identityDomainErrorCreate(op, "Got no code verifier in OIDC data")
+  const release = await identitySsoLoginLockAcquire(database, data.code)
+  const loginData: IdentitySsoLoginData = { ...data, code: data.code, codeVerifier: data.codeVerifier }
+  try {
+    return await identitySsoLoginProcess(loginData, options, database)
+  } finally {
+    release()
+  }
+}
+
+async function identitySsoLoginProcess(
+  data: IdentitySsoLoginData,
+  options: IdentitySsoLoginOptions,
+  database: DatabaseConnection,
+): Promise<Result<IdentityPasswordTokenResponse>> {
+  const op = "identitySsoLogin"
   const authResult = identitySsoAuthFindByCode(database, data.code, options.clock)
   if (!authResult.success) return authResult
   if (authResult.data === null) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
@@ -194,10 +234,7 @@ export async function identitySsoLogin(
     }
     if (!saveResult.data) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
   }
-
-  const consumeResult = identitySsoAuthConsume(database, auth.state, data.code, options.clock)
-  if (!consumeResult.success) return consumeResult
-  if (!consumeResult.data) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
+  if (authenticatedUser === null) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
 
   if (organizationUuid !== null) {
     const domainResult = organizationDomainEmailVerified(database, organizationUuid, authenticatedUser.email)
@@ -290,6 +327,9 @@ export async function identitySsoLogin(
     const pushUuidSaveResult = identityDeviceSave(database, deviceResult.data, options.clock, false)
     if (!pushUuidSaveResult.success) return pushUuidSaveResult
   }
+  const consumeResult = identitySsoAuthConsume(database, auth.state, data.code, options.clock)
+  if (!consumeResult.success) return consumeResult
+  if (!consumeResult.data) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
   options.event?.userEventCreate(eventType.userLoggedIn, user.uuid, {
     deviceType: deviceResult.data.type,
     ipAddress: options.clientIp,

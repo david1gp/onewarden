@@ -1,35 +1,37 @@
 import { afterEach, expect, test } from "bun:test"
-import { decodeJwt } from "jose"
+import { decodeJwt, SignJWT } from "jose"
 import * as v from "valibot"
+import type { Result } from "#result"
+import { eventType } from "../../../src/server/contexts/events/eventType.js"
 import { identityAccessTokenClaimsDecode } from "../../../src/server/contexts/identity/identityAccessTokenClaimsDecode.js"
 import { identityApiKeyTokenResponseSchema } from "../../../src/server/contexts/identity/identityApiKeyTokenResponseSchema.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
+import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
 import { identityOrganizationApiKeyAccessTokenClaimsDecode } from "../../../src/server/contexts/identity/identityOrganizationApiKeyAccessTokenClaimsDecode.js"
 import { identityOrganizationApiKeySave } from "../../../src/server/contexts/identity/identityOrganizationApiKeySave.js"
 import { identityOrganizationApiKeyTokenResponseSchema } from "../../../src/server/contexts/identity/identityOrganizationApiKeyTokenResponseSchema.js"
+import { identityPasswordTokenResponseSchema } from "../../../src/server/contexts/identity/identityPasswordTokenResponseSchema.js"
+import { identityRefreshTokenClaimsDecode } from "../../../src/server/contexts/identity/identityRefreshTokenClaimsDecode.js"
 import type { IdentitySsoAdapter } from "../../../src/server/contexts/identity/identitySsoAdapter.js"
 import type { IdentitySsoAuthenticatedUser } from "../../../src/server/contexts/identity/identitySsoAuthenticatedUserSchema.js"
 import { identitySsoAuthFindByState } from "../../../src/server/contexts/identity/identitySsoAuthFindByState.js"
-import { identitySsoPrevalidateClaimsSchema } from "../../../src/server/contexts/identity/identitySsoPrevalidateClaimsSchema.js"
-import { identityPasswordTokenResponseSchema } from "../../../src/server/contexts/identity/identityPasswordTokenResponseSchema.js"
-import { identityRefreshTokenClaimsDecode } from "../../../src/server/contexts/identity/identityRefreshTokenClaimsDecode.js"
 import { identitySsoAuthSave } from "../../../src/server/contexts/identity/identitySsoAuthSave.js"
+import { identitySsoPrevalidateClaimsSchema } from "../../../src/server/contexts/identity/identitySsoPrevalidateClaimsSchema.js"
 import { identitySsoUserSave } from "../../../src/server/contexts/identity/identitySsoUserSave.js"
+import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import { eventType } from "../../../src/server/contexts/events/eventType.js"
-import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import type { PushRelayAdapter } from "../../../src/server/contexts/push/pushRelayAdapter.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
-import { sha256Hex } from "../../../src/shared/crypto/sha256Hex.js"
+import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
+import type { Clock } from "../../../src/shared/clock/clock.js"
+import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
+import { sha256Hex } from "../../../src/shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
-import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
-import type { Clock } from "../../../src/shared/clock/clock.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
-import type { Result } from "#result"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -125,6 +127,7 @@ async function contextCreate(
     user?: Partial<IdentityUser>
     ssoUser?: IdentitySsoAuthenticatedUser
     rateLimiter?: { check: (key: string) => Result<void> }
+    push?: PushRelayAdapter
   } = {},
 ): Promise<IdentityTask8Context> {
   const databaseResult = databaseTestCreate()
@@ -151,6 +154,7 @@ async function contextCreate(
       privateKey: keyPair.privateKey,
       publicKey: keyPair.publicKey,
       publicOrigin: "https://vault.example/",
+      ...(options.push === undefined ? {} : { push: options.push }),
       rateLimiter: options.rateLimiter ?? { check: () => resultCreate(undefined) },
       sso,
     },
@@ -557,6 +561,17 @@ test("authorization-code SSO grant completes authorize, bound callback, linking,
   })
 })
 
+test("disabled SSO authorize rejects before creating state or a binding cookie", async () => {
+  const context = await contextCreate()
+  const response = await context.app.request(
+    "https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&response_type=code&scope=openid&state=disabled-state&code_challenge=invalid&code_challenge_method=S256",
+  )
+  await expectApiError(response, 400, "SSO sign-in is not available")
+  expect(response.headers.get("set-cookie")).toBeNull()
+  expect(context.sso.authorizeCalls).toHaveLength(0)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+})
+
 test("SSO callback error stores the provider error and authorization-code exchange returns its exact error", async () => {
   const context = await contextCreate({ config: { SSO_ENABLED: true } })
   const authorize = await context.app.request(
@@ -651,6 +666,122 @@ test("SSO provider exchange retries only while its failure is transient", async 
   expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
 })
 
+test("SSO late push failure leaves the authorization retryable and successful replay is rejected", async () => {
+  let failRegistration = true
+  const push: PushRelayAdapter = {
+    registerDevice: async () =>
+      failRegistration
+        ? resultErrorCreate("testPush", "Provider unavailable", { code: "platform.unavailable", statusCode: 503 })
+        : resultCreate(undefined),
+    unregisterDevice: async () => resultCreate(undefined),
+    dispatch: async () => undefined,
+  }
+  const context = await contextCreate({
+    config: { SSO_ENABLED: true },
+    push,
+    ssoUser: ssoUserCreate({ email: "alice@example.com", identifier: "existing-sso-id" }),
+  })
+  expect(
+    identitySsoUserSave(context.database, { userUuid: context.user.uuid, identifier: "existing-sso-id" }),
+  ).toMatchObject({ success: true })
+  expect(
+    identityDeviceSave(
+      context.database,
+      {
+        uuid: "sso-device",
+        createdAt: "2026-08-27T00:00:00.000Z",
+        updatedAt: "2026-08-27T00:00:01.000Z",
+        userUuid: context.user.uuid,
+        name: "SSO device",
+        type: 9,
+        pushUuid: "push-uuid",
+        pushToken: "push-token",
+        refreshToken: "device-refresh-token",
+        twoFactorRemember: null,
+      },
+      context.clock,
+      false,
+    ),
+  ).toMatchObject({ success: true })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "late-failure-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "late-failure-code",
+      codeResponseError: null,
+      authResponse: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+
+  await expectApiError(await requestForm(context.app, ssoTokenForm("late-failure-code")), 503, "Provider unavailable")
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
+  expect(context.sso.exchangeCalls).toHaveLength(1)
+
+  failRegistration = false
+  const retry = await requestForm(context.app, ssoTokenForm("late-failure-code"))
+  expect(retry.status).toBe(200)
+  expect(context.sso.exchangeCalls).toHaveLength(1)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+  await expectApiError(
+    await requestForm(context.app, ssoTokenForm("late-failure-code")),
+    400,
+    "Invalid code cannot retrieve sso auth",
+  )
+})
+
+test("concurrent SSO exchanges serialize before atomically consuming one authorization", async () => {
+  const context = await contextCreate({
+    config: { SSO_ENABLED: true },
+    ssoUser: ssoUserCreate({ email: "alice@example.com", identifier: "concurrent-sso-id" }),
+  })
+  let exchangeStartedResolve!: () => void
+  let exchangeRelease!: () => void
+  const exchangeStarted = new Promise<void>((resolve) => {
+    exchangeStartedResolve = resolve
+  })
+  const exchangeGate = new Promise<void>((resolve) => {
+    exchangeRelease = resolve
+  })
+  context.sso.exchange = async (input) => {
+    context.sso.exchangeCalls.push(input)
+    exchangeStartedResolve()
+    await exchangeGate
+    return resultCreate(ssoUserCreate({ email: "alice@example.com", identifier: "concurrent-sso-id" }))
+  }
+  expect(
+    identitySsoUserSave(context.database, { userUuid: context.user.uuid, identifier: "concurrent-sso-id" }),
+  ).toMatchObject({ success: true })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "concurrent-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "concurrent-code",
+      codeResponseError: null,
+      authResponse: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+
+  const first = requestForm(context.app, ssoTokenForm("concurrent-code"))
+  await exchangeStarted
+  const second = requestForm(context.app, ssoTokenForm("concurrent-code"))
+  await Promise.resolve()
+  exchangeRelease()
+  const responses = await Promise.all([first, second])
+  expect(responses.map((response) => response.status).sort()).toEqual([200, 400])
+  expect(context.sso.exchangeCalls).toHaveLength(1)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+})
+
 test("SSO canonicalizes provider email before lookup and creation", async () => {
   const context = await contextCreate({
     config: { SSO_ENABLED: true },
@@ -706,7 +837,7 @@ test("SSO rejects empty and malformed provider email before lookup or creation",
   }
 })
 
-test("SSO linking rejects duplicate email identities and disabled users after consuming the authorization", async () => {
+test("SSO linking rejects duplicate email identities and disabled users without consuming the authorization", async () => {
   const duplicate = await contextCreate({ config: { SSO_ENABLED: true }, ssoUser: ssoUserCreate() })
   const duplicateUser = await userCreate({ uuid: "duplicate-user", email: "sso@example.com" })
   expect(identityUserSave(duplicate.database, duplicateUser)).toMatchObject({ success: true })
@@ -728,7 +859,7 @@ test("SSO linking rejects duplicate email identities and disabled users after co
     }),
   ).toMatchObject({ success: true })
   await expectApiError(await requestForm(duplicate.app, ssoTokenForm("code")), 400, "Existing SSO user with same email")
-  expect(duplicate.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+  expect(duplicate.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
 
   const disabled = await contextCreate({
     config: { SSO_ENABLED: true },
@@ -757,8 +888,8 @@ test("SSO linking rejects duplicate email identities and disabled users after co
     400,
     "This user has been disabled",
   )
-  expect(disabled.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
-  expect(identitySsoAuthFindByState(disabled.database, "disabled-state", disabled.clock).data).toBeNull()
+  expect(disabled.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
+  expect(identitySsoAuthFindByState(disabled.database, "disabled-state", disabled.clock).data).not.toBeNull()
 })
 
 test("SSO prevalidation is gated and signs the exact short-lived claims", async () => {
@@ -832,6 +963,83 @@ test("SSO refresh grants exchange provider refresh tokens and keep the SSO subje
     success: true,
     data: { sub: "sso", token: { Refresh: "new-provider-refresh" } },
   })
+})
+
+test("SSO access-token refresh ignores forged provider JWT timing claims", async () => {
+  const now = 1_787_875_200
+  const forgedProviderAccess = await new SignJWT({ nbf: now + 365 * 24 * 60 * 60 })
+    .setProtectedHeader({ typ: "JWT", alg: "RS256" })
+    .setIssuer("https://idp.example")
+    .setIssuedAt(now + 365 * 24 * 60 * 60)
+    .setExpirationTime(now + 365 * 24 * 60 * 60)
+    .sign(keyPair.privateKey)
+  const context = await contextCreate({
+    config: { SSO_ENABLED: true, SSO_AUTHORITY: "https://idp.example" },
+    ssoUser: ssoUserCreate({
+      access_token: forgedProviderAccess,
+      email: "alice@example.com",
+      identifier: "access-token-sso-id",
+    }),
+  })
+  expect(
+    identitySsoUserSave(context.database, { userUuid: context.user.uuid, identifier: "access-token-sso-id" }),
+  ).toMatchObject({ success: true })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "access-token-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "access-token-code",
+      codeResponseError: null,
+      authResponse: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+
+  const login = await requestForm(context.app, ssoTokenForm("access-token-code"))
+  expect(login.status).toBe(200)
+  const loginBody = await responseJson(login)
+  const initialAccessClaims = await identityAccessTokenClaimsDecode(
+    String(loginBody.access_token),
+    keyPair.publicKey,
+    "https://vault.example",
+    context.clock,
+  )
+  expect(initialAccessClaims).toMatchObject({ success: true, data: { nbf: now, exp: now + 3_600 } })
+
+  const localRefreshClaims = decodeJwt(String(loginBody.refresh_token))
+  const deviceToken = localRefreshClaims.device_token
+  expect(typeof deviceToken).toBe("string")
+  if (typeof deviceToken !== "string") return
+  const forgedLocalRefresh = await new SignJWT({
+    device_token: deviceToken,
+    sub: "sso",
+    token: { Access: forgedProviderAccess },
+  })
+    .setProtectedHeader({ typ: "JWT", alg: "RS256" })
+    .setIssuer("https://vault.example|login")
+    .setNotBefore(now)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 365 * 24 * 60 * 60)
+    .sign(keyPair.privateKey)
+  context.sso.validateAccessToken = async () => resultCreate(undefined)
+  const refresh = await requestForm(context.app, {
+    grant_type: "refresh_token",
+    refresh_token: forgedLocalRefresh,
+    client_id: "web",
+  })
+  expect(refresh.status).toBe(200)
+  const refreshBody = await responseJson(refresh)
+  const refreshedAccessClaims = await identityAccessTokenClaimsDecode(
+    String(refreshBody.access_token),
+    keyPair.publicKey,
+    "https://vault.example",
+    context.clock,
+  )
+  expect(refreshedAccessClaims).toMatchObject({ success: true, data: { nbf: now, exp: now + 3_600 } })
 })
 
 test("SSO auth-only-not-session refreshes as a local SSO session instead of a password grant", async () => {
