@@ -35,8 +35,8 @@ Bring the OneWarden browser extension to practical Bitwarden feature parity for 
 - [x] 7. Add folder and collection navigation, filtering, assignment, permission indicators, and organization context.
 - [x] 8. Add attachment list/upload/download/delete flows and password-history reveal/copy/restore UI to cipher details.
 - [x] 9. Add a persistent MV3 autofill content-script foundation, typed message contracts, resilient field discovery/classification, SPA/iframe lifecycle handling, and secure inline-menu mounting.
-- [ ] 10. Add login, card, and identity inline/manual autofill with matching, guarded secret retrieval, teardown, and focused DOM tests.
-- [ ] 11. Add autofill-on-page-load policy, settings UI, candidate rules, late-form observation, and duplicate-fill prevention.
+- [x] 10. Add login, card, and identity inline/manual autofill with matching, guarded secret retrieval, teardown, and focused DOM tests.
+- [x] 11. Add autofill-on-page-load policy, settings UI, candidate rules, late-form observation, and duplicate-fill prevention.
 - [ ] 12. Add save/update-login detection for submitted and changed credentials, comparison logic, dismissal policy, and secure save/update prompts.
 - [ ] 13. Add TOTP field detection and inline filling plus TOTP capture into login create/update flows, with expiry-safe generation and tests.
 - [ ] 14. Add extension account registration and verification/password-setup flows using existing identity endpoints.

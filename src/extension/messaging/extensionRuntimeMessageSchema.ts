@@ -22,10 +22,12 @@ import { extensionFolderListRequestSchema } from "../background/extensionFolderL
 import { extensionFolderReadRequestSchema } from "../background/extensionFolderReadRequestSchema.js"
 import { extensionFolderUpdateRequestSchema } from "../background/extensionFolderUpdateRequestSchema.js"
 import { extensionVaultSearchRequestSchema } from "../background/extensionVaultSearchRequestSchema.js"
+import { extensionCipherFillRequestSchema } from "../fill/extensionCipherFillRequestSchema.js"
 import { extensionLoginFillRequestSchema } from "../fill/extensionLoginFillRequestSchema.js"
 import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
 import { extensionPasskeyAssertionRequestSchema } from "../passkey/extensionPasskeyAssertionRequestSchema.js"
 import { extensionPasskeyCredentialCreateRequestSchema } from "../passkey/extensionPasskeyCredentialCreateRequestSchema.js"
+import { extensionAutofillPolicyRequestSchema } from "../storage/extensionAutofillPolicyRequestSchema.js"
 import { extensionLockPolicyRequestSchema } from "../storage/extensionLockPolicyRequestSchema.js"
 
 const extensionRuntimeSurfaceSchema = v.picklist(["popup", "fullwindow"])
@@ -79,10 +81,13 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
   v.strictObject({ type: v.literal("environmentSave"), request: v.unknown() }),
   v.strictObject({ type: v.literal("lockPolicyLoad") }),
   v.strictObject({ type: v.literal("lockPolicySave"), request: extensionLockPolicyRequestSchema }),
+  v.strictObject({ type: v.literal("autofillPolicyLoad") }),
+  v.strictObject({ type: v.literal("autofillPolicySave"), request: extensionAutofillPolicyRequestSchema }),
   v.strictObject({ type: v.literal("lock") }),
   v.strictObject({ type: v.literal("logout") }),
   v.strictObject({ type: v.literal("activeTabContextLookup") }),
   v.strictObject({ type: v.literal("loginFill"), request: extensionLoginFillRequestSchema }),
+  v.strictObject({ type: v.literal("cipherFill"), request: extensionCipherFillRequestSchema }),
   v.strictObject({
     type: v.literal("totpCopy"),
     request: v.strictObject({ loginId: v.pipe(v.string(), v.minLength(1)) }),

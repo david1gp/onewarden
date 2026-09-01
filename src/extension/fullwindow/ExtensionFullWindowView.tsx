@@ -144,6 +144,15 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           securityActionLabel={state.securityActionLabel}
           securityNeverSelected={state.securityNeverSelected()}
           onSecuritySave={state.lockPolicySave}
+          autofillPageLoadSignal={state.autofillPageLoadSignal}
+          autofillOptions={state.autofillOptions}
+          autofillLabel={state.autofillLabel}
+          autofillSiteAvailable={state.siteFilterAvailable()}
+          autofillSiteLabel={state.siteLabel()}
+          autofillSiteDisabled={state.autofillSiteDisabled()}
+          autofillSaveStatus={state.autofillSaveStatus()}
+          onAutofillSiteToggle={state.autofillSiteToggle}
+          onAutofillSave={state.autofillPolicySave}
         />
       </Show>
 

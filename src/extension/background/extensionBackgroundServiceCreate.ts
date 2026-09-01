@@ -28,6 +28,12 @@ import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
+import { extensionCredentialCapturePlanCreate } from "../autofill/extensionCredentialCapturePlanCreate.js"
+import {
+  type ExtensionCredentialCaptureRequest,
+  extensionCredentialCaptureRequestSchema,
+} from "../autofill/extensionCredentialCaptureRequestSchema.js"
+import type { ExtensionCredentialCapturePrompt } from "../autofill/extensionCredentialCapturePromptSchema.js"
 import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
 import { extensionCollectionSchema } from "../crypto/extensionCollectionSchema.js"
@@ -353,6 +359,10 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const now = options.now ?? Date.now
   let operationChain: Promise<void> = Promise.resolve()
   let refreshInFlight: Promise<Result<ExtensionAuthSession>> | null = null
+  const credentialCapturePending = new Map<
+    string,
+    { expiresAt: number; kind: "add" | "change"; cipher: ExtensionPersonalLoginCipher }
+  >()
 
   const operationRun = <T>(operation: () => Promise<Result<T>>): Promise<Result<T>> => {
     const result = operationChain.then(operation, operation)
@@ -1636,6 +1646,70 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const fullSync = (): Promise<Result<ExtensionSyncResult>> => operationRun(() => syncRun(true))
   const manualSync = (): Promise<Result<ExtensionSyncResult>> => fullSync()
 
+  const credentialCaptureAssess = async (
+    request: unknown,
+  ): Promise<Result<ExtensionCredentialCapturePrompt | null>> => {
+    const op = "extensionBackgroundService.credentialCaptureAssess"
+    const parsed = v.safeParse(extensionCredentialCaptureRequestSchema, request)
+    if (!parsed.success) return invalidRequest(op, "Credential capture request is invalid.", v.summarize(parsed.issues))
+    const snapshotResult = await syncSnapshotLoad()
+    if (!snapshotResult.success) return snapshotResult
+    if (snapshotResult.data === null) return unavailable(op, "Vault data is unavailable.")
+    const currentTime = now()
+    for (const [id, pending] of credentialCapturePending) {
+      if (pending.expiresAt <= currentTime) credentialCapturePending.delete(id)
+    }
+    while (credentialCapturePending.size >= 50) {
+      const first = credentialCapturePending.keys().next().value
+      if (typeof first !== "string") break
+      credentialCapturePending.delete(first)
+    }
+    const id = extensionCredentialCaptureIdCreate()
+    const plan = extensionCredentialCapturePlanCreate(
+      parsed.output,
+      extensionLoginCiphersRead(snapshotResult.data.ciphers),
+      currentTime,
+      extensionCredentialCaptureIdCreate,
+    )
+    if (plan === null) return resultCreate(null)
+    const site = new URL(parsed.output.url).hostname
+      .toLowerCase()
+      .replace(/^www\./u, "")
+      .replace(/\.$/u, "")
+    if (plan.kind === "atRisk") return resultCreate({ id, kind: plan.kind, site, risk: plan.risk })
+    credentialCapturePending.set(id, {
+      expiresAt: currentTime + 60_000,
+      kind: plan.kind,
+      cipher: plan.cipher,
+    })
+    return resultCreate({ id, kind: plan.kind, site, risk: null })
+  }
+
+  const credentialCaptureDiscard = (promptId: string): Result<void> => {
+    credentialCapturePending.delete(promptId)
+    return resultCreate(undefined)
+  }
+
+  const credentialCaptureCommit = async (promptId: string): Promise<Result<"saved" | "updated">> => {
+    const op = "extensionBackgroundService.credentialCaptureCommit"
+    const parsed = v.safeParse(v.pipe(v.string(), v.minLength(1), v.maxLength(192)), promptId)
+    if (!parsed.success) return invalidRequest(op, "Credential capture prompt is invalid.")
+    const pending = credentialCapturePending.get(parsed.output)
+    credentialCapturePending.delete(parsed.output)
+    if (pending === undefined || pending.expiresAt <= now()) {
+      return resultErrorCreate(op, "Credential capture prompt has expired.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const mutationResult =
+      pending.kind === "add"
+        ? await cipherCreate({ cipher: pending.cipher })
+        : await cipherUpdate({ cipherId: pending.cipher.id, cipher: pending.cipher })
+    if (!mutationResult.success) return mutationResult
+    return resultCreate(pending.kind === "add" ? "saved" : "updated")
+  }
+
   const cipherCreate = (request: unknown): Promise<Result<ExtensionCipher>> =>
     operationRun(async () => {
       const op = "extensionBackgroundService.cipherCreate"
@@ -2183,6 +2257,9 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     conditionalSync,
     fullSync,
     manualSync,
+    credentialCaptureAssess,
+    credentialCaptureCommit,
+    credentialCaptureDiscard,
     cipherCreate,
     cipherUpdate,
     cipherPartial,
@@ -2220,4 +2297,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     start,
     timeoutAlarmHandle,
   }
+}
+
+function extensionCredentialCaptureIdCreate(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }

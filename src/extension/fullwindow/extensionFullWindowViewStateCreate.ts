@@ -9,6 +9,7 @@ import { vaultSortSchema } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
+import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
@@ -33,6 +34,7 @@ const regionLabels: Record<string, string> = {
 }
 
 const defaultLockPolicy: ExtensionLockPolicy = { action: "lock", timeoutMinutes: null }
+const defaultAutofillPolicy: ExtensionAutofillPolicy = { pageLoadEnabled: false, disabledSites: [] }
 const timeoutOptions = ["1", "5", "15", "30", "60", "240", "never"]
 const timeoutLabels: Record<string, string> = {
   "1": "1 minute",
@@ -84,6 +86,8 @@ export function extensionFullWindowViewStateCreate(
   const environmentTouchedSignal = createSignalObject(false)
   const securitySignal = createSignalObject<ExtensionLockPolicy>(defaultLockPolicy)
   const securityTouchedSignal = createSignalObject(false)
+  const autofillSignal = createSignalObject<ExtensionAutofillPolicy>(defaultAutofillPolicy)
+  const autofillTouchedSignal = createSignalObject(false)
 
   const status = createMemo(() => model().status)
   const hostname = createMemo(() => model().hostname)
@@ -95,6 +99,9 @@ export function extensionFullWindowViewStateCreate(
   )
   const fillAvailable = createMemo(() => model().fillAvailable)
   const lockPolicy = createMemo(() => model().lockPolicy)
+  const autofillPolicy = createMemo(() =>
+    autofillTouchedSignal.get() ? autofillSignal.get() : (model().autofillPolicy ?? defaultAutofillPolicy),
+  )
 
   const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
   const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
@@ -184,6 +191,33 @@ export function extensionFullWindowViewStateCreate(
   const securityActionOptions = () => actionOptions
   const securityActionLabel = (value: string) => actionLabels[value] ?? value
   const securityNeverSelected = createMemo(() => securityPolicy().timeoutMinutes === null)
+  const autofillPageLoadSignal: SignalObject<string> = {
+    get: () => (autofillPolicy().pageLoadEnabled ? "enabled" : "disabled"),
+    set: (value) => {
+      if (value !== "enabled" && value !== "disabled") return
+      autofillSignal.set({ ...autofillPolicy(), pageLoadEnabled: value === "enabled" })
+      autofillTouchedSignal.set(true)
+    },
+  }
+  const autofillOptions = () => ["disabled", "enabled"]
+  const autofillLabel = (value: string) => (value === "enabled" ? "On" : "Off")
+  const autofillSiteDisabled = createMemo(() => {
+    const site = hostname()
+      ?.toLowerCase()
+      .replace(/^www\./, "")
+    return site !== undefined && autofillPolicy().disabledSites.includes(site)
+  })
+  const autofillSiteToggle = () => {
+    const site = hostname()
+      ?.toLowerCase()
+      .replace(/^www\./, "")
+    if (site === undefined) return
+    const disabledSites = autofillSiteDisabled()
+      ? autofillPolicy().disabledSites.filter((entry) => entry !== site)
+      : [...autofillPolicy().disabledSites, site]
+    autofillSignal.set({ ...autofillPolicy(), disabledSites })
+    autofillTouchedSignal.set(true)
+  }
 
   const environmentFieldSignal = (
     field: "base" | "webVault" | "api" | "identity" | "icons" | "notifications" | "events",
@@ -235,6 +269,7 @@ export function extensionFullWindowViewStateCreate(
   }
   const environmentSave = () => commands().environmentSave(environment())
   const lockPolicySave = () => commands().lockPolicySave(securityPolicy())
+  const autofillPolicySave = () => commands().autofillPolicySave?.(autofillPolicy())
 
   const vaultUnlock = () => {
     const masterPassword = masterPasswordSignal.get()
@@ -278,6 +313,12 @@ export function extensionFullWindowViewStateCreate(
     securityActionOptions,
     securityActionLabel,
     securityNeverSelected,
+    autofillPageLoadSignal,
+    autofillOptions,
+    autofillLabel,
+    autofillSiteDisabled,
+    autofillSiteToggle,
+    autofillSaveStatus: () => model().autofillSaveStatus,
     isLoading,
     isLocked,
     isLoggedOut,
@@ -321,6 +362,7 @@ export function extensionFullWindowViewStateCreate(
     accountLogin,
     environmentSave,
     lockPolicySave,
+    autofillPolicySave,
     resourceState,
     resourceFilteredModel,
   }

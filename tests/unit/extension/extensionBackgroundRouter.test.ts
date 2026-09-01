@@ -106,6 +106,7 @@ function routerCreate(
   }[] = []
   const vaultSearchCalls: unknown[] = []
   const cipherDetailReadCalls: unknown[] = []
+  const cipherFillCalls: unknown[] = []
   const cipherMutationCalls: { type: string; request: unknown }[] = []
   const folderCalls: { type: string; request: unknown }[] = []
   const collectionCalls: { type: string; request: unknown }[] = []
@@ -122,6 +123,19 @@ function routerCreate(
     },
     cipherDetailRead: async (request: unknown) => {
       cipherDetailReadCalls.push(request)
+      if ((request as { cipherId?: string }).cipherId === "card-fill") {
+        return resultCreate({
+          object: "cipherDetails" as const,
+          id: "card-fill",
+          type: 3 as const,
+          revisionDate: "2026-08-28T00:00:00.000Z",
+          deletedDate: null,
+          name: "Fill card",
+          notes: null,
+          card: { cardholderName: "Ada", number: "4111111111111111", code: "123" },
+          fields: [],
+        })
+      }
       return resultCreate({
         object: "cipherDetails" as const,
         id: "matching-login",
@@ -268,6 +282,10 @@ function routerCreate(
         fillCalls.push({ tabId: target.tabId, frameId: target.frameId, ...credentials })
         return resultCreate({ status: "filled", usernameFilled: true, passwordFilled: true })
       },
+      cipherExecuteScript: async (target, values) => {
+        cipherFillCalls.push({ target, values })
+        return resultCreate({ status: "filled", filledCount: values.length, requestedCount: values.length })
+      },
     },
     now: () => 59_000,
     windows: {
@@ -294,6 +312,7 @@ function routerCreate(
     handoffCalls,
     vaultSearchCalls,
     cipherDetailReadCalls,
+    cipherFillCalls,
     cipherMutationCalls,
     folderCalls,
     collectionCalls,
@@ -350,6 +369,28 @@ test("extensionBackgroundRouterCreate routes explicit typed cipher detail reads"
   expect(context.cipherDetailReadCalls).toEqual([{ cipherId: "matching-login" }])
   expect((await context.router.messageHandle({ type: "cipherDetailRead", request: {} })).success).toBe(false)
   expect((await context.router.messageHandle({ type: "cipherDetailRead" })).success).toBe(false)
+})
+
+test("extensionBackgroundRouterCreate retrieves a selected card only for an explicit typed fill", async () => {
+  const context = routerCreate()
+
+  const result = await context.router.messageHandle({
+    type: "cipherFill",
+    request: { cipherId: "card-fill", cipherType: 3 },
+  })
+
+  expect(result).toEqual({ success: true, data: { status: "filled", filledCount: 3, requestedCount: 3 } })
+  expect(context.cipherDetailReadCalls.at(-1)).toEqual({ cipherId: "card-fill" })
+  expect(context.cipherFillCalls).toEqual([
+    {
+      target: { tabId: 7 },
+      values: [
+        { kind: "cardholderName", value: "Ada" },
+        { kind: "cardNumber", value: "4111111111111111" },
+        { kind: "cardSecurityCode", value: "123" },
+      ],
+    },
+  ])
 })
 
 test("extensionBackgroundRouterCreate routes every generic cipher mutation command", async () => {

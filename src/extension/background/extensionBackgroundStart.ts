@@ -17,7 +17,6 @@ import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
 
 /** Entry point of the MV3 service worker. Listener registration stays synchronous. */
 export function extensionBackgroundStart(): void {
-  extensionAutofillBackgroundPortsCreate(chrome.runtime)
   const storage = extensionStorageCreate(extensionStorageAdapterCreate(chrome.storage))
   const vaultSession = extensionVaultSessionCreate(storage)
   const service = extensionBackgroundServiceCreate({
@@ -26,6 +25,7 @@ export function extensionBackgroundStart(): void {
     vaultSession,
     alarms: extensionAlarmsAdapterCreate(chrome.alarms),
   })
+  const autofill = extensionAutofillBackgroundPortsCreate(chrome.runtime, { service, storage })
 
   const runtime: ExtensionRuntimeAdapter = {
     onMessageAddListener: (listener) => {
@@ -69,6 +69,7 @@ export function extensionBackgroundStart(): void {
     windows,
     scripting: extensionScriptingAdapterCreate(chrome.scripting),
     service,
+    autofill,
     passkeyConsentUi,
   })
   void router.initialize().then((result) => {

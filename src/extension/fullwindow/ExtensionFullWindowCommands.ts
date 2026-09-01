@@ -6,6 +6,7 @@ import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
+import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
 
@@ -35,6 +36,7 @@ export interface ExtensionFullWindowCommands {
   cardCreate: (cipher: ExtensionCipher) => void
   cardUpdate: (cipherId: string, cipher: ExtensionCipher) => void
   cardDelete: (cipherId: string) => void
+  cipherFill?: (cipherId: string, cipherType: 3 | 4) => void
   identitiesLoad: () => void
   identityRead: (cipherId: string) => void
   identityCreate: (cipher: ExtensionCipher) => void
@@ -65,4 +67,5 @@ export interface ExtensionFullWindowCommands {
   ) => void
   environmentSave: (environment: ExtensionFullWindowEnvironmentSettings) => void
   lockPolicySave: (policy: ExtensionLockPolicy) => void
+  autofillPolicySave?: (policy: ExtensionAutofillPolicy) => void
 }

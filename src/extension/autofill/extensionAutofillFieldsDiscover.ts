@@ -7,6 +7,7 @@ type AutofillControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElemen
 export function extensionAutofillFieldsDiscover(
   documentValue: Document,
   fieldIdResolve: (control: HTMLElement) => string,
+  formIdResolve: (control: HTMLElement) => string = (control) => control.closest("form")?.id || "document",
 ): Array<{ descriptor: ExtensionAutofillFieldDescriptor; control: HTMLElement }> {
   const discovered: Array<{ descriptor: ExtensionAutofillFieldDescriptor; control: HTMLElement }> = []
   const roots: Array<Document | ShadowRoot> = [documentValue]
@@ -24,6 +25,7 @@ export function extensionAutofillFieldsDiscover(
           id: fieldIdResolve(element),
           kind: extensionAutofillFieldClassify(element),
           control: extensionAutofillControlTypeResolve(element),
+          formId: formIdResolve(element),
         },
         control: element,
       })

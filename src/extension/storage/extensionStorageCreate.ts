@@ -5,6 +5,7 @@ import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionEnvironmentSource } from "../api/extensionEnvironmentSourceSchema.js"
 import { type ExtensionAuthSession, extensionAuthSessionStorageSchema } from "./extensionAuthSessionStorageSchema.js"
+import { type ExtensionAutofillPolicy, extensionAutofillPolicySchema } from "./extensionAutofillPolicySchema.js"
 import { type ExtensionCreateDraft, extensionCreateDraftStorageSchema } from "./extensionCreateDraftStorageSchema.js"
 import {
   type ExtensionEnvironmentStorage,
@@ -240,6 +241,29 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
   const lockPolicyClear = (): Promise<Result<void>> =>
     storageRemove(adapter.local, extensionStorageKeys.lockPolicy, "extensionStorage.lockPolicyClear")
 
+  const autofillPolicyLoad = async (): Promise<Result<ExtensionAutofillPolicy | null>> => {
+    const op = "extensionStorage.autofillPolicyLoad"
+    const result = await storageRead(
+      adapter.local,
+      extensionStorageKeys.autofillPolicy,
+      extensionAutofillPolicySchema,
+      op,
+    )
+    if (!result.success) return result
+    if (result.data === null) return resultCreate(null)
+    const { schemaVersion: _schemaVersion, ...policy } = result.data
+    return resultCreate(policy)
+  }
+
+  const autofillPolicySave = (policy: ExtensionAutofillPolicy): Promise<Result<void>> =>
+    storageWrite(
+      adapter.local,
+      extensionStorageKeys.autofillPolicy,
+      extensionAutofillPolicySchema,
+      storageVersionedCreate<ExtensionAutofillPolicy>(policy),
+      "extensionStorage.autofillPolicySave",
+    )
+
   const generatorPreferencesLoad = async (): Promise<Result<ExtensionGeneratorPreferences | null>> => {
     const op = "extensionStorage.generatorPreferencesLoad"
     const result = await storageRead(
@@ -362,6 +386,8 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
     lockPolicyLoad,
     lockPolicySave,
     lockPolicyClear,
+    autofillPolicyLoad,
+    autofillPolicySave,
     generatorPreferencesLoad,
     generatorPreferencesSave,
     vaultSortLoad,

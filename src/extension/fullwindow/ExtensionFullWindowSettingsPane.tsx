@@ -43,12 +43,67 @@ export interface ExtensionFullWindowSettingsPaneProps {
   securityActionLabel: (value: string) => string
   securityNeverSelected: boolean
   onSecuritySave: () => void
+  autofillPageLoadSignal: SignalObject<string>
+  autofillOptions: () => string[]
+  autofillLabel: (value: string) => string
+  autofillSiteAvailable: boolean
+  autofillSiteLabel: string
+  autofillSiteDisabled: boolean
+  autofillSaveStatus: ExtensionFullWindowSecuritySaveStatus
+  onAutofillSiteToggle: () => void
+  onAutofillSave: () => void
 }
 
 /** Security and server controls for the full-window settings pane. */
 export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPaneProps) {
   return (
     <div class="flex max-w-2xl flex-col gap-4">
+      <CardWrapper
+        class="flex flex-col gap-4 border-blue-200 bg-white p-5 dark:border-blue-900 dark:bg-slate-900"
+        aria-label="Autofill settings"
+      >
+        <div>
+          <p class="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">Autofill</p>
+          <h2 class="text-lg font-semibold">Autofill on page load</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-300">
+            Off by default. When enabled, only one unambiguous login match is filled. Cards and identities are never
+            filled automatically.
+          </p>
+        </div>
+        <SwitchSingle
+          id={`${p.idPrefix ?? ""}extension-autofill-page-load`}
+          disabled={p.disabled}
+          valueSignal={p.autofillPageLoadSignal}
+          getOptions={p.autofillOptions}
+          valueText={p.autofillLabel}
+          class="w-fit p-1"
+        />
+        <Show when={p.autofillSiteAvailable}>
+          <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <span class="text-sm">
+              {p.autofillSiteLabel}: {p.autofillSiteDisabled ? "disabled" : "allowed"}
+            </span>
+            <Button variant="ghost" disabled={p.disabled} onClick={p.onAutofillSiteToggle}>
+              {p.autofillSiteDisabled ? "Allow on this site" : "Disable on this site"}
+            </Button>
+          </div>
+        </Show>
+        <Show when={p.autofillSaveStatus === "saved"}>
+          <p role="status" class="text-sm text-green-700 dark:text-green-400">
+            Autofill settings saved.
+          </p>
+        </Show>
+        <Show when={p.autofillSaveStatus === "error"}>
+          <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+            Autofill settings could not be saved.
+          </p>
+        </Show>
+        <div>
+          <Button variant="filledBlue" disabled={p.disabled} onClick={p.onAutofillSave}>
+            {p.autofillSaveStatus === "saving" ? "Saving autofill settings…" : "Save autofill settings"}
+          </Button>
+        </div>
+      </CardWrapper>
       <CardWrapper
         class="flex flex-col gap-5 overflow-hidden border-blue-200 bg-white p-5 dark:border-blue-900 dark:bg-slate-900"
         aria-label="Security settings"

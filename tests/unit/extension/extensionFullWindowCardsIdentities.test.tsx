@@ -74,13 +74,22 @@ test("full-window cards mask, reveal and copy sensitive details and support edit
   window.history.replaceState(null, "", "/?category=cards")
   const copied: Array<[string, string]> = []
   const updated: ExtensionCipher[] = []
+  const filled: Array<[string, 3 | 4]> = []
   const root = render(() => (
     <ExtensionFullWindowView
-      model={() => extensionFullWindowViewModelCreate({ status: "ready", cards: [summary(card)], selectedCard: card })}
+      model={() =>
+        extensionFullWindowViewModelCreate({
+          status: "ready",
+          cards: [summary(card)],
+          selectedCard: card,
+          fillAvailable: true,
+        })
+      }
       commands={extensionFullWindowCommandsCreate({
         cardRead: () => {},
         cardUpdate: (_id, cipher) => updated.push(cipher),
         cipherFieldCopy: (key, value) => copied.push([key, value]),
+        cipherFill: (id, type) => filled.push([id, type]),
       })}
     />
   ))
@@ -93,6 +102,8 @@ test("full-window cards mask, reveal and copy sensitive details and support edit
   fireEvent.click(root.getByRole("button", { name: "Reveal number" }))
   expect(root.getByText("4111111111111111")).toBeDefined()
   expect(root.getByText("03 / 2030")).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Fill" }))
+  expect(filled).toEqual([["card-1", 3]])
   fireEvent.click(root.getByRole("button", { name: "Copy number" }))
   expect(copied).toEqual([["card:card-1:number", "4111111111111111"]])
 
@@ -130,6 +141,7 @@ test("full-window card create requires a name and creates a type-specific cipher
 test("full-window identities use useful sections, mask identification, enforce read-only access and keyboard close", () => {
   window.history.replaceState(null, "", "/?category=identities")
   const copied: Array<[string, string]> = []
+  const filled: Array<[string, 3 | 4]> = []
   const root = render(() => (
     <ExtensionFullWindowView
       model={() =>
@@ -137,11 +149,13 @@ test("full-window identities use useful sections, mask identification, enforce r
           status: "ready",
           identities: [{ ...summary(identity), edit: false, permissions: { delete: false } }],
           selectedIdentity: identity,
+          fillAvailable: true,
         })
       }
       commands={extensionFullWindowCommandsCreate({
         identityRead: () => {},
         cipherFieldCopy: (key, value) => copied.push([key, value]),
+        cipherFill: (id, type) => filled.push([id, type]),
       })}
     />
   ))
@@ -156,6 +170,8 @@ test("full-window identities use useful sections, mask identification, enforce r
   fireEvent.click(root.getByRole("button", { name: "Copy Social security number" }))
   expect(copied).toEqual([["identity:identity-1:ssn", "123-45-6789"]])
   expect(root.getByText("You have view-only access to this item.")).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Fill" }))
+  expect(filled).toEqual([["identity-1", 4]])
   expect((root.getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(true)
   fireEvent.keyDown(window, { key: "Escape" })
   expect(root.getByText("Select an identity to see its details.")).toBeDefined()

@@ -1,16 +1,21 @@
+import type { ExtensionAutofillCandidate } from "./extensionAutofillCandidateSchema.js"
+
 type InlineMenuMountOptions = {
   document: Document
   field: HTMLElement
   fieldId: string
   onDismiss: (reason: "blur" | "escape" | "navigation" | "removed" | "stopped") => void
+  onSelect?: (candidate: ExtensionAutofillCandidate) => void
 }
 
 type InlineMenuDismissReason = Parameters<InlineMenuMountOptions["onDismiss"]>[0]
 
-/** Mounts an isolated, field-adjacent menu shell without receiving or retaining vault data. */
+/** Mounts an isolated, field-adjacent summary menu; selected secrets are never rendered. */
 export function extensionAutofillInlineMenuMount(options: InlineMenuMountOptions): {
   dismiss: (reason: InlineMenuDismissReason) => void
   hostConnected: () => boolean
+  candidatesRender: (candidates: readonly ExtensionAutofillCandidate[]) => void
+  statusRender: (status: "loading" | "locked" | "unavailable" | "empty" | "permission") => void
 } {
   const host = options.document.createElement("div")
   host.dataset.onewardenAutofill = "menu"
@@ -39,8 +44,17 @@ export function extensionAutofillInlineMenuMount(options: InlineMenuMountOptions
       height: 28px; justify-content: center; pointer-events: auto; position: fixed; width: 28px; z-index: 2147483647; }
     button:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
     [role="dialog"] { background: Canvas; border: 1px solid GrayText; border-radius: 8px; box-shadow: 0 6px 24px rgb(0 0 0 / .3);
-      color: CanvasText; font: 13px/1.4 system-ui; max-width: 260px; padding: 12px; pointer-events: auto; position: fixed;
+      color: CanvasText; font: 13px/1.4 system-ui; max-height: 280px; max-width: 300px; min-width: 240px; overflow: auto;
+      padding: 8px; pointer-events: auto; position: fixed;
       z-index: 2147483647; }
+    .candidate { background: transparent; border: 0; border-radius: 5px; box-shadow: none; color: CanvasText; display: block;
+      font: 13px/1.3 system-ui; height: auto; padding: 8px; position: static; text-align: left; width: 100%; }
+    .candidate:hover { background: color-mix(in srgb, Highlight 16%, transparent); }
+    .candidate[disabled] { cursor: not-allowed; opacity: .6; }
+    .name, .subtitle, .permission { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .name { font-weight: 700; }
+    .subtitle, .permission { color: GrayText; font-size: 12px; margin-top: 2px; }
+    .status { margin: 0; padding: 8px; }
     [hidden] { display: none !important; }
   `
   const button = options.document.createElement("button")
@@ -55,7 +69,8 @@ export function extensionAutofillInlineMenuMount(options: InlineMenuMountOptions
   dialog.setAttribute("aria-label", "OneWarden autofill")
   dialog.tabIndex = -1
   dialog.hidden = true
-  dialog.textContent = "Autofill choices are not available in this foundation build."
+  const content = options.document.createElement("div")
+  dialog.append(content)
   button.setAttribute("aria-controls", dialog.id)
   shadow.append(style, button, dialog)
 
@@ -71,7 +86,7 @@ export function extensionAutofillInlineMenuMount(options: InlineMenuMountOptions
     button.style.top = `${top}px`
     button.style.left = `${left}px`
     dialog.style.top = `${Math.min(globalThis.innerHeight - 80, top + 34)}px`
-    dialog.style.left = `${Math.max(4, Math.min(globalThis.innerWidth - 264, left - 228))}px`
+    dialog.style.left = `${Math.max(4, Math.min(globalThis.innerWidth - 304, left - 268))}px`
   }
   const dialogClose = (returnFocus: boolean): void => {
     if (dialog.hidden) return
@@ -119,5 +134,53 @@ export function extensionAutofillInlineMenuMount(options: InlineMenuMountOptions
   ;(options.document.body ?? options.document.documentElement).append(host)
   positionUpdate()
 
-  return { dismiss: dispose, hostConnected: () => host.isConnected }
+  const statusRender = (status: "loading" | "locked" | "unavailable" | "empty" | "permission"): void => {
+    const labels = {
+      loading: "Loading autofill choices…",
+      locked: "Unlock OneWarden to autofill.",
+      unavailable: "Autofill choices are unavailable.",
+      empty: "No matching items.",
+      permission: "This item cannot be read.",
+    }
+    content.replaceChildren()
+    const message = options.document.createElement("p")
+    message.className = "status"
+    message.textContent = labels[status]
+    content.append(message)
+  }
+  const candidatesRender = (candidates: readonly ExtensionAutofillCandidate[]): void => {
+    content.replaceChildren()
+    if (candidates.length === 0) {
+      statusRender("empty")
+      return
+    }
+    for (const candidate of candidates) {
+      const choice = options.document.createElement("button")
+      choice.type = "button"
+      choice.className = "candidate"
+      choice.disabled = candidate.permission === "restricted"
+      const name = options.document.createElement("span")
+      name.className = "name"
+      name.textContent = candidate.name
+      choice.append(name)
+      if (candidate.subtitle !== null) {
+        const subtitle = options.document.createElement("span")
+        subtitle.className = "subtitle"
+        subtitle.textContent = candidate.subtitle
+        choice.append(subtitle)
+      }
+      if (candidate.permission !== "allowed") {
+        const permission = options.document.createElement("span")
+        permission.className = "permission"
+        permission.textContent =
+          candidate.permission === "readOnly" ? "Read-only · filling allowed" : "No read permission"
+        choice.append(permission)
+      }
+      choice.addEventListener("click", () => options.onSelect?.(candidate))
+      content.append(choice)
+    }
+  }
+  statusRender("loading")
+
+  return { dismiss: dispose, hostConnected: () => host.isConnected, candidatesRender, statusRender }
 }

@@ -5,6 +5,7 @@ import type { ExtensionCipherDetailReadResult } from "../background/extensionCip
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionProfile } from "../crypto/extensionProfileSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
+import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "./ExtensionFullWindowEnvironmentSettings.js"
@@ -53,4 +54,6 @@ export interface ExtensionFullWindowViewModel {
   lockPolicy: ExtensionLockPolicy | null
   /** Lifecycle of the security settings submission. */
   securitySaveStatus: ExtensionFullWindowSecuritySaveStatus
+  autofillPolicy: ExtensionAutofillPolicy | null
+  autofillSaveStatus: ExtensionFullWindowSecuritySaveStatus
 }

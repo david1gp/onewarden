@@ -14,6 +14,7 @@ import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
+import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
@@ -331,6 +332,11 @@ export function extensionFullWindowCommandsCreate(
   const cardUpdate = (cipherId: string, cipher: ExtensionCipher) =>
     cardMutate({ type: "cipherUpdate", request: { cipherId, cipher } })
   const cardDelete = (cipherId: string) => cardMutate({ type: "cipherDelete", request: { cipherId, hard: false } })
+  const cipherFill = (cipherId: string, cipherType: 3 | 4) => {
+    void sender({ type: "cipherFill", request: { cipherId, cipherType } }).then((result) => {
+      if (!result.success) onModelUpdate((prev) => ({ ...prev, errorMessage: result.errorMessage }))
+    })
+  }
 
   const identitiesLoad = () => {
     onModelUpdate((prev) => ({ ...prev, identitiesLoading: true, errorMessage: null }))
@@ -594,6 +600,23 @@ export function extensionFullWindowCommandsCreate(
     })
   }
 
+  const autofillPolicySave = (policy: ExtensionAutofillPolicy) => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null, autofillSaveStatus: "saving" }))
+    void sender({ type: "autofillPolicySave", request: policy }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          autofillSaveStatus: "error",
+          errorMessage: res.errorMessage ?? "Autofill settings save failed.",
+        }))
+        return
+      }
+      await onRefresh()
+      onModelUpdate((prev) => ({ ...prev, busy: false, autofillSaveStatus: "saved", errorMessage: null }))
+    })
+  }
+
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
@@ -616,6 +639,7 @@ export function extensionFullWindowCommandsCreate(
     cardCreate,
     cardUpdate,
     cardDelete,
+    cipherFill,
     identitiesLoad,
     identityRead,
     identityCreate,
@@ -643,6 +667,7 @@ export function extensionFullWindowCommandsCreate(
     accountLogin,
     environmentSave,
     lockPolicySave,
+    autofillPolicySave,
     ...overrides,
   }
 }

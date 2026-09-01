@@ -19,6 +19,15 @@ export const extensionManifest = defineManifest({
     {
       matches: ["https://*/*", "http://*/*"],
       exclude_matches: ["https://onewarden.contentoren.de/*"],
+      js: ["autofill/extensionCredentialNetworkBridgeEntry.ts"],
+      run_at: "document_start",
+      all_frames: true,
+      match_about_blank: true,
+      world: "MAIN",
+    },
+    {
+      matches: ["https://*/*", "http://*/*"],
+      exclude_matches: ["https://onewarden.contentoren.de/*"],
       js: ["autofill/extensionAutofillContentStart.ts"],
       run_at: "document_start",
       all_frames: true,

@@ -279,6 +279,14 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                   fallback={
                     <div class="flex flex-wrap gap-2">
                       <Button
+                        variant="filledBlue"
+                        size="sm"
+                        disabled={!p.model().fillAvailable || state.busy()}
+                        onClick={() => p.commands.cipherFill?.(cipher().id, 4)}
+                      >
+                        Fill
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         disabled={!state.canEdit() || state.busy()}

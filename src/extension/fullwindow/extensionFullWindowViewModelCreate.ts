@@ -44,6 +44,8 @@ export function extensionFullWindowViewModelCreate(
     environmentSaveStatus: extensionFullWindowEnvironmentSaveStatus.idle,
     lockPolicy: null,
     securitySaveStatus: extensionFullWindowSecuritySaveStatus.idle,
+    autofillPolicy: null,
+    autofillSaveStatus: extensionFullWindowSecuritySaveStatus.idle,
     ...overrides,
   }
 }

@@ -8,9 +8,11 @@ import {
   type ExtensionEnvironmentSource,
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
+import { extensionAutofillFillValuesCreate } from "../autofill/extensionAutofillFillValuesCreate.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
+import type { ExtensionCipherFillData } from "../fill/extensionCipherFillDataSchema.js"
 import type { ExtensionLoginFillData } from "../fill/extensionLoginFillDataSchema.js"
 import type { ExtensionLoginFillRequest } from "../fill/extensionLoginFillRequestSchema.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
@@ -96,6 +98,10 @@ type ExtensionBackgroundRouterOptions = {
   tabs: ExtensionTabsAdapter
   windows: ExtensionWindowsAdapter
   scripting: ExtensionScriptingAdapter
+  autofill?: {
+    stopAll: (reason: "locked" | "logout" | "accountChanged" | "background") => void
+    startAll: () => void
+  }
   now?: () => number
   fullWindowPath?: string
   passkeyConsentUi?: {
@@ -417,6 +423,9 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!environmentResult.success) return environmentResult
     const lockPolicyResult = surface === "fullwindow" ? await options.service.lockPolicyLoad() : resultCreate(null)
     if (!lockPolicyResult.success) return lockPolicyResult
+    const autofillPolicyResult =
+      surface === "fullwindow" ? await options.storage.autofillPolicyLoad() : resultCreate(null)
+    if (!autofillPolicyResult.success) return autofillPolicyResult
     const authResult = await options.storage.authSessionLoad()
     if (!authResult.success) return authResult
     const stateResult = await options.storage.sessionStateLoad()
@@ -440,6 +449,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
               logins: [],
               environment,
               lockPolicy: lockPolicyResult.data,
+              autofillPolicy: autofillPolicyResult.data,
             }),
       )
     }
@@ -453,6 +463,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
               logins: [],
               environment,
               lockPolicy: lockPolicyResult.data,
+              autofillPolicy: autofillPolicyResult.data,
             }),
       )
     }
@@ -471,6 +482,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
                 logins: [],
                 environment,
                 lockPolicy: lockPolicyResult.data,
+                autofillPolicy: autofillPolicyResult.data,
               }),
         )
       }
@@ -491,6 +503,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
             logins,
             environment,
             lockPolicy: lockPolicyResult.data,
+            autofillPolicy: autofillPolicyResult.data,
             profile: snapshotResult.data?.profile ?? null,
           }),
     )
@@ -501,13 +514,16 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!initializeResult.success) return initializeResult
     const result = await options.service.passwordLogin(request)
     if (!result.success) return result
+    options.autofill?.startAll()
     return resultCreate(undefined)
   }
 
   const unlock = async (request: unknown): Promise<Result<void>> => {
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
-    return options.service.unlock(request)
+    const result = await options.service.unlock(request)
+    if (result.success) options.autofill?.startAll()
+    return result
   }
 
   const conditionalSync = async (): Promise<Result<unknown>> => {
@@ -827,16 +843,38 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     request: Extract<ExtensionRuntimeMessage, { type: "lockPolicySave" }>["request"],
   ): Promise<Result<void>> => options.service.lockPolicySave(request)
 
+  const autofillPolicyLoad = () => options.storage.autofillPolicyLoad()
+  const autofillPolicySave = (
+    request: Extract<ExtensionRuntimeMessage, { type: "autofillPolicySave" }>["request"],
+  ): Promise<Result<void>> =>
+    options.storage.autofillPolicySave({
+      pageLoadEnabled: request.pageLoadEnabled,
+      disabledSites: [
+        ...new Set(
+          request.disabledSites.map((site) =>
+            site
+              .trim()
+              .toLowerCase()
+              .replace(/^www\./, ""),
+          ),
+        ),
+      ].filter(Boolean),
+    })
+
   const lock = async (): Promise<Result<void>> => {
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
-    return options.service.lock()
+    const result = await options.service.lock()
+    if (result.success) options.autofill?.stopAll("locked")
+    return result
   }
 
   const logout = async (): Promise<Result<void>> => {
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
-    return options.service.logout()
+    const result = await options.service.logout()
+    if (result.success) options.autofill?.stopAll("logout")
+    return result
   }
 
   const passkeyConsentContextCreate = async (request: unknown): Promise<Result<ExtensionPasskeyConsentContext>> => {
@@ -869,12 +907,10 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       return unavailable(op, "Active page is not available for filling.")
     }
 
-    const snapshotResult = await options.service.syncSnapshotLoad()
-    if (!snapshotResult.success) return snapshotResult
-    const snapshot = snapshotResult.data
-    if (snapshot === null) return unavailable(op, "Vault data is unavailable.")
-    const cipher = extensionLoginCiphersRead(snapshot.ciphers).find((entry) => entry.id === request.loginId)
-    if (cipher === undefined) return invalid(op, "Selected login could not be found.")
+    const detailResult = await options.service.cipherDetailRead({ cipherId: request.loginId })
+    if (!detailResult.success) return detailResult
+    const cipher = detailResult.data
+    if (cipher.type !== 1) return invalid(op, "Selected item is not a login.")
     if (cipher.login.username === null && cipher.login.password === null) {
       return invalid(op, "Selected login has no fillable credentials.")
     }
@@ -883,6 +919,38 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       return await options.scripting.executeScript(
         { tabId, ...(request.frameId === undefined ? {} : { frameId: request.frameId }) },
         { username: cipher.login.username, password: cipher.viewPassword === false ? null : cipher.login.password },
+      )
+    } catch {
+      return unavailable(op, "Active page could not be filled.")
+    }
+  }
+
+  const cipherFill = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherFill" }>["request"],
+  ): Promise<Result<ExtensionCipherFillData>> => {
+    const op = "extensionBackgroundRouter.cipherFill"
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    const contextResult = await activeTabContextLookup()
+    if (!contextResult.success) return contextResult
+    const tabId = contextResult.data.tabId
+    if (tabId === null || !contextResult.data.fillAvailable) {
+      return unavailable(op, "Active page is not available for filling.")
+    }
+    if (options.scripting.cipherExecuteScript === undefined) {
+      return unavailable(op, "Type-specific filling is unavailable.")
+    }
+    const detailResult = await options.service.cipherDetailRead({ cipherId: request.cipherId })
+    if (!detailResult.success) return detailResult
+    if (detailResult.data.type !== request.cipherType) {
+      return invalid(op, "Selected item type does not match the fill request.")
+    }
+    const values = extensionAutofillFillValuesCreate(detailResult.data)
+    if (values.length === 0) return invalid(op, "Selected item has no permitted fillable values.")
+    try {
+      return await options.scripting.cipherExecuteScript(
+        { tabId, ...(request.frameId === undefined ? {} : { frameId: request.frameId }) },
+        values,
       )
     } catch {
       return unavailable(op, "Active page could not be filled.")
@@ -996,6 +1064,10 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return lockPolicyLoad()
       case "lockPolicySave":
         return lockPolicySave(message.request)
+      case "autofillPolicyLoad":
+        return autofillPolicyLoad()
+      case "autofillPolicySave":
+        return autofillPolicySave(message.request)
       case "lock":
         return lock()
       case "logout":
@@ -1004,6 +1076,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return activeTabContextLookup()
       case "loginFill":
         return loginFill(message.request)
+      case "cipherFill":
+        return cipherFill(message.request)
       case "totpCopy":
         return totpCopy(message.request)
       case "fullWindowOpen":
@@ -1092,6 +1166,8 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     messageHandle,
     lockPolicyLoad,
     lockPolicySave,
+    autofillPolicyLoad,
+    autofillPolicySave,
     passkeyConsentContextCreate,
     passkeyCredentialCreate,
     passkeyAssertion,
