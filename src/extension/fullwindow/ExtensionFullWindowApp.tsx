@@ -11,5 +11,13 @@ export interface ExtensionFullWindowAppProps {
 
 export function ExtensionFullWindowApp(props: ExtensionFullWindowAppProps): JSX.Element {
   const state = extensionFullWindowAppStateCreate(props.options)
-  return <ExtensionFullWindowView model={state.model} commands={state.commands} />
+  return (
+    <ExtensionFullWindowView
+      model={state.model}
+      commands={state.commands}
+      generatorPreferences={state.generatorPreferences}
+      generatorPreferencesLoaded={state.generatorPreferencesLoaded}
+      onGeneratorPreferencesChange={state.onGeneratorPreferencesChange}
+    />
+  )
 }

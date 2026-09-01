@@ -2,6 +2,8 @@ import { createMemo, type JSX } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
 import { passphraseGenerate } from "../../shared/crypto/passphraseGenerate.js"
 import { passwordGenerate } from "../../shared/crypto/passwordGenerate.js"
+import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import { extensionGeneratorPreferencesDefault } from "../storage/extensionGeneratorPreferencesDefault.js"
 import { extensionFullWindowGeneratorMode } from "./ExtensionFullWindowGeneratorMode.js"
 
 type PasswordCopyStatus = "idle" | "copying" | "copied" | "error"
@@ -13,6 +15,7 @@ const PASSPHRASE_WORDS_MAX = 20
 export function extensionFullWindowGeneratorPaneStateCreate(
   options: {
     initialMode?: keyof typeof extensionFullWindowGeneratorMode
+    initialPreferences?: ExtensionGeneratorPreferences
     initialPassword?: string
     initialPasswordVisible?: boolean
     initialCopyStatus?: PasswordCopyStatus
@@ -20,17 +23,22 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     passwordGenerate?: typeof passwordGenerate
     passphraseGenerate?: typeof passphraseGenerate
     clipboardWrite?: (value: string) => Promise<void>
+    onPreferencesChange?: (preferences: ExtensionGeneratorPreferences) => void
   } = {},
 ) {
-  const modeValueSignal = createSignalObject<string>(options.initialMode ?? extensionFullWindowGeneratorMode.passphrase)
-  const lengthSignal = createSignalObject(20)
-  const lowercaseSignal = createSignalObject(true)
-  const uppercaseSignal = createSignalObject(true)
-  const numbersSignal = createSignalObject(true)
-  const symbolsSignal = createSignalObject(true)
-  const wordCountSignal = createSignalObject(3)
-  const wordSeparatorSignal = createSignalObject("-")
-  const includeNumberSignal = createSignalObject(true)
+  const initialPreferences: ExtensionGeneratorPreferences = options.initialPreferences ?? {
+    ...extensionGeneratorPreferencesDefault,
+    mode: options.initialMode ?? extensionFullWindowGeneratorMode.passphrase,
+  }
+  const modeValueSignal = createSignalObject<string>(initialPreferences.mode)
+  const lengthSignal = createSignalObject(initialPreferences.password.length)
+  const lowercaseSignal = createSignalObject(initialPreferences.password.characterPolicy.lowercase)
+  const uppercaseSignal = createSignalObject(initialPreferences.password.characterPolicy.uppercase)
+  const numbersSignal = createSignalObject(initialPreferences.password.characterPolicy.numbers)
+  const symbolsSignal = createSignalObject(initialPreferences.password.characterPolicy.symbols)
+  const wordCountSignal = createSignalObject(initialPreferences.passphrase.numWords)
+  const wordSeparatorSignal = createSignalObject(initialPreferences.passphrase.wordSeparator)
+  const includeNumberSignal = createSignalObject(initialPreferences.passphrase.includeNumber)
   const passwordSignal = createSignalObject(options.initialPassword ?? "")
   const passwordVisibleSignal = createSignalObject(options.initialPasswordVisible ?? false)
   const copyStatusSignal = createSignalObject<PasswordCopyStatus>(options.initialCopyStatus ?? "idle")
@@ -45,6 +53,26 @@ export function extensionFullWindowGeneratorPaneStateCreate(
       Number(numbersSignal.get()) +
       Number(symbolsSignal.get()),
   )
+
+  const preferencesChanged = () => {
+    options.onPreferencesChange?.({
+      mode: modeValueSignal.get() as ExtensionGeneratorPreferences["mode"],
+      password: {
+        length: lengthSignal.get(),
+        characterPolicy: {
+          lowercase: lowercaseSignal.get(),
+          uppercase: uppercaseSignal.get(),
+          numbers: numbersSignal.get(),
+          symbols: symbolsSignal.get(),
+        },
+      },
+      passphrase: {
+        numWords: wordCountSignal.get(),
+        wordSeparator: wordSeparatorSignal.get(),
+        includeNumber: includeNumberSignal.get(),
+      },
+    })
+  }
 
   const passwordRegenerate = () => {
     const result = passphraseMode()
@@ -78,6 +106,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
       if (mode === modeValueSignal.get()) return
       modeValueSignal.set(mode)
       passwordRegenerate()
+      preferencesChanged()
     },
   }
 
@@ -85,6 +114,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     if (!enabled && enabledCharacterGroupCount() === 1) return
     signal.set(enabled)
     passwordRegenerate()
+    preferencesChanged()
   }
 
   const lowercaseSet = (enabled: boolean) => characterGroupSet(lowercaseSignal, enabled)
@@ -101,6 +131,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     if (!Number.isFinite(length)) return
     lengthSignal.set(Math.min(128, Math.max(5, Math.trunc(length))))
     passwordRegenerate()
+    preferencesChanged()
   }
   const passwordLengthInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
     passwordLengthSet(Number(event.currentTarget.value))
@@ -109,6 +140,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     if (!Number.isFinite(wordCount)) return
     wordCountSignal.set(Math.min(PASSPHRASE_WORDS_MAX, Math.max(PASSPHRASE_WORDS_MIN, Math.trunc(wordCount))))
     passwordRegenerate()
+    preferencesChanged()
   }
   const wordCountInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
     wordCountSet(Number(event.currentTarget.value))
@@ -117,6 +149,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     const characters = [...wordSeparator]
     wordSeparatorSignal.set(characters.length === 0 ? "" : (characters.at(-1) ?? ""))
     passwordRegenerate()
+    preferencesChanged()
   }
   const wordSeparatorInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
     wordSeparatorSet(event.currentTarget.value)
@@ -124,6 +157,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   const includeNumberSet = (includeNumber: boolean) => {
     includeNumberSignal.set(includeNumber)
     passwordRegenerate()
+    preferencesChanged()
   }
 
   const passwordCopy = async () => {

@@ -8,10 +8,19 @@ import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.
 import { extensionFullWindowCommandsCreate } from "./extensionFullWindowCommandsCreate.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowViewModelCreate } from "./extensionFullWindowViewModelCreate.js"
+import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import { extensionGeneratorPreferencesDefault } from "../storage/extensionGeneratorPreferencesDefault.js"
+import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+
+type ExtensionGeneratorPreferencesStorage = Pick<
+  ReturnType<typeof extensionStorageCreate>,
+  "generatorPreferencesLoad" | "generatorPreferencesSave"
+>
 
 export type ExtensionFullWindowAppOptions = {
   messageSend?: <T = unknown>(message: ExtensionRuntimeMessage) => Promise<Result<T>>
   clipboard?: ExtensionClipboardAdapter
+  storage?: ExtensionGeneratorPreferencesStorage
 }
 
 export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAppOptions = {}) {
@@ -19,6 +28,10 @@ export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAp
   const modelSignal = createSignalObject<ExtensionFullWindowViewModel>(
     extensionFullWindowViewModelCreate({ status: "loading" }),
   )
+  const generatorPreferencesSignal = createSignalObject<ExtensionGeneratorPreferences>(
+    extensionGeneratorPreferencesDefault,
+  )
+  const generatorPreferencesLoadedSignal = createSignalObject(options.storage === undefined)
 
   const onModelUpdate = (updater: (prev: ExtensionFullWindowViewModel) => ExtensionFullWindowViewModel) => {
     modelSignal.set(updater(modelSignal.get()))
@@ -41,6 +54,26 @@ export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAp
     })
   }
 
+  const generatorPreferencesLoad = async (): Promise<void> => {
+    if (options.storage === undefined) return
+    const result = await options.storage.generatorPreferencesLoad()
+    if (!result.success) {
+      console.error(result.errorMessage)
+      generatorPreferencesLoadedSignal.set(true)
+      return
+    }
+    if (result.data !== null) generatorPreferencesSignal.set(result.data)
+    generatorPreferencesLoadedSignal.set(true)
+  }
+
+  const generatorPreferencesSave = (preferences: ExtensionGeneratorPreferences): void => {
+    generatorPreferencesSignal.set(preferences)
+    if (options.storage === undefined) return
+    void options.storage.generatorPreferencesSave(preferences).then((result) => {
+      if (!result.success) console.error(result.errorMessage)
+    })
+  }
+
   const commands: ExtensionFullWindowCommands = extensionFullWindowCommandsCreate(
     {},
     {
@@ -53,11 +86,15 @@ export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAp
 
   onMount(() => {
     void refresh()
+    void generatorPreferencesLoad()
   })
 
   return {
     model: modelSignal.get,
     commands,
     refresh,
+    generatorPreferences: generatorPreferencesSignal.get,
+    generatorPreferencesLoaded: generatorPreferencesLoadedSignal.get,
+    onGeneratorPreferencesChange: generatorPreferencesSave,
   }
 }

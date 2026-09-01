@@ -16,12 +16,16 @@ import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewStateCreate.js"
+import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 
 export interface ExtensionFullWindowViewProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
   initialState?: { pane?: string; selectedLoginId?: string }
   generatorOptions?: Parameters<typeof ExtensionFullWindowGeneratorPane>[0]["options"]
+  generatorPreferences?: () => ExtensionGeneratorPreferences
+  generatorPreferencesLoaded?: () => boolean
+  onGeneratorPreferencesChange?: (preferences: ExtensionGeneratorPreferences) => void
   idPrefix?: string
   root?: "main" | "div"
   navigationLabel?: string
@@ -128,7 +132,27 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
       </Show>
 
       <Show when={state.isGeneratorPane()}>
-        <ExtensionFullWindowGeneratorPane idPrefix={p.idPrefix} options={p.generatorOptions} />
+        <Show
+          when={p.generatorPreferencesLoaded?.() ?? true}
+          fallback={
+            <div role="status" aria-label="Loading generator preferences" class="flex justify-center py-10">
+              <LoaderShuffle4Dots />
+            </div>
+          }
+        >
+          <ExtensionFullWindowGeneratorPane
+            idPrefix={p.idPrefix}
+            options={
+              p.generatorPreferences === undefined
+                ? p.generatorOptions
+                : {
+                    ...p.generatorOptions,
+                    initialPreferences: p.generatorPreferences(),
+                    onPreferencesChange: p.onGeneratorPreferencesChange,
+                  }
+            }
+          />
+        </Show>
       </Show>
 
       <Show when={state.isVaultPane()}>
