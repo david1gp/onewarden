@@ -14,7 +14,7 @@ import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessio
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
 import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
-import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
+import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import { extensionEmailSchema } from "../extensionEmailSchema.js"
