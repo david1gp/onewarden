@@ -40,26 +40,25 @@ const bitwardenEncryptedCipherRecordSchema = v.looseObject({
   sshKey: v.optional(v.nullable(bitwardenEncryptedSshKeySchema)),
 })
 
-function bitwardenEncryptedCipherPayloadMatchesType(value: {
-  type: number
-  login?: unknown
-  secureNote?: unknown
-  card?: unknown
-  identity?: unknown
-  sshKey?: unknown
-}): boolean {
-  if (value.type === 1) return value.login !== undefined && value.login !== null
-  if (value.type === 2) return value.secureNote !== undefined && value.secureNote !== null
-  if (value.type === 3) return value.card !== undefined && value.card !== null
-  if (value.type === 4) return value.identity !== undefined && value.identity !== null
-  if (value.type === 5) return value.sshKey !== undefined && value.sshKey !== null
-  return false
-}
-
 export const bitwardenEncryptedCipherSchema = v.pipe(
   bitwardenEncryptedCipherRecordSchema,
   v.check(
-    bitwardenEncryptedCipherPayloadMatchesType,
+    (value) => {
+      const record = value as {
+        type: number
+        login?: unknown
+        secureNote?: unknown
+        card?: unknown
+        identity?: unknown
+        sshKey?: unknown
+      }
+      if (record.type === 1) return record.login !== undefined && record.login !== null
+      if (record.type === 2) return record.secureNote !== undefined && record.secureNote !== null
+      if (record.type === 3) return record.card !== undefined && record.card !== null
+      if (record.type === 4) return record.identity !== undefined && record.identity !== null
+      if (record.type === 5) return record.sshKey !== undefined && record.sshKey !== null
+      return false
+    },
     "Encrypted cipher payload must match its cipher type.",
   ),
 )
