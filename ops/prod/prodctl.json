@@ -1,0 +1,7 @@
+{
+  "type": "bare",
+  "units": ["onewarden.service"],
+  "health_path": "/health/ready",
+  "health_port": "default",
+  "install": ["bash ops/prod/install.bash"]
+}

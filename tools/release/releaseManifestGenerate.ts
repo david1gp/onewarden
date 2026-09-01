@@ -63,6 +63,14 @@ export async function releaseManifestGenerate(
 
 function releaseGitMetadataRead(gitDirectory: string, allowDirtyWorktree: boolean): Result<ReleaseGitMetadata> {
   const op = "releaseGitMetadataRead"
+  const suppliedHead = Bun.env.ONEWARDEN_RELEASE_GIT_HEAD
+  if (suppliedHead !== undefined) {
+    if (!/^[0-9a-f]{40}$/.test(suppliedHead)) return resultErrorCreate(op, "A readable full Git commit is required.")
+    const builtAt = Bun.env.ONEWARDEN_RELEASE_BUILT_AT ?? new Date().toISOString()
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(builtAt))
+      return resultErrorCreate(op, "A readable Git commit time is required.")
+    return resultCreate({ builtAt, gitHead: suppliedHead, gitTag: null })
+  }
   const commitResult = releaseGitCommandRead(gitDirectory, ["rev-parse", "HEAD"])
   if (!commitResult.success || !/^[0-9a-f]{40}$/.test(commitResult.data))
     return resultErrorCreate(op, "A readable full Git commit is required.")

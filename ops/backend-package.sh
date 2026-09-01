@@ -12,26 +12,34 @@ fail() {
 
 command -v bun >/dev/null 2>&1 || fail 'bun is required'
 command -v cp >/dev/null 2>&1 || fail 'cp is required'
-command -v git >/dev/null 2>&1 || fail 'git is required'
 command -v mkdir >/dev/null 2>&1 || fail 'mkdir is required'
 command -v rm >/dev/null 2>&1 || fail 'rm is required'
+command -v date >/dev/null 2>&1 || fail 'date is required'
+command -v tr >/dev/null 2>&1 || fail 'tr is required'
 
 source_dir=$(realpath -- "$source_dir")
 mkdir -p -- "$package_dir"
 package_dir=$(realpath -- "$package_dir")
 [[ "$source_dir" != "$package_dir" ]] || fail 'backend package must not be the source checkout'
 
-allow_dirty_for_tests=false
-if [[ "${ONEWARDEN_RELEASE_TEST_MODE:-}" == '1' && "${ONEWARDEN_RELEASE_ALLOW_DIRTY_FOR_TESTS:-}" == '1' ]]; then
-  allow_dirty_for_tests=true
-fi
-if [[ "$allow_dirty_for_tests" != true ]]; then
-  git -C "$source_dir" diff --quiet --exit-code || fail 'backend package requires a clean Git tree'
-  [[ -z "$(git -C "$source_dir" status --porcelain=v1 --untracked-files=all)" ]] ||
-    fail 'backend package requires a clean Git tree'
+release_git_head=''
+if [[ -f "$source_dir/.prodctl-sha" && ! -d "$source_dir/.git" ]]; then
+  release_git_head=$(tr -d '[:space:]' < "$source_dir/.prodctl-sha")
+  [[ "$release_git_head" =~ ^[0-9a-f]{40}$ ]] || fail 'prodctl release has no valid commit identity'
+else
+  command -v git >/dev/null 2>&1 || fail 'git is required'
+  allow_dirty_for_tests=false
+  if [[ "${ONEWARDEN_RELEASE_TEST_MODE:-}" == '1' && "${ONEWARDEN_RELEASE_ALLOW_DIRTY_FOR_TESTS:-}" == '1' ]]; then
+    allow_dirty_for_tests=true
+  fi
+  if [[ "$allow_dirty_for_tests" != true ]]; then
+    git -C "$source_dir" diff --quiet --exit-code || fail 'backend package requires a clean Git tree'
+    [[ -z "$(git -C "$source_dir" status --porcelain=v1 --untracked-files=all)" ]] ||
+      fail 'backend package requires a clean Git tree'
+  fi
 fi
 
-[[ -d "$source_dir/build/web" ]] || fail 'frontend build is missing; run bun run build:web first'
+[[ -d "$source_dir/build/web" ]] || fail 'web vault build is missing; run bun run build:vault first'
 [[ -d "$source_dir/migrations" ]] || fail 'migrations directory is missing'
 
 rm -rf -- "$package_dir"
@@ -54,6 +62,12 @@ cp -a "$source_dir/build/web" "$package_dir/build/web"
 cp "$source_dir/package.json" "$package_dir/package.json"
 cp "$source_dir/bun.lock" "$package_dir/bun.lock"
 
-ONEWARDEN_RELEASE_GIT_DIRECTORY="$source_dir" bun "$source_dir/tools/release/releaseManifestGenerate.ts" "$package_dir"
+if [[ -n "$release_git_head" ]]; then
+  ONEWARDEN_RELEASE_GIT_HEAD="$release_git_head" \
+    ONEWARDEN_RELEASE_BUILT_AT="$(date -u '+%Y-%m-%dT%H:%M:%S.000Z')" \
+    bun "$source_dir/tools/release/releaseManifestGenerate.ts" "$package_dir"
+else
+  ONEWARDEN_RELEASE_GIT_DIRECTORY="$source_dir" bun "$source_dir/tools/release/releaseManifestGenerate.ts" "$package_dir"
+fi
 
 printf 'OneWarden backend package: %s\n' "$package_dir"

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ports_file="$HOME/.config/onewarden/prodctl-ports.env"
+environment_file="$HOME/.config/onewarden/.env.production"
+
+command -v bun >/dev/null 2>&1 || {
+	printf 'onewarden install: bun is required\n' >&2
+	exit 1
+}
+command -v stat >/dev/null 2>&1 || {
+	printf 'onewarden install: stat is required\n' >&2
+	exit 1
+}
+
+[[ -f "$ports_file" && ! -L "$ports_file" ]] || {
+	printf 'onewarden install: missing prodctl port file: %s\n' "$ports_file" >&2
+	exit 1
+}
+# shellcheck disable=SC1090
+source "$ports_file"
+: "${PRODCTL_PORT_DEFAULT:?prodctl did not provide the default port}"
+
+[[ -f "$environment_file" && ! -L "$environment_file" ]] || {
+	printf 'onewarden install: missing protected environment file: %s\n' "$environment_file" >&2
+	exit 1
+}
+[[ "$(stat -c '%a' "$environment_file")" == 600 ]] || {
+	printf 'onewarden install: environment file must have mode 600: %s\n' "$environment_file" >&2
+	exit 1
+}
+
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+install -d -m 700 "$HOME/.local/share/onewarden"
+
+# prodctl deploys a source archive. Build the bundled runtime package in the
+# release so the service does not depend on release-local node_modules.
+bun install --frozen-lockfile
+bun run build:vault
+bun run backend:package
