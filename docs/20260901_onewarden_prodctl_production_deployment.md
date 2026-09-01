@@ -22,7 +22,7 @@ Deploy the current OneWarden release at `https://onewarden.contentoren.de` throu
 ## Tasks
 
 - [x] 1. Add and verify OneWarden's bare prodctl manifest, install script, systemd unit, and protected production-env workflow. Deployment files and the missing shared scrollbar module are present, and the vault build and clean committed release packaging pass.
-- [ ] 2. Provision the `onewarden` prodctl app, allocated port, Linux user, DNS, and Cloudflare Tunnel route.
+- [x] 2. Provision the `onewarden` prodctl app, allocated port `8303`, Linux user, DNS, and Cloudflare Tunnel route.
 - [ ] 3. Provision dedicated R2 storage and create the complete app-owned `.env.production` without exposing secrets.
 - [ ] 4. Provision the dedicated Zitadel project/client and place its credentials in `.env.production`.
 - [ ] 5. Deploy committed OneWarden `HEAD` with prodctl and verify service, database migration, R2 access, and public health.
