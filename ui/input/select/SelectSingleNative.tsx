@@ -19,11 +19,9 @@ export interface SelectSingleNativeProps
     MayHaveValueText,
     MayHaveClass,
     MayHaveId,
-  MayHaveChildren,
-  MayHaveDisabled {
+    MayHaveChildren,
+    MayHaveDisabled {
   texts?: SelectSingleNativeTexts
-  "aria-label"?: string
-  "aria-labelledby"?: string
 }
 
 /** Native dropdown selecting a single signal-bound value. */
@@ -33,8 +31,6 @@ export function SelectSingleNative(p: SelectSingleNativeProps) {
   return (
     <select
       id={p.id}
-      aria-label={p["aria-label"]}
-      aria-labelledby={p["aria-labelledby"]}
       class={classArr(
         "block w-full p-2.5",
         "text-gray-900 dark:text-white", // text

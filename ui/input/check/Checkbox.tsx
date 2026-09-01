@@ -16,9 +16,11 @@ interface CheckboxProps extends MayHaveClass, MayHaveChildren, MayHaveDisabled, 
 
 /** Accessible labeled checkbox driven by a controlled `checked`/`onChange` pair. */
 export function Checkbox(p: CheckboxProps) {
-  const [s, rest] = splitProps(p, ["id", "checked", "onChange", "disabled", "class", "children", "aria-label"])
-  const rawAriaLabel = (p as { "aria-label"?: unknown })["aria-label"]
-  const ariaLabel = typeof rawAriaLabel === "string" ? rawAriaLabel : undefined
+  const [s, rest] = splitProps(p, ["id", "checked", "onChange", "disabled", "class", "children"])
+  const handleToggle = () => {
+    if (s.disabled) return
+    s.onChange(!s.checked)
+  }
 
   return (
     <div class={classMerge("flex items-start gap-1", s.class)}>
@@ -27,25 +29,43 @@ export function Checkbox(p: CheckboxProps) {
         type="checkbox"
         checked={s.checked}
         onChange={(e) => s.onChange(e.currentTarget.checked)}
-        class="peer sr-only"
+        class="sr-only invisible"
         disabled={s.disabled}
-        aria-label={ariaLabel ?? (s.children ? undefined : "Toggle option")}
+        aria-describedby={s.id ? `${s.id}-error` : undefined}
         {...rest}
       />
       <div
+        onClick={handleToggle}
         class={classMerge(
-          "pointer-events-none flex size-6 items-center justify-center", // sizing + layout
-          "peer-focus-visible:rounded-sm peer-focus-visible:ring-2 peer-focus-visible:ring-blue-600 peer-focus-visible:ring-offset-2", // focus
+          "size-6", // sizing + interaction
+          "cursor-pointer", // cursor
+          "flex items-center justify-center", // layout children
           s.disabled && classesDisabledDirectly, // disabled state
         )}
-        aria-hidden="true"
+        role="checkbox"
+        aria-checked={s.checked}
+        aria-labelledby={s.id ? `${s.id}-label` : undefined}
+        tabindex={0}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault()
+            handleToggle()
+          }
+        }}
       >
         <Icon path={s.checked ? mdiCheckboxMarked : mdiCheckboxBlankOutline} class="size-6 text-current" />
       </div>
       <label
         id={s.id ? `${s.id}-label` : undefined}
         for={s.id}
-        class={classMerge("cursor-pointer", s.disabled && classesDisabledDirectly)}
+        class={classMerge(
+          "cursor-pointer", // interaction
+          s.disabled && classesDisabledDirectly, // disabled state
+        )}
+        onClick={(e) => {
+          e.preventDefault()
+          handleToggle()
+        }}
       >
         {s.children}
       </label>

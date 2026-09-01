@@ -15,7 +15,7 @@ export interface ThemeButtonProps extends MayHaveClass {
 
 /** Button cycling through the color theme. */
 export function ThemeButton(p: ThemeButtonProps) {
-  const navigate = (_to: string) => {}
+  const navigate = (to: string) => {}
   const handleGlobalKeyDown = createGlobalKeyHandler(navigate)
 
   const texts = p.texts ?? themeButtonTextDefault

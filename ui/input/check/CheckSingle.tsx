@@ -127,7 +127,8 @@ function CheckOption<T extends string>(p: CheckOptionProps<T>) {
 
   return (
     <ButtonIcon
-      aria-pressed={isSelected()}
+      role="option"
+      aria-selected={isSelected()}
       icon={isSelected() ? mdiCheckboxMarkedCircle : mdiCheckboxBlankCircleOutline}
       // iconRight={isSelected() ? mdiCheckboxMarkedCircle : mdiCheckboxBlankCircleOutline}
       onClick={() => toggleOption(p, p.disallowDeselection)}

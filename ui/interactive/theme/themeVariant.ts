@@ -87,6 +87,7 @@ export function getThemeFromBrowserPref() {
 }
 
 export function getThemeFromStorageOrBrowserPref(): ThemeVariant {
+  const op = "getThemeFromStorageOrBrowserPref"
   if (typeof window === "undefined") {
     // console.log(op, "themeInit: window undefined")
     return getThemeFromBrowserPref()

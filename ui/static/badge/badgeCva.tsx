@@ -24,13 +24,13 @@ const baseClasses = classArr(
 )
 
 const variantClasses = {
-  subtle: "bg-slate-100 text-slate-900 border-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600",
-  outline: "text-slate-900 border-slate-300 dark:text-slate-100 dark:border-slate-700",
-  contrast: "bg-slate-900 border-slate-900 text-white dark:bg-slate-50 dark:text-slate-900 dark:border-slate-50",
-  filledGreen: "bg-green-700 text-white border-green-700 dark:bg-green-700 dark:border-green-700",
-  filledYellow: "bg-yellow-700 text-white border-yellow-700",
-  filledBlue: "bg-sky-700 text-white border-sky-700",
-  filledRed: "bg-red-700 text-white border-red-700 dark:bg-red-700 dark:border-red-700",
+  subtle: "bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100",
+  outline: "text-foreground",
+  contrast: "bg-slate-900 border-transparent text-white dark:bg-slate-50 dark:text-slate-900",
+  filledGreen: "bg-green-500 text-white border-green-500",
+  filledYellow: "bg-yellow-500 text-white border-yellow-500",
+  filledBlue: "bg-sky-500 text-white border-sky-500",
+  filledRed: "bg-red-600 text-white border-red-600 dark:border-red-600",
 } as const satisfies Record<BadgeVariant, string>
 
 const defaultVariant = badgeVariant.outline

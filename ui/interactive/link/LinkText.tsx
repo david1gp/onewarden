@@ -11,7 +11,7 @@ function TextAnchor(p: LinkTextProps) {
     <a
       class={classMerge(
         classesTextLink,
-        "underline underline-offset-2 hover:decoration-2", // distinction
+        "no-underline hover:underline", // underline
         "break-all", // line breaks
         s.class,
       )}
