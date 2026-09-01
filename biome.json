@@ -1,5 +1,8 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": ["**", "!src/routeTree.gen.ts"]
+  },
   "assist": {
     "actions": {
       "source": {
@@ -26,32 +29,12 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
-      "suspicious": {
-        "noExplicitAny": "off",
-        "noTsIgnore": "off"
-      },
-      "correctness": {
-        "useExhaustiveDependencies": "info"
-      },
       "style": {
-        "noNonNullAssertion": "off",
-        "noInferrableTypes": "off",
-        "useImportType": "off",
         "noParameterAssign": "error",
-        "useAsConstAssertion": "error",
-        "useDefaultParameterLast": "error",
-        "useEnumInitializers": "error",
         "useSelfClosingElements": "error",
         "useSingleVarDeclarator": "error",
-        "noUnusedTemplateLiteral": "error",
-        "useNumberNamespace": "error",
         "noUselessElse": "error"
       }
     }
-  },
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
   }
 }

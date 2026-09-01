@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@source "./**/*.{ts,tsx}";
+@source "../ui/**/*.{ts,tsx}";
+
+@theme {
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.2 0 0);
+  --color-muted: oklch(0.96 0 0);
+  --color-muted-foreground: oklch(0.45 0 0);
+}
+
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
