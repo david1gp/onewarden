@@ -2,7 +2,7 @@
 
 ## Goal
 
-Bring the OneWarden browser extension to practical Bitwarden feature parity for vault item types, organization, autofill and capture, authentication, biometric unlock, and passkey management while preserving encrypted local storage and current passkey behavior.
+Bring the OneWarden browser extension to practical Bitwarden parity for synchronized vault item types, organization UI, autofill and capture, TOTP capture, and biometric unlock while preserving encrypted local storage.
 
 ## Decisions
 
@@ -11,18 +11,14 @@ Bring the OneWarden browser extension to practical Bitwarden feature parity for 
 - Reuse existing dependencies and `#ui/...` components; follow the repository TypeScript/TSX style and keep view-only `.tsx` files.
 - Broaden the encrypted extension cache to typed cipher/resource unions with a versioned migration; keep autofill matching type-specific and do not expose decrypted secrets in list summaries.
 - Keep the background service worker responsible for authentication, sync, mutations, policy, secure data access, and browser messaging; persistent content scripts own DOM observation and ephemeral page UI only.
-- Implement account data as isolated per-account encrypted stores with one active-account pointer.
-- Implement biometric unlock through a browser/platform-authenticator adapter with capability detection, enrollment, recovery, and password fallback; do not weaken the existing vault-key protection model.
+- Implement biometric unlock through a browser/platform-authenticator adapter with capability detection, enrollment, revocation, recovery, and password fallback; do not weaken the existing vault-key protection model or persist plaintext vault keys.
 - Run quick focused checks after each increment. Run the full browser/e2e suites only after all implementation tasks, against the user's systemd-managed server at `127.0.0.1:3041`; never start a separate dev server or add Playwright `webServer` startup.
 
 ## Approach
 
-- First establish typed sync/storage parity and mutations for every cipher/resource needed by UI and browser integrations.
-- Add vault browsing and management one item family at a time, then layer folders, collections, attachments, and history onto shared item detail flows.
-- Build one persistent autofill content-script foundation, then add field classification, inline selection, automatic fill, credential capture, and TOTP behavior incrementally.
-- Extend authentication in the order challenge-capable login, registration, multi-account isolation/switching, then biometric enrollment/unlock.
-- Add general passkey inventory and management on top of the existing interception, registration, assertion, and consent implementation.
-- Finish with packaged-extension browser coverage and the complete end-to-end suite, fixing every regression before completion.
+- Preserve the completed typed sync/storage, vault UI, autofill, credential-capture, and TOTP work and close focused regressions found by verification.
+- Add biometric capability detection and secure key wrapping first, then enrollment/revocation, unlock integration, settings, and locked-vault UI.
+- Finish with static checks, packaged-extension build, browser coverage, and the complete end-to-end suite, fixing regressions before completion.
 
 ## Tasks
 
@@ -39,10 +35,9 @@ Bring the OneWarden browser extension to practical Bitwarden feature parity for 
 - [x] 11. Add autofill-on-page-load policy, settings UI, candidate rules, late-form observation, and duplicate-fill prevention.
 - [x] 12. Add save/update-login detection for submitted and changed credentials, comparison logic, dismissal policy, and secure save/update prompts.
 - [x] 13. Add TOTP field detection and inline filling plus TOTP capture into login create/update flows, with expiry-safe generation and tests.
-- [x] 14. Add extension account registration and verification/password-setup flows using existing identity endpoints.
-- [ ] 15. Add challenge-capable extension login for supported 2FA methods, recovery paths, and focused auth tests.
-- [ ] 16. Add isolated multi-account storage, active-account switching, add/remove account controls, and per-account lock/logout behavior.
-- [ ] 17. Add biometric capability detection, enrollment/revocation, wrapped-key unlock, password fallback, settings, and locked-vault UI.
-- [ ] 18. Add general passkey-management inventory, per-login credential detail, rename/delete actions, registration entry points, and compatibility tests.
-- [ ] 19. Add/update focused unit and integration coverage for all feature increments and resolve typecheck, lint, format, and extension-build failures.
-- [ ] 20. Build the packaged extension, run browser and end-to-end tests last against the existing systemd-managed server without starting another server, and fix all failures.
+- [x] 14. Audit the requested feature list against the implementation and official-source map; confirm all requested non-biometric increments are present with focused coverage.
+- [ ] 15. Add biometric capability detection and secure wrapped-key enrollment/revocation primitives with focused tests.
+- [ ] 16. Integrate biometric unlock and password fallback into background/session flows with focused tests.
+- [ ] 17. Add biometric settings and locked-vault UI using shared `#ui` components with focused tests.
+- [ ] 18. Resolve focused unit/integration, typecheck, lint, format, and extension-build failures without disturbing unrelated user changes.
+- [ ] 19. Build the packaged extension, then run browser and end-to-end tests last against the existing user systemd-managed server without starting another server; fix all failures.
