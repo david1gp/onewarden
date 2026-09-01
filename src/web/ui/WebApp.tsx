@@ -31,6 +31,7 @@ import { OrganizationWorkspace } from "../organizations/ui/OrganizationWorkspace
 import { SendAccessView } from "../sends/ui/SendAccessView.jsx"
 import { SendListView } from "../sends/ui/SendListView.jsx"
 import { SettingsView } from "../settings/ui/SettingsView.jsx"
+import { AuthSsoConnectorView } from "../sso/ui/AuthSsoConnectorView.jsx"
 import { VaultShell } from "../vault/ui/VaultShell.jsx"
 import { WebAppShell } from "./WebAppShell.jsx"
 import { webAppStateCreate } from "./webAppStateCreate.js"
@@ -154,6 +155,15 @@ export function WebApp(): JSX.Element {
         <Match when={state.currentRoute() === "auth-verify"}>
           <WebAppShell>
             <AuthVerifyEmailView onNavigateToLogin={() => state.navigate("/login")} />
+          </WebAppShell>
+        </Match>
+        <Match when={state.currentRoute() === "sso-connector"}>
+          <WebAppShell>
+            <AuthSsoConnectorView
+              session={state.session}
+              onNavigateToUnlock={() => state.navigateReplace("/unlock")}
+              onNavigateToLogin={() => state.navigate("/login")}
+            />
           </WebAppShell>
         </Match>
         <Match when={state.currentRoute() === "auth-unlock"}>

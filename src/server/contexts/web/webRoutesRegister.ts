@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import type { Context, Hono } from "hono"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
+import { schemaVersion } from "../../database/schema/schemaVersion.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { identityOriginResolve } from "../identity/identityOriginResolve.js"
 import { webContentTypeResolve } from "./webContentTypeResolve.js"
@@ -10,7 +11,6 @@ import { webFilePathResolve } from "./webFilePathResolve.js"
 import { webNotFoundResponseCreate } from "./webNotFoundResponseCreate.js"
 import type { WebRouteOptions } from "./webRouteOptions.js"
 import { webTimestampCreate } from "./webTimestampCreate.js"
-import { schemaVersion } from "../../database/schema/schemaVersion.js"
 
 const defaultWebVaultFolder = "build/web"
 const defaultSourceWebFolder = "src/web"
@@ -265,6 +265,8 @@ function webPathIsSpaRoute(path: string): boolean {
     "/demo/organizations",
     "/demo/organization",
     "/demo/org",
+    "/sso-connector.html",
+    "/sso-connector",
     "/settings",
     "/settings/account",
     "/settings/profile",

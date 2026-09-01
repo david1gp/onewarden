@@ -1,6 +1,7 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import type { BitwardenPasswordTokenResponse } from "../../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffConsumeResponse } from "../../../shared/sessionHandoff/sessionHandoffConsumeResponseSchema.js"
@@ -10,12 +11,13 @@ import { webAuthMasterKeyDerive } from "./webAuthMasterKeyDerive.js"
 import { webAuthMasterPasswordHashDerive } from "./webAuthMasterPasswordHashDerive.js"
 import type { WebAuthSession } from "./webAuthSessionSchema.js"
 import { webAuthStorageCreate } from "./webAuthStorageCreate.js"
-import { webAuthUserIdResolve } from "./webAuthUserIdResolve.js"
-import { webAuthUserKeysGenerate } from "./webAuthUserKeysGenerate.js"
-import { webAuthUserKeyUnlock } from "./webAuthUserKeyUnlock.js"
+import { webAuthTokenEmailResolve } from "./webAuthTokenEmailResolve.js"
 import type { WebAuthTwoFactorDuoActivatePayload } from "./webAuthTwoFactorDuoActivatePayloadSchema.js"
 import type { WebAuthTwoFactorWebAuthnActivatePayload } from "./webAuthTwoFactorWebAuthnActivatePayloadSchema.js"
 import type { WebAuthTwoFactorYubikeyActivatePayload } from "./webAuthTwoFactorYubikeyActivatePayloadSchema.js"
+import { webAuthUserIdResolve } from "./webAuthUserIdResolve.js"
+import { webAuthUserKeysGenerate } from "./webAuthUserKeysGenerate.js"
+import { webAuthUserKeyUnlock } from "./webAuthUserKeyUnlock.js"
 
 export type WebAuthStatus = "unauthenticated" | "locked" | "unlocked"
 
@@ -31,6 +33,20 @@ export interface WebAuthRegisterOptions {
   name?: string | null
   masterPasswordHint?: string | null
   rememberEmail?: boolean
+}
+
+export interface WebAuthSsoMasterPasswordSetupOptions {
+  email: string
+  userId: string
+  accessToken: string
+  refreshToken: string
+  tokenExpiresAt: number
+  kdf: number
+  kdfIterations: number
+  kdfMemory: number | null
+  kdfParallelism: number | null
+  masterPassword: string
+  masterPasswordHint?: string | null
 }
 
 export interface WebAuthTwoFactorLoginOptions {
@@ -135,6 +151,60 @@ export function webAuthSessionCreate(
     session.set(newSession)
     pendingTwoFactor.set(null)
     status.set("unlocked")
+    return resultCreate(newSession)
+  }
+
+  const ssoSessionAccept = (token: BitwardenPasswordTokenResponse): Result<WebAuthSession> => {
+    const op = "webAuthSession.ssoSessionAccept"
+    const email = webAuthTokenEmailResolve(token.access_token)
+    if (email === null) {
+      return resultErrorCreate(op, "Access token is missing a valid email claim.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+
+    if (!token.UserDecryptionOptions.HasMasterPassword) {
+      return resultErrorCreate(
+        op,
+        "First-login setup is required for this SSO account. Please set up your master password on your initial login.",
+        {
+          code: "auth.master-password-setup-required",
+          statusCode: 400,
+        },
+      )
+    }
+
+    const encryptedUserKey =
+      token.UserDecryptionOptions.MasterPasswordUnlock?.MasterKeyEncryptedUserKey ?? token.Key ?? ""
+    if (encryptedUserKey.length === 0) {
+      return resultErrorCreate(op, "Token response did not provide an encrypted user key.", {
+        code: "platform.internal",
+        statusCode: 500,
+      })
+    }
+
+    const newSession: WebAuthSession = {
+      email,
+      accessToken: token.access_token,
+      refreshToken: token.refresh_token,
+      tokenType: "Bearer",
+      expiresAt: Date.now() + token.expires_in * 1_000,
+      userId: webAuthUserIdResolve(token.access_token),
+      kdf: token.Kdf,
+      kdfIterations: token.KdfIterations,
+      kdfMemory: token.KdfMemory,
+      kdfParallelism: token.KdfParallelism,
+      encryptedUserKey,
+    }
+
+    const saveResult = storage.sessionSave(newSession)
+    if (!saveResult.success) return saveResult
+
+    clearUserKey()
+    session.set(newSession)
+    pendingTwoFactor.set(null)
+    status.set("locked")
     return resultCreate(newSession)
   }
 
@@ -476,6 +546,94 @@ export function webAuthSessionCreate(
     return resultCreate(undefined)
   }
 
+  /**
+   * Completes the SSO first-login master-password setup.
+   *
+   * Generates the user keys exactly as registration does, submits them to `/api/accounts/set-password`
+   * with the pending SSO access token, and on success persists a standard session while keeping the
+   * decrypted user key in memory only.
+   */
+  const ssoMasterPasswordSetup = async (
+    setupOptions: WebAuthSsoMasterPasswordSetupOptions,
+  ): Promise<Result<WebAuthSession>> => {
+    const op = "webAuthSession.ssoMasterPasswordSetup"
+    const email = setupOptions.email.trim().toLowerCase()
+    const password = setupOptions.masterPassword
+    const kdfMetadata = {
+      kdfType: setupOptions.kdf,
+      iterations: setupOptions.kdfIterations,
+      memory: setupOptions.kdfMemory,
+      parallelism: setupOptions.kdfParallelism,
+    }
+
+    const keysResult = await webAuthUserKeysGenerate(password, email, kdfMetadata)
+    if (!keysResult.success) return keysResult
+    const generated = keysResult.data
+
+    const masterKeyResult = await webAuthMasterKeyDerive(password, email, kdfMetadata)
+    if (!masterKeyResult.success) {
+      generated.userKey.fill(0)
+      return masterKeyResult
+    }
+    const masterKey = masterKeyResult.data
+
+    const hashResult = await webAuthMasterPasswordHashDerive(password, masterKey)
+    masterKey.fill(0)
+    if (!hashResult.success) {
+      generated.userKey.fill(0)
+      return hashResult
+    }
+
+    const setPasswordResult = await apiClient.setPassword({
+      accessToken: setupOptions.accessToken,
+      masterPasswordHash: hashResult.data,
+      userSymmetricKey: generated.wrappedUserKey,
+      masterPasswordHint: setupOptions.masterPasswordHint ?? null,
+      kdf: setupOptions.kdf,
+      kdfIterations: setupOptions.kdfIterations,
+      kdfMemory: setupOptions.kdfMemory,
+      kdfParallelism: setupOptions.kdfParallelism,
+      keys: {
+        encryptedPrivateKey: generated.encryptedPrivateKey,
+        publicKey: generated.publicKey,
+      },
+    })
+    if (!setPasswordResult.success) {
+      generated.userKey.fill(0)
+      return setPasswordResult
+    }
+
+    const newSession: WebAuthSession = {
+      email,
+      accessToken: setupOptions.accessToken,
+      refreshToken: setupOptions.refreshToken,
+      tokenType: "Bearer",
+      expiresAt: setupOptions.tokenExpiresAt,
+      userId: setupOptions.userId,
+      kdf: setupOptions.kdf,
+      kdfIterations: setupOptions.kdfIterations,
+      kdfMemory: setupOptions.kdfMemory,
+      kdfParallelism: setupOptions.kdfParallelism,
+      encryptedUserKey: generated.wrappedUserKey,
+    }
+
+    const saveResult = storage.sessionSave(newSession)
+    if (!saveResult.success) {
+      generated.userKey.fill(0)
+      return resultErrorCreate(op, "Failed to persist the vault session after master password setup.", {
+        code: "platform.internal",
+        statusCode: 500,
+      })
+    }
+
+    clearUserKey()
+    inMemoryUserKey = generated.userKey
+    session.set(newSession)
+    pendingTwoFactor.set(null)
+    status.set("unlocked")
+    return resultCreate(newSession)
+  }
+
   // --- Authenticated Two-Factor Setup Helpers ---
 
   const currentAccessToken = (): string | null => session.get()?.accessToken ?? null
@@ -779,6 +937,8 @@ export function webAuthSessionCreate(
     lock,
     logout,
     sessionHandoffAccept,
+    ssoSessionAccept,
+    ssoMasterPasswordSetup,
     unlock,
     login,
     loginTwoFactor,

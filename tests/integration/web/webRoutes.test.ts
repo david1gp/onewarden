@@ -66,6 +66,8 @@ test("web routes serve the vault, static files, aliases, health, and protocol me
     "/demo/organizations",
     "/demo/organization",
     "/demo/org",
+    "/sso-connector.html",
+    "/sso-connector",
     "/vault",
     "/vault/cipher-id",
     "/vault/cipher-id/edit",

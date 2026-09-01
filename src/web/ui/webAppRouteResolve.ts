@@ -6,6 +6,7 @@ export type WebAppRouteName =
   | "auth-unlock"
   | "auth-two-factor-setup"
   | "auth-two-factor-challenge"
+  | "sso-connector"
   | "cipher-create"
   | "cipher-edit"
   | "cipher-view"
@@ -55,6 +56,9 @@ export function webAppRouteResolve(pathname: string): WebAppRouteName {
     routePath === "/two-factor-setup"
   ) {
     return "auth-two-factor-setup"
+  }
+  if (routePath === "/sso-connector.html" || routePath === "/sso-connector") {
+    return "sso-connector"
   }
   if (
     routePath === "/settings" ||

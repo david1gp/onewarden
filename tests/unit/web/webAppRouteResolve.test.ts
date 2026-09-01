@@ -52,6 +52,12 @@ test("session handoff target routes resolve to cipher create and edit pages", ()
   expect(webAppRouteResolve("/ciphers/cipher-one/edit")).toBe("cipher-edit")
 })
 
+test("sso connector routes resolve to sso-connector route", () => {
+  expect(webAppRouteResolve("/sso-connector.html")).toBe("sso-connector")
+  expect(webAppRouteResolve("/sso-connector")).toBe("sso-connector")
+  expect(webAppRouteResolve("/SSO-CONNECTOR.HTML")).toBe("sso-connector")
+})
+
 test("demo settings section routes resolve to the demo settings experience", () => {
   for (const path of demoSettingsPaths) {
     expect(webAppRouteResolve(path)).toBe("demo-settings")

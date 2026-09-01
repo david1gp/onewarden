@@ -30,13 +30,10 @@ import { type TwoFactorYubikeyResponse, twoFactorYubikeyResponseSchema } from ".
 import { type WebAuthLoginRequestInput, webAuthLoginRequestSchema } from "./webAuthLoginRequestSchema.js"
 import { type WebAuthRegisterRequestInput, webAuthRegisterRequestSchema } from "./webAuthRegisterRequestSchema.js"
 import {
-  type WebAuthVerificationEmailSendRequestInput,
-  webAuthVerificationEmailSendRequestSchema,
-} from "./webAuthVerificationEmailSendRequestSchema.js"
-import {
-  type WebAuthVerifyEmailRequestInput,
-  webAuthVerifyEmailRequestSchema,
-} from "./webAuthVerifyEmailRequestSchema.js"
+  type WebAuthSetPasswordRequestInput,
+  webAuthSetPasswordRequestSchema,
+} from "./webAuthSetPasswordRequestSchema.js"
+import { type WebAuthSsoLoginRequestInput, webAuthSsoLoginRequestSchema } from "./webAuthSsoLoginRequestSchema.js"
 import {
   type WebAuthTwoFactorAuthenticatorActivateRequestInput,
   webAuthTwoFactorAuthenticatorActivateRequestSchema,
@@ -77,9 +74,22 @@ import {
   type WebAuthTwoFactorYubikeyActivateRequestInput,
   webAuthTwoFactorYubikeyActivateRequestSchema,
 } from "./webAuthTwoFactorYubikeyActivateRequestSchema.js"
+import {
+  type WebAuthVerificationEmailSendRequestInput,
+  webAuthVerificationEmailSendRequestSchema,
+} from "./webAuthVerificationEmailSendRequestSchema.js"
+import {
+  type WebAuthVerifyEmailRequestInput,
+  webAuthVerifyEmailRequestSchema,
+} from "./webAuthVerifyEmailRequestSchema.js"
 
 const registerResponseSchema = v.object({
   object: v.literal("register"),
+  captchaBypassToken: v.optional(v.string()),
+})
+
+const setPasswordResponseSchema = v.object({
+  object: v.literal("set-password"),
   captchaBypassToken: v.optional(v.string()),
 })
 
@@ -191,6 +201,37 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
     }
   }
 
+  const ssoLogin = async (request: WebAuthSsoLoginRequestInput): Promise<Result<BitwardenPasswordTokenResponse>> => {
+    const op = "webAuthApiClient.ssoLogin"
+    const requestResult = requestValidationParse(op, request, webAuthSsoLoginRequestSchema)
+    if (!requestResult.success) return requestResult
+    const normalizedRequest = requestResult.data
+    const form = new URLSearchParams({
+      grant_type: "authorization_code",
+      code: normalizedRequest.code,
+      code_verifier: normalizedRequest.codeVerifier,
+      client_id: normalizedRequest.clientId,
+      device_identifier: normalizedRequest.deviceIdentifier,
+      device_name: normalizedRequest.deviceName,
+      device_type: normalizedRequest.deviceType,
+      scope: "api offline_access",
+    })
+
+    try {
+      const response = await fetchFn(`${baseUrl}/identity/connect/token`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          accept: "application/json",
+        },
+        body: form.toString(),
+      })
+      return responseJsonParse(op, response, bitwardenPasswordTokenResponseSchema)
+    } catch {
+      return resultErrorCreate(op, "SSO login request failed.", { code: "platform.unavailable", statusCode: 503 })
+    }
+  }
+
   const register = async (
     request: WebAuthRegisterRequestInput,
   ): Promise<Result<{ object: "register"; captchaBypassToken?: string }>> => {
@@ -220,6 +261,36 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
       return responseJsonParse(op, response, registerResponseSchema)
     } catch {
       return resultErrorCreate(op, "Registration request failed.", { code: "platform.unavailable", statusCode: 503 })
+    }
+  }
+
+  const setPassword = async (
+    request: WebAuthSetPasswordRequestInput,
+  ): Promise<Result<{ object: "set-password"; captchaBypassToken?: string }>> => {
+    const op = "webAuthApiClient.setPassword"
+    const requestResult = requestValidationParse(op, request, webAuthSetPasswordRequestSchema)
+    if (!requestResult.success) return requestResult
+    const normalizedRequest = requestResult.data
+    const payload = {
+      masterPasswordHash: normalizedRequest.masterPasswordHash,
+      key: normalizedRequest.userSymmetricKey,
+      masterPasswordHint: normalizedRequest.masterPasswordHint,
+      kdf: normalizedRequest.kdf,
+      kdfIterations: normalizedRequest.kdfIterations,
+      kdfMemory: normalizedRequest.kdfMemory,
+      kdfParallelism: normalizedRequest.kdfParallelism,
+      keys: normalizedRequest.keys,
+    }
+
+    try {
+      const response = await fetchFn(`${baseUrl}/api/accounts/set-password`, {
+        method: "POST",
+        headers: authHeaders(normalizedRequest.accessToken),
+        body: JSON.stringify(payload),
+      })
+      return responseJsonParse(op, response, setPasswordResponseSchema)
+    } catch {
+      return resultErrorCreate(op, "Set password request failed.", { code: "platform.unavailable", statusCode: 503 })
     }
   }
 
@@ -688,7 +759,9 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
   return {
     prelogin,
     login,
+    ssoLogin,
     register,
+    setPassword,
     sendVerificationEmail,
     verifyEmailToken,
     twoFactorProvidersGet,

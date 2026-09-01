@@ -14,6 +14,7 @@ import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const organizationUuid = "00000000-0000-4000-8000-000000000401"
 const domainUuid = "00000000-0000-4000-8000-000000000402"
+const ssoClientChallenge = "liA-bX0YDRBLal31U89D-fQmsxvzXL23GkFR9ukhLrI"
 const databases: DatabaseConnection[] = []
 
 type SsoTestAdapter = IdentitySsoAdapter & {
@@ -126,7 +127,7 @@ test("organization SSO uses a verified domain's stored provider and binds the to
   })
 
   const authorize = await app.request(
-    "https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&state=organization-state&code_challenge=challenge&code_challenge_method=S256&domain_hint=Example.COM",
+    `https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&state=organization-state&code_challenge=${ssoClientChallenge}&code_challenge_method=S256&domain_hint=Example.COM`,
   )
   expect(authorize.status).toBe(307)
   expect(sso.authorizeCalls[0]?.configuration).toMatchObject({
@@ -201,7 +202,7 @@ test("organization SSO rejects a verified-domain session when the provider retur
     },
   })
   const authorize = await app.request(
-    "https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&state=other-state&code_challenge=challenge&code_challenge_method=S256&domain_hint=example.com",
+    `https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&state=other-state&code_challenge=${ssoClientChallenge}&code_challenge_method=S256&domain_hint=example.com`,
   )
   const bindingToken = bindingTokenRead(authorize)
   const callback = await app.request(

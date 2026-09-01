@@ -7,6 +7,7 @@ import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { sha256Digest } from "../../../shared/crypto/sha256Digest.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
@@ -26,22 +27,43 @@ function identitySsoProviderUrlResolve(authority: string): string {
   return `${authority.replace(/\/+$/, "")}/.well-known/openid-configuration`
 }
 
+function identitySsoProviderUnavailableErrorCreate(op: string, message: string) {
+  return resultErrorCreate(op, message, { code: "platform.unavailable", statusCode: 503 })
+}
+
+function identitySsoProviderResponseErrorCreate(op: string, message: string, status: number) {
+  if (status === 429) return resultErrorCreate(op, message, { code: "platform.rate-limited", statusCode: 429 })
+  if (status >= 500) return identitySsoProviderUnavailableErrorCreate(op, message)
+  return identityDomainErrorCreate(op, message)
+}
+
 async function identitySsoProviderConfigurationGet(
   config: IdentityConfig,
 ): Promise<Result<IdentitySsoProviderConfiguration>> {
   const op = "identitySsoProviderConfigurationGet"
   if (config.SSO_AUTHORITY === "")
     return identityDomainErrorCreate(op, "Failed to discover OpenID provider: SSO authority is empty")
+  let response: Response
   try {
-    const response = await fetch(identitySsoProviderUrlResolve(config.SSO_AUTHORITY))
-    if (!response.ok) return identityDomainErrorCreate(op, `Failed to discover OpenID provider: ${response.status}`)
-    const parsedJson: unknown = await response.json()
-    const parsed = v.safeParse(identitySsoProviderConfigurationSchema, parsedJson)
-    if (!parsed.success) return identityDomainErrorCreate(op, "Failed to discover OpenID provider")
-    return resultCreate(parsed.output)
+    response = await fetch(identitySsoProviderUrlResolve(config.SSO_AUTHORITY))
+  } catch {
+    return identitySsoProviderUnavailableErrorCreate(op, "Failed to discover OpenID provider")
+  }
+  if (!response.ok)
+    return identitySsoProviderResponseErrorCreate(
+      op,
+      `Failed to discover OpenID provider: ${response.status}`,
+      response.status,
+    )
+  let parsedJson: unknown
+  try {
+    parsedJson = await response.json()
   } catch {
     return identityDomainErrorCreate(op, "Failed to discover OpenID provider")
   }
+  const parsed = v.safeParse(identitySsoProviderConfigurationSchema, parsedJson)
+  if (!parsed.success) return identityDomainErrorCreate(op, "Failed to discover OpenID provider")
+  return resultCreate(parsed.output)
 }
 
 function identitySsoExtraParametersParse(value: string): Array<[string, string]> {
@@ -73,37 +95,59 @@ async function identitySsoProviderTokenExchange(
     )
   if (useBasicAuth) {
     const credentials = base64Encode(new TextEncoder().encode(`${config.SSO_CLIENT_ID}:${config.SSO_CLIENT_SECRET}`))
+    let response: Response
     try {
-      const response = await fetch(endpoint, {
+      response = await fetch(endpoint, {
         body,
         headers: { authorization: `Basic ${credentials}`, "content-type": "application/x-www-form-urlencoded" },
         method: "POST",
       })
-      if (!response.ok) return identityDomainErrorCreate(op, `Failed to contact token endpoint: ${response.status}`)
-      const parsedJson: unknown = await response.json()
-      const parsed = v.safeParse(identitySsoTokenResponseSchema, parsedJson)
-      if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an id_token")
-      return resultCreate(parsed.output)
     } catch {
-      return identityDomainErrorCreate(op, "Failed to contact token endpoint")
+      return identitySsoProviderUnavailableErrorCreate(op, "Failed to contact token endpoint")
     }
+    if (!response.ok)
+      return identitySsoProviderResponseErrorCreate(
+        op,
+        `Failed to contact token endpoint: ${response.status}`,
+        response.status,
+      )
+    let parsedJson: unknown
+    try {
+      parsedJson = await response.json()
+    } catch {
+      return identityDomainErrorCreate(op, "Token response did not contain an id_token")
+    }
+    const parsed = v.safeParse(identitySsoTokenResponseSchema, parsedJson)
+    if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an id_token")
+    return resultCreate(parsed.output)
   }
   body.set("client_id", config.SSO_CLIENT_ID)
   body.set("client_secret", config.SSO_CLIENT_SECRET)
+  let response: Response
   try {
-    const response = await fetch(endpoint, {
+    response = await fetch(endpoint, {
       body,
       headers: { "content-type": "application/x-www-form-urlencoded" },
       method: "POST",
     })
-    if (!response.ok) return identityDomainErrorCreate(op, `Failed to contact token endpoint: ${response.status}`)
-    const parsedJson: unknown = await response.json()
-    const parsed = v.safeParse(identitySsoTokenResponseSchema, parsedJson)
-    if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an id_token")
-    return resultCreate(parsed.output)
   } catch {
-    return identityDomainErrorCreate(op, "Failed to contact token endpoint")
+    return identitySsoProviderUnavailableErrorCreate(op, "Failed to contact token endpoint")
   }
+  if (!response.ok)
+    return identitySsoProviderResponseErrorCreate(
+      op,
+      `Failed to contact token endpoint: ${response.status}`,
+      response.status,
+    )
+  let parsedJson: unknown
+  try {
+    parsedJson = await response.json()
+  } catch {
+    return identityDomainErrorCreate(op, "Token response did not contain an id_token")
+  }
+  const parsed = v.safeParse(identitySsoTokenResponseSchema, parsedJson)
+  if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an id_token")
+  return resultCreate(parsed.output)
 }
 
 async function identitySsoProviderRefreshExchange(
@@ -186,16 +230,27 @@ async function identitySsoIdClaimsRead(
 
 async function identitySsoUserInfoRead(endpoint: string, accessToken: string): Promise<Result<IdentitySsoUserInfo>> {
   const op = "identitySsoUserInfoRead"
+  let response: Response
   try {
-    const response = await fetch(endpoint, { headers: { authorization: `Bearer ${accessToken}` } })
-    if (!response.ok) return identityDomainErrorCreate(op, `Request to user_info endpoint failed: ${response.status}`)
-    const parsedJson: unknown = await response.json()
-    const parsed = v.safeParse(identitySsoUserInfoSchema, parsedJson)
-    if (!parsed.success) return identityDomainErrorCreate(op, "Request to user_info endpoint failed")
-    return resultCreate(parsed.output)
+    response = await fetch(endpoint, { headers: { authorization: `Bearer ${accessToken}` } })
+  } catch {
+    return identitySsoProviderUnavailableErrorCreate(op, "Request to user_info endpoint failed")
+  }
+  if (!response.ok)
+    return identitySsoProviderResponseErrorCreate(
+      op,
+      `Request to user_info endpoint failed: ${response.status}`,
+      response.status,
+    )
+  let parsedJson: unknown
+  try {
+    parsedJson = await response.json()
   } catch {
     return identityDomainErrorCreate(op, "Request to user_info endpoint failed")
   }
+  const parsed = v.safeParse(identitySsoUserInfoSchema, parsedJson)
+  if (!parsed.success) return identityDomainErrorCreate(op, "Request to user_info endpoint failed")
+  return resultCreate(parsed.output)
 }
 
 export function identitySsoAdapterCreate(

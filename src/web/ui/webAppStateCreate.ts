@@ -173,6 +173,7 @@ export function webAppStateCreate() {
   return {
     pathname: pathname.get,
     navigate,
+    navigateReplace,
     currentRoute,
     routeCipherId,
     currentSendAccessId,

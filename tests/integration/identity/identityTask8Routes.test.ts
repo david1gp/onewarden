@@ -25,6 +25,7 @@ import { sha256Hex } from "../../../src/shared/crypto/sha256Hex.js"
 import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import type { Clock } from "../../../src/shared/clock/clock.js"
 import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
@@ -34,6 +35,8 @@ const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
 const keyPair = keyPairResult.data
 const contexts: Array<{ database: DatabaseConnection }> = []
+const ssoClientVerifier = "client-verifier"
+const ssoClientChallenge = "liA-bX0YDRBLal31U89D-fQmsxvzXL23GkFR9ukhLrI"
 
 type SsoTestAdapter = IdentitySsoAdapter & {
   authorizeCalls: Array<Parameters<IdentitySsoAdapter["authorize"]>[0]>
@@ -187,7 +190,7 @@ function ssoTokenForm(code: string, overrides: Record<string, string> = {}): Rec
     grant_type: "authorization_code",
     client_id: "web",
     code,
-    code_verifier: "client-verifier",
+    code_verifier: ssoClientVerifier,
     device_identifier: "sso-device",
     device_name: "SSO device",
     device_type: "9",
@@ -444,7 +447,7 @@ test("authorization-code SSO grant completes authorize, bound callback, linking,
     ssoUser: ssoUserCreate({ email: "alice@example.com" }),
   })
   const authorize = await context.app.request(
-    "https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&response_type=code&scope=openid&state=state-value&code_challenge=challenge&code_challenge_method=S256&response_mode=query&domain_hint=example.com&ssoToken=prevalidate",
+    `https://vault.example/identity/connect/authorize?client_id=web&redirect_uri=ignored&response_type=code&scope=openid&state=state-value&code_challenge=${ssoClientChallenge}&code_challenge_method=S256&response_mode=query&domain_hint=example.com&ssoToken=prevalidate`,
   )
   expect(authorize.status).toBe(307)
   expect(authorize.headers.get("location")).toBe("https://idp.example/authorize?from=test")
@@ -461,13 +464,13 @@ test("authorization-code SSO grant completes authorize, bound callback, linking,
       rawRedirectUri: "ignored",
       redirectUri: "https://vault.example/sso-connector.html",
       state: "state-value",
-      clientChallenge: "challenge",
+      clientChallenge: ssoClientChallenge,
     },
   ])
   expect(
     context.database.query("SELECT client_challenge, nonce, redirect_uri, binding_hash FROM sso_auth").get(),
   ).toMatchObject({
-    client_challenge: "challenge",
+    client_challenge: ssoClientChallenge,
     nonce: "provider-nonce",
     redirect_uri: "https://vault.example/sso-connector.html",
   })
@@ -519,6 +522,11 @@ test("authorization-code SSO grant completes authorize, bound callback, linking,
     { user_uuid: "new-user-uuid", identifier: "https://idp.example/subject-1" },
   ])
   expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+  await expectApiError(
+    await requestForm(context.app, ssoTokenForm("provider-code")),
+    400,
+    "Invalid code cannot retrieve sso auth",
+  )
 
   const accessClaims = await identityAccessTokenClaimsDecode(
     parsed.output.access_token,
@@ -552,7 +560,7 @@ test("authorization-code SSO grant completes authorize, bound callback, linking,
 test("SSO callback error stores the provider error and authorization-code exchange returns its exact error", async () => {
   const context = await contextCreate({ config: { SSO_ENABLED: true } })
   const authorize = await context.app.request(
-    "https://vault.example/identity/connect/authorize?clientid=web&redirecturi=ignored&responsetype=code&state=error-state&codechallenge=challenge&codechallengemethod=S256",
+    `https://vault.example/identity/connect/authorize?clientid=web&redirecturi=ignored&responsetype=code&state=error-state&codechallenge=${ssoClientChallenge}&codechallengemethod=S256`,
   )
   const bindingCookie = authorize.headers.get("set-cookie")
   if (bindingCookie === null) return
@@ -575,7 +583,130 @@ test("SSO callback error stores the provider error and authorization-code exchan
   expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
 })
 
-test("SSO linking rejects duplicate email identities and disabled users without consuming the authorization", async () => {
+test("cached SSO responses still require the PKCE verifier before consuming the authorization", async () => {
+  const context = await contextCreate({ config: { SSO_ENABLED: true } })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "cached-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "cached-code",
+      codeResponseError: null,
+      authResponse: ssoUserCreate({ email: "  Cached@Example.COM  " }),
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+
+  await expectApiError(
+    await requestForm(context.app, ssoTokenForm("cached-code", { code_verifier: "wrong-verifier" })),
+    400,
+    "PKCE client challenge failed",
+  )
+  expect(context.sso.exchangeCalls).toHaveLength(0)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
+  const valid = await requestForm(context.app, ssoTokenForm("cached-code"))
+  expect(valid.status).toBe(200)
+  expect(context.database.query("SELECT email FROM users WHERE uuid = ?").get("new-user-uuid")).toEqual({
+    email: "cached@example.com",
+  })
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+})
+
+test("SSO provider exchange retries only while its failure is transient", async () => {
+  const context = await contextCreate({ config: { SSO_ENABLED: true } })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "retry-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "retry-code",
+      codeResponseError: null,
+      authResponse: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+  let attempts = 0
+  context.sso.exchange = async (input) => {
+    context.sso.exchangeCalls.push(input)
+    attempts += 1
+    if (attempts === 1)
+      return resultErrorCreate("testSsoExchange", "Provider unavailable", {
+        code: "platform.unavailable",
+        statusCode: 503,
+      })
+    return resultCreate(ssoUserCreate({ email: "retry@example.com" }))
+  }
+
+  await expectApiError(await requestForm(context.app, ssoTokenForm("retry-code")), 503, "Provider unavailable")
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
+  const retry = await requestForm(context.app, ssoTokenForm("retry-code"))
+  expect(retry.status).toBe(200)
+  expect(attempts).toBe(2)
+  expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+})
+
+test("SSO canonicalizes provider email before lookup and creation", async () => {
+  const context = await contextCreate({
+    config: { SSO_ENABLED: true },
+    user: { email: "local@example.com" },
+    ssoUser: ssoUserCreate({ email: "  Alice@EXAMPLE.COM  " }),
+  })
+  expect(
+    identitySsoAuthSave(context.database, {
+      state: "canonical-email-state",
+      clientChallenge: ssoClientChallenge,
+      nonce: "nonce",
+      redirectUri: "https://vault.example/sso-connector.html",
+      codeResponse: "canonical-email-code",
+      codeResponseError: null,
+      authResponse: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      bindingHash: null,
+    }),
+  ).toMatchObject({ success: true })
+
+  const response = await requestForm(context.app, ssoTokenForm("canonical-email-code"))
+  expect(response.status).toBe(200)
+  expect(context.database.query("SELECT email FROM users WHERE uuid = ?").get("new-user-uuid")).toEqual({
+    email: "alice@example.com",
+  })
+})
+
+test("SSO rejects empty and malformed provider email before lookup or creation", async () => {
+  for (const [index, email] of ["   ", "malformed-email"].entries()) {
+    const context = await contextCreate({ config: { SSO_ENABLED: true }, ssoUser: ssoUserCreate({ email }) })
+    expect(
+      identitySsoAuthSave(context.database, {
+        state: `invalid-email-state-${index}`,
+        clientChallenge: ssoClientChallenge,
+        nonce: "nonce",
+        redirectUri: "https://vault.example/sso-connector.html",
+        codeResponse: `invalid-email-code-${index}`,
+        codeResponseError: null,
+        authResponse: null,
+        createdAt: "2026-08-28T00:00:00.000Z",
+        updatedAt: "2026-08-28T00:00:00.000Z",
+        bindingHash: null,
+      }),
+    ).toMatchObject({ success: true })
+
+    await expectApiError(
+      await requestForm(context.app, ssoTokenForm(`invalid-email-code-${index}`)),
+      400,
+      "SSO provider returned an invalid email",
+    )
+    expect(context.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+  }
+})
+
+test("SSO linking rejects duplicate email identities and disabled users after consuming the authorization", async () => {
   const duplicate = await contextCreate({ config: { SSO_ENABLED: true }, ssoUser: ssoUserCreate() })
   const duplicateUser = await userCreate({ uuid: "duplicate-user", email: "sso@example.com" })
   expect(identityUserSave(duplicate.database, duplicateUser)).toMatchObject({ success: true })
@@ -585,7 +716,7 @@ test("SSO linking rejects duplicate email identities and disabled users without 
   expect(
     identitySsoAuthSave(duplicate.database, {
       state: "duplicate-state",
-      clientChallenge: "challenge",
+      clientChallenge: ssoClientChallenge,
       nonce: "nonce",
       redirectUri: "https://vault.example/sso-connector.html",
       codeResponse: "code",
@@ -597,7 +728,7 @@ test("SSO linking rejects duplicate email identities and disabled users without 
     }),
   ).toMatchObject({ success: true })
   await expectApiError(await requestForm(duplicate.app, ssoTokenForm("code")), 400, "Existing SSO user with same email")
-  expect(duplicate.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
+  expect(duplicate.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
 
   const disabled = await contextCreate({
     config: { SSO_ENABLED: true },
@@ -610,7 +741,7 @@ test("SSO linking rejects duplicate email identities and disabled users without 
   expect(
     identitySsoAuthSave(disabled.database, {
       state: "disabled-state",
-      clientChallenge: "challenge",
+      clientChallenge: ssoClientChallenge,
       nonce: "nonce",
       redirectUri: "https://vault.example/sso-connector.html",
       codeResponse: "disabled-code",
@@ -626,8 +757,8 @@ test("SSO linking rejects duplicate email identities and disabled users without 
     400,
     "This user has been disabled",
   )
-  expect(disabled.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 1 })
-  expect(identitySsoAuthFindByState(disabled.database, "disabled-state", disabled.clock).success).toBe(true)
+  expect(disabled.database.query("SELECT COUNT(*) AS count FROM sso_auth").get()).toEqual({ count: 0 })
+  expect(identitySsoAuthFindByState(disabled.database, "disabled-state", disabled.clock).data).toBeNull()
 })
 
 test("SSO prevalidation is gated and signs the exact short-lived claims", async () => {
@@ -661,7 +792,7 @@ test("SSO refresh grants exchange provider refresh tokens and keep the SSO subje
   expect(
     identitySsoAuthSave(context.database, {
       state: "refresh-state",
-      clientChallenge: "challenge",
+      clientChallenge: ssoClientChallenge,
       nonce: "nonce",
       redirectUri: "https://vault.example/sso-connector.html",
       codeResponse: "sso-code",
@@ -708,7 +839,7 @@ test("SSO auth-only-not-session refreshes as a local SSO session instead of a pa
   expect(
     identitySsoAuthSave(context.database, {
       state: "auth-only-state",
-      clientChallenge: "challenge",
+      clientChallenge: ssoClientChallenge,
       nonce: "nonce",
       redirectUri: "https://vault.example/sso-connector.html",
       codeResponse: "auth-only-code",

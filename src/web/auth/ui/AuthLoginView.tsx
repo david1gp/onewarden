@@ -7,6 +7,7 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { LinkTextExternal } from "#ui/interactive/link/LinkText.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
+import { SeparatorOr } from "#ui/static/separator/SeparatorOr.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { AuthErrorFeedback } from "./AuthErrorFeedback.jsx"
 import { AuthTwoFactorChallengeCard } from "./AuthTwoFactorChallengeCard.jsx"
@@ -99,7 +100,7 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
                 type="submit"
                 variant="filledBlue"
                 class="h-8 w-full justify-center text-sm font-semibold"
-                disabled={state.isSubmitting()}
+                disabled={state.isSubmitting() || state.isSsoStarting()}
               >
                 <Icon path={vaultSvgIcons.lock} class="mr-1.5 size-3.5" />
                 <Show when={state.isSubmitting()} fallback="Log In">
@@ -108,6 +109,23 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
               </Button>
             </div>
           </form>
+
+          <SeparatorOr />
+
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              class="h-8 w-full justify-center text-sm font-semibold"
+              disabled={state.isSubmitting() || state.isSsoStarting()}
+              onClick={state.handleContinueWithSso}
+            >
+              <Icon path={vaultSvgIcons.key} class="mr-1.5 size-3.5" />
+              <Show when={state.isSsoStarting()} fallback="Continue with SSO">
+                Connecting to SSO...
+              </Show>
+            </Button>
+          </div>
 
           <div class="flex flex-col gap-2 border-t border-slate-100 pt-4 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
             <div>

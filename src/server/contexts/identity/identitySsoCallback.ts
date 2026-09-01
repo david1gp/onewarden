@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { base64Decode } from "../../../shared/crypto/base64Decode.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
@@ -7,8 +7,8 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
+import { identitySsoAuthCallbackResponseSave } from "./identitySsoAuthCallbackResponseSave.js"
 import { identitySsoAuthFindByState } from "./identitySsoAuthFindByState.js"
-import { identitySsoAuthSave } from "./identitySsoAuthSave.js"
 
 export async function identitySsoCallback(
   base64State: string,
@@ -41,8 +41,9 @@ export async function identitySsoCallback(
   auth.codeResponse = code
   auth.codeResponseError = error === null ? null : { error: error.error, error_description: error.errorDescription }
   auth.updatedAt = options.clock.now().toISOString()
-  const saveResult = identitySsoAuthSave(database, auth)
+  const saveResult = identitySsoAuthCallbackResponseSave(database, auth)
   if (!saveResult.success) return saveResult
+  if (!saveResult.data) return identityDomainErrorCreate(op, `Cannot retrieve sso_auth for ${state}`)
   let redirect: URL
   try {
     redirect = new URL(auth.redirectUri)

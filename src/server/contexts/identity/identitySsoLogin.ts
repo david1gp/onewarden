@@ -1,5 +1,5 @@
 import type { KeyInput } from "jose"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
@@ -14,10 +14,13 @@ import { identityDeviceSave } from "./identityDeviceSave.js"
 import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import { identityEmailDomainAllowed } from "./identityEmailDomainAllowed.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
+import { identitySsoAuthConsume } from "./identitySsoAuthConsume.js"
 import { identitySsoAuthDelete } from "./identitySsoAuthDelete.js"
 import { identitySsoAuthFindByCode } from "./identitySsoAuthFindByCode.js"
 import type { IdentitySsoAuthenticatedUser } from "./identitySsoAuthenticatedUserSchema.js"
-import { identitySsoAuthSave } from "./identitySsoAuthSave.js"
+import { identitySsoAuthResponseSave } from "./identitySsoAuthResponseSave.js"
+import { identitySsoCodeVerifierValidate } from "./identitySsoCodeVerifierValidate.js"
+import { identitySsoEmailCanonicalize } from "./identitySsoEmailCanonicalize.js"
 import { identitySsoUserFindByEmail } from "./identitySsoUserFindByEmail.js"
 import { identitySsoUserFindByIdentifier } from "./identitySsoUserFindByIdentifier.js"
 import { identitySsoUserSave } from "./identitySsoUserSave.js"
@@ -123,6 +126,8 @@ export async function identitySsoLogin(
   if (!authResult.success) return authResult
   if (authResult.data === null) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
   const auth = authResult.data
+  const verifierResult = await identitySsoCodeVerifierValidate(data.codeVerifier, auth.clientChallenge)
+  if (!verifierResult.success) return verifierResult
   const organizationUuid = auth.organizationUuid ?? null
   let organizationConfig: IdentityConfig | undefined
   if (organizationUuid !== null) {
@@ -136,12 +141,12 @@ export async function identitySsoLogin(
   if (authenticatedUser === null) {
     if (auth.codeResponseError !== null) {
       const error = auth.codeResponseError
-      const deleteResult = identitySsoAuthDelete(database, auth.state)
+      const deleteResult = identitySsoAuthDelete(database, auth)
       if (!deleteResult.success) return deleteResult
       return identityDomainErrorCreate(op, `SSO authorization failed: ${error.error}, ${error.error_description ?? ""}`)
     }
     if (auth.codeResponse === null) {
-      const deleteResult = identitySsoAuthDelete(database, auth.state)
+      const deleteResult = identitySsoAuthDelete(database, auth)
       if (!deleteResult.success) return deleteResult
       return identityDomainErrorCreate(op, "Missing authorization provider return")
     }
@@ -151,13 +156,48 @@ export async function identitySsoLogin(
       codeVerifier: data.codeVerifier,
       ...(organizationConfig === undefined ? {} : { configuration: organizationConfig }),
     })
-    if (!exchangeResult.success) return exchangeResult
+    if (!exchangeResult.success) {
+      const transient =
+        exchangeResult.code === "platform.rate-limited" ||
+        exchangeResult.code === "platform.unavailable" ||
+        exchangeResult.statusCode === 429 ||
+        exchangeResult.statusCode === 503
+      if (!transient) {
+        const deleteResult = identitySsoAuthDelete(database, auth)
+        if (!deleteResult.success) return deleteResult
+      }
+      return exchangeResult
+    }
     authenticatedUser = exchangeResult.data
-    auth.authResponse = authenticatedUser
-    auth.updatedAt = options.clock.now().toISOString()
-    const saveResult = identitySsoAuthSave(database, auth)
-    if (!saveResult.success) return saveResult
   }
+
+  const emailResult = identitySsoEmailCanonicalize(authenticatedUser.email)
+  if (!emailResult.success) {
+    const deleteResult = identitySsoAuthDelete(database, auth)
+    if (!deleteResult.success) return deleteResult
+    return emailResult
+  }
+  authenticatedUser = { ...authenticatedUser, email: emailResult.data }
+
+  if (auth.authResponse === null) {
+    const saveResult = identitySsoAuthResponseSave(
+      database,
+      auth.state,
+      data.code,
+      authenticatedUser,
+      options.clock.now().toISOString(),
+    )
+    if (!saveResult.success) {
+      const deleteResult = identitySsoAuthDelete(database, auth)
+      if (!deleteResult.success) return deleteResult
+      return saveResult
+    }
+    if (!saveResult.data) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
+  }
+
+  const consumeResult = identitySsoAuthConsume(database, auth.state, data.code, options.clock)
+  if (!consumeResult.success) return consumeResult
+  if (!consumeResult.data) return identityDomainErrorCreate(op, "Invalid code cannot retrieve sso auth")
 
   if (organizationUuid !== null) {
     const domainResult = organizationDomainEmailVerified(database, organizationUuid, authenticatedUser.email)
@@ -250,8 +290,6 @@ export async function identitySsoLogin(
     const pushUuidSaveResult = identityDeviceSave(database, deviceResult.data, options.clock, false)
     if (!pushUuidSaveResult.success) return pushUuidSaveResult
   }
-  const deleteResult = identitySsoAuthDelete(database, auth.state)
-  if (!deleteResult.success) return deleteResult
   options.event?.userEventCreate(eventType.userLoggedIn, user.uuid, {
     deviceType: deviceResult.data.type,
     ipAddress: options.clientIp,

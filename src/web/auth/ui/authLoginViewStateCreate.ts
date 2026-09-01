@@ -1,4 +1,7 @@
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { webSsoAuthorizationCreate } from "../../sso/model/webSsoAuthorizationCreate.js"
+import { webSsoDomainHintResolve } from "../../sso/model/webSsoDomainHintResolve.js"
+import { webSsoTransactionStorageCreate } from "../../sso/model/webSsoTransactionStorageCreate.js"
 import type { webAuthSessionCreate } from "../model/webAuthSessionCreate.js"
 import { webAuthSessionDefault } from "../model/webAuthSessionDefault.js"
 
@@ -21,9 +24,39 @@ export function authLoginViewStateCreate(props: AuthLoginViewProps = {}) {
   const showPassword = createSignalObject(false)
   const errorMessage = createSignalObject<string | null>(null)
   const isSubmitting = createSignalObject(false)
+  const isSsoStarting = createSignalObject(false)
 
   const togglePasswordVisibility = () => {
     showPassword.set(!showPassword.get())
+  }
+
+  const handleContinueWithSso = async () => {
+    errorMessage.set(null)
+    isSsoStarting.set(true)
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost"
+    const domainHint = webSsoDomainHintResolve(email.get())
+    const authResult = await webSsoAuthorizationCreate({
+      origin,
+      nowMs: Date.now(),
+      email: domainHint,
+    })
+
+    if (!authResult.success) {
+      errorMessage.set(authResult.errorMessage)
+      isSsoStarting.set(false)
+      return
+    }
+
+    const storageResult = webSsoTransactionStorageCreate().save(authResult.data.transaction)
+    if (!storageResult.success) {
+      errorMessage.set("Failed to store SSO session.")
+      isSsoStarting.set(false)
+      return
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.assign(authResult.data.authorizationUrl)
+    }
   }
 
   const handleSubmit = async (event: SubmitEvent) => {
@@ -78,8 +111,10 @@ export function authLoginViewStateCreate(props: AuthLoginViewProps = {}) {
     togglePasswordVisibility,
     errorMessage: errorMessage.get,
     isSubmitting: isSubmitting.get,
+    isSsoStarting: isSsoStarting.get,
     requiresTwoFactor: () => session.pendingTwoFactor() !== null,
     handleSubmit,
+    handleContinueWithSso,
     handleTwoFactorCancel,
     navigateToRegister: () => props.onNavigateToRegister?.(),
     navigateToVerify: () => props.onNavigateToVerify?.(),
