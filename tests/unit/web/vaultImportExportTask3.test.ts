@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { bitwardenCipherStringEncrypt } from "../../../src/shared/crypto/bitwardenCipherStringEncrypt.js"
 import type { webAuthSessionCreate } from "../../../src/web/auth/model/webAuthSessionCreate.js"
+import { bitwardenAccountEncryptedJsonSensitiveValueClear } from "../../../src/web/settings/model/bitwardenAccountEncryptedJsonSensitiveValueClear.js"
 import { bitwardenCsvFieldsParse } from "../../../src/web/settings/model/bitwardenCsvFieldsParse.js"
 import { bitwardenCsvFormat } from "../../../src/web/settings/model/bitwardenCsvFormat.js"
 import { bitwardenCsvParse } from "../../../src/web/settings/model/bitwardenCsvParse.js"
@@ -108,6 +109,38 @@ test("Bitwarden CSV parser rejects unsupported types, invalid values, and malfor
 
   for (const input of invalidInputs) expect(bitwardenCsvParse(input).success).toBe(false)
   expect(bitwardenCsvParse("").success).toBe(false)
+})
+
+test("CSV plaintext cleanup clears parsed records and nested field arrays", () => {
+  const parsedResult = bitwardenCsvParse(
+    "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\nPersonal,1,login,Portal,Notes,Environment: test,1,https://example.test,user,password,totp",
+  )
+  expect(parsedResult.success).toBe(true)
+  if (!parsedResult.success) return
+
+  const fieldsResult = bitwardenCsvFieldsParse(parsedResult.data[0]?.fields)
+  expect(fieldsResult.success).toBe(true)
+  if (!fieldsResult.success) return
+
+  bitwardenAccountEncryptedJsonSensitiveValueClear(parsedResult.data)
+  bitwardenAccountEncryptedJsonSensitiveValueClear(fieldsResult.data)
+
+  expect(parsedResult.data).toEqual([
+    {
+      folder: "",
+      favorite: true,
+      type: "",
+      name: "",
+      notes: "",
+      fields: "",
+      reprompt: 1,
+      login_uri: "",
+      login_username: "",
+      login_password: "",
+      login_totp: "",
+    },
+  ])
+  expect(fieldsResult.data).toEqual([{ name: "", value: "", type: 0, linkedId: null }])
 })
 
 test("Bitwarden CSV import stores fields and secure-note/login properties", async () => {

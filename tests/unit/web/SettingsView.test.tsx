@@ -1,5 +1,5 @@
-import { fireEvent, render } from "@solidjs/testing-library"
 import { expect, test } from "bun:test"
+import { fireEvent, render } from "@solidjs/testing-library"
 import { webAuthSessionCreate } from "../../../src/web/auth/model/webAuthSessionCreate.js"
 import { webAuthStorageCreate } from "../../../src/web/auth/model/webAuthStorageCreate.js"
 import { AccountDangerZoneCard } from "../../../src/web/settings/ui/AccountDangerZoneCard.jsx"
@@ -52,6 +52,17 @@ test("SettingsView and tabs render accurately and allow navigation", async () =>
   expect(container.textContent).toContain("Active Sessions")
   expect(container.textContent).toContain("Import & Export")
   expect(container.textContent).toContain("Danger Zone")
+
+  // The tools tab exposes the personal/organization scope choice through SettingsView wiring
+  const toolsNavBtn = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.includes("Import & Export"),
+  )
+  expect(toolsNavBtn).toBeDefined()
+  if (toolsNavBtn) {
+    fireEvent.click(toolsNavBtn)
+    expect(container.textContent).toContain("Import Into")
+    expect(container.textContent).toContain("An Organization")
+  }
 
   // Click on Security tab
   const securityNavBtn = Array.from(container.querySelectorAll("button")).find((b) =>
@@ -124,6 +135,9 @@ test("Account individual cards render expected forms and controls", async () => 
   expect(importExportRender.container.textContent).toContain("Import & Export")
   expect(importExportRender.container.textContent).toContain("Import Vault")
   expect(importExportRender.container.textContent).toContain("Export Vault")
+  expect(importExportRender.container.textContent).toContain("Import Into")
+  expect(importExportRender.container.textContent).toContain("My Vault")
+  expect(importExportRender.container.textContent).toContain("An Organization")
   importExportRender.unmount()
 
   // Danger Zone Card

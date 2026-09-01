@@ -238,6 +238,44 @@ test("validated Bitwarden JSON export round-trips supported data and excludes or
   expect(payload.items[0]?.login?.fido2Credentials?.[0]?.counter).toBe(7)
 })
 
+test("vault exports omit attachment metadata and URLs for every supported format", async () => {
+  const encryptedItems = await Promise.all(task2Fixture.items.map(encryptedItem))
+  const sync = {
+    folders: [{ id: "folder-personal", name: await encrypted("Personal") }],
+    ciphers: [
+      {
+        ...encryptedItems[0],
+        attachments: [
+          {
+            fileName: "attachment-secret-name",
+            id: "attachment-secret-id",
+            key: "attachment-secret-key",
+            url: "https://vault.example/attachments/cipher-id/attachment-secret-id?token=attachment-secret-token",
+          },
+        ],
+      },
+      ...encryptedItems.slice(1),
+    ],
+  }
+
+  for (const format of ["json-decrypted", "csv-decrypted", "json-encrypted"] as const) {
+    const result = await vaultExportExecute({
+      session: testSession(),
+      format,
+      password: format === "json-encrypted" ? "export-password" : undefined,
+      apiClient: apiClientCreate({ sync }),
+    })
+
+    expect(result.success).toBe(true)
+    if (!result.success) continue
+    expect(result.data.content).not.toContain("attachment-secret-name")
+    expect(result.data.content).not.toContain("attachment-secret-id")
+    expect(result.data.content).not.toContain("attachment-secret-key")
+    expect(result.data.content).not.toContain("https://vault.example/attachments/")
+    expect(result.data.content).not.toContain("attachment-secret-token")
+  }
+})
+
 test("validated Bitwarden JSON FIDO2 counter boundaries round-trip and invalid counters never persist", async () => {
   for (const counter of [0, Number.MAX_SAFE_INTEGER]) {
     const payload = structuredClone(task2Fixture) as BitwardenJsonPayload

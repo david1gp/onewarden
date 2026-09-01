@@ -295,3 +295,64 @@ test("webSettingsApiClient validates the structured cipher import report", async
   })
   expect(malformedResult.success).toBe(false)
 })
+
+test("webSettingsApiClient validates attachment metadata and preserves binary bytes", async () => {
+  const requests: Array<{ url: string; headers: Headers }> = []
+  const encryptedBytes = new Uint8Array([0, 255, 1, 254])
+  const client = webSettingsApiClientCreate({
+    baseUrl: "https://vault.example",
+    fetch: async (input, init) => {
+      requests.push({ url: String(input), headers: new Headers(init?.headers) })
+      if (String(input).endsWith("/api/ciphers/cipher-1/attachments")) {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                fileName: "encrypted-name",
+                id: "attachment-1",
+                key: "encrypted-key",
+                object: "attachment",
+                size: "4",
+              },
+            ],
+            object: "list",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )
+      }
+      return new Response(encryptedBytes, { status: 200, headers: { "content-type": "application/octet-stream" } })
+    },
+  })
+
+  const metadataResult = await client.attachmentMetadataGet("access-token", "cipher-1")
+  expect(metadataResult.success).toBe(true)
+  if (metadataResult.success) expect(metadataResult.data[0]?.id).toBe("attachment-1")
+
+  const bytesResult = await client.attachmentBytesGet("access-token", "cipher-1", "attachment-1")
+  expect(bytesResult).toEqual({ success: true, data: encryptedBytes })
+  expect(requests).toHaveLength(2)
+  for (const request of requests) {
+    expect(request.headers.get("authorization")).toBe("Bearer access-token")
+  }
+  expect(requests[0]?.headers.get("accept")).toBe("application/json")
+  expect(requests[1]?.headers.get("accept")).toBe("application/octet-stream")
+
+  const malformedClient = webSettingsApiClientCreate({
+    fetch: async () =>
+      new Response(
+        JSON.stringify({
+          data: [{ fileName: "name", id: "attachment-1", key: "key", object: "attachment", size: "4", url: "/leak" }],
+          object: "list",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+  })
+  const malformedResult = await malformedClient.attachmentMetadataGet("access-token", "cipher-1")
+  expect(malformedResult.success).toBe(false)
+
+  const failedClient = webSettingsApiClientCreate({
+    fetch: async () => new Response(JSON.stringify({ message: "Forbidden" }), { status: 403 }),
+  })
+  const failedResult = await failedClient.attachmentBytesGet("access-token", "cipher-1", "attachment-1")
+  expect(failedResult.success).toBe(false)
+})

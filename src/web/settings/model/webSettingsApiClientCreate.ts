@@ -1,26 +1,36 @@
 import * as v from "valibot"
 import type { Result } from "#result"
+import { resultTryParsingFetchErr } from "#result"
+import {
+  type AttachmentExportMetadata,
+  attachmentExportMetadataSchema,
+} from "../../../shared/api/attachmentExportMetadataSchema.js"
 import { cipherImportResultSchema } from "../../../shared/api/cipherImportResultSchema.js"
 import { webApiAuthenticatedHeadersCreate } from "../../../shared/api/webApiAuthenticatedHeadersCreate.js"
 import { webApiResponseEmptyParse } from "../../../shared/api/webApiResponseEmptyParse.js"
 import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
+import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { type AccountApiKey, accountApiKeySchema } from "./accountApiKeySchema.js"
-import { type AccountDeleteRequest } from "./accountDeleteRequestSchema.js"
+import type { AccountDeleteRequest } from "./accountDeleteRequestSchema.js"
 import { type AccountDeviceListResponse, accountDeviceListResponseSchema } from "./accountDeviceSchema.js"
-import { type AccountEmailChangeCompleteRequest } from "./accountEmailChangeCompleteRequestSchema.js"
-import { type AccountEmailChangeTokenRequest } from "./accountEmailChangeTokenRequestSchema.js"
-import { type AccountKdfChangeRequest } from "./accountKdfChangeRequestSchema.js"
-import { type AccountPasswordChangeRequest } from "./accountPasswordChangeRequestSchema.js"
+import type { AccountEmailChangeCompleteRequest } from "./accountEmailChangeCompleteRequestSchema.js"
+import type { AccountEmailChangeTokenRequest } from "./accountEmailChangeTokenRequestSchema.js"
+import type { AccountKdfChangeRequest } from "./accountKdfChangeRequestSchema.js"
+import type { AccountPasswordChangeRequest } from "./accountPasswordChangeRequestSchema.js"
 import { type AccountProfile, accountProfileSchema } from "./accountProfileSchema.js"
 import type { AccountProfileUpdateRequest } from "./accountProfileUpdateRequestSchema.js"
-import { type AccountRotateKeysRequest } from "./accountRotateKeysRequestSchema.js"
+import type { AccountRotateKeysRequest } from "./accountRotateKeysRequestSchema.js"
 import { type BitwardenEncryptedSync, bitwardenEncryptedSyncSchema } from "./bitwardenEncryptedSyncSchema.js"
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
 const cipherImportResponseSchema = v.union([cipherImportResultSchema, v.strictObject({ revisionDate: v.string() })])
 type CipherImportResponse = v.InferOutput<typeof cipherImportResponseSchema>
+const attachmentExportMetadataListResponseSchema = v.strictObject({
+  data: v.array(attachmentExportMetadataSchema),
+  object: v.literal("list"),
+})
 
 export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: FetchImplementation } = {}) {
   const baseUrl = options.baseUrl ?? ""
@@ -351,6 +361,71 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     return webApiResponseParse(op, response, cipherImportResponseSchema)
   }
 
+  const attachmentMetadataGet = async (
+    accessToken: string,
+    cipherUuid: string,
+  ): Promise<Result<AttachmentExportMetadata[]>> => {
+    const op = "webSettingsApiClient.attachmentMetadataGet"
+    let response: Response
+    try {
+      response = await fetchImpl(`${baseUrl}/api/ciphers/${encodeURIComponent(cipherUuid)}/attachments`, {
+        method: "GET",
+        headers: webApiAuthenticatedHeadersCreate(accessToken),
+      })
+    } catch {
+      return resultErrorCreate(op, "Network error fetching attachment metadata.", {
+        code: "platform.network-error",
+        statusCode: 503,
+      })
+    }
+    const responseResult = await webApiResponseParse(op, response, attachmentExportMetadataListResponseSchema)
+    if (!responseResult.success) return responseResult
+    return resultCreate(responseResult.data.data)
+  }
+
+  const attachmentBytesGet = async (
+    accessToken: string,
+    cipherUuid: string,
+    attachmentId: string,
+  ): Promise<Result<Uint8Array>> => {
+    const op = "webSettingsApiClient.attachmentBytesGet"
+    let response: Response
+    try {
+      response = await fetchImpl(
+        `${baseUrl}/api/ciphers/${encodeURIComponent(cipherUuid)}/attachment/${encodeURIComponent(attachmentId)}/data`,
+        {
+          method: "GET",
+          headers: { ...webApiAuthenticatedHeadersCreate(accessToken), Accept: "application/octet-stream" },
+        },
+      )
+    } catch {
+      return resultErrorCreate(op, "Network error fetching attachment bytes.", {
+        code: "platform.network-error",
+        statusCode: 503,
+      })
+    }
+    if (!response.ok) {
+      let text = ""
+      try {
+        text = await response.text()
+      } catch {
+        return resultErrorCreate(op, "Failed to read server response.", {
+          code: "platform.unavailable",
+          statusCode: 503,
+        })
+      }
+      return resultTryParsingFetchErr(op, text, response.status, response.statusText)
+    }
+    try {
+      return resultCreate(new Uint8Array(await response.arrayBuffer()))
+    } catch {
+      return resultErrorCreate(op, "Failed to read attachment bytes.", {
+        code: "platform.unavailable",
+        statusCode: 503,
+      })
+    }
+  }
+
   return {
     profileGet,
     profileUpdate,
@@ -369,5 +444,7 @@ export function webSettingsApiClientCreate(options: { baseUrl?: string; fetch?: 
     accountDeleteRecover,
     syncGet,
     ciphersImport,
+    attachmentMetadataGet,
+    attachmentBytesGet,
   }
 }

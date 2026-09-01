@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { bitwardenCipherStringDecrypt } from "./bitwardenCipherStringDecrypt.js"
 import { resultCreate } from "../result/resultCreate.js"
 import { resultErrorCreate } from "../result/resultErrorCreate.js"
@@ -18,5 +18,7 @@ export async function bitwardenCipherStringDecryptText(
       code: "platform.invalid-request",
       statusCode: 400,
     })
+  } finally {
+    plaintextResult.data.fill(0)
   }
 }

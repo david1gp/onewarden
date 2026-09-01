@@ -87,6 +87,123 @@ describe("organizationApiClientCreate", () => {
     )
   })
 
+  test("organizationExport fetches the authenticated organization export", async () => {
+    let capturedUrl = ""
+    let capturedAuthorization = ""
+    const mockFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input)
+      capturedAuthorization = new Headers(init?.headers).get("authorization") ?? ""
+      return new Response(
+        JSON.stringify({
+          ciphers: [{ collectionIds: ["collection-1"], id: "cipher-1", name: "Login", type: 1 }],
+          collections: [{ id: "collection-1", name: "Shared" }],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    }) as unknown as typeof fetch
+
+    const client = organizationApiClientCreate({
+      baseUrl: "https://api.example.com",
+      fetchFn: mockFetch,
+      token: () => "org-token",
+    })
+
+    const result = await client.organizationExport("org/123")
+
+    expect(result.success).toBe(true)
+    expect(capturedUrl).toBe("https://api.example.com/api/organizations/org%2F123/export")
+    expect(capturedAuthorization).toBe("Bearer org-token")
+    if (result.success) {
+      expect(result.data.ciphers[0]?.id).toBe("cipher-1")
+      expect(result.data.collections[0]?.id).toBe("collection-1")
+    }
+  })
+
+  test("organizationExport rejects an invalid response envelope", async () => {
+    const mockFetch = (async () =>
+      new Response(JSON.stringify({ ciphers: [] }), { status: 200 })) as unknown as typeof fetch
+    const client = organizationApiClientCreate({ fetchFn: mockFetch })
+
+    const result = await client.organizationExport("org-1")
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.op).toBe("organizationExport")
+  })
+
+  test("organizationImport posts the normalized payload with the organization query", async () => {
+    let capturedBody = ""
+    let capturedUrl = ""
+    const mockFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(input)
+      capturedBody = (init?.body as string) ?? ""
+      return new Response(null, { status: 200 })
+    }) as unknown as typeof fetch
+    const payload = {
+      ciphers: [{ name: "Login", type: 1 }],
+      collections: [{ id: "collection-1", name: "Shared" }],
+      collectionRelationships: [{ key: 0, value: 0 }],
+    }
+    const client = organizationApiClientCreate({
+      baseUrl: "https://api.example.com",
+      fetchFn: mockFetch,
+      token: () => "org-token",
+    })
+
+    const result = await client.organizationImport("org/123", payload)
+
+    expect(result.success).toBe(true)
+    expect(capturedUrl).toBe("https://api.example.com/api/ciphers/import-organization?organizationId=org%2F123")
+    expect(JSON.parse(capturedBody)).toEqual(payload)
+  })
+
+  test("organizationImport validates the request before posting", async () => {
+    let fetchCount = 0
+    const mockFetch = (async () => {
+      fetchCount += 1
+      return new Response(null, { status: 200 })
+    }) as unknown as typeof fetch
+    const client = organizationApiClientCreate({ fetchFn: mockFetch })
+
+    const result = await client.organizationImport("org-1", {
+      ciphers: [],
+      collections: [],
+      collectionRelationships: [{ key: 0, value: 0 }],
+    })
+
+    expect(result.success).toBe(false)
+    expect(fetchCount).toBe(0)
+    if (!result.success) {
+      expect(result.op).toBe("organizationImport")
+      expect(result.errorMessage).toContain("Invalid organization import request")
+    }
+  })
+
+  test("organizationImport propagates HTTP and network errors", async () => {
+    const httpClient = organizationApiClientCreate({
+      fetchFn: (async () => new Response("Forbidden", { status: 403 })) as unknown as typeof fetch,
+    })
+    const httpResult = await httpClient.organizationImport("org-1", {
+      ciphers: [],
+      collections: [],
+      collectionRelationships: [],
+    })
+    expect(httpResult.success).toBe(false)
+    if (!httpResult.success) expect(httpResult.errorMessage).toBe("Forbidden")
+
+    const networkClient = organizationApiClientCreate({
+      fetchFn: (async () => {
+        throw new Error("connection refused")
+      }) as unknown as typeof fetch,
+    })
+    const networkResult = await networkClient.organizationImport("org-1", {
+      ciphers: [],
+      collections: [],
+      collectionRelationships: [],
+    })
+    expect(networkResult.success).toBe(false)
+    if (!networkResult.success) expect(networkResult.errorMessage).toBe("connection refused")
+  })
+
   test("organizationMemberInvite formats collections and emails payload", async () => {
     let capturedBody = ""
     let capturedUrl = ""

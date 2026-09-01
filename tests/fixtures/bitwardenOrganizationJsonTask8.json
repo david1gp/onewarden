@@ -1,0 +1,92 @@
+{
+  "encrypted": false,
+  "collections": [
+    {
+      "id": "collection-engineering",
+      "name": "Engineering",
+      "organizationId": "organization-test",
+      "externalId": null,
+      "object": "collection",
+      "type": 0,
+      "defaultUserCollectionEmail": null
+    },
+    {
+      "id": "collection-shared",
+      "name": "Shared",
+      "organizationId": "organization-test",
+      "externalId": "shared-external",
+      "object": "collection",
+      "type": 0,
+      "defaultUserCollectionEmail": null
+    }
+  ],
+  "items": [
+    {
+      "id": "organization-login",
+      "organizationId": "organization-test",
+      "type": 1,
+      "creationDate": "2026-08-01T12:00:00.000Z",
+      "reprompt": 1,
+      "name": "Example Organization Login",
+      "notes": "Sanitized organization login notes",
+      "favorite": true,
+      "collectionIds": ["collection-engineering", "collection-shared"],
+      "login": {
+        "uris": [{ "uri": "https://example.test", "match": 0 }],
+        "username": "user@example.test",
+        "password": "not-a-real-password",
+        "totp": "JBSWY3DPEHPK3PXP"
+      },
+      "fields": []
+    },
+    {
+      "id": "organization-note",
+      "organizationId": "organization-test",
+      "type": 2,
+      "reprompt": 0,
+      "name": "Example Organization Note",
+      "notes": "Sanitized secure note",
+      "favorite": false,
+      "collectionIds": ["collection-shared"],
+      "secureNote": { "type": 0 },
+      "fields": []
+    },
+    {
+      "id": "organization-card",
+      "organizationId": "organization-test",
+      "type": 3,
+      "reprompt": 0,
+      "name": "Example Organization Card",
+      "notes": null,
+      "favorite": false,
+      "collectionIds": ["collection-engineering"],
+      "card": {
+        "cardholderName": "Example User",
+        "brand": "Visa",
+        "number": "4111111111111111",
+        "expMonth": "01",
+        "expYear": "2030",
+        "code": "123"
+      },
+      "fields": []
+    },
+    {
+      "id": "organization-identity",
+      "organizationId": "organization-test",
+      "type": 4,
+      "reprompt": 0,
+      "name": "Example Organization Identity",
+      "notes": null,
+      "favorite": false,
+      "collectionIds": ["collection-engineering"],
+      "identity": {
+        "title": "Mx.",
+        "firstName": "Example",
+        "lastName": "User",
+        "email": "user@example.test",
+        "country": "US"
+      },
+      "fields": []
+    }
+  ]
+}

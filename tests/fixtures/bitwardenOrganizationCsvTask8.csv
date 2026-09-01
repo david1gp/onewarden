@@ -1,0 +1,5 @@
+collections,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp
+"Engineering, Shared",1,login,"Portal, ""Primary""","First line
+Second line","Environment: test
+Recovery code: sanitized-recovery-code",1,https://example.test,user@example.test,not-a-real-password,JBSWY3DPEHPK3PXP
+Shared,0,note,Runbook,"Sanitized secure note",,0,,,,

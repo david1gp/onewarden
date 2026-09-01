@@ -167,6 +167,29 @@ async function pageMockSettingsApis(page: Page): Promise<void> {
       }),
     })
   })
+  await page.route("**/api/sync", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        profile: {
+          organizations: [
+            {
+              id: "organization-engineering",
+              name: "Engineering",
+              key: null,
+            },
+            {
+              id: "organization-marketing",
+              name: "Marketing",
+              key: null,
+            },
+          ],
+        },
+        folders: [],
+        ciphers: [],
+      }),
+    })
+  })
 }
 
 test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
@@ -309,13 +332,102 @@ test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
     }
 
     await page.getByRole("button", { name: "Import & Export", exact: true }).click()
+    await expect(page.getByText("Importing is additive")).toBeVisible()
     await page.getByRole("button", { name: "Export Vault", exact: true }).click()
+    await page.getByRole("button", { name: "Password-protected JSON (.json)", exact: true }).click()
+    await expect(page.getByLabel("File Password", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Confirm File Password", { exact: true })).toBeVisible()
+    await page.getByRole("button", { name: "Unencrypted JSON (.json)", exact: true }).click()
     await expect(
-      page.getByText("Warning: Decrypted exports contain your plaintext passwords and secrets."),
+      page.getByText("Warning: this export is not encrypted and contains your passwords and secrets in plain text."),
     ).toBeVisible()
     await page.keyboard.press("Tab")
     await expect(page.locator(":focus")).toBeVisible()
     await page.screenshot({ path: "/tmp/opencode/task37-settings-mobile.png", fullPage: true })
+  })
+
+  test("exposes compatible export scopes, warnings, and ZIP download behavior", async ({ page }) => {
+    await pageUseAuthenticatedSession(page)
+    await pageMockSettingsApis(page)
+    await page.goto("/settings/account")
+    await pageUnlock(page)
+    await page.getByRole("button", { name: "Import & Export", exact: true }).click()
+    const importPersonalScope = page.getByRole("button", { name: "My Vault", exact: true })
+    const importOrganizationScope = page.getByRole("button", { name: "An Organization", exact: true })
+    await expect(importPersonalScope).toHaveAttribute("aria-pressed", "true")
+    await importOrganizationScope.click()
+    const importOrganizationSelect = page.getByRole("combobox", { name: "Organization" })
+    await expect(importOrganizationSelect).toBeVisible()
+    await expect(importOrganizationSelect).toHaveValue("organization-engineering")
+    await expect(page.getByLabel("File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Master Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByText("no file or master password is needed here")).toBeVisible()
+    await importPersonalScope.click()
+    await expect(page.getByLabel("File Password", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Master Password", { exact: true })).toBeVisible()
+    await page.getByRole("button", { name: "Export Vault", exact: true }).click()
+
+    const personalScope = page.getByRole("button", { name: "My Vault", exact: true })
+    const organizationScope = page.getByRole("button", { name: "An Organization", exact: true })
+    await expect(personalScope).toHaveAttribute("aria-pressed", "true")
+    await expect(organizationScope).toHaveAttribute("aria-pressed", "false")
+
+    await page.getByRole("button", { name: "Password-protected JSON (.json)", exact: true }).click()
+    await expect(page.getByLabel("File Password", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Confirm File Password", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Master Password", { exact: true })).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Account-restricted JSON (.json)", exact: true }).click()
+    await expect(
+      page.getByText(
+        "Warning: this export can only be decrypted by this account with its current encryption key. It is not portable and becomes unreadable after rotating your encryption keys.",
+      ),
+    ).toBeVisible()
+    await expect(page.getByLabel("File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Confirm File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Master Password", { exact: true })).toBeVisible()
+
+    await page.getByRole("button", { name: "JSON with attachments (.zip)", exact: true }).click()
+    await expect(
+      page.getByText(/The ZIP also contains every attachment as a decrypted file next to the JSON export\./),
+    ).toBeVisible()
+    await expect(page.getByText("The ZIP archive is binary and can only be downloaded, not copied.")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Copy to Clipboard", exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Confirm File Password", { exact: true })).toHaveCount(0)
+
+    const downloadPromise = page.waitForEvent("download")
+    await page.getByRole("button", { name: "Export Vault", exact: true }).click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toMatch(/\.zip$/)
+    await expect(page.getByRole("status")).toContainText("Export complete")
+
+    await organizationScope.click()
+    const organizationSelect = page.getByRole("combobox", { name: "Organization" })
+    await expect(organizationSelect).toBeVisible()
+    await expect(organizationSelect).toHaveValue("organization-engineering")
+    await expect(organizationSelect).toContainText("Engineering")
+    await expect(organizationSelect).toContainText("Marketing")
+    await organizationSelect.selectOption("organization-marketing")
+    await expect(organizationSelect).toHaveValue("organization-marketing")
+    await expect(personalScope).toHaveAttribute("aria-pressed", "false")
+    await expect(organizationScope).toHaveAttribute("aria-pressed", "true")
+
+    await expect(page.getByRole("button", { name: "Unencrypted JSON (.json)", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Unencrypted CSV (.csv)", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Password-protected JSON (.json)", exact: true })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: "Account-restricted JSON (.json)", exact: true })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: "JSON with attachments (.zip)", exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Confirm File Password", { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel("Master Password", { exact: true })).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Unencrypted JSON (.json)", exact: true }).click()
+    await expect(page.getByText("Decrypted organization JSON containing organization items")).toBeVisible()
+    await page.getByRole("button", { name: "Unencrypted CSV (.csv)", exact: true }).click()
+    await expect(
+      page.getByText("Decrypted organization CSV containing logins and secure notes with their collection names only."),
+    ).toBeVisible()
   })
 
   test("completes the emergency invite lifecycle entry point with labelled dialog controls", async ({ page }) => {

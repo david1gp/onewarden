@@ -1,30 +1,39 @@
 import * as v from "valibot"
 import { createResult, createResultError, type Result, type ResultErr } from "#result"
 import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
-import { type OrganizationCollection, organizationCollectionSchema } from "../schemas/organizationCollectionSchema.js"
-import { organizationCollectionListResponseSchema } from "../schemas/organizationCollectionListResponseSchema.js"
-import type { OrganizationCreateInput } from "../schemas/organizationCreateInputSchema.js"
+import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { OrganizationCollectionInput } from "../schemas/organizationCollectionInputSchema.js"
+import { organizationCollectionListResponseSchema } from "../schemas/organizationCollectionListResponseSchema.js"
+import { type OrganizationCollection, organizationCollectionSchema } from "../schemas/organizationCollectionSchema.js"
+import type { OrganizationCreateInput } from "../schemas/organizationCreateInputSchema.js"
 import type { OrganizationDomainInput } from "../schemas/organizationDomainInputSchema.js"
-import { type OrganizationDomain, organizationDomainSchema } from "../schemas/organizationDomainSchema.js"
 import { organizationDomainListResponseSchema } from "../schemas/organizationDomainListResponseSchema.js"
-import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
+import { type OrganizationDomain, organizationDomainSchema } from "../schemas/organizationDomainSchema.js"
 import { organizationEventListResponseSchema } from "../schemas/organizationEventListResponseSchema.js"
+import type { OrganizationEvent } from "../schemas/organizationEventSchema.js"
+import {
+  type OrganizationExportResponse,
+  organizationExportResponseSchema,
+} from "../schemas/organizationExportResponseSchema.js"
 import type { OrganizationGroupInput } from "../schemas/organizationGroupInputSchema.js"
-import { type OrganizationGroup, organizationGroupSchema } from "../schemas/organizationGroupSchema.js"
 import { organizationGroupListResponseSchema } from "../schemas/organizationGroupListResponseSchema.js"
 import { organizationGroupMemberIdsResponseSchema } from "../schemas/organizationGroupMemberIdsResponseSchema.js"
+import { type OrganizationGroup, organizationGroupSchema } from "../schemas/organizationGroupSchema.js"
+import {
+  type OrganizationImportRequest,
+  organizationImportRequestSchema,
+} from "../schemas/organizationImportRequestSchema.js"
 import type { OrganizationMemberInviteInput } from "../schemas/organizationMemberInviteInputSchema.js"
-import { type OrganizationMember, organizationMemberSchema } from "../schemas/organizationMemberSchema.js"
 import { organizationMemberListResponseSchema } from "../schemas/organizationMemberListResponseSchema.js"
+import { type OrganizationMember, organizationMemberSchema } from "../schemas/organizationMemberSchema.js"
 import type { OrganizationMemberUpdateInput } from "../schemas/organizationMemberUpdateInputSchema.js"
 import type { OrganizationPolicyInput } from "../schemas/organizationPolicyInputSchema.js"
-import { type OrganizationPolicy, organizationPolicySchema } from "../schemas/organizationPolicySchema.js"
 import { organizationPolicyListResponseSchema } from "../schemas/organizationPolicyListResponseSchema.js"
+import { type OrganizationPolicy, organizationPolicySchema } from "../schemas/organizationPolicySchema.js"
 import { type Organization, organizationSchema } from "../schemas/organizationSchema.js"
-import { organizationSyncResponseSchema } from "../schemas/organizationSyncResponseSchema.js"
-import { type OrganizationSso, organizationSsoSchema } from "../schemas/organizationSsoSchema.js"
 import type { OrganizationSsoInput } from "../schemas/organizationSsoInputSchema.js"
+import { type OrganizationSso, organizationSsoSchema } from "../schemas/organizationSsoSchema.js"
+import { organizationSyncResponseSchema } from "../schemas/organizationSyncResponseSchema.js"
 import type { OrganizationUpdateInput } from "../schemas/organizationUpdateInputSchema.js"
 
 export interface OrganizationApiClientOptions {
@@ -114,6 +123,54 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
       )
     } catch (error) {
       return createResultError(op, error instanceof Error ? error.message : "Network error getting organization")
+    }
+  }
+
+  const organizationExport = async (organizationId: string): Promise<Result<OrganizationExportResponse>> => {
+    const op = "organizationExport"
+    try {
+      const response = await fetchFn(`${baseUrl}/api/organizations/${encodeURIComponent(organizationId)}/export`, {
+        headers: buildHeaders(false),
+        method: "GET",
+      })
+      return organizationResponseParse(
+        op,
+        response,
+        organizationExportResponseSchema,
+        `Failed to export organization (${response.status})`,
+      )
+    } catch (error) {
+      return createResultError(op, error instanceof Error ? error.message : "Network error exporting organization")
+    }
+  }
+
+  const organizationImport = async (
+    organizationId: string,
+    input: OrganizationImportRequest,
+  ): Promise<Result<void>> => {
+    const op = "organizationImport"
+    const parsed = v.safeParse(organizationImportRequestSchema, input)
+    if (!parsed.success)
+      return resultErrorCreate(op, `Invalid organization import request: ${v.summarize(parsed.issues)}`, {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    try {
+      const response = await fetchFn(
+        `${baseUrl}/api/ciphers/import-organization?organizationId=${encodeURIComponent(organizationId)}`,
+        {
+          body: JSON.stringify(parsed.output),
+          headers: buildHeaders(true),
+          method: "POST",
+        },
+      )
+      if (!response.ok) {
+        const errorText = await response.text()
+        return createResultError(op, errorText || `Failed to import organization (${response.status})`)
+      }
+      return createResult(undefined)
+    } catch (error) {
+      return createResultError(op, error instanceof Error ? error.message : "Network error importing organization")
     }
   }
 
@@ -1033,6 +1090,7 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
     organizationDomainList,
     organizationDomainVerify,
     organizationEventList,
+    organizationExport,
     organizationGet,
     organizationGroupCreate,
     organizationGroupDelete,
@@ -1051,6 +1109,7 @@ export function organizationApiClientCreate(options: OrganizationApiClientOption
     organizationMemberRestore,
     organizationMemberRevoke,
     organizationMemberUpdate,
+    organizationImport,
     organizationPolicyGet,
     organizationPolicyList,
     organizationPolicyUpdate,

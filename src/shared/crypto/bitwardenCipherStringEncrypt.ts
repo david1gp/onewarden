@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { aesCbcEncrypt } from "./aesCbcEncrypt.js"
 import { base64Encode } from "./base64Encode.js"
 import { hmacSha256Digest } from "./hmacSha256Digest.js"
@@ -28,12 +28,36 @@ export async function bitwardenCipherStringEncrypt(
   const ivResult = secureRandomBytes(AES_IV_LENGTH)
   if (!ivResult.success) return ivResult
   const plaintextBytes = typeof plaintext === "string" ? new TextEncoder().encode(plaintext) : new Uint8Array(plaintext)
-  const encryptedResult = await aesCbcEncrypt(plaintextBytes, userKey.slice(0, 32), ivResult.data)
-  if (!encryptedResult.success) return encryptedResult
-  const macResult = await hmacSha256Digest(userKey.slice(32), bytesConcat(ivResult.data, encryptedResult.data))
-  if (!macResult.success) return macResult
+  let encryptedBytes: Uint8Array | undefined
+  let macBytes: Uint8Array | undefined
+  try {
+    const encryptionKey = userKey.slice(0, 32)
+    let encryptedResult: Result<Uint8Array>
+    try {
+      encryptedResult = await aesCbcEncrypt(plaintextBytes, encryptionKey, ivResult.data)
+    } finally {
+      encryptionKey.fill(0)
+    }
+    if (!encryptedResult.success) return encryptedResult
+    encryptedBytes = encryptedResult.data
 
-  return resultCreate(
-    `2.${base64Encode(ivResult.data)}|${base64Encode(encryptedResult.data)}|${base64Encode(macResult.data)}`,
-  )
+    const authenticationInput = bytesConcat(ivResult.data, encryptedBytes)
+    const authenticationKey = userKey.slice(32)
+    let macResult: Result<Uint8Array>
+    try {
+      macResult = await hmacSha256Digest(authenticationKey, authenticationInput)
+    } finally {
+      authenticationKey.fill(0)
+      authenticationInput.fill(0)
+    }
+    if (!macResult.success) return macResult
+    macBytes = macResult.data
+
+    return resultCreate(`2.${base64Encode(ivResult.data)}|${base64Encode(encryptedBytes)}|${base64Encode(macBytes)}`)
+  } finally {
+    plaintextBytes.fill(0)
+    encryptedBytes?.fill(0)
+    macBytes?.fill(0)
+    ivResult.data.fill(0)
+  }
 }

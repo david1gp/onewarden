@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { aesCbcDecrypt } from "./aesCbcDecrypt.js"
 import { base64Decode } from "./base64Decode.js"
 import { hmacSha256Digest } from "./hmacSha256Digest.js"
@@ -60,23 +60,47 @@ export async function bitwardenCipherStringDecrypt(
   const ivResult = base64Decode(ivString)
   const ciphertextResult = base64Decode(ciphertextString)
   const macResult = base64Decode(macString)
-  if (!ivResult.success || !ciphertextResult.success || !macResult.success) {
-    return invalidCipherResult("Bitwarden cipher string contains invalid Base64.")
-  }
-  if (ivResult.data.byteLength !== AES_IV_LENGTH || macResult.data.byteLength !== MAC_LENGTH) {
-    return invalidCipherResult("Bitwarden cipher string has invalid authentication parts.")
-  }
+  let authenticationInput: Uint8Array | undefined
+  let expectedMac: Uint8Array | undefined
+  try {
+    if (!ivResult.success || !ciphertextResult.success || !macResult.success) {
+      return invalidCipherResult("Bitwarden cipher string contains invalid Base64.")
+    }
+    if (ivResult.data.byteLength !== AES_IV_LENGTH || macResult.data.byteLength !== MAC_LENGTH) {
+      return invalidCipherResult("Bitwarden cipher string has invalid authentication parts.")
+    }
 
-  const expectedMacResult = await hmacSha256Digest(userKey.slice(32), bytesConcat(ivResult.data, ciphertextResult.data))
-  if (!expectedMacResult.success) return expectedMacResult
-  if (!constantTimeEqual(macResult.data, expectedMacResult.data)) {
-    return resultErrorCreate(op, "Bitwarden cipher string authentication failed.", {
-      code: "platform.unauthorized",
-      statusCode: 401,
-    })
-  }
+    authenticationInput = bytesConcat(ivResult.data, ciphertextResult.data)
+    const authenticationKey = userKey.slice(32)
+    let expectedMacResult: Result<Uint8Array>
+    try {
+      expectedMacResult = await hmacSha256Digest(authenticationKey, authenticationInput)
+    } finally {
+      authenticationKey.fill(0)
+    }
+    if (!expectedMacResult.success) return expectedMacResult
+    expectedMac = expectedMacResult.data
+    if (!constantTimeEqual(macResult.data, expectedMac)) {
+      return resultErrorCreate(op, "Bitwarden cipher string authentication failed.", {
+        code: "platform.unauthorized",
+        statusCode: 401,
+      })
+    }
 
-  const plaintextResult = await aesCbcDecrypt(ciphertextResult.data, userKey.slice(0, 32), ivResult.data)
-  if (!plaintextResult.success) return plaintextResult
-  return resultCreate(plaintextResult.data)
+    const decryptionKey = userKey.slice(0, 32)
+    let plaintextResult: Result<Uint8Array>
+    try {
+      plaintextResult = await aesCbcDecrypt(ciphertextResult.data, decryptionKey, ivResult.data)
+    } finally {
+      decryptionKey.fill(0)
+    }
+    if (!plaintextResult.success) return plaintextResult
+    return resultCreate(plaintextResult.data)
+  } finally {
+    if (ivResult.success) ivResult.data.fill(0)
+    if (ciphertextResult.success) ciphertextResult.data.fill(0)
+    if (macResult.success) macResult.data.fill(0)
+    authenticationInput?.fill(0)
+    expectedMac?.fill(0)
+  }
 }
