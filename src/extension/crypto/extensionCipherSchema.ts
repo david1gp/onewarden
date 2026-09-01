@@ -62,7 +62,7 @@ const extensionSshKeyCipherSchema = v.looseObject({
   sshKey: extensionCipherSshKeySchema,
 })
 
-export const extensionCipherSchema = v.union([
+export const extensionCipherSchema = v.variant("type", [
   extensionPersonalLoginCipherSchema,
   extensionSecureNoteCipherSchema,
   extensionCardCipherSchema,

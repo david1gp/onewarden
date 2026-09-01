@@ -9,6 +9,7 @@ import {
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionLoginFillData } from "../fill/extensionLoginFillDataSchema.js"
 import type { ExtensionLoginFillRequest } from "../fill/extensionLoginFillRequestSchema.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
@@ -72,6 +73,10 @@ type ExtensionBackgroundRouterOptions = {
     }) => Promise<Result<void>>
     cancel: (requestId: string) => Result<void>
   }
+}
+
+function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): ExtensionPersonalLoginCipher[] {
+  return ciphers.filter((cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1)
 }
 
 type ExtensionLoginViewData = {
@@ -438,7 +443,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       return snapshotResult
     }
     const ciphers = snapshotResult.data?.ciphers ?? []
-    const logins = extensionLoginViewDataListCreate(ciphers, contextResult.data.url, surface)
+    const logins = extensionLoginViewDataListCreate(extensionLoginCiphersRead(ciphers), contextResult.data.url, surface)
     return resultCreate(
       surface === "popup"
         ? extensionPopupViewModelCreate({
@@ -575,7 +580,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!snapshotResult.success) return snapshotResult
     const snapshot = snapshotResult.data
     if (snapshot === null) return unavailable(op, "Vault data is unavailable.")
-    const cipher = snapshot.ciphers.find((entry) => entry.id === request.loginId)
+    const cipher = extensionLoginCiphersRead(snapshot.ciphers).find((entry) => entry.id === request.loginId)
     if (cipher === undefined) return invalid(op, "Selected login could not be found.")
     if (cipher.login.username === null && cipher.login.password === null) {
       return invalid(op, "Selected login has no fillable credentials.")
@@ -599,7 +604,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!snapshotResult.success) return snapshotResult
     const snapshot = snapshotResult.data
     if (snapshot === null) return unavailable(op, "Vault data is unavailable.")
-    const cipher = snapshot.ciphers.find((entry) => entry.id === request.loginId)
+    const cipher = extensionLoginCiphersRead(snapshot.ciphers).find((entry) => entry.id === request.loginId)
     if (cipher === undefined) return invalid(op, "Selected login could not be found.")
     if (cipher.login.totp === null || cipher.login.totp.trim() === "") {
       return invalid(op, "Selected login has no TOTP code.")
