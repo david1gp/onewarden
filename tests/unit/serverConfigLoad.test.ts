@@ -160,6 +160,24 @@ test("serverConfigLoad requires SMTP credentials as a pair", () => {
   expect(missingUsername.errorMessage).toBe("SMTP_USERNAME and SMTP_PASSWORD must be set together.")
 })
 
+test("serverConfigLoad treats blank optional send and SMTP settings as unset", () => {
+  const result = serverConfigLoad({
+    USER_SEND_LIMIT: " ",
+    SMTP_HOST: "",
+    SMTP_USERNAME: " ",
+    SMTP_PASSWORD: "",
+    SMTP_FROM: "",
+  })
+
+  expect(result).toMatchObject({ success: true })
+  if (!result.success) return
+  expect(result.data.USER_SEND_LIMIT).toBeUndefined()
+  expect(result.data.SMTP_HOST).toBeUndefined()
+  expect(result.data.SMTP_USERNAME).toBeUndefined()
+  expect(result.data.SMTP_PASSWORD).toBeUndefined()
+  expect(result.data.SMTP_FROM).toBeUndefined()
+})
+
 test("serverConfigLoad bounds SMTP port and timeout values", () => {
   expect(serverConfigLoad({ SMTP_PORT: "2525", SMTP_TIMEOUT: "30" })).toMatchObject({
     success: true,

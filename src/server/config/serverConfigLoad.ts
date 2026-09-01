@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { identityClientIpTrustedProxyParse } from "../contexts/identity/identityClientIpTrustedProxyParse.js"
@@ -7,7 +7,7 @@ import { type ServerConfig, serverConfigSchema } from "./serverConfigSchema.js"
 
 export function serverConfigLoad(source: Readonly<Record<string, string | undefined>> = Bun.env): Result<ServerConfig> {
   const op = "serverConfigLoad"
-  const result = v.safeParse(serverConfigSchema, source)
+  const result = v.safeParse(serverConfigSchema, serverConfigSourceNormalize(source))
   if (!result.success) return resultErrorCreate(op, serverConfigIssuesSummarize(result.issues))
   const invalidTrustedProxy = serverConfigTrustedProxyInvalidEntry(result.output.IP_HEADER_TRUSTED_PROXIES)
   if (invalidTrustedProxy !== undefined)
@@ -43,6 +43,15 @@ export function serverConfigLoad(source: Readonly<Record<string, string | undefi
     }
   }
   return resultCreate(result.output)
+}
+
+function serverConfigSourceNormalize(
+  source: Readonly<Record<string, string | undefined>>,
+): Record<string, string | undefined> {
+  const normalized = { ...source }
+  for (const name of ["USER_SEND_LIMIT", "SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM"])
+    if (normalized[name]?.trim() === "") delete normalized[name]
+  return normalized
 }
 
 function serverConfigTrustedProxyInvalidEntry(value: string): string | undefined {
