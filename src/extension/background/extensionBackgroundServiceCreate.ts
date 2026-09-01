@@ -29,10 +29,7 @@ import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
 import { extensionCredentialCapturePlanCreate } from "../autofill/extensionCredentialCapturePlanCreate.js"
-import {
-  type ExtensionCredentialCaptureRequest,
-  extensionCredentialCaptureRequestSchema,
-} from "../autofill/extensionCredentialCaptureRequestSchema.js"
+import { extensionCredentialCaptureRequestSchema } from "../autofill/extensionCredentialCaptureRequestSchema.js"
 import type { ExtensionCredentialCapturePrompt } from "../autofill/extensionCredentialCapturePromptSchema.js"
 import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
@@ -1672,10 +1669,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       extensionCredentialCaptureIdCreate,
     )
     if (plan === null) return resultCreate(null)
-    const site = new URL(parsed.output.url).hostname
-      .toLowerCase()
-      .replace(/^www\./u, "")
-      .replace(/\.$/u, "")
+    const site = extensionCredentialCaptureSiteRead(parsed.output.url)
+    if (site === null) return invalidRequest(op, "Credential capture URL is invalid.")
     if (plan.kind === "atRisk") return resultCreate({ id, kind: plan.kind, site, risk: plan.risk })
     credentialCapturePending.set(id, {
       expiresAt: currentTime + 60_000,
@@ -2301,4 +2296,17 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
 
 function extensionCredentialCaptureIdCreate(): string {
   return globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function extensionCredentialCaptureSiteRead(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    return url.hostname
+      .toLowerCase()
+      .replace(/^www\./u, "")
+      .replace(/\.$/u, "")
+  } catch {
+    return null
+  }
 }
