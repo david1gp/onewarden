@@ -1,12 +1,20 @@
 import { For, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
+import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
+import { ExtensionFullWindowAssignmentPanel } from "./ExtensionFullWindowAssignmentPanel.jsx"
+import { ExtensionFullWindowCipherExtras } from "./ExtensionFullWindowCipherExtras.jsx"
+import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 
 export interface ExtensionFullWindowLoginDetailProps {
   login: ExtensionLogin
+  cipher: () => ExtensionPersonalLoginCipher | null
+  detailLoading: boolean
   disabled: boolean
   fillAvailable: boolean
   fieldIsCopied: (field: ExtensionCopyableField) => boolean
@@ -16,6 +24,9 @@ export interface ExtensionFullWindowLoginDetailProps {
   onTotpCopy: (login: ExtensionLogin) => void
   onEdit: (login: ExtensionLogin) => void
   onClose: () => void
+  model: () => ExtensionFullWindowViewModel
+  commands: ExtensionFullWindowCommands
+  idPrefix?: string
 }
 
 /** Detail pane of the selected login with explicit fill and per-field copy controls. */
@@ -46,7 +57,7 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
           <Button
             variant="outline"
             size="sm"
-            disabled={p.disabled}
+            disabled={p.disabled || p.login.edit === false || p.login.viewPassword === false}
             aria-label={`Edit ${p.login.name} in OneWarden`}
             onClick={() => p.onEdit(p.login)}
           >
@@ -96,6 +107,27 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
             </li>
           </Show>
         </ul>
+      </Show>
+      <ExtensionFullWindowAssignmentPanel
+        model={p.model}
+        commands={p.commands}
+        source={() => p.login}
+        idPrefix={p.idPrefix}
+      />
+      <Show when={p.detailLoading}>
+        <div role="status" aria-label="Loading login attachments and password history" class="flex justify-center py-4">
+          <LoaderShuffle4Dots />
+        </div>
+      </Show>
+      <Show when={p.detailLoading ? null : p.cipher()}>
+        {(cipher) => (
+          <ExtensionFullWindowCipherExtras
+            cipher={cipher}
+            model={p.model}
+            commands={p.commands}
+            idPrefix={p.idPrefix}
+          />
+        )}
       </Show>
     </CardWrapper>
   )

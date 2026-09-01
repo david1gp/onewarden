@@ -4,17 +4,25 @@ import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { InputS } from "#ui/input/input/InputS.jsx"
+import { Label } from "#ui/input/label/Label.jsx"
+import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
+import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import { ExtensionFullWindowCardPane } from "./ExtensionFullWindowCardPane.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import { ExtensionFullWindowGeneratorPane } from "./ExtensionFullWindowGeneratorPane.jsx"
+import { ExtensionFullWindowIdentityPane } from "./ExtensionFullWindowIdentityPane.jsx"
 import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
 import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
+import { ExtensionFullWindowResourceNavigation } from "./ExtensionFullWindowResourceNavigation.jsx"
+import { ExtensionFullWindowSecureNotePane } from "./ExtensionFullWindowSecureNotePane.jsx"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
+import { ExtensionFullWindowSshKeyPane } from "./ExtensionFullWindowSshKeyPane.jsx"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewStateCreate.js"
 
@@ -26,6 +34,9 @@ export interface ExtensionFullWindowViewProps {
   generatorPreferences?: () => ExtensionGeneratorPreferences
   generatorPreferencesLoaded?: () => boolean
   onGeneratorPreferencesChange?: (preferences: ExtensionGeneratorPreferences) => void
+  vaultSort?: () => VaultSort
+  vaultSortLoaded?: () => boolean
+  onVaultSortChange?: (sort: VaultSort) => void
   idPrefix?: string
   root?: "main" | "div"
   navigationLabel?: string
@@ -33,7 +44,10 @@ export interface ExtensionFullWindowViewProps {
 
 /** Full-window vault with navigation, list, detail, and server settings panes. */
 export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.Element {
-  const state = extensionFullWindowViewStateCreate(p.model, () => p.commands, p.initialState)
+  const state = extensionFullWindowViewStateCreate(p.model, () => p.commands, p.initialState, {
+    vaultSort: p.vaultSort,
+    onVaultSortChange: p.onVaultSortChange,
+  })
 
   return (
     <Dynamic
@@ -83,9 +97,11 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         </ButtonIcon>
         <Show when={state.isVaultPane()}>
           <span aria-hidden="true" class="mx-1 hidden h-6 w-px bg-slate-300 sm:block dark:bg-slate-700" />
-          <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
-            Add login
-          </Button>
+          <Show when={state.isLoginCategory()}>
+            <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
+              Add login
+            </Button>
+          </Show>
           <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
             Sync
           </Button>
@@ -208,82 +224,186 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         </Show>
 
         <Show when={state.isReady()}>
-          <div class="flex flex-col gap-4 md:flex-row md:items-start">
-            <section aria-label="Logins" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
-              <InputS
-                type="search"
-                aria-label="Search logins"
-                placeholder="Search logins"
-                valueSignal={state.searchQuerySignal}
-              />
-
-              <Show when={state.siteFilterAvailable()}>
-                <Button
-                  variant={state.siteOnly() ? "filledBlue" : "outline"}
-                  size="sm"
-                  aria-pressed={state.siteOnly() ? "true" : "false"}
-                  onClick={state.siteOnlyToggle}
-                >
-                  Only this site
-                </Button>
-              </Show>
-
-              <Show when={state.errorMessage()}>
-                {(message) => (
-                  <p role="alert" class="text-xs text-red-600 dark:text-red-400">
-                    {message()}
-                  </p>
-                )}
-              </Show>
-
-              <Show
-                when={!state.isEmpty()}
-                fallback={
-                  <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
-                    {state.hasNoLogins() ? "Your vault is empty." : "No logins match your filters."}
-                  </p>
-                }
-              >
-                <ul class="flex list-none flex-col gap-1">
-                  <For each={state.visibleLogins()}>
-                    {(login) => (
-                      <li>
-                        <ExtensionFullWindowLoginRow
-                          login={login}
-                          selected={state.selectedLogin()?.id === login.id}
-                          onSelect={state.loginSelect}
-                        />
-                      </li>
-                    )}
-                  </For>
-                </ul>
-              </Show>
-            </section>
-
-            <section aria-label="Login details" class="min-w-0 grow">
-              <Show
-                when={state.selectedLogin()}
-                fallback={
-                  <p class="py-6 text-sm text-slate-600 dark:text-slate-300">Select a login to see its details.</p>
-                }
-              >
-                {(login) => (
-                  <ExtensionFullWindowLoginDetail
-                    login={login()}
-                    disabled={state.busy()}
-                    fillAvailable={state.fillAvailable()}
-                    fieldIsCopied={state.fieldIsCopied}
-                    onFill={state.loginFill}
-                    onCopy={state.fieldCopy}
-                    totpIsCopied={state.totpIsCopied}
-                    onTotpCopy={state.totpCopy}
-                    onEdit={state.loginEdit}
-                    onClose={state.loginDeselect}
+          <Show
+            when={p.vaultSortLoaded?.() ?? true}
+            fallback={
+              <div role="status" aria-label="Loading vault preferences" class="flex justify-center py-10">
+                <LoaderShuffle4Dots />
+              </div>
+            }
+          >
+            <div class="flex flex-col gap-4 md:flex-row md:items-start">
+              <ExtensionFullWindowResourceNavigation resourceState={state.resourceState} idPrefix={p.idPrefix} />
+              <div class="min-w-0 grow">
+                <nav class="mb-4 flex flex-wrap gap-1" aria-label="Vault item types">
+                  <Button
+                    variant={state.isLoginCategory() ? "filledBlue" : "ghost"}
+                    size="sm"
+                    aria-current={state.isLoginCategory() ? "page" : undefined}
+                    onClick={state.loginCategoryOpen}
+                  >
+                    Logins
+                  </Button>
+                  <Button
+                    variant={state.isSecureNoteCategory() ? "filledBlue" : "ghost"}
+                    size="sm"
+                    aria-current={state.isSecureNoteCategory() ? "page" : undefined}
+                    onClick={state.secureNoteCategoryOpen}
+                  >
+                    Secure notes
+                  </Button>
+                  <Button
+                    variant={state.isCardCategory() ? "filledBlue" : "ghost"}
+                    size="sm"
+                    aria-current={state.isCardCategory() ? "page" : undefined}
+                    onClick={state.cardCategoryOpen}
+                  >
+                    Cards
+                  </Button>
+                  <Button
+                    variant={state.isIdentityCategory() ? "filledBlue" : "ghost"}
+                    size="sm"
+                    aria-current={state.isIdentityCategory() ? "page" : undefined}
+                    onClick={state.identityCategoryOpen}
+                  >
+                    Identities
+                  </Button>
+                  <Button
+                    variant={state.isSshKeyCategory() ? "filledBlue" : "ghost"}
+                    size="sm"
+                    aria-current={state.isSshKeyCategory() ? "page" : undefined}
+                    onClick={state.sshKeyCategoryOpen}
+                  >
+                    SSH keys
+                  </Button>
+                </nav>
+                <Show when={state.isSecureNoteCategory()}>
+                  <ExtensionFullWindowSecureNotePane
+                    model={state.resourceFilteredModel}
+                    commands={p.commands}
+                    idPrefix={p.idPrefix}
                   />
-                )}
-              </Show>
-            </section>
-          </div>
+                </Show>
+                <Show when={state.isCardCategory()}>
+                  <ExtensionFullWindowCardPane
+                    model={state.resourceFilteredModel}
+                    commands={p.commands}
+                    idPrefix={p.idPrefix}
+                  />
+                </Show>
+                <Show when={state.isIdentityCategory()}>
+                  <ExtensionFullWindowIdentityPane
+                    model={state.resourceFilteredModel}
+                    commands={p.commands}
+                    idPrefix={p.idPrefix}
+                  />
+                </Show>
+                <Show when={state.isSshKeyCategory()}>
+                  <ExtensionFullWindowSshKeyPane
+                    model={state.resourceFilteredModel}
+                    commands={p.commands}
+                    idPrefix={p.idPrefix}
+                  />
+                </Show>
+                <Show when={state.isLoginCategory()}>
+                  <div class="flex flex-col gap-4 md:flex-row md:items-start">
+                    <section aria-label="Logins" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
+                      <InputS
+                        type="search"
+                        aria-label="Search logins"
+                        placeholder="Search logins"
+                        valueSignal={state.searchQuerySignal}
+                      />
+
+                      <div class="flex flex-col gap-1">
+                        <Label for={`${p.idPrefix ?? ""}extension-vault-sort`}>Sort logins</Label>
+                        <SelectSingleNative
+                          id={`${p.idPrefix ?? ""}extension-vault-sort`}
+                          disabled={state.busy()}
+                          valueSignal={state.vaultSortSignal}
+                          getOptions={state.vaultSortOptionValues}
+                          valueText={state.vaultSortLabel}
+                        />
+                      </div>
+
+                      <Show when={state.siteFilterAvailable()}>
+                        <Button
+                          variant={state.siteOnly() ? "filledBlue" : "outline"}
+                          size="sm"
+                          aria-pressed={state.siteOnly() ? "true" : "false"}
+                          onClick={state.siteOnlyToggle}
+                        >
+                          Only this site
+                        </Button>
+                      </Show>
+
+                      <Show when={state.errorMessage()}>
+                        {(message) => (
+                          <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+                            {message()}
+                          </p>
+                        )}
+                      </Show>
+
+                      <Show
+                        when={!state.isEmpty()}
+                        fallback={
+                          <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+                            {state.hasNoLogins() ? "Your vault is empty." : "No logins match your filters."}
+                          </p>
+                        }
+                      >
+                        <ul class="flex list-none flex-col gap-1">
+                          <For each={state.visibleLogins()}>
+                            {(login) => (
+                              <li>
+                                <ExtensionFullWindowLoginRow
+                                  login={login}
+                                  selected={state.selectedLogin()?.id === login.id}
+                                  onSelect={state.loginSelect}
+                                />
+                              </li>
+                            )}
+                          </For>
+                        </ul>
+                      </Show>
+                    </section>
+
+                    <section aria-label="Login details" class="min-w-0 grow">
+                      <Show
+                        when={state.selectedLogin()}
+                        fallback={
+                          <p class="py-6 text-sm text-slate-600 dark:text-slate-300">
+                            Select a login to see its details.
+                          </p>
+                        }
+                      >
+                        {(login) => (
+                          <ExtensionFullWindowLoginDetail
+                            login={login()}
+                            cipher={state.selectedLoginCipher}
+                            detailLoading={state.loginDetailLoading()}
+                            disabled={state.busy()}
+                            fillAvailable={state.fillAvailable()}
+                            fieldIsCopied={state.fieldIsCopied}
+                            onFill={state.loginFill}
+                            onCopy={state.fieldCopy}
+                            totpIsCopied={state.totpIsCopied}
+                            onTotpCopy={state.totpCopy}
+                            onEdit={state.loginEdit}
+                            onClose={state.loginDeselect}
+                            model={p.model}
+                            commands={p.commands}
+                            idPrefix={p.idPrefix}
+                          />
+                        )}
+                      </Show>
+                    </section>
+                  </div>
+                </Show>
+              </div>
+            </div>
+          </Show>
         </Show>
       </Show>
     </Dynamic>

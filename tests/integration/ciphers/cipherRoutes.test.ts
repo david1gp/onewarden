@@ -420,6 +420,21 @@ test("cipher sharing and collection routes support organization ownership and al
     type: 1,
     userIds: ["cipher-user"],
   })
+
+  const createdOrganizationCipherWithoutCollections = await context.app.request(
+    "https://vault.example/api/ciphers/create",
+    {
+      body: JSON.stringify({
+        cipher: { ...loginData("Created organization without collections"), organizationId: organizationUuid },
+      }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    },
+  )
+  expect(createdOrganizationCipherWithoutCollections.status).toBe(200)
+  expect(await createdOrganizationCipherWithoutCollections.json()).toMatchObject({
+    organizationId: organizationUuid,
+  })
 })
 
 test("bulk collection assignment updates selected organization ciphers without revisions or notifications", async () => {

@@ -18,6 +18,9 @@ export function ExtensionFullWindowApp(props: ExtensionFullWindowAppProps): JSX.
       generatorPreferences={state.generatorPreferences}
       generatorPreferencesLoaded={state.generatorPreferencesLoaded}
       onGeneratorPreferencesChange={state.onGeneratorPreferencesChange}
+      vaultSort={state.vaultSort}
+      vaultSortLoaded={state.vaultSortLoaded}
+      onVaultSortChange={state.onVaultSortChange}
     />
   )
 }

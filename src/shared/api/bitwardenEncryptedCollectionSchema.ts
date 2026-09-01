@@ -6,7 +6,7 @@ export const bitwardenEncryptedCollectionSchema = v.looseObject({
   name: v.pipe(v.string(), v.minLength(1)),
   externalId: v.optional(v.nullable(v.string())),
   type: v.optional(v.number()),
-  object: v.optional(v.literal("collection")),
+  object: v.optional(v.picklist(["collection", "collectionDetails", "collectionAccessDetails"])),
   assigned: v.optional(v.boolean()),
   hidePasswords: v.optional(v.boolean()),
   manage: v.optional(v.boolean()),

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
-import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
+import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
 import { ExtensionPopupView } from "../../../src/extension/popup/ExtensionPopupView.jsx"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
 import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
@@ -105,13 +105,21 @@ test("extensionPopupView shows the active hostname and matched logins", () => {
   const root = popupRender({
     status: "ready",
     hostname: "example.com",
-    logins: [exampleLogin, otherLogin],
+    logins: [
+      { ...exampleLogin, creationDate: "2026-09-01T00:00:00.000Z", revisionDate: "2026-09-01T00:00:00.000Z" },
+      { ...otherLogin, creationDate: "2026-08-01T00:00:00.000Z", revisionDate: "2026-08-01T00:00:00.000Z" },
+    ],
     fillAvailable: true,
   })
 
   expect(root.getByLabelText("Active site").textContent).toBe("example.com")
   expect(root.getByLabelText("Example Mail")).toBeDefined()
   expect(root.getByLabelText("Example Admin")).toBeDefined()
+  expect([...root.container.querySelectorAll("article")].map((card) => card.getAttribute("aria-label"))).toEqual([
+    "Example Mail",
+    "Example Admin",
+  ])
+  expect(root.queryByLabelText("Sort logins")).toBeNull()
 
   root.unmount()
 })

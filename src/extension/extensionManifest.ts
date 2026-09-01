@@ -17,6 +17,15 @@ export const extensionManifest = defineManifest({
   },
   content_scripts: [
     {
+      matches: ["https://*/*", "http://*/*"],
+      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      js: ["autofill/extensionAutofillContentStart.ts"],
+      run_at: "document_start",
+      all_frames: true,
+      match_about_blank: true,
+      world: "ISOLATED",
+    },
+    {
       matches: ["https://*/*", "http://localhost/*"],
       exclude_matches: ["https://onewarden.contentoren.de/*"],
       js: ["webauthn/extensionWebAuthnPageBridge.ts"],
@@ -33,7 +42,7 @@ export const extensionManifest = defineManifest({
       world: "ISOLATED",
     },
   ],
-  permissions: ["storage", "alarms", "activeTab", "scripting"],
+  permissions: ["storage", "alarms", "activeTab", "scripting", "downloads"],
   host_permissions: [
     "https://api.bitwarden.com/*",
     "https://identity.bitwarden.com/*",

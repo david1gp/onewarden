@@ -1,3 +1,9 @@
+import type { ExtensionBackgroundCollectionDto } from "../background/extensionBackgroundCollectionDtoSchema.js"
+import type { ExtensionBackgroundFolderDto } from "../background/extensionBackgroundFolderDtoSchema.js"
+import type { ExtensionCipherAttachment } from "../crypto/extensionCipherAttachmentSchema.js"
+import type { ExtensionCipherPasswordHistoryEntry } from "../crypto/extensionCipherPasswordHistoryEntrySchema.js"
+import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
+import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
@@ -13,6 +19,42 @@ export interface ExtensionFullWindowCommands {
   loginAdd: () => void
   /** Open the normal web edit page through a secure session handoff. */
   loginEdit: (login: ExtensionLogin) => void
+  loginRead: (cipherId: string) => void
+  attachmentUpload: (cipher: ExtensionCipher, file: File) => void
+  attachmentDownload: (cipher: ExtensionCipher, attachment: ExtensionCipherAttachment) => void
+  attachmentDelete: (cipher: ExtensionCipher, attachment: ExtensionCipherAttachment) => void
+  passwordHistoryRestore: (cipher: ExtensionPersonalLoginCipher, entry: ExtensionCipherPasswordHistoryEntry) => void
+  secureNotesLoad: () => void
+  secureNoteRead: (cipherId: string) => void
+  secureNoteCreate: (cipher: ExtensionCipher) => void
+  secureNoteUpdate: (cipherId: string, cipher: ExtensionCipher) => void
+  secureNoteDelete: (cipherId: string) => void
+  secureNoteCopy: (note: string) => void
+  cardsLoad: () => void
+  cardRead: (cipherId: string) => void
+  cardCreate: (cipher: ExtensionCipher) => void
+  cardUpdate: (cipherId: string, cipher: ExtensionCipher) => void
+  cardDelete: (cipherId: string) => void
+  identitiesLoad: () => void
+  identityRead: (cipherId: string) => void
+  identityCreate: (cipher: ExtensionCipher) => void
+  identityUpdate: (cipherId: string, cipher: ExtensionCipher) => void
+  identityDelete: (cipherId: string) => void
+  sshKeysLoad: () => void
+  sshKeyRead: (cipherId: string) => void
+  sshKeyCreate: (cipher: ExtensionCipher) => void
+  sshKeyUpdate: (cipherId: string, cipher: ExtensionCipher) => void
+  sshKeyDelete: (cipherId: string) => void
+  cipherFieldCopy: (key: string, value: string) => void
+  resourcesLoad: () => void
+  folderCreate: (folder: ExtensionBackgroundFolderDto) => void
+  folderUpdate: (folder: ExtensionBackgroundFolderDto) => void
+  folderDelete: (folderId: string) => void
+  collectionCreate: (collection: ExtensionBackgroundCollectionDto) => void
+  collectionUpdate: (collection: ExtensionBackgroundCollectionDto) => void
+  collectionDelete: (collection: ExtensionBackgroundCollectionDto) => void
+  cipherMove: (cipherId: string, folderId: string | null) => void
+  cipherCollectionsUpdate: (cipherId: string, collectionIds: string[]) => void
   vaultSync: () => void
   vaultLock: () => void
   vaultLogout: () => void

@@ -1,9 +1,9 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionEncryptedPayloadSchema } from "./extensionEncryptedPayloadSchema.js"
-import { extensionSyncStorageSchema, type ExtensionSyncStorage } from "./extensionSyncStorageSchema.js"
+import { type ExtensionSyncStorage, extensionSyncStorageSchema } from "./extensionSyncStorageSchema.js"
 
 const extensionSyncStorageLegacySchema = v.strictObject({
   schemaVersion: v.literal(1),

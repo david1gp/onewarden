@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import {
   type BitwardenEncryptedCipher,
   bitwardenEncryptedCipherSchema,
@@ -9,9 +9,9 @@ import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionCipherKeyResolve } from "./extensionCipherKeyResolve.js"
 import { extensionCipherMap } from "./extensionCipherMap.js"
+import { type ExtensionCipher, extensionCipherSchema } from "./extensionCipherSchema.js"
 import { extensionEncStringDecryptText } from "./extensionEncStringDecryptText.js"
 import { extensionPersonalLoginCipherDecrypt } from "./extensionPersonalLoginCipherDecrypt.js"
-import { type ExtensionCipher, extensionCipherSchema } from "./extensionCipherSchema.js"
 
 export async function extensionCipherDecrypt(
   cipher: BitwardenEncryptedCipher,

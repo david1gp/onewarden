@@ -1,14 +1,19 @@
 import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
-import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
-import { ExtensionFullWindowView } from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
+import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
+import {
+  ExtensionFullWindowView,
+  type ExtensionFullWindowViewProps,
+} from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
 import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwindow/ExtensionFullWindowViewModel.js"
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "../../../src/extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
+import type { ExtensionGeneratorPreferences } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
+import type { VaultSort } from "../../../src/shared/vault/vaultSortSchema.js"
 import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
 
 const exampleLogin: ExtensionLogin = {
@@ -34,15 +39,29 @@ const otherLogin: ExtensionLogin = {
   copyableFields: [{ key: "username", label: "Username", value: "root@other.test" }],
 }
 
+type FullWindowRenderOptions = Pick<
+  ExtensionFullWindowViewProps,
+  | "initialState"
+  | "generatorOptions"
+  | "generatorPreferences"
+  | "generatorPreferencesLoaded"
+  | "onGeneratorPreferencesChange"
+  | "vaultSort"
+  | "vaultSortLoaded"
+  | "onVaultSortChange"
+>
+
 function fullWindowRender(
   model: Partial<ExtensionFullWindowViewModel>,
   commands: Partial<ExtensionFullWindowCommands> = {},
+  options: FullWindowRenderOptions = {},
 ) {
   window.history.replaceState(null, "", "/")
   return render(() => (
     <ExtensionFullWindowView
       model={() => extensionFullWindowViewModelCreate(model)}
       commands={extensionFullWindowCommandsCreate(commands)}
+      {...options}
     />
   ))
 }
@@ -128,6 +147,148 @@ test("extensionFullWindowView filters logins by the search query", () => {
   expect(root.queryByRole("button", { name: "Example Mail" })).toBeNull()
   expect(root.getByRole("button", { name: "Other Admin" })).toBeDefined()
 
+  root.unmount()
+})
+
+test("extensionFullWindowView sorts after filtering with the shared sort options", () => {
+  const logins: ExtensionLogin[] = [
+    {
+      ...exampleLogin,
+      id: "login-zulu",
+      name: "Zulu",
+      username: "zulu@keep.test",
+      uri: "https://keep.test/zulu",
+      creationDate: "2026-01-01T00:00:00.000Z",
+      revisionDate: "2026-04-01T00:00:00.000Z",
+    },
+    {
+      ...otherLogin,
+      id: "login-bravo",
+      name: "Bravo",
+      username: "bravo@drop.test",
+      uri: "https://drop.test/bravo",
+      creationDate: "2026-03-01T00:00:00.000Z",
+      revisionDate: "2026-02-01T00:00:00.000Z",
+    },
+    {
+      ...exampleLogin,
+      id: "login-alpha",
+      name: "Alpha",
+      username: "alpha@keep.test",
+      uri: "https://keep.test/alpha",
+      creationDate: "2026-01-02T00:00:00.000Z",
+      revisionDate: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      ...otherLogin,
+      id: "login-charlie",
+      name: "Charlie",
+      username: "charlie@drop.test",
+      uri: "https://drop.test/charlie",
+      creationDate: "2026-02-01T00:00:00.000Z",
+      revisionDate: "2026-03-01T00:00:00.000Z",
+    },
+  ]
+  const selectedSort = createSignalObject<VaultSort>("name-az")
+  const root = fullWindowRender(
+    { status: "ready", logins },
+    {},
+    {
+      vaultSort: selectedSort.get,
+      vaultSortLoaded: () => true,
+      onVaultSortChange: selectedSort.set,
+    },
+  )
+
+  const list = () => root.getByRole("list").querySelectorAll("button")
+  const listNames = () => [...list()].map((button) => button.getAttribute("aria-label"))
+  const sortSelect = root.getByLabelText("Sort logins") as HTMLSelectElement
+  const sortCases = [
+    ["name-az", ["Alpha", "Bravo", "Charlie", "Zulu"]],
+    ["name-za", ["Zulu", "Charlie", "Bravo", "Alpha"]],
+    ["created-newest", ["Bravo", "Charlie", "Alpha", "Zulu"]],
+    ["created-oldest", ["Zulu", "Alpha", "Charlie", "Bravo"]],
+    ["updated-newest", ["Zulu", "Charlie", "Bravo", "Alpha"]],
+    ["updated-oldest", ["Alpha", "Bravo", "Charlie", "Zulu"]],
+  ] as const
+
+  expect([...sortSelect.options].map((option) => option.value)).toEqual(sortCases.map(([sort]) => sort))
+  for (const [sort, expectedNames] of sortCases) {
+    fireEvent.change(sortSelect, { target: { value: sort } })
+    expect(selectedSort.get()).toBe(sort)
+    expect(listNames()).toEqual(expectedNames)
+  }
+
+  fireEvent.input(root.getByLabelText("Search logins"), { target: { value: "keep" } })
+  fireEvent.change(sortSelect, { target: { value: "created-newest" } })
+  expect(listNames()).toEqual(["Alpha", "Zulu"])
+
+  root.unmount()
+})
+
+test("extensionFullWindowView puts missing and invalid dates last", () => {
+  const missing: ExtensionLogin = {
+    ...exampleLogin,
+    id: "login-missing",
+    name: "Missing",
+  }
+  const invalid: ExtensionLogin = {
+    ...otherLogin,
+    id: "login-invalid",
+    name: "Invalid",
+    creationDate: "not-a-date",
+    revisionDate: "also-not-a-date",
+  }
+  const validOld: ExtensionLogin = {
+    ...exampleLogin,
+    id: "login-valid-old",
+    name: "Old",
+    creationDate: "2020-01-01T00:00:00.000Z",
+    revisionDate: "2020-01-01T00:00:00.000Z",
+  }
+  const validNew: ExtensionLogin = {
+    ...otherLogin,
+    id: "login-valid-new",
+    name: "New",
+    creationDate: "2025-01-01T00:00:00.000Z",
+    revisionDate: "2025-01-01T00:00:00.000Z",
+  }
+  const selectedSort = createSignalObject<VaultSort>("name-az")
+  const root = fullWindowRender(
+    { status: "ready", logins: [missing, invalid, validOld, validNew] },
+    {},
+    {
+      vaultSort: selectedSort.get,
+      vaultSortLoaded: () => true,
+      onVaultSortChange: selectedSort.set,
+    },
+  )
+
+  const list = () => root.getByRole("list").querySelectorAll("button")
+  const listNames = () => [...list()].map((button) => button.getAttribute("aria-label"))
+  const sortSelect = root.getByLabelText("Sort logins") as HTMLSelectElement
+  for (const [sort, expectedNames] of [
+    ["created-newest", ["New", "Old", "Invalid", "Missing"]],
+    ["created-oldest", ["Old", "New", "Invalid", "Missing"]],
+    ["updated-newest", ["New", "Old", "Invalid", "Missing"]],
+    ["updated-oldest", ["Old", "New", "Invalid", "Missing"]],
+  ] as const) {
+    fireEvent.change(sortSelect, { target: { value: sort } })
+    expect(listNames()).toEqual(expectedNames)
+  }
+
+  root.unmount()
+})
+
+test("extensionFullWindowView waits for vault sorting preferences before showing the vault list", () => {
+  const root = fullWindowRender(
+    { status: "ready", logins: [exampleLogin] },
+    {},
+    { vaultSort: () => "name-az", vaultSortLoaded: () => false },
+  )
+
+  expect(root.getByRole("status", { name: "Loading vault preferences" })).toBeDefined()
+  expect(root.queryByLabelText("Sort logins")).toBeNull()
   root.unmount()
 })
 
@@ -590,5 +751,71 @@ test("extensionFullWindowGeneratorPane defaults to and controls passphrases", ()
   expect((root.container.querySelector("#passphrase-include-number") as HTMLInputElement).checked).toBe(false)
   expect((root.getByRole("button", { name: "Regenerate passphrase" }) as HTMLButtonElement).disabled).toBe(false)
 
+  root.unmount()
+})
+
+test("extensionFullWindowView hydrates every generator preference into its controls", () => {
+  const preferences: ExtensionGeneratorPreferences = {
+    mode: "password",
+    password: {
+      length: 47,
+      characterPolicy: {
+        lowercase: false,
+        uppercase: true,
+        numbers: false,
+        symbols: true,
+      },
+    },
+    passphrase: {
+      numWords: 11,
+      wordSeparator: "·",
+      includeNumber: false,
+    },
+  }
+  const root = fullWindowRender(
+    { status: "loggedOut" },
+    {},
+    {
+      initialState: { pane: "generator" },
+      generatorPreferences: () => preferences,
+      generatorPreferencesLoaded: () => true,
+    },
+  )
+
+  expect(root.getByRole("radio", { name: "Password" }).getAttribute("aria-checked")).toBe("true")
+  expect((root.getByLabelText("Password length") as HTMLInputElement).value).toBe("47")
+  expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).checked).toBe(false)
+  expect((root.container.querySelector("#generator-uppercase") as HTMLInputElement).checked).toBe(true)
+  expect((root.container.querySelector("#generator-numbers") as HTMLInputElement).checked).toBe(false)
+  expect((root.container.querySelector("#generator-symbols") as HTMLInputElement).checked).toBe(true)
+
+  fireEvent.click(root.getByRole("radio", { name: "Passphrase" }))
+  expect((root.getByLabelText("Number of words") as HTMLInputElement).value).toBe("11")
+  expect((root.getByLabelText("Word separator") as HTMLInputElement).value).toBe("·")
+  expect((root.container.querySelector("#passphrase-include-number") as HTMLInputElement).checked).toBe(false)
+
+  root.unmount()
+})
+
+test("extensionFullWindowView waits for generator preferences before creating the generator", () => {
+  const root = fullWindowRender(
+    { status: "loggedOut" },
+    {},
+    {
+      initialState: { pane: "generator" },
+      generatorPreferences: () => ({
+        mode: "passphrase",
+        password: {
+          length: 20,
+          characterPolicy: { lowercase: true, uppercase: true, numbers: true, symbols: true },
+        },
+        passphrase: { numWords: 3, wordSeparator: "-", includeNumber: true },
+      }),
+      generatorPreferencesLoaded: () => false,
+    },
+  )
+
+  expect(root.getByRole("status", { name: "Loading generator preferences" })).toBeDefined()
+  expect(root.queryByLabelText("Generated passphrase")).toBeNull()
   root.unmount()
 })

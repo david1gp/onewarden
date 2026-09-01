@@ -1,0 +1,37 @@
+import * as v from "valibot"
+
+export const extensionAutofillFieldKindSchema = v.picklist([
+  "username",
+  "currentPassword",
+  "newPassword",
+  "confirmationPassword",
+  "totp",
+  "cardholderName",
+  "cardBrand",
+  "cardNumber",
+  "cardExpirationMonth",
+  "cardExpirationYear",
+  "cardExpirationDate",
+  "cardSecurityCode",
+  "identityFullName",
+  "identityTitle",
+  "identityGivenName",
+  "identityMiddleName",
+  "identityFamilyName",
+  "identityEmail",
+  "identityPhone",
+  "identityCompany",
+  "identityAddressLine1",
+  "identityAddressLine2",
+  "identityAddressLine3",
+  "identityCity",
+  "identityState",
+  "identityPostalCode",
+  "identityCountry",
+  "identitySocialSecurityNumber",
+  "identityPassportNumber",
+  "identityLicenseNumber",
+  "unknown",
+])
+
+export type ExtensionAutofillFieldKind = v.InferOutput<typeof extensionAutofillFieldKindSchema>

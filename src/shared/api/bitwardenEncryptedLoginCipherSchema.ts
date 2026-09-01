@@ -8,7 +8,7 @@ export const bitwardenEncryptedLoginCipherSchema = v.looseObject({
   object: v.picklist(["cipher", "cipherDetails", "cipherMini"]),
   id: v.string(),
   type: v.literal(1),
-  creationDate: v.optional(v.string()),
+  creationDate: v.optional(v.nullable(v.string())),
   revisionDate: v.string(),
   deletedDate: v.nullable(v.string()),
   organizationId: v.optional(v.nullable(v.string())),

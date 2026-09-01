@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { totpCodeCreate } from "../../shared/totp/totpCodeCreate.js"
@@ -8,8 +8,9 @@ import {
   type ExtensionEnvironmentSource,
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
-import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
+import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionLoginFillData } from "../fill/extensionLoginFillDataSchema.js"
 import type { ExtensionLoginFillRequest } from "../fill/extensionLoginFillRequestSchema.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
@@ -24,13 +25,25 @@ import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskey
 import type { ExtensionPopupViewModel } from "../popup/ExtensionPopupViewModel.js"
 import { extensionPopupViewModelCreate } from "../popup/extensionPopupViewModelCreate.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
-import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import { type ExtensionActiveTabContext, extensionActiveTabContextSchema } from "./extensionActiveTabContextSchema.js"
+import type { ExtensionAttachmentDownloadResult } from "./extensionAttachmentDownloadResultSchema.js"
+import type { ExtensionBackgroundCollectionDto } from "./extensionBackgroundCollectionDtoSchema.js"
+import { extensionBackgroundCollectionDtoSchema } from "./extensionBackgroundCollectionDtoSchema.js"
+import type { ExtensionBackgroundCollectionListResult } from "./extensionBackgroundCollectionListResultSchema.js"
+import { extensionBackgroundCollectionListResultSchema } from "./extensionBackgroundCollectionListResultSchema.js"
+import type { ExtensionBackgroundFolderDto } from "./extensionBackgroundFolderDtoSchema.js"
+import { extensionBackgroundFolderDtoSchema } from "./extensionBackgroundFolderDtoSchema.js"
+import type { ExtensionBackgroundFolderListResult } from "./extensionBackgroundFolderListResultSchema.js"
+import { extensionBackgroundFolderListResultSchema } from "./extensionBackgroundFolderListResultSchema.js"
 import type { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
+import type { ExtensionCipherDetailReadResult } from "./extensionCipherDetailReadResultSchema.js"
+import { extensionCipherDetailReadResultSchema } from "./extensionCipherDetailReadResultSchema.js"
 import { extensionPersonalLoginSiteMatch } from "./extensionPersonalLoginSiteMatch.js"
 import type { ExtensionRuntimeAdapter } from "./extensionRuntimeAdapter.js"
 import type { ExtensionScriptingAdapter } from "./extensionScriptingAdapter.js"
 import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
+import type { ExtensionVaultSearchResult } from "./extensionVaultSearchResultSchema.js"
 import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
 
 type ExtensionBackgroundService = Pick<
@@ -40,8 +53,31 @@ type ExtensionBackgroundService = Pick<
   | "unlock"
   | "conditionalSync"
   | "manualSync"
+  | "cipherCreate"
+  | "cipherUpdate"
+  | "cipherPartial"
+  | "cipherDelete"
+  | "cipherRestore"
+  | "cipherArchive"
+  | "cipherMove"
+  | "cipherCollectionsUpdate"
+  | "attachmentUpload"
+  | "attachmentDownload"
+  | "attachmentDelete"
+  | "folderList"
+  | "folderRead"
+  | "folderCreate"
+  | "folderUpdate"
+  | "folderDelete"
+  | "collectionList"
+  | "collectionRead"
+  | "collectionCreate"
+  | "collectionUpdate"
+  | "collectionDelete"
   | "sessionHandoffCreate"
   | "syncSnapshotLoad"
+  | "cipherDetailRead"
+  | "vaultSearch"
   | "lock"
   | "logout"
   | "lockPolicyLoad"
@@ -81,19 +117,7 @@ function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): Extensi
   )
 }
 
-type ExtensionLoginViewData = {
-  id: string
-  name: string
-  username: string | null
-  uri: string | null
-  totpAvailable: boolean
-  copyableFields: {
-    key: string
-    label: string
-    value: string
-    sensitive?: boolean
-  }[]
-}
+type ExtensionLoginViewData = ExtensionLogin
 
 const extensionEnvironmentSettingsRequestSchema = v.strictObject({
   region: v.picklist(["us", "eu", "selfHosted"]),
@@ -256,6 +280,7 @@ function extensionLoginViewDataCreate(cipher: ExtensionPersonalLoginCipher): Ext
   if (cipher.notes !== null) copyableFields.push({ key: "notes", label: "Notes", value: cipher.notes })
   for (const [index, field] of cipher.fields.entries()) {
     if (field.value === null) continue
+    if (cipher.viewPassword === false && field.type === 1) continue
     copyableFields.push({
       key: `custom:${index}`,
       label: field.name ?? `Custom field ${index + 1}`,
@@ -266,9 +291,16 @@ function extensionLoginViewDataCreate(cipher: ExtensionPersonalLoginCipher): Ext
   return {
     id: cipher.id,
     name: cipher.name,
+    ...(cipher.creationDate === undefined ? {} : { creationDate: cipher.creationDate }),
+    ...(cipher.revisionDate === undefined ? {} : { revisionDate: cipher.revisionDate }),
+    organizationId: cipher.organizationId ?? null,
+    folderId: cipher.folderId ?? null,
+    collectionIds: cipher.collectionIds ?? [],
+    ...(cipher.edit === undefined ? {} : { edit: cipher.edit }),
+    ...(cipher.viewPassword === undefined ? {} : { viewPassword: cipher.viewPassword }),
     username: cipher.login.username,
     uri,
-    totpAvailable: cipher.login.totp !== null && cipher.login.totp.trim() !== "",
+    totpAvailable: cipher.viewPassword !== false && cipher.login.totp !== null && cipher.login.totp.trim() !== "",
     copyableFields,
   }
 }
@@ -459,6 +491,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
             logins,
             environment,
             lockPolicy: lockPolicyResult.data,
+            profile: snapshotResult.data?.profile ?? null,
           }),
     )
   }
@@ -491,6 +524,264 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     const result = await options.service.manualSync()
     if (!result.success) return result
     return resultCreate(syncCommandResultCreate(result.data))
+  }
+
+  const vaultSearch = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "vaultSearch" }>["request"],
+  ): Promise<Result<ExtensionVaultSearchResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.vaultSearch(request)
+  }
+
+  const cipherDetailRead = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherDetailRead" }>["request"],
+  ): Promise<Result<ExtensionCipherDetailReadResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    const result = await options.service.cipherDetailRead(request)
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionCipherDetailReadResultSchema, result.data)
+    if (!parsed.success)
+      return internal("extensionBackgroundRouter.cipherDetailRead", "Cipher detail response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const cipherMutationResultValidate = (result: Result<ExtensionCipher>, op: string): Result<ExtensionCipher> => {
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionCipherDetailReadResultSchema, result.data)
+    if (!parsed.success) return internal(op, "Cipher mutation response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const cipherCreate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherCreate" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherCreate(request),
+      "extensionBackgroundRouter.cipherCreate",
+    )
+  }
+
+  const cipherUpdate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherUpdate" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherUpdate(request),
+      "extensionBackgroundRouter.cipherUpdate",
+    )
+  }
+
+  const cipherPartial = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherPartial" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherPartial(request),
+      "extensionBackgroundRouter.cipherPartial",
+    )
+  }
+
+  const cipherDelete = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherDelete" }>["request"],
+  ): Promise<Result<void>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.cipherDelete(request)
+  }
+
+  const cipherRestore = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherRestore" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherRestore(request),
+      "extensionBackgroundRouter.cipherRestore",
+    )
+  }
+
+  const cipherArchive = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherArchive" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherArchive(request),
+      "extensionBackgroundRouter.cipherArchive",
+    )
+  }
+
+  const cipherMove = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherMove" }>["request"],
+  ): Promise<Result<void>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.cipherMove(request)
+  }
+
+  const cipherCollectionsUpdate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "cipherCollectionsUpdate" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.cipherCollectionsUpdate(request),
+      "extensionBackgroundRouter.cipherCollectionsUpdate",
+    )
+  }
+
+  const attachmentUpload = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "attachmentUpload" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.attachmentUpload(request),
+      "extensionBackgroundRouter.attachmentUpload",
+    )
+  }
+
+  const attachmentDownload = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "attachmentDownload" }>["request"],
+  ): Promise<Result<ExtensionAttachmentDownloadResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.attachmentDownload(request)
+  }
+
+  const attachmentDelete = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "attachmentDelete" }>["request"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return cipherMutationResultValidate(
+      await options.service.attachmentDelete(request),
+      "extensionBackgroundRouter.attachmentDelete",
+    )
+  }
+
+  const folderList = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "folderList" }>["request"],
+  ): Promise<Result<ExtensionBackgroundFolderListResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    const result = await options.service.folderList(request)
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionBackgroundFolderListResultSchema, result.data)
+    if (!parsed.success) return internal("extensionBackgroundRouter.folderList", "Folder list response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const folderResultValidate = (
+    result: Result<ExtensionBackgroundFolderDto>,
+    op: string,
+  ): Result<ExtensionBackgroundFolderDto> => {
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionBackgroundFolderDtoSchema, result.data)
+    if (!parsed.success) return internal(op, "Folder response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const folderRead = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "folderRead" }>["request"],
+  ): Promise<Result<ExtensionBackgroundFolderDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return folderResultValidate(await options.service.folderRead(request), "extensionBackgroundRouter.folderRead")
+  }
+
+  const folderCreate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "folderCreate" }>["request"],
+  ): Promise<Result<ExtensionBackgroundFolderDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return folderResultValidate(await options.service.folderCreate(request), "extensionBackgroundRouter.folderCreate")
+  }
+
+  const folderUpdate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "folderUpdate" }>["request"],
+  ): Promise<Result<ExtensionBackgroundFolderDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return folderResultValidate(await options.service.folderUpdate(request), "extensionBackgroundRouter.folderUpdate")
+  }
+
+  const folderDelete = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "folderDelete" }>["request"],
+  ): Promise<Result<void>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.folderDelete(request)
+  }
+
+  const collectionList = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "collectionList" }>["request"],
+  ): Promise<Result<ExtensionBackgroundCollectionListResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    const result = await options.service.collectionList(request)
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionBackgroundCollectionListResultSchema, result.data)
+    if (!parsed.success)
+      return internal("extensionBackgroundRouter.collectionList", "Collection list response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const collectionResultValidate = (
+    result: Result<ExtensionBackgroundCollectionDto>,
+    op: string,
+  ): Result<ExtensionBackgroundCollectionDto> => {
+    if (!result.success) return result
+    const parsed = v.safeParse(extensionBackgroundCollectionDtoSchema, result.data)
+    if (!parsed.success) return internal(op, "Collection response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const collectionRead = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "collectionRead" }>["request"],
+  ): Promise<Result<ExtensionBackgroundCollectionDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return collectionResultValidate(
+      await options.service.collectionRead(request),
+      "extensionBackgroundRouter.collectionRead",
+    )
+  }
+
+  const collectionCreate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "collectionCreate" }>["request"],
+  ): Promise<Result<ExtensionBackgroundCollectionDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return collectionResultValidate(
+      await options.service.collectionCreate(request),
+      "extensionBackgroundRouter.collectionCreate",
+    )
+  }
+
+  const collectionUpdate = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "collectionUpdate" }>["request"],
+  ): Promise<Result<ExtensionBackgroundCollectionDto>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return collectionResultValidate(
+      await options.service.collectionUpdate(request),
+      "extensionBackgroundRouter.collectionUpdate",
+    )
+  }
+
+  const collectionDelete = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "collectionDelete" }>["request"],
+  ): Promise<Result<void>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.collectionDelete(request)
   }
 
   const sessionHandoffOpen = async (
@@ -648,6 +939,52 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         return conditionalSync()
       case "manualSync":
         return manualSync()
+      case "vaultSearch":
+        return vaultSearch(message.request)
+      case "cipherDetailRead":
+        return cipherDetailRead(message.request)
+      case "cipherCreate":
+        return cipherCreate(message.request)
+      case "cipherUpdate":
+        return cipherUpdate(message.request)
+      case "cipherPartial":
+        return cipherPartial(message.request)
+      case "cipherDelete":
+        return cipherDelete(message.request)
+      case "cipherRestore":
+        return cipherRestore(message.request)
+      case "cipherArchive":
+        return cipherArchive(message.request)
+      case "cipherMove":
+        return cipherMove(message.request)
+      case "cipherCollectionsUpdate":
+        return cipherCollectionsUpdate(message.request)
+      case "attachmentUpload":
+        return attachmentUpload(message.request)
+      case "attachmentDownload":
+        return attachmentDownload(message.request)
+      case "attachmentDelete":
+        return attachmentDelete(message.request)
+      case "folderList":
+        return folderList(message.request)
+      case "folderRead":
+        return folderRead(message.request)
+      case "folderCreate":
+        return folderCreate(message.request)
+      case "folderUpdate":
+        return folderUpdate(message.request)
+      case "folderDelete":
+        return folderDelete(message.request)
+      case "collectionList":
+        return collectionList(message.request)
+      case "collectionRead":
+        return collectionRead(message.request)
+      case "collectionCreate":
+        return collectionCreate(message.request)
+      case "collectionUpdate":
+        return collectionUpdate(message.request)
+      case "collectionDelete":
+        return collectionDelete(message.request)
       case "sessionHandoffOpen":
         return sessionHandoffOpen(message.request)
       case "environmentSave": {
@@ -729,6 +1066,29 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     activeTabContextLookup,
     fullWindowOpen,
     viewModelLoad,
+    vaultSearch,
+    cipherDetailRead,
+    cipherCreate,
+    cipherUpdate,
+    cipherPartial,
+    cipherDelete,
+    cipherRestore,
+    cipherArchive,
+    cipherMove,
+    cipherCollectionsUpdate,
+    attachmentUpload,
+    attachmentDownload,
+    attachmentDelete,
+    folderList,
+    folderRead,
+    folderCreate,
+    folderUpdate,
+    folderDelete,
+    collectionList,
+    collectionRead,
+    collectionCreate,
+    collectionUpdate,
+    collectionDelete,
     messageHandle,
     lockPolicyLoad,
     lockPolicySave,

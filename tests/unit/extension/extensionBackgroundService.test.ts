@@ -3,18 +3,22 @@ import type { Result } from "#result"
 import type { ExtensionAlarmsAdapter } from "../../../src/extension/background/extensionAlarmsAdapter.js"
 import { extensionBackgroundServiceCreate } from "../../../src/extension/background/extensionBackgroundServiceCreate.js"
 import { extensionTimeoutAlarmName } from "../../../src/extension/background/extensionTimeoutAlarmName.js"
+import { extensionCipherEncrypt } from "../../../src/extension/crypto/extensionCipherEncrypt.js"
+import type { ExtensionCipher } from "../../../src/extension/crypto/extensionCipherSchema.js"
 import { extensionPersonalLoginCipherEncrypt } from "../../../src/extension/crypto/extensionPersonalLoginCipherEncrypt.js"
 import { extensionVaultSessionCreate } from "../../../src/extension/session/extensionVaultSessionCreate.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
 import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
+import type { BitwardenEncryptedCipher } from "../../../src/shared/api/bitwardenEncryptedCipherSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../../src/shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../../src/shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../../src/shared/api/bitwardenPreloginResponseSchema.js"
 import type { BitwardenRefreshTokenResponse } from "../../../src/shared/api/bitwardenRefreshTokenResponseSchema.js"
 import type { BitwardenSyncEnvelope } from "../../../src/shared/api/bitwardenSyncEnvelopeSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
 import fixtures from "../../fixtures/extensionCryptoFixtures.json"
 import organizationFixture from "../../fixtures/extensionOrganizationFixtures.json"
 
@@ -164,6 +168,60 @@ function plainCipherCreate() {
   }
 }
 
+function detailCipherCreate(type: 1 | 2 | 3 | 4 | 5): ExtensionCipher {
+  const common = {
+    object: "cipherDetails" as const,
+    id: `detail-cipher-${type}`,
+    type,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    revisionDate: "2026-08-28T00:00:00.000Z",
+    deletedDate: null,
+    organizationId: null,
+    folderId: null,
+    name: `Detail cipher ${type}`,
+    notes: `Detail notes ${type}`,
+    favorite: false,
+    fields: [{ name: "Detail field", value: `Detail value ${type}`, type: 0, linkedId: null }],
+  }
+  if (type === 1)
+    return {
+      ...common,
+      type,
+      login: {
+        username: "detail-user",
+        password: "detail-password",
+        uris: [{ uri: "https://example.test", match: 0 }],
+        uri: "https://example.test",
+        totp: null,
+      },
+    }
+  if (type === 2) return { ...common, type, secureNote: { type: 0 } }
+  if (type === 3)
+    return {
+      ...common,
+      type,
+      card: {
+        cardholderName: "Detail User",
+        brand: "Visa",
+        number: "4111111111111111",
+        expMonth: "12",
+        expYear: "2030",
+        code: "123",
+      },
+    }
+  if (type === 4)
+    return {
+      ...common,
+      type,
+      identity: { firstName: "Detail", lastName: "User", email: "detail@example.test" },
+    }
+  return {
+    ...common,
+    type,
+    sshKey: { privateKey: "detail-private-key", publicKey: "detail-public-key", keyFingerprint: "detail-fingerprint" },
+  }
+}
+
 test("extensionBackgroundServiceCreate logs in and coalesces concurrent refreshes", async () => {
   const context = serviceCreate()
   let refreshCalls = 0
@@ -300,7 +358,12 @@ test("extensionBackgroundServiceCreate accepts valid decrypted sync cache payloa
     await context.storage.syncCacheSave({
       snapshot: validSnapshotPayloadResult.data,
       ciphers: [
-        { id: "cipher-id", revisionDate: plainCipherCreate().revisionDate, payload: validCipherPayloadResult.data },
+        {
+          id: "cipher-id",
+          revisionDate: plainCipherCreate().revisionDate,
+          type: 1,
+          payload: validCipherPayloadResult.data,
+        },
       ],
       lastRevisionDate: 123,
       lastSyncedAt: nowValue,
@@ -333,7 +396,12 @@ test("extensionBackgroundServiceCreate accepts valid decrypted sync cache payloa
     await context.storage.syncCacheSave({
       snapshot: validSnapshotPayloadResult.data,
       ciphers: [
-        { id: "cipher-id", revisionDate: plainCipherCreate().revisionDate, payload: malformedCipherPayloadResult.data },
+        {
+          id: "cipher-id",
+          revisionDate: plainCipherCreate().revisionDate,
+          type: 1,
+          payload: malformedCipherPayloadResult.data,
+        },
       ],
       lastRevisionDate: 123,
       lastSyncedAt: nowValue,
@@ -341,6 +409,197 @@ test("extensionBackgroundServiceCreate accepts valid decrypted sync cache payloa
   ).toMatchObject({ success: true })
   const malformedCipherResult = await service.syncSnapshotLoad()
   expect(malformedCipherResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+})
+
+test("extensionBackgroundServiceCreate searches the encrypted snapshot without exposing cipher secrets", async () => {
+  const context = serviceCreate()
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  const snapshotPayloadResult = await context.vaultSession.encryptedPayloadEncrypt(
+    JSON.stringify({ profile: {}, folders: [], collections: [], policies: [], sends: [], object: "sync" }),
+  )
+  const cipherPayloadResult = await context.vaultSession.encryptedPayloadEncrypt(JSON.stringify(plainCipherCreate()))
+  expect(snapshotPayloadResult.success).toBe(true)
+  expect(cipherPayloadResult.success).toBe(true)
+  if (!snapshotPayloadResult.success || !cipherPayloadResult.success) return
+  expect(
+    await context.storage.syncCacheSave({
+      snapshot: snapshotPayloadResult.data,
+      ciphers: [
+        {
+          id: "cipher-id",
+          revisionDate: plainCipherCreate().revisionDate,
+          type: 1,
+          payload: cipherPayloadResult.data,
+        },
+      ],
+      lastRevisionDate: 123,
+      lastSyncedAt: nowValue,
+    }),
+  ).toMatchObject({ success: true })
+
+  const result = await service.vaultSearch({ query: "Synthetic" })
+  expect(result).toMatchObject({
+    success: true,
+    data: { ciphers: [{ object: "cipherMini", id: "cipher-id", name: "Synthetic login", type: 1 }] },
+  })
+  expect(JSON.stringify(result)).not.toContain("synthetic-password")
+
+  expect((await service.lock()).success).toBe(true)
+  expect(await service.vaultSearch({})).toMatchObject({
+    success: false,
+    code: "platform.unauthorized",
+    statusCode: 401,
+  })
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  await context.storage.syncCacheClear()
+  expect(await service.vaultSearch({})).toMatchObject({ success: false, code: "platform.unavailable", statusCode: 503 })
+})
+
+test("extensionBackgroundServiceCreate explicitly reads and decrypts every synchronized cipher type", async () => {
+  const context = serviceCreate()
+  const encryptedCiphers = new Map<string, BitwardenEncryptedCipher>()
+  for (const type of [1, 2, 3, 4, 5] as const) {
+    const encryptedResult = await extensionCipherEncrypt(detailCipherCreate(type), userKey)
+    expect(encryptedResult.success).toBe(true)
+    if (encryptedResult.success) encryptedCiphers.set(`detail-cipher-${type}`, encryptedResult.data)
+  }
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+      cipherRead: async (cipherId) => {
+        const cipher = encryptedCiphers.get(cipherId)
+        if (cipher === undefined)
+          return resultErrorCreate("test.cipherRead", "Cipher does not exist.", {
+            code: "platform.not-found",
+            statusCode: 404,
+          })
+        return resultCreate(cipher)
+      },
+    },
+  })
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  for (const type of [1, 2, 3, 4, 5] as const) {
+    const result = await service.cipherDetailRead({ cipherId: `detail-cipher-${type}` })
+    expect(result).toEqual({ success: true, data: detailCipherCreate(type) })
+  }
+  expect(JSON.stringify(await service.cipherDetailRead({ cipherId: "detail-cipher-1" }))).toContain("detail-password")
+})
+
+test("extensionBackgroundServiceCreate gates cipher detail reads by request, lock, authentication, and access", async () => {
+  const context = serviceCreate()
+  const encryptedResult = await extensionCipherEncrypt(detailCipherCreate(1), userKey)
+  const deniedResult = await extensionCipherEncrypt(
+    { ...detailCipherCreate(1), id: "denied-cipher", permissions: { read: false } },
+    userKey,
+  )
+  const organizationResult = encryptedResult.success
+    ? resultCreate({ ...encryptedResult.data, id: "organization-cipher", organizationId: "organization-id" })
+    : encryptedResult
+  expect(encryptedResult.success).toBe(true)
+  expect(deniedResult.success).toBe(true)
+  expect(organizationResult.success).toBe(true)
+  if (!encryptedResult.success || !deniedResult.success || !organizationResult.success) return
+  let readCalls = 0
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate(refreshResponse),
+      revisionDate: async () => resultCreate(123),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+      cipherRead: async (cipherId) => {
+        readCalls += 1
+        if (cipherId === "missing-cipher")
+          return resultErrorCreate("test.cipherRead", "Cipher does not exist.", {
+            code: "platform.not-found",
+            statusCode: 404,
+          })
+        if (cipherId === "unauthorized-cipher")
+          return resultErrorCreate("test.cipherRead", "Authentication is required.", {
+            code: "platform.unauthorized",
+            statusCode: 401,
+          })
+        if (cipherId === "denied-cipher") return resultCreate(deniedResult.data)
+        if (cipherId === "organization-cipher") return resultCreate(organizationResult.data)
+        if (cipherId === "malformed-cipher") return resultCreate({} as BitwardenEncryptedCipher)
+        return resultCreate(encryptedResult.data)
+      },
+    },
+  })
+
+  expect(await service.cipherDetailRead({})).toMatchObject({
+    success: false,
+    code: "platform.invalid-request",
+    statusCode: 400,
+  })
+  expect(await service.cipherDetailRead({ cipherId: "detail-cipher-1" })).toMatchObject({
+    success: false,
+    code: "platform.unauthorized",
+    statusCode: 401,
+  })
+  expect(readCalls).toBe(0)
+
+  expect((await service.unlock({ email: passwordLogin.email, password: passwordLogin.password })).success).toBe(true)
+  expect(await service.cipherDetailRead({ cipherId: "missing-cipher" })).toMatchObject({
+    success: false,
+    code: "platform.not-found",
+    statusCode: 404,
+  })
+  expect(await service.cipherDetailRead({ cipherId: "detail-cipher-1" })).toMatchObject({ success: true })
+  expect(await service.cipherDetailRead({ cipherId: "denied-cipher" })).toMatchObject({
+    success: false,
+    code: "platform.forbidden",
+    statusCode: 403,
+  })
+  expect(await service.cipherDetailRead({ cipherId: "organization-cipher" })).toMatchObject({
+    success: false,
+    code: "platform.forbidden",
+    statusCode: 403,
+  })
+  expect(await service.cipherDetailRead({ cipherId: "malformed-cipher" })).toMatchObject({
+    success: false,
+    code: "platform.internal",
+    statusCode: 500,
+  })
+  expect(await service.cipherDetailRead({ cipherId: "unauthorized-cipher" })).toMatchObject({
+    success: false,
+    code: "platform.unauthorized",
+    statusCode: 401,
+  })
+  expect(readCalls).toBe(7)
+  expect((await service.lock()).success).toBe(true)
+  expect(await service.cipherDetailRead({ cipherId: "detail-cipher-1" })).toMatchObject({
+    success: false,
+    code: "platform.unauthorized",
+    statusCode: 401,
+  })
 })
 
 test("extensionBackgroundServiceCreate validates the sync profile before replacing organization keys", async () => {

@@ -1,7 +1,7 @@
 import * as v from "valibot"
+import { bitwardenFido2CredentialSchema } from "../../shared/api/bitwardenFido2CredentialSchema.js"
 import { extensionCipherAttachmentSchema } from "./extensionCipherAttachmentSchema.js"
 import { extensionCipherPasswordHistoryEntrySchema } from "./extensionCipherPasswordHistoryEntrySchema.js"
-import { bitwardenFido2CredentialSchema } from "../../shared/api/bitwardenFido2CredentialSchema.js"
 
 const nullableStringSchema = v.nullable(v.string())
 
@@ -30,7 +30,7 @@ export const extensionPersonalLoginCipherSchema = v.looseObject({
   object: v.picklist(["cipher", "cipherDetails", "cipherMini"]),
   id: v.string(),
   type: v.literal(1),
-  creationDate: v.optional(v.string()),
+  creationDate: v.optional(v.nullable(v.string())),
   revisionDate: v.string(),
   deletedDate: nullableStringSchema,
   organizationId: v.optional(nullableStringSchema),
@@ -44,6 +44,7 @@ export const extensionPersonalLoginCipherSchema = v.looseObject({
   viewPassword: v.optional(v.boolean()),
   permissions: v.optional(
     v.looseObject({
+      read: v.optional(v.boolean()),
       delete: v.optional(v.boolean()),
       restore: v.optional(v.boolean()),
     }),

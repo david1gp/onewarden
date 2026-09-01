@@ -1,21 +1,23 @@
+import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
+import { extensionAutofillBackgroundPortsCreate } from "../autofill/extensionAutofillBackgroundPortsCreate.js"
+import { extensionPasskeyConsentUiCreate } from "../passkey/extensionPasskeyConsentUiCreate.js"
+import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
+import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
+import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import { extensionWebAuthnBackgroundBridgeCreate } from "../webauthn/extensionWebAuthnBackgroundBridgeCreate.js"
+import { extensionWebAuthnOriginValidate } from "../webauthn/extensionWebAuthnOriginValidate.js"
 import { extensionAlarmsAdapterCreate } from "./extensionAlarmsAdapterCreate.js"
 import { extensionBackgroundApiClientCreate } from "./extensionBackgroundApiClientCreate.js"
 import { extensionBackgroundRouterCreate } from "./extensionBackgroundRouterCreate.js"
 import { extensionBackgroundServiceCreate } from "./extensionBackgroundServiceCreate.js"
-import { extensionScriptingAdapterCreate } from "./extensionScriptingAdapterCreate.js"
-import { extensionWebAuthnBackgroundBridgeCreate } from "../webauthn/extensionWebAuthnBackgroundBridgeCreate.js"
-import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
-import { extensionWebAuthnOriginValidate } from "../webauthn/extensionWebAuthnOriginValidate.js"
 import type { ExtensionRuntimeAdapter } from "./extensionRuntimeAdapter.js"
+import { extensionScriptingAdapterCreate } from "./extensionScriptingAdapterCreate.js"
 import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
 import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
-import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
-import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
-import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
-import { extensionPasskeyConsentUiCreate } from "../passkey/extensionPasskeyConsentUiCreate.js"
 
 /** Entry point of the MV3 service worker. Listener registration stays synchronous. */
 export function extensionBackgroundStart(): void {
+  extensionAutofillBackgroundPortsCreate(chrome.runtime)
   const storage = extensionStorageCreate(extensionStorageAdapterCreate(chrome.storage))
   const vaultSession = extensionVaultSessionCreate(storage)
   const service = extensionBackgroundServiceCreate({

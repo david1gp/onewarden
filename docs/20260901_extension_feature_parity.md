@@ -27,14 +27,14 @@ Bring the OneWarden browser extension to practical Bitwarden feature parity for 
 ## Tasks
 
 - [x] 1. Compare and document the exact official Bitwarden behavior/source paths needed by each implementation increment.
-- [ ] 2. Add versioned encrypted sync/storage models for secure notes, cards, identities, SSH keys, attachments, password history, folders, and collections, with backward-compatible migration and tests.
-- [ ] 3. Add extension background DTOs, search/filtering, and CRUD mutation commands for all synchronized cipher types and shared resources.
-- [ ] 4. Add full-window vault taxonomy, navigation, list/detail, and create/edit/delete flows for secure notes.
-- [ ] 5. Add full-window list/detail and create/edit/delete flows for cards and identities.
-- [ ] 6. Complete SSH-key wire parity and add full-window SSH-key list/detail and create/edit/delete flows.
-- [ ] 7. Add folder and collection navigation, filtering, assignment, permission indicators, and organization context.
-- [ ] 8. Add attachment list/upload/download/delete flows and password-history reveal/copy/restore UI to cipher details.
-- [ ] 9. Add a persistent MV3 autofill content-script foundation, typed message contracts, resilient field discovery/classification, SPA/iframe lifecycle handling, and secure inline-menu mounting.
+- [x] 2. Add versioned encrypted sync/storage models for secure notes, cards, identities, SSH keys, attachments, password history, folders, and collections, with backward-compatible migration and tests.
+- [x] 3. Add extension background DTOs, search/filtering, and CRUD mutation commands for all synchronized cipher types and shared resources.
+- [x] 4. Add full-window vault taxonomy, navigation, list/detail, and create/edit/delete flows for secure notes.
+- [x] 5. Add full-window list/detail and create/edit/delete flows for cards and identities.
+- [x] 6. Complete SSH-key wire parity and add full-window SSH-key list/detail and create/edit/delete flows.
+- [x] 7. Add folder and collection navigation, filtering, assignment, permission indicators, and organization context.
+- [x] 8. Add attachment list/upload/download/delete flows and password-history reveal/copy/restore UI to cipher details.
+- [x] 9. Add a persistent MV3 autofill content-script foundation, typed message contracts, resilient field discovery/classification, SPA/iframe lifecycle handling, and secure inline-menu mounting.
 - [ ] 10. Add login, card, and identity inline/manual autofill with matching, guarded secret retrieval, teardown, and focused DOM tests.
 - [ ] 11. Add autofill-on-page-load policy, settings UI, candidate rules, late-form observation, and duplicate-fill prevention.
 - [ ] 12. Add save/update-login detection for submitted and changed credentials, comparison logic, dismissal policy, and secure save/update prompts.

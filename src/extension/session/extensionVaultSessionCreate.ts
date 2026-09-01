@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { BitwardenEncryptedCollection } from "../../shared/api/bitwardenEncryptedCollectionSchema.js"
 import type { BitwardenEncryptedFolder } from "../../shared/api/bitwardenEncryptedFolderSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
@@ -7,13 +7,15 @@ import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import { sessionHandoffUserKeyEncrypt } from "../../shared/sessionHandoff/sessionHandoffUserKeyEncrypt.js"
-import { extensionEncryptedPayloadDecrypt } from "../crypto/extensionEncryptedPayloadDecrypt.js"
-import { extensionEncryptedPayloadEncrypt } from "../crypto/extensionEncryptedPayloadEncrypt.js"
 import { extensionCipherDecrypt } from "../crypto/extensionCipherDecrypt.js"
 import { extensionCipherEncrypt } from "../crypto/extensionCipherEncrypt.js"
 import { extensionCollectionDecrypt } from "../crypto/extensionCollectionDecrypt.js"
+import { extensionCollectionEncrypt } from "../crypto/extensionCollectionEncrypt.js"
 import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
+import { extensionEncryptedPayloadDecrypt } from "../crypto/extensionEncryptedPayloadDecrypt.js"
+import { extensionEncryptedPayloadEncrypt } from "../crypto/extensionEncryptedPayloadEncrypt.js"
 import { extensionFolderDecrypt } from "../crypto/extensionFolderDecrypt.js"
+import { extensionFolderEncrypt } from "../crypto/extensionFolderEncrypt.js"
 import type { ExtensionFolder } from "../crypto/extensionFolderSchema.js"
 import { extensionOrganizationKeyDecrypt } from "../crypto/extensionOrganizationKeyDecrypt.js"
 import { extensionPersonalLoginCipherDecrypt } from "../crypto/extensionPersonalLoginCipherDecrypt.js"
@@ -24,7 +26,7 @@ import { extensionUserKeyUnlock } from "../crypto/extensionUserKeyUnlock.js"
 import { extensionUserPrivateKeyDecrypt } from "../crypto/extensionUserPrivateKeyDecrypt.js"
 import { extensionVaultUnlockRequestSchema } from "../extensionVaultUnlockRequestSchema.js"
 import type { ExtensionEncryptedPayload } from "../storage/extensionEncryptedPayloadSchema.js"
-import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 
@@ -195,6 +197,28 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
       return resultCreate(decryptedFolders)
     })
 
+  const folderDecrypt = (folder: BitwardenEncryptedFolder) =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.folderDecrypt", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      return extensionFolderDecrypt(folder, userKey)
+    })
+
+  const folderEncrypt = (folder: ExtensionFolder) =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.folderEncrypt", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      return extensionFolderEncrypt(folder, userKey)
+    })
+
   const collectionsDecrypt = (collections: readonly BitwardenEncryptedCollection[]) =>
     operationRun(async () => {
       if (userKey === null) {
@@ -210,6 +234,28 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
         decryptedCollections.push(collectionResult.data)
       }
       return resultCreate(decryptedCollections)
+    })
+
+  const collectionDecrypt = (collection: BitwardenEncryptedCollection) =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.collectionDecrypt", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      return extensionCollectionDecrypt(collection, organizationKeys)
+    })
+
+  const collectionEncrypt = (collection: ExtensionCollection) =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.collectionEncrypt", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      return extensionCollectionEncrypt(collection, organizationKeys)
     })
 
   const encryptedPayloadEncrypt = (plaintext: unknown): Promise<Result<ExtensionEncryptedPayload>> =>
@@ -256,7 +302,11 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
     personalLoginCipherEncrypt,
     cipherEncrypt,
     foldersDecrypt,
+    folderDecrypt,
+    folderEncrypt,
     collectionsDecrypt,
+    collectionDecrypt,
+    collectionEncrypt,
     encryptedPayloadEncrypt,
     encryptedPayloadDecrypt,
     sessionHandoffEncrypt,

@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { BitwardenEncryptedCipher } from "../../shared/api/bitwardenEncryptedCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { type ExtensionCipher, extensionCipherSchema } from "./extensionCipherSchema.js"

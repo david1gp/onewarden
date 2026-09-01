@@ -3,7 +3,7 @@ import { extensionEncryptedPayloadSchema } from "./extensionEncryptedPayloadSche
 import { extensionSyncStorageSchemaVersion } from "./extensionSyncStorageSchemaVersion.js"
 
 const encryptedCipherIdSchema = v.pipe(v.string(), v.minLength(1))
-const encryptedCipherTypeSchema = v.optional(v.picklist([1, 2, 3, 4, 5]))
+const encryptedCipherTypeSchema = v.picklist([1, 2, 3, 4, 5])
 
 const extensionEncryptedSyncCipherSchema = v.strictObject({
   id: encryptedCipherIdSchema,

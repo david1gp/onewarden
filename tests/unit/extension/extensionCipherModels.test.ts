@@ -17,7 +17,7 @@ import { bitwardenEncryptedCipherSchema } from "../../../src/shared/api/bitwarde
 
 const userKey = Uint8Array.from({ length: 64 }, (_, index) => index)
 
-function cipherCreate(type: 2 | 3 | 4 | 5) {
+function cipherCreate(type: 1 | 2 | 3 | 4 | 5) {
   return {
     object: "cipherDetails" as const,
     id: `cipher-${type}`,
@@ -43,6 +43,17 @@ function cipherCreate(type: 2 | 3 | 4 | 5) {
       },
     ],
     passwordHistory: [{ password: "old password", lastUsedDate: "2026-08-30T00:00:00.000Z" }],
+    ...(type === 1
+      ? {
+          login: {
+            username: "alice",
+            password: "private password",
+            uris: [{ uri: "https://example.test/login", match: 0 }],
+            uri: "https://example.test/login",
+            totp: "private totp",
+          },
+        }
+      : {}),
     ...(type === 2 ? { secureNote: { type: 0 } } : {}),
     ...(type === 3
       ? {
@@ -100,19 +111,31 @@ function storageAreaCreate() {
   return { area, values }
 }
 
-test("extensionCipherEncrypt encrypts and decrypts every non-login cipher family and nested secrets", async () => {
-  for (const type of [2, 3, 4, 5] as const) {
+test("extensionCipherEncrypt encrypts and decrypts every cipher family and nested secrets", async () => {
+  for (const type of [1, 2, 3, 4, 5] as const) {
     const plainCipher = cipherCreate(type)
     const encryptedResult = await extensionCipherEncrypt(plainCipher, userKey)
     expect(encryptedResult.success).toBe(true)
     if (!encryptedResult.success) continue
     expect(JSON.stringify(encryptedResult.data)).not.toContain("private notes")
+    expect(JSON.stringify(encryptedResult.data)).not.toContain("private password")
     expect(JSON.stringify(encryptedResult.data)).not.toContain("private-key")
     expect(JSON.stringify(encryptedResult.data)).not.toContain("old password")
 
     const decryptedResult = await extensionCipherDecrypt(encryptedResult.data, userKey)
     expect(decryptedResult).toEqual({ success: true, data: plainCipher })
   }
+})
+
+test("extension login cipher crypto preserves a missing creation timestamp", async () => {
+  const plainCipher = { ...cipherCreate(1), creationDate: null }
+  const encryptedResult = await extensionCipherEncrypt(plainCipher, userKey)
+
+  expect(encryptedResult.success).toBe(true)
+  if (!encryptedResult.success) return
+
+  const decryptedResult = await extensionCipherDecrypt(encryptedResult.data, userKey)
+  expect(decryptedResult).toMatchObject({ success: true, data: { creationDate: null } })
 })
 
 test("extension generic cipher crypto uses the organization key without changing login behavior", async () => {
@@ -130,7 +153,12 @@ test("extension generic cipher crypto uses the organization key without changing
 })
 
 test("extension folder and collection models encrypt their names with the correct key", async () => {
-  const folder = { id: "folder-id", name: "Private folder", revisionDate: "2026-08-31T00:00:00.000Z", object: "folder" as const }
+  const folder = {
+    id: "folder-id",
+    name: "Private folder",
+    revisionDate: "2026-08-31T00:00:00.000Z",
+    object: "folder" as const,
+  }
   const folderEncrypted = await extensionFolderEncrypt(folder, userKey)
   expect(folderEncrypted.success).toBe(true)
   if (!folderEncrypted.success) return
@@ -180,6 +208,39 @@ test("extension sync storage migrates login-only version one caches and rejects 
   })
 })
 
+test("extension sync storage version two requires an explicit supported cipher type", () => {
+  const encryptedPayload = { algorithm: "AES-GCM", iv: "base64-iv", ciphertext: "base64-ciphertext" }
+  const current = {
+    schemaVersion: extensionSyncStorageSchemaVersion,
+    snapshot: encryptedPayload,
+    ciphers: [{ id: "cipher-id", revisionDate: "revision", type: 1 as const, payload: encryptedPayload }],
+    lastRevisionDate: 10,
+    lastSyncedAt: 11,
+  }
+
+  for (const type of [1, 2, 3, 4, 5] as const) {
+    const result = extensionSyncStorageMigrate({
+      ...current,
+      ciphers: [{ ...current.ciphers[0], type }],
+    })
+    expect(result).toMatchObject({ success: true, data: { ciphers: [{ type }] } })
+  }
+
+  const { type: _type, ...cipherWithoutType } = current.ciphers[0]
+  expect(
+    extensionSyncStorageMigrate({
+      ...current,
+      ciphers: [cipherWithoutType],
+    }),
+  ).toMatchObject({ success: false, code: "platform.internal" })
+  expect(
+    extensionSyncStorageMigrate({
+      ...current,
+      ciphers: [{ ...current.ciphers[0], type: 6 }],
+    }),
+  ).toMatchObject({ success: false, code: "platform.internal" })
+})
+
 test("extension storage persists migrated sync caches at the current version without plaintext", async () => {
   const local = storageAreaCreate()
   const session = storageAreaCreate()
@@ -196,7 +257,9 @@ test("extension storage persists migrated sync caches at the current version wit
 
   const result = await storage.syncCacheLoad()
   expect(result).toMatchObject({ success: true, data: { ciphers: [{ id: "login-id", type: 1 }] } })
-  expect(local.values.get(extensionStorageKeys.syncCache)).toMatchObject({ schemaVersion: extensionSyncStorageSchemaVersion })
+  expect(local.values.get(extensionStorageKeys.syncCache)).toMatchObject({
+    schemaVersion: extensionSyncStorageSchemaVersion,
+  })
   expect(JSON.stringify(local.values.get(extensionStorageKeys.syncCache))).not.toContain("password")
 })
 

@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import type { ExtensionPersonalLoginCipher } from "./extensionPersonalLoginCipherSchema.js"

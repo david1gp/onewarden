@@ -1,13 +1,17 @@
 import { expect, test } from "bun:test"
+import * as v from "valibot"
 import type { ExtensionAuthSession } from "../../../src/extension/storage/extensionAuthSessionStorageSchema.js"
 import type { ExtensionCreateDraft } from "../../../src/extension/storage/extensionCreateDraftStorageSchema.js"
+import { extensionGeneratorPreferencesDefault } from "../../../src/extension/storage/extensionGeneratorPreferencesDefault.js"
 import type { ExtensionGeneratorPreferences } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
+import { extensionGeneratorPreferencesSchema } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
 import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
 import { extensionStorageKeys } from "../../../src/extension/storage/extensionStorageKeys.js"
 import type { ExtensionSyncStorage } from "../../../src/extension/storage/extensionSyncStorageSchema.js"
+import { vaultSortOptions } from "../../../src/shared/vault/vaultSortOptions.js"
 
 function storageAreaCreate() {
   const values = new Map<string, unknown>()
@@ -62,7 +66,7 @@ const encryptedPayload = {
 
 const syncCache: ExtensionSyncStorage = {
   snapshot: encryptedPayload,
-  ciphers: [{ id: "cipher-id", revisionDate: "2026-08-28T00:00:00.000Z", payload: encryptedPayload }],
+  ciphers: [{ id: "cipher-id", revisionDate: "2026-08-28T00:00:00.000Z", type: 1, payload: encryptedPayload }],
   lastRevisionDate: 1_756_368_000_000,
   lastSyncedAt: 1_756_368_000_001,
 }
@@ -204,6 +208,53 @@ test("extensionStorageCreate loads absent and valid generator preferences from l
   expect(await storage.generatorPreferencesLoad()).toEqual({ success: true, data: generatorPreferences })
 })
 
+test("extensionStorageCreate loads and saves the versioned vault sort in local storage", async () => {
+  const { local, storage } = storageCreate()
+
+  expect(await storage.vaultSortLoad()).toEqual({ success: true, data: null })
+  for (const { value: sort } of vaultSortOptions) {
+    expect(await storage.vaultSortSave(sort)).toEqual({ success: true, data: undefined })
+    expect(local.values.get(extensionStorageKeys.vaultSort)).toEqual({ schemaVersion: 1, sort })
+    expect(await storage.vaultSortLoad()).toEqual({ success: true, data: sort })
+  }
+})
+
+test("extensionStorageCreate validates vault sort records and preserves them through logout", async () => {
+  const { local, storage } = storageCreate()
+  await storage.vaultSortSave("updated-oldest")
+  await storage.sessionStateSave({ status: "unlocked", unlockedAt: 1_756_368_000_003 })
+  expect(await storage.lock()).toEqual({ success: true, data: undefined })
+  expect(await storage.vaultSortLoad()).toEqual({ success: true, data: "updated-oldest" })
+
+  local.values.set(extensionStorageKeys.vaultSort, { schemaVersion: 1, sort: "invalid" })
+  expect(await storage.vaultSortLoad()).toMatchObject({
+    success: false,
+    code: "platform.internal",
+    statusCode: 500,
+  })
+
+  await storage.vaultSortSave("updated-oldest")
+  expect(await storage.logout()).toEqual({ success: true, data: undefined })
+  expect(local.values.has(extensionStorageKeys.vaultSort)).toBe(true)
+  expect(await storage.vaultSortLoad()).toEqual({ success: true, data: "updated-oldest" })
+})
+
+test("extensionStorageCreate accepts the generator preference defaults as a validated record", async () => {
+  const { local, storage } = storageCreate()
+  const defaultRecord = { schemaVersion: 1, ...extensionGeneratorPreferencesDefault }
+
+  expect(v.safeParse(extensionGeneratorPreferencesSchema, defaultRecord).success).toBe(true)
+  expect(await storage.generatorPreferencesSave(extensionGeneratorPreferencesDefault)).toEqual({
+    success: true,
+    data: undefined,
+  })
+  expect(local.values.get(extensionStorageKeys.generatorPreferences)).toEqual(defaultRecord)
+  expect(await storage.generatorPreferencesLoad()).toEqual({
+    success: true,
+    data: extensionGeneratorPreferencesDefault,
+  })
+})
+
 test("extensionStorageCreate validates generator preferences before saving and while loading", async () => {
   const { local, storage } = storageCreate()
   const invalidPreferences = {
@@ -235,6 +286,16 @@ test("extensionStorageCreate validates generator preferences before saving and w
   local.values.set(extensionStorageKeys.generatorPreferences, {
     schemaVersion: 1,
     ...invalidPreferences,
+  })
+  expect(await storage.generatorPreferencesLoad()).toMatchObject({
+    success: false,
+    code: "platform.internal",
+    statusCode: 500,
+  })
+
+  local.values.set(extensionStorageKeys.generatorPreferences, {
+    schemaVersion: 2,
+    ...generatorPreferences,
   })
   expect(await storage.generatorPreferencesLoad()).toMatchObject({
     success: false,
@@ -273,5 +334,12 @@ test("extensionStorageCreate converts storage failures into Results", async () =
 
   expect(await storage.environmentSettingsLoad()).toMatchObject({ success: false, code: "platform.unavailable" })
   expect(await storage.environmentSettingsSave("us")).toMatchObject({ success: false, code: "platform.unavailable" })
+  expect(await storage.generatorPreferencesLoad()).toMatchObject({ success: false, code: "platform.unavailable" })
+  expect(await storage.generatorPreferencesSave(generatorPreferences)).toMatchObject({
+    success: false,
+    code: "platform.unavailable",
+  })
+  expect(await storage.vaultSortLoad()).toMatchObject({ success: false, code: "platform.unavailable" })
+  expect(await storage.vaultSortSave("name-az")).toMatchObject({ success: false, code: "platform.unavailable" })
   expect(await storage.logout()).toMatchObject({ success: false, code: "platform.unavailable" })
 })

@@ -1,8 +1,8 @@
 import * as v from "valibot"
 import { bitwardenEncryptedAttachmentSchema } from "./bitwardenEncryptedAttachmentSchema.js"
 import { bitwardenEncryptedCardSchema } from "./bitwardenEncryptedCardSchema.js"
-import { bitwardenEncryptedIdentitySchema } from "./bitwardenEncryptedIdentitySchema.js"
 import { bitwardenEncryptedFido2CredentialSchema } from "./bitwardenEncryptedFido2CredentialSchema.js"
+import { bitwardenEncryptedIdentitySchema } from "./bitwardenEncryptedIdentitySchema.js"
 import { bitwardenEncryptedLoginCipherFieldSchema } from "./bitwardenEncryptedLoginCipherFieldSchema.js"
 import { bitwardenEncryptedLoginSchema } from "./bitwardenEncryptedLoginSchema.js"
 import { bitwardenEncryptedPasswordHistoryEntrySchema } from "./bitwardenEncryptedPasswordHistoryEntrySchema.js"
@@ -63,12 +63,15 @@ export const bitwardenEncryptedCipherSchema = v.pipe(
       identity?: unknown
       sshKey?: unknown
     }
-    if (record.type === 1) return record.login !== undefined && record.login !== null
-    if (record.type === 2) return record.secureNote !== undefined && record.secureNote !== null
-    if (record.type === 3) return record.card !== undefined && record.card !== null
-    if (record.type === 4) return record.identity !== undefined && record.identity !== null
-    if (record.type === 5) return record.sshKey !== undefined && record.sshKey !== null
-    return false
+    const payloads = [record.login, record.secureNote, record.card, record.identity, record.sshKey]
+    const payloadIndex = record.type - 1
+    return (
+      payloadIndex >= 0 &&
+      payloadIndex < payloads.length &&
+      payloads[payloadIndex] !== undefined &&
+      payloads[payloadIndex] !== null &&
+      payloads.every((payload, index) => index === payloadIndex || payload === undefined || payload === null)
+    )
   }, "Encrypted cipher payload must match its cipher type."),
 )
 

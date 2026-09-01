@@ -2,6 +2,8 @@ import { expect, test } from "bun:test"
 import { createRoot } from "solid-js"
 import { extensionFullWindowGeneratorMode } from "../../../src/extension/fullwindow/ExtensionFullWindowGeneratorMode.js"
 import { extensionFullWindowGeneratorPaneStateCreate } from "../../../src/extension/fullwindow/extensionFullWindowGeneratorPaneStateCreate.js"
+import { extensionGeneratorPreferencesDefault } from "../../../src/extension/storage/extensionGeneratorPreferencesDefault.js"
+import type { ExtensionGeneratorPreferences } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 test("generator pane defaults to passphrase mode and generates its default output", () => {
@@ -117,5 +119,97 @@ test("generator pane preserves password controls and output in password mode", (
   root.state.passwordVisibilityToggle()
   expect(root.state.passwordVisible()).toBe(true)
 
+  root.dispose()
+})
+
+test("generator pane saves mode and every password and passphrase preference change", () => {
+  const changes: ExtensionGeneratorPreferences[] = []
+  const root = createRoot((dispose) => ({
+    dispose,
+    state: extensionFullWindowGeneratorPaneStateCreate({
+      passphraseGenerate: () => resultCreate("phrase"),
+      passwordGenerate: () => resultCreate("password"),
+      onPreferencesChange: (preferences) => changes.push(preferences),
+    }),
+  }))
+
+  root.state.modeSignal.set(extensionFullWindowGeneratorMode.password)
+  expect(changes.at(-1)?.mode).toBe(extensionFullWindowGeneratorMode.password)
+
+  root.state.passwordLengthSet(32)
+  expect(changes.at(-1)?.password.length).toBe(32)
+
+  root.state.symbolsSet(false)
+  expect(changes.at(-1)?.password.characterPolicy.symbols).toBe(false)
+  root.state.numbersSet(false)
+  expect(changes.at(-1)?.password.characterPolicy.numbers).toBe(false)
+  root.state.uppercaseSet(false)
+  expect(changes.at(-1)?.password.characterPolicy.uppercase).toBe(false)
+  root.state.uppercaseSet(true)
+  root.state.lowercaseSet(false)
+  expect(changes.at(-1)?.password.characterPolicy.lowercase).toBe(false)
+
+  root.state.wordCountSet(8)
+  expect(changes.at(-1)?.passphrase.numWords).toBe(8)
+  root.state.wordSeparatorSet("_")
+  expect(changes.at(-1)?.passphrase.wordSeparator).toBe("_")
+  root.state.includeNumberSet(false)
+  expect(changes.at(-1)?.passphrase.includeNumber).toBe(false)
+
+  expect(changes).toHaveLength(10)
+  root.dispose()
+})
+
+test("generator pane does not include generated, revealed, copied, or error state in saved preferences", async () => {
+  const changes: ExtensionGeneratorPreferences[] = []
+  const initialPreferences: ExtensionGeneratorPreferences = {
+    ...extensionGeneratorPreferencesDefault,
+    mode: extensionFullWindowGeneratorMode.password,
+  }
+  const root = createRoot((dispose) => ({
+    dispose,
+    state: extensionFullWindowGeneratorPaneStateCreate({
+      initialPreferences,
+      initialPassword: "generated-secret",
+      initialPasswordVisible: true,
+      initialCopyStatus: "copied",
+      initialErrorMessage: "Transient generation error",
+      passwordGenerate: () => resultCreate("new-secret"),
+      clipboardWrite: async () => undefined,
+      onPreferencesChange: (preferences) => changes.push(preferences),
+    }),
+  }))
+
+  expect(root.state.password()).toBe("generated-secret")
+  expect(root.state.passwordVisible()).toBe(true)
+  expect(root.state.copyStatus()).toBe("copied")
+  expect(root.state.errorMessage()).toBe("Transient generation error")
+
+  root.state.passwordVisibilityToggle()
+  await root.state.passwordCopy()
+  expect(root.state.passwordVisible()).toBe(false)
+  expect(root.state.copyStatus()).toBe("copied")
+  expect(changes).toHaveLength(0)
+
+  root.state.passwordLengthSet(32)
+  expect(changes).toEqual([
+    {
+      mode: extensionFullWindowGeneratorMode.password,
+      password: {
+        length: 32,
+        characterPolicy: {
+          lowercase: true,
+          uppercase: true,
+          numbers: true,
+          symbols: true,
+        },
+      },
+      passphrase: {
+        numWords: 3,
+        wordSeparator: "-",
+        includeNumber: true,
+      },
+    },
+  ])
   root.dispose()
 })

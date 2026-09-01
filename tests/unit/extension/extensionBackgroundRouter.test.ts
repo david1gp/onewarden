@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { extensionBackgroundRouterCreate } from "../../../src/extension/background/extensionBackgroundRouterCreate.js"
 import type { ExtensionPersonalLoginCipher } from "../../../src/extension/crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionRuntimeMessage } from "../../../src/extension/messaging/extensionRuntimeMessageSchema.js"
 import { extensionRuntimeMessageSend } from "../../../src/extension/messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionLockPolicy } from "../../../src/extension/storage/extensionLockPolicySchema.js"
@@ -10,6 +11,9 @@ import type { ExtensionStorageArea } from "../../../src/extension/storage/extens
 import { extensionStorageCreate } from "../../../src/extension/storage/extensionStorageCreate.js"
 import { extensionStorageKeys } from "../../../src/extension/storage/extensionStorageKeys.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import { vaultSortApply } from "../../../src/shared/vault/vaultSortApply.js"
+
+type SnapshotCipherOverride = Pick<ExtensionPersonalLoginCipher, "id" | "name" | "creationDate" | "revisionDate">
 
 type RouterOptions = Parameters<typeof extensionBackgroundRouterCreate>[0]
 type RuntimeListener = (
@@ -44,6 +48,7 @@ function storageAreaCreate() {
 function routerCreate(
   activeTab = { id: 7, url: "https://example.test/login", windowId: 3 },
   otherActiveTabs = [activeTab],
+  snapshotCipherOverrides?: SnapshotCipherOverride[],
 ) {
   const local = storageAreaCreate()
   const session = storageAreaCreate()
@@ -51,6 +56,8 @@ function routerCreate(
   const storage = extensionStorageCreate(adapter)
   const cipher = {
     id: "matching-login",
+    creationDate: "2026-08-01T00:00:00.000Z",
+    revisionDate: "2026-09-01T00:00:00.000Z",
     name: "Example login",
     notes: "A note",
     login: {
@@ -71,6 +78,25 @@ function routerCreate(
       { name: "Linked", value: null, type: 2 },
     ],
   } as unknown as ExtensionPersonalLoginCipher
+  const snapshotCiphers: ExtensionPersonalLoginCipher[] = snapshotCipherOverrides?.map((overrides) => ({
+    ...cipher,
+    ...overrides,
+  })) ?? [cipher]
+  const mutationCipher = {
+    object: "cipherDetails" as const,
+    id: "mutation-cipher",
+    type: 1 as const,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    revisionDate: "2026-08-28T00:00:00.000Z",
+    deletedDate: null,
+    organizationId: null,
+    folderId: null,
+    name: "Mutation cipher",
+    notes: null,
+    favorite: false,
+    login: { username: "user", password: "password", uris: [], uri: null, totp: null },
+    fields: [],
+  }
   let listener: RuntimeListener = () => undefined
   const handoffCalls: {
     operation: string
@@ -78,6 +104,11 @@ function routerCreate(
     webVaultOrigin: string
     prefillUrl: string | null
   }[] = []
+  const vaultSearchCalls: unknown[] = []
+  const cipherDetailReadCalls: unknown[] = []
+  const cipherMutationCalls: { type: string; request: unknown }[] = []
+  const folderCalls: { type: string; request: unknown }[] = []
+  const collectionCalls: { type: string; request: unknown }[] = []
   const service = {
     start: async () => resultCreate(undefined),
     passwordLogin: async () => resultCreate(undefined),
@@ -85,6 +116,99 @@ function routerCreate(
     conditionalSync: async () =>
       resultCreate({ status: "unchanged", changed: false, revisionDate: 1, lastSyncedAt: 2 }),
     manualSync: async () => resultCreate({ status: "synced", changed: true, revisionDate: 2, lastSyncedAt: 3 }),
+    vaultSearch: async (request: unknown) => {
+      vaultSearchCalls.push(request)
+      return resultCreate({ ciphers: [], folders: [], collections: [] })
+    },
+    cipherDetailRead: async (request: unknown) => {
+      cipherDetailReadCalls.push(request)
+      return resultCreate({
+        object: "cipherDetails" as const,
+        id: "matching-login",
+        type: 1 as const,
+        creationDate: "2026-08-28T00:00:00.000Z",
+        revisionDate: "2026-08-28T00:00:00.000Z",
+        deletedDate: null,
+        organizationId: null,
+        folderId: null,
+        name: "Example login",
+        notes: "A note",
+        login: { username: "user", password: "password", uris: [], uri: null, totp: null },
+        fields: [],
+      })
+    },
+    cipherCreate: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "create", request })
+      return resultCreate(mutationCipher)
+    },
+    cipherUpdate: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "update", request })
+      return resultCreate(mutationCipher)
+    },
+    cipherPartial: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "partial", request })
+      return resultCreate(mutationCipher)
+    },
+    cipherDelete: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "delete", request })
+      return resultCreate(undefined)
+    },
+    cipherRestore: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "restore", request })
+      return resultCreate(mutationCipher)
+    },
+    cipherArchive: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "archive", request })
+      return resultCreate(mutationCipher)
+    },
+    cipherMove: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "move", request })
+      return resultCreate(undefined)
+    },
+    cipherCollectionsUpdate: async (request: unknown) => {
+      cipherMutationCalls.push({ type: "collections", request })
+      return resultCreate(mutationCipher)
+    },
+    folderList: async (request: unknown) => {
+      folderCalls.push({ type: "list", request })
+      return resultCreate([{ id: "folder-id", name: "Folder", object: "folder" as const }])
+    },
+    folderRead: async (request: unknown) => {
+      folderCalls.push({ type: "read", request })
+      return resultCreate({ id: "folder-id", name: "Folder", object: "folder" as const })
+    },
+    folderCreate: async (request: unknown) => {
+      folderCalls.push({ type: "create", request })
+      return resultCreate({ id: "folder-id", name: "Folder", object: "folder" as const })
+    },
+    folderUpdate: async (request: unknown) => {
+      folderCalls.push({ type: "update", request })
+      return resultCreate({ id: "folder-id", name: "Folder", object: "folder" as const })
+    },
+    folderDelete: async (request: unknown) => {
+      folderCalls.push({ type: "delete", request })
+      return resultCreate(undefined)
+    },
+    collectionList: async (request: unknown) => {
+      collectionCalls.push({ type: "list", request })
+      return resultCreate([{ id: "collection-id", organizationId: "organization-id", name: "Collection" }])
+    },
+    collectionRead: async (request: unknown) => {
+      collectionCalls.push({ type: "read", request })
+      return resultCreate({ id: "collection-id", organizationId: "organization-id", name: "Collection" })
+    },
+    collectionCreate: async (request: unknown) => {
+      collectionCalls.push({ type: "create", request })
+      return resultCreate({ id: "collection-id", organizationId: "organization-id", name: "Collection" })
+    },
+    collectionUpdate: async (request: unknown) => {
+      collectionCalls.push({ type: "update", request })
+      return resultCreate({ id: "collection-id", organizationId: "organization-id", name: "Collection" })
+    },
+    collectionDelete: async (request: unknown) => {
+      collectionCalls.push({ type: "delete", request })
+      return resultCreate(undefined)
+    },
     sessionHandoffCreate: async (
       operation: "create" | "edit",
       cipherId: string | null,
@@ -94,7 +218,7 @@ function routerCreate(
       handoffCalls.push({ operation, cipherId, webVaultOrigin, prefillUrl })
       return resultCreate(`${webVaultOrigin}/ciphers/${operation === "create" ? "new" : `${cipherId}/edit`}#handoff`)
     },
-    syncSnapshotLoad: async () => resultCreate({ ciphers: [cipher] }),
+    syncSnapshotLoad: async () => resultCreate({ ciphers: snapshotCiphers }),
     lock: async () => resultCreate(undefined),
     logout: async () => resultCreate(undefined),
     lockPolicyLoad: async () => storage.lockPolicyLoad(),
@@ -168,11 +292,153 @@ function routerCreate(
     createdWindows,
     fillCalls,
     handoffCalls,
+    vaultSearchCalls,
+    cipherDetailReadCalls,
+    cipherMutationCalls,
+    folderCalls,
+    collectionCalls,
     fullWindowTabSet: (url: string) => {
       if (fullWindowTab !== null) fullWindowTab = { ...fullWindowTab, url }
     },
   }
 }
+
+test("extensionBackgroundRouterCreate validates and routes read-only vault search messages", async () => {
+  const context = routerCreate()
+
+  expect(await context.router.messageHandle({ type: "vaultSearch", request: { query: "example" } })).toEqual({
+    success: true,
+    data: { ciphers: [], folders: [], collections: [] },
+  })
+  expect(context.vaultSearchCalls).toEqual([
+    {
+      query: "example",
+      includeDeleted: false,
+      includeArchived: false,
+    },
+  ])
+  expect((await context.router.messageHandle({ type: "vaultSearch", request: {} })).success).toBe(true)
+  expect((await context.router.messageHandle({ type: "vaultSearch" })).success).toBe(false)
+  expect(
+    (await context.router.messageHandle({ type: "vaultSearch", request: { query: "example", secret: true } })).success,
+  ).toBe(false)
+  expect(context.vaultSearchCalls).toHaveLength(2)
+})
+
+test("extensionBackgroundRouterCreate routes explicit typed cipher detail reads", async () => {
+  const context = routerCreate()
+
+  expect(
+    await context.router.messageHandle({ type: "cipherDetailRead", request: { cipherId: "matching-login" } }),
+  ).toEqual({
+    success: true,
+    data: {
+      object: "cipherDetails",
+      id: "matching-login",
+      type: 1,
+      creationDate: "2026-08-28T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+      deletedDate: null,
+      organizationId: null,
+      folderId: null,
+      name: "Example login",
+      notes: "A note",
+      login: { username: "user", password: "password", uris: [], uri: null, totp: null },
+      fields: [],
+    },
+  })
+  expect(context.cipherDetailReadCalls).toEqual([{ cipherId: "matching-login" }])
+  expect((await context.router.messageHandle({ type: "cipherDetailRead", request: {} })).success).toBe(false)
+  expect((await context.router.messageHandle({ type: "cipherDetailRead" })).success).toBe(false)
+})
+
+test("extensionBackgroundRouterCreate routes every generic cipher mutation command", async () => {
+  const context = routerCreate()
+  const cipher = {
+    object: "cipherDetails" as const,
+    id: "mutation-cipher",
+    type: 1 as const,
+    creationDate: "2026-08-28T00:00:00.000Z",
+    revisionDate: "2026-08-28T00:00:00.000Z",
+    deletedDate: null,
+    organizationId: null,
+    folderId: null,
+    name: "Mutation cipher",
+    notes: null,
+    favorite: false,
+    login: { username: "user", password: "password", uris: [], uri: null, totp: null },
+    fields: [],
+  }
+  const requests: ExtensionRuntimeMessage[] = [
+    { type: "cipherCreate", request: { cipher } },
+    { type: "cipherUpdate", request: { cipherId: cipher.id, cipher } },
+    { type: "cipherPartial", request: { cipherId: cipher.id, favorite: true } },
+    { type: "cipherDelete", request: { cipherId: cipher.id } },
+    { type: "cipherRestore", request: { cipherId: cipher.id } },
+    { type: "cipherArchive", request: { cipherId: cipher.id } },
+    { type: "cipherMove", request: { ids: [cipher.id], folderId: null } },
+    { type: "cipherCollectionsUpdate", request: { cipherId: cipher.id, collectionIds: [] } },
+  ]
+  for (const request of requests) expect((await context.router.messageHandle(request)).success).toBe(true)
+  expect(context.cipherMutationCalls.map((entry) => entry.type)).toEqual([
+    "create",
+    "update",
+    "partial",
+    "delete",
+    "restore",
+    "archive",
+    "move",
+    "collections",
+  ])
+  expect(
+    (await context.router.messageHandle({ type: "cipherDelete", request: { cipherId: cipher.id, hard: "yes" } }))
+      .success,
+  ).toBe(false)
+})
+
+test("extensionBackgroundRouterCreate routes and validates every folder command", async () => {
+  const context = routerCreate()
+  const folder = { id: "folder-id", name: "Folder", object: "folder" as const }
+  const requests: ExtensionRuntimeMessage[] = [
+    { type: "folderList", request: {} },
+    { type: "folderRead", request: { folderId: folder.id } },
+    { type: "folderCreate", request: { folder } },
+    { type: "folderUpdate", request: { folderId: folder.id, folder } },
+    { type: "folderDelete", request: { folderId: folder.id } },
+  ]
+
+  for (const request of requests) expect((await context.router.messageHandle(request)).success).toBe(true)
+  expect(context.folderCalls.map((entry) => entry.type)).toEqual(["list", "read", "create", "update", "delete"])
+  expect((await context.router.messageHandle({ type: "folderRead", request: {} })).success).toBe(false)
+  expect((await context.router.messageHandle({ type: "folderList", request: { extra: true } })).success).toBe(false)
+})
+
+test("extensionBackgroundRouterCreate routes and validates every collection command", async () => {
+  const context = routerCreate()
+  const collection = { id: "collection-id", organizationId: "organization-id", name: "Collection" }
+  const requests: ExtensionRuntimeMessage[] = [
+    { type: "collectionList", request: { organizationId: collection.organizationId } },
+    {
+      type: "collectionRead",
+      request: { organizationId: collection.organizationId, collectionId: collection.id },
+    },
+    { type: "collectionCreate", request: { organizationId: collection.organizationId, collection } },
+    {
+      type: "collectionUpdate",
+      request: { organizationId: collection.organizationId, collectionId: collection.id, collection },
+    },
+    { type: "collectionDelete", request: { organizationId: collection.organizationId, collectionId: collection.id } },
+  ]
+
+  for (const request of requests) expect((await context.router.messageHandle(request)).success).toBe(true)
+  expect(context.collectionCalls.map((entry) => entry.type)).toEqual(["list", "read", "create", "update", "delete"])
+  expect(
+    (await context.router.messageHandle({ type: "collectionRead", request: { collectionId: collection.id } })).success,
+  ).toBe(false)
+  expect(
+    (await context.router.messageHandle({ type: "collectionList", request: { organizationId: "" } })).success,
+  ).toBe(false)
+})
 
 test("extensionBackgroundRouterCreate registers synchronously and builds a site-scoped popup model", async () => {
   const context = routerCreate()
@@ -198,6 +464,8 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
       logins: [
         {
           id: "matching-login",
+          creationDate: "2026-08-01T00:00:00.000Z",
+          revisionDate: "2026-09-01T00:00:00.000Z",
           copyableFields: [
             { key: "username", label: "Username", value: "user" },
             { key: "password", label: "Password", value: "password", sensitive: true },
@@ -218,6 +486,13 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
     ? (response.data as { status?: string; logins?: { totpAvailable?: boolean }[] })
     : null
   expect(responseData?.status === "ready" ? responseData.logins?.[0]?.totpAvailable : null).toBe(true)
+  const fullWindowResponse = await context.router.messageHandle({ type: "viewModelLoad", surface: "fullwindow" })
+  expect(fullWindowResponse).toMatchObject({
+    success: true,
+    data: {
+      logins: [{ creationDate: "2026-08-01T00:00:00.000Z", revisionDate: "2026-09-01T00:00:00.000Z" }],
+    },
+  })
   expect(await context.router.messageHandle({ type: "totpCopy", request: { loginId: "matching-login" } })).toEqual({
     success: true,
     data: "287082",
@@ -232,6 +507,69 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
     success: true,
     data: { tabId: 7, url: "https://example.test/login", hostname: "example.test", fillAvailable: true },
   })
+})
+
+test("extensionBackgroundRouterCreate preserves equal fixture timestamps through ExtensionLogin and shared sorting", async () => {
+  const context = routerCreate(undefined, undefined, [
+    {
+      id: "cipher-aws-prod",
+      name: "AWS Production Console",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+    {
+      id: "cipher-secure-note",
+      name: "Server Backup Recovery Key",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+    {
+      id: "cipher-card",
+      name: "Corporate Purchasing Card",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+  ])
+  await context.storage.authSessionSave({
+    accessToken: "access",
+    refreshToken: "refresh",
+    expiresAt: 1_756_368_000_000,
+    tokenType: "Bearer",
+    scope: "api offline_access",
+    accountId: null,
+    email: "user@example.test",
+  })
+  await context.storage.sessionStateSave({ status: "unlocked", unlockedAt: 1_756_368_000_000 })
+
+  const response = await context.router.messageHandle({ type: "viewModelLoad", surface: "fullwindow" })
+  expect(response.success).toBe(true)
+  if (!response.success) return
+  const logins = (response.data as { logins: ExtensionLogin[] }).logins
+
+  expect(logins.map(({ name, creationDate, revisionDate }) => ({ name, creationDate, revisionDate }))).toEqual([
+    {
+      name: "AWS Production Console",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+    {
+      name: "Server Backup Recovery Key",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+    {
+      name: "Corporate Purchasing Card",
+      creationDate: "2026-08-01T00:00:00.000Z",
+      revisionDate: "2026-08-28T00:00:00.000Z",
+    },
+  ])
+  for (const sort of ["created-newest", "created-oldest", "updated-newest", "updated-oldest"] as const) {
+    expect(vaultSortApply(logins, sort).map(({ name }) => name)).toEqual([
+      "AWS Production Console",
+      "Corporate Purchasing Card",
+      "Server Backup Recovery Key",
+    ])
+  }
 })
 
 test("extensionBackgroundRouterCreate retains a website context while the full-window extension is focused", async () => {

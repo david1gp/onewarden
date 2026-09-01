@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import {
   type BitwardenEncryptedFolder,
   bitwardenEncryptedFolderSchema,

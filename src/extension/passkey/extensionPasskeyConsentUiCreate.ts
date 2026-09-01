@@ -3,10 +3,10 @@ import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
-import type { ExtensionPasskeyConsent } from "./extensionPasskeyConsentSchema.js"
 import type { ExtensionPasskeyConsentContext } from "./extensionPasskeyConsentContextSchema.js"
-import { extensionPasskeyCredentialIdDecode } from "./extensionPasskeyCredentialIdDecode.js"
+import type { ExtensionPasskeyConsent } from "./extensionPasskeyConsentSchema.js"
 import type { ExtensionPasskeyConsentUiModel } from "./extensionPasskeyConsentUiModelSchema.js"
+import { extensionPasskeyCredentialIdDecode } from "./extensionPasskeyCredentialIdDecode.js"
 
 type ConsentService = {
   unlock: (request: unknown) => Promise<Result<void>>

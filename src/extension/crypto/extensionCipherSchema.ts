@@ -27,6 +27,7 @@ const extensionCipherCommonEntries = {
   permissions: v.optional(
     v.nullable(
       v.looseObject({
+        read: v.optional(v.boolean()),
         delete: v.optional(v.boolean()),
         restore: v.optional(v.boolean()),
       }),
@@ -62,12 +63,33 @@ const extensionSshKeyCipherSchema = v.looseObject({
   sshKey: extensionCipherSshKeySchema,
 })
 
-export const extensionCipherSchema = v.variant("type", [
-  extensionPersonalLoginCipherSchema,
-  extensionSecureNoteCipherSchema,
-  extensionCardCipherSchema,
-  extensionIdentityCipherSchema,
-  extensionSshKeyCipherSchema,
-])
+export const extensionCipherSchema = v.pipe(
+  v.variant("type", [
+    extensionPersonalLoginCipherSchema,
+    extensionSecureNoteCipherSchema,
+    extensionCardCipherSchema,
+    extensionIdentityCipherSchema,
+    extensionSshKeyCipherSchema,
+  ]),
+  v.check((value) => {
+    const record = value as {
+      type: number
+      login?: unknown
+      secureNote?: unknown
+      card?: unknown
+      identity?: unknown
+      sshKey?: unknown
+    }
+    const payloads = [record.login, record.secureNote, record.card, record.identity, record.sshKey]
+    const payloadIndex = record.type - 1
+    return (
+      payloadIndex >= 0 &&
+      payloadIndex < payloads.length &&
+      payloads[payloadIndex] !== undefined &&
+      payloads[payloadIndex] !== null &&
+      payloads.every((payload, index) => index === payloadIndex || payload === undefined || payload === null)
+    )
+  }, "Extension cipher payload must match its cipher type."),
+)
 
 export type ExtensionCipher = v.InferOutput<typeof extensionCipherSchema>

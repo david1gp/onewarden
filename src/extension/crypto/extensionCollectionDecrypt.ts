@@ -1,13 +1,13 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import {
   type BitwardenEncryptedCollection,
   bitwardenEncryptedCollectionSchema,
 } from "../../shared/api/bitwardenEncryptedCollectionSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
-import { extensionEncStringDecryptText } from "./extensionEncStringDecryptText.js"
 import { type ExtensionCollection, extensionCollectionSchema } from "./extensionCollectionSchema.js"
+import { extensionEncStringDecryptText } from "./extensionEncStringDecryptText.js"
 
 export async function extensionCollectionDecrypt(
   collection: BitwardenEncryptedCollection,

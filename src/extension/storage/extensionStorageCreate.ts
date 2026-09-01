@@ -1,5 +1,8 @@
 import * as v from "valibot"
 import type { Result } from "#result"
+import { resultCreate } from "../../shared/result/resultCreate.js"
+import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionEnvironmentSource } from "../api/extensionEnvironmentSourceSchema.js"
 import { type ExtensionAuthSession, extensionAuthSessionStorageSchema } from "./extensionAuthSessionStorageSchema.js"
 import { type ExtensionCreateDraft, extensionCreateDraftStorageSchema } from "./extensionCreateDraftStorageSchema.js"
@@ -11,16 +14,15 @@ import {
   type ExtensionGeneratorPreferences,
   extensionGeneratorPreferencesSchema,
 } from "./extensionGeneratorPreferencesSchema.js"
-import { extensionLockPolicySchema, type ExtensionLockPolicy } from "./extensionLockPolicySchema.js"
-import { extensionSessionStateStorageSchema, type ExtensionSessionState } from "./extensionSessionStateStorageSchema.js"
+import { type ExtensionLockPolicy, extensionLockPolicySchema } from "./extensionLockPolicySchema.js"
+import { type ExtensionSessionState, extensionSessionStateStorageSchema } from "./extensionSessionStateStorageSchema.js"
 import type { ExtensionStorageAdapter } from "./extensionStorageAdapter.js"
 import { extensionStorageKeys } from "./extensionStorageKeys.js"
 import { extensionStorageSchemaVersion } from "./extensionStorageSchemaVersion.js"
-import { type ExtensionSyncStorage, extensionSyncStorageSchema } from "./extensionSyncStorageSchema.js"
 import { extensionSyncStorageMigrate } from "./extensionSyncStorageMigrate.js"
+import { type ExtensionSyncStorage, extensionSyncStorageSchema } from "./extensionSyncStorageSchema.js"
 import { extensionSyncStorageSchemaVersion } from "./extensionSyncStorageSchemaVersion.js"
-import { resultCreate } from "../../shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionVaultSortStorageSchema } from "./extensionVaultSortStorageSchema.js"
 
 type StorageSchema<T> = v.GenericSchema<T, T>
 
@@ -261,6 +263,22 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
       "extensionStorage.generatorPreferencesSave",
     )
 
+  const vaultSortLoad = async (): Promise<Result<VaultSort | null>> => {
+    const op = "extensionStorage.vaultSortLoad"
+    const result = await storageRead(adapter.local, extensionStorageKeys.vaultSort, extensionVaultSortStorageSchema, op)
+    if (!result.success) return result
+    return resultCreate(result.data?.sort ?? null)
+  }
+
+  const vaultSortSave = (sort: VaultSort): Promise<Result<void>> =>
+    storageWrite(
+      adapter.local,
+      extensionStorageKeys.vaultSort,
+      extensionVaultSortStorageSchema,
+      storageVersionedCreate({ sort }),
+      "extensionStorage.vaultSortSave",
+    )
+
   const createDraftsLoad = async (): Promise<Result<ExtensionCreateDraft[]>> => {
     const op = "extensionStorage.createDraftsLoad"
     const result = await storageRead(
@@ -346,6 +364,8 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
     lockPolicyClear,
     generatorPreferencesLoad,
     generatorPreferencesSave,
+    vaultSortLoad,
+    vaultSortSave,
     createDraftsLoad,
     createDraftSave,
     createDraftDelete,

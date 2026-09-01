@@ -1,23 +1,39 @@
 import * as v from "valibot"
-import { type Result } from "#result"
-import type { BitwardenEncryptedLoginCipherCreateRequest } from "../../shared/api/bitwardenEncryptedLoginCipherCreateRequestSchema.js"
+import type { Result } from "#result"
+import { bitwardenCollectionListResponseSchema } from "../../shared/api/bitwardenCollectionListResponseSchema.js"
+import {
+  type BitwardenCollectionMutationRequest,
+  bitwardenCollectionMutationRequestSchema,
+} from "../../shared/api/bitwardenCollectionMutationRequestSchema.js"
 import {
   type BitwardenEncryptedCipher,
   bitwardenEncryptedCipherSchema,
 } from "../../shared/api/bitwardenEncryptedCipherSchema.js"
+import type { BitwardenEncryptedCollection } from "../../shared/api/bitwardenEncryptedCollectionSchema.js"
+import { bitwardenEncryptedCollectionSchema } from "../../shared/api/bitwardenEncryptedCollectionSchema.js"
+import { bitwardenEncryptedFolderSchema } from "../../shared/api/bitwardenEncryptedFolderSchema.js"
+import type { BitwardenEncryptedLoginCipherCreateRequest } from "../../shared/api/bitwardenEncryptedLoginCipherCreateRequestSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
+import { bitwardenFolderListResponseSchema } from "../../shared/api/bitwardenFolderListResponseSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
 import type { BitwardenRefreshTokenResponse } from "../../shared/api/bitwardenRefreshTokenResponseSchema.js"
 import type { BitwardenSyncEnvelope } from "../../shared/api/bitwardenSyncEnvelopeSchema.js"
+import { base64Decode } from "../../shared/crypto/base64Decode.js"
 import { base64Encode } from "../../shared/crypto/base64Encode.js"
+import { bitwardenAttachmentBinaryDecrypt } from "../../shared/crypto/bitwardenAttachmentBinaryDecrypt.js"
+import { bitwardenAttachmentBinaryEncrypt } from "../../shared/crypto/bitwardenAttachmentBinaryEncrypt.js"
+import { secureRandomBytes } from "../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
+import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
+import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
+import { extensionCollectionSchema } from "../crypto/extensionCollectionSchema.js"
+import { type ExtensionFolder, extensionFolderSchema } from "../crypto/extensionFolderSchema.js"
 import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
-import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
 import { extensionEmailSchema } from "../extensionEmailSchema.js"
@@ -34,22 +50,90 @@ import { extensionPasskeyCredentialCreateRequestSchema } from "../passkey/extens
 import { extensionPasskeyCredentialIdCreate } from "../passkey/extensionPasskeyCredentialIdCreate.js"
 import { extensionPasskeyCredentialIdDecode } from "../passkey/extensionPasskeyCredentialIdDecode.js"
 import { extensionPasskeyRpIdNormalize } from "../passkey/extensionPasskeyRpIdNormalize.js"
-import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
+import type { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
 import type { ExtensionAuthSession } from "../storage/extensionAuthSessionStorageSchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
-import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import type { ExtensionSyncStorage } from "../storage/extensionSyncStorageSchema.js"
 import type { ExtensionAlarmsAdapter } from "./extensionAlarmsAdapter.js"
+import { extensionAttachmentDeleteRequestSchema } from "./extensionAttachmentDeleteRequestSchema.js"
+import { extensionAttachmentDownloadRequestSchema } from "./extensionAttachmentDownloadRequestSchema.js"
+import type { ExtensionAttachmentDownloadResult } from "./extensionAttachmentDownloadResultSchema.js"
+import { extensionAttachmentUploadRequestSchema } from "./extensionAttachmentUploadRequestSchema.js"
+import { extensionBackgroundCollectionDtoCreate } from "./extensionBackgroundCollectionDtoCreate.js"
+import type { ExtensionBackgroundCollectionDto } from "./extensionBackgroundCollectionDtoSchema.js"
+import { extensionBackgroundCollectionDtoSchema } from "./extensionBackgroundCollectionDtoSchema.js"
+import type { ExtensionBackgroundCollectionListResult } from "./extensionBackgroundCollectionListResultSchema.js"
+import { extensionBackgroundCollectionListResultSchema } from "./extensionBackgroundCollectionListResultSchema.js"
+import { extensionBackgroundFolderDtoCreate } from "./extensionBackgroundFolderDtoCreate.js"
+import type { ExtensionBackgroundFolderDto } from "./extensionBackgroundFolderDtoSchema.js"
+import { extensionBackgroundFolderDtoSchema } from "./extensionBackgroundFolderDtoSchema.js"
+import {
+  type ExtensionBackgroundFolderListResult,
+  extensionBackgroundFolderListResultSchema,
+} from "./extensionBackgroundFolderListResultSchema.js"
+import { extensionCipherArchiveRequestSchema } from "./extensionCipherArchiveRequestSchema.js"
+import { extensionCipherCollectionsUpdateRequestSchema } from "./extensionCipherCollectionsUpdateRequestSchema.js"
+import { extensionCipherCreateRequestSchema } from "./extensionCipherCreateRequestSchema.js"
+import { extensionCipherDeleteRequestSchema } from "./extensionCipherDeleteRequestSchema.js"
+import { extensionCipherDetailReadRequestSchema } from "./extensionCipherDetailReadRequestSchema.js"
+import { extensionCipherDetailReadResultSchema } from "./extensionCipherDetailReadResultSchema.js"
+import { extensionCipherMoveRequestSchema } from "./extensionCipherMoveRequestSchema.js"
+import { extensionCipherMutationRequestCreate } from "./extensionCipherMutationRequestCreate.js"
+import { extensionCipherPartialRequestSchema } from "./extensionCipherPartialRequestSchema.js"
+import { extensionCipherRestoreRequestSchema } from "./extensionCipherRestoreRequestSchema.js"
+import { extensionCipherUpdateRequestSchema } from "./extensionCipherUpdateRequestSchema.js"
+import { extensionCollectionCreateRequestSchema } from "./extensionCollectionCreateRequestSchema.js"
+import { extensionCollectionDeleteRequestSchema } from "./extensionCollectionDeleteRequestSchema.js"
+import { extensionCollectionListRequestSchema } from "./extensionCollectionListRequestSchema.js"
+import { extensionCollectionReadRequestSchema } from "./extensionCollectionReadRequestSchema.js"
+import { extensionCollectionUpdateRequestSchema } from "./extensionCollectionUpdateRequestSchema.js"
+import { extensionFolderCreateRequestSchema } from "./extensionFolderCreateRequestSchema.js"
+import { extensionFolderDeleteRequestSchema } from "./extensionFolderDeleteRequestSchema.js"
+import { extensionFolderListRequestSchema } from "./extensionFolderListRequestSchema.js"
+import { extensionFolderReadRequestSchema } from "./extensionFolderReadRequestSchema.js"
+import { extensionFolderUpdateRequestSchema } from "./extensionFolderUpdateRequestSchema.js"
 import { extensionSyncCacheSnapshotSchema } from "./extensionSyncCacheSnapshotSchema.js"
 import { type ExtensionSyncSnapshot, extensionSyncSnapshotSchema } from "./extensionSyncSnapshotSchema.js"
 import { extensionTimeoutAlarmName } from "./extensionTimeoutAlarmName.js"
+import { extensionVaultSearch } from "./extensionVaultSearch.js"
+import {
+  type ExtensionVaultSearchRequest,
+  extensionVaultSearchRequestSchema,
+} from "./extensionVaultSearchRequestSchema.js"
+import type { ExtensionVaultSearchResult } from "./extensionVaultSearchResultSchema.js"
 
 type ExtensionApiClient = Pick<
   ReturnType<typeof extensionBitwardenApiClientCreate>,
   "prelogin" | "passwordToken" | "refreshToken" | "revisionDate" | "sync"
 > &
   Partial<
-    Pick<ReturnType<typeof extensionBitwardenApiClientCreate>, "cipherCreate" | "cipherUpdate" | "sessionHandoffCreate">
+    Pick<
+      ReturnType<typeof extensionBitwardenApiClientCreate>,
+      | "cipherRead"
+      | "cipherCreate"
+      | "cipherUpdate"
+      | "cipherPartial"
+      | "cipherDelete"
+      | "cipherRestore"
+      | "cipherArchive"
+      | "cipherMove"
+      | "cipherCollectionsUpdate"
+      | "attachmentUpload"
+      | "attachmentDownload"
+      | "attachmentDelete"
+      | "folderList"
+      | "folderRead"
+      | "folderCreate"
+      | "folderUpdate"
+      | "folderDelete"
+      | "collectionList"
+      | "collectionRead"
+      | "collectionCreate"
+      | "collectionUpdate"
+      | "collectionDelete"
+      | "sessionHandoffCreate"
+    >
   >
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 type ExtensionVaultSession = ReturnType<typeof extensionVaultSessionCreate>
@@ -120,6 +204,10 @@ function unauthorized<T>(op: string): Result<T> {
     code: "platform.unauthorized",
     statusCode: 401,
   })
+}
+
+function unavailable<T>(op: string, message: string): Result<T> {
+  return resultErrorCreate(op, message, { code: "platform.unavailable", statusCode: 503 })
 }
 
 function internal<T>(op: string, message: string): Result<T> {
@@ -254,6 +342,11 @@ function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): Extensi
   return ciphers.filter(
     (cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1 || cipher.type === undefined,
   )
+}
+
+function cipherReadPermissionAllowed(cipher: BitwardenEncryptedCipher): boolean {
+  if (cipher.permissions === undefined || cipher.permissions === null) return true
+  return cipher.permissions.read !== false
 }
 
 export function extensionBackgroundServiceCreate(options: ExtensionBackgroundServiceOptions) {
@@ -480,6 +573,98 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     return resultCreate({ ...snapshotParsed.output, ciphers })
   }
 
+  const syncCacheSnapshotDataRead = async (
+    op: string,
+  ): Promise<Result<v.InferOutput<typeof extensionSyncCacheSnapshotSchema> | null>> => {
+    const cacheResult = await options.storage.syncCacheLoad()
+    if (!cacheResult.success) return cacheResult
+    if (cacheResult.data === null || cacheResult.data.snapshot === null) return resultCreate(null)
+    const snapshotBytesResult = await options.vaultSession.encryptedPayloadDecrypt(cacheResult.data.snapshot)
+    if (!snapshotBytesResult.success) return snapshotBytesResult
+    const snapshotValueResult = textDecode(op, snapshotBytesResult.data)
+    if (!snapshotValueResult.success) return snapshotValueResult
+    const snapshotParsed = v.safeParse(extensionSyncCacheSnapshotSchema, snapshotValueResult.data)
+    if (!snapshotParsed.success) return internal(op, "Stored sync profile is invalid.")
+    return resultCreate(snapshotParsed.output)
+  }
+
+  const syncProfileRead = async (op: string): Promise<Result<ExtensionSyncSnapshot["profile"] | null>> => {
+    const snapshotResult = await syncCacheSnapshotDataRead(op)
+    if (!snapshotResult.success) return snapshotResult
+    return resultCreate(snapshotResult.data?.profile ?? null)
+  }
+
+  const syncCollectionsRead = async (op: string): Promise<Result<ExtensionSyncSnapshot["collections"] | null>> => {
+    const snapshotResult = await syncCacheSnapshotDataRead(op)
+    if (!snapshotResult.success) return snapshotResult
+    return resultCreate(snapshotResult.data?.collections ?? null)
+  }
+
+  const collectionOrganizationReadAuthorize = async (
+    op: string,
+    organizationId: string,
+  ): Promise<Result<ExtensionSyncSnapshot["profile"]["organizations"][number]>> => {
+    const profileResult = await syncProfileRead(op)
+    if (!profileResult.success) return profileResult
+    const organization = profileResult.data?.organizations.find(
+      (entry) => entry.id === organizationId && entry.status === 2,
+    )
+    if (organization === undefined) {
+      return resultErrorCreate(op, "Organization access is unavailable.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    return resultCreate(organization)
+  }
+
+  const collectionOrganizationFullAccess = (
+    organization: ExtensionSyncSnapshot["profile"]["organizations"][number],
+  ): boolean => organization.accessAll === true || organization.type === 0 || organization.type === 1
+
+  const collectionOrganizationPermissionAllowed = (
+    organization: ExtensionSyncSnapshot["profile"]["organizations"][number],
+    permission: "createNewCollections" | "editAnyCollection" | "deleteAnyCollection",
+  ): boolean => collectionOrganizationFullAccess(organization) || organization.permissions?.[permission] === true
+
+  const collectionReadPermissionAuthorize = (
+    op: string,
+    collection: ExtensionCollection,
+    organization: ExtensionSyncSnapshot["profile"]["organizations"][number],
+  ): Result<void> => {
+    if (collection.assigned !== false || collectionOrganizationFullAccess(organization)) return resultCreate(undefined)
+    return resultErrorCreate(op, "Collection read permission was denied.", {
+      code: "platform.forbidden",
+      statusCode: 403,
+    })
+  }
+
+  const collectionManagePermissionAuthorize = (
+    op: string,
+    collection: ExtensionCollection,
+    organization: ExtensionSyncSnapshot["profile"]["organizations"][number],
+    permission: "editAnyCollection" | "deleteAnyCollection",
+  ): Result<void> => {
+    if (
+      collection.readOnly === true ||
+      collection.unmanaged === true ||
+      (collection.hidePasswords === true && collection.manage !== true)
+    ) {
+      return resultErrorCreate(op, "Collection manage permission was denied.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    if (collectionOrganizationPermissionAllowed(organization, permission)) return resultCreate(undefined)
+    if (collection.assigned === false || collection.manage !== true) {
+      return resultErrorCreate(op, "Collection manage permission was denied.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    return resultCreate(undefined)
+  }
+
   const syncSnapshotCreate = async (
     envelope: BitwardenSyncEnvelope,
     revisionDate: number,
@@ -491,14 +676,12 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     const organizationKeysResult = await options.vaultSession.organizationKeysReplace(profileParsed.output)
     if (!organizationKeysResult.success) return organizationKeysResult
     const foldersResult =
-      envelope.folders.length === 0
-        ? resultCreate([])
-        : options.vaultSession.foldersDecrypt(envelope.folders)
+      envelope.folders.length === 0 ? resultCreate([]) : await options.vaultSession.foldersDecrypt(envelope.folders)
     if (!foldersResult.success) return foldersResult
     const collectionsResult =
       envelope.collections.length === 0
         ? resultCreate([])
-        : options.vaultSession.collectionsDecrypt(envelope.collections)
+        : await options.vaultSession.collectionsDecrypt(envelope.collections)
     if (!collectionsResult.success) return collectionsResult
     const authorizedOrganizationIds = new Set(
       profileParsed.output.organizations
@@ -609,6 +792,737 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       if (cacheResult.data === null) return resultCreate(null)
       return syncCacheRead(cacheResult.data)
     })
+
+  const organizationCipherReadAuthorize = async (
+    cipher: BitwardenEncryptedCipher,
+    op: string,
+  ): Promise<Result<void>> => {
+    if (cipher.organizationId === undefined || cipher.organizationId === null) return resultCreate(undefined)
+
+    const cacheResult = await options.storage.syncCacheLoad()
+    if (!cacheResult.success) return cacheResult
+    if (cacheResult.data === null || cacheResult.data.snapshot === null) {
+      return resultErrorCreate(op, "Organization access is unavailable.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    const snapshotBytesResult = await options.vaultSession.encryptedPayloadDecrypt(cacheResult.data.snapshot)
+    if (!snapshotBytesResult.success) return snapshotBytesResult
+    const snapshotValueResult = textDecode(op, snapshotBytesResult.data)
+    if (!snapshotValueResult.success) return snapshotValueResult
+    const snapshotParsed = v.safeParse(extensionSyncCacheSnapshotSchema, snapshotValueResult.data)
+    if (!snapshotParsed.success) return internal(op, "Stored sync profile is invalid.")
+    const organization = snapshotParsed.output.profile.organizations.find(
+      (entry) => entry.id === cipher.organizationId && entry.status === 2,
+    )
+    if (organization === undefined) {
+      return resultErrorCreate(op, "Cipher is not accessible to this account.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    return resultCreate(undefined)
+  }
+
+  const mutationAuthRequire = async (op: string): Promise<Result<void>> => {
+    if (!options.vaultSession.isUnlocked()) return unauthorized(op)
+    const authResult = await options.storage.authSessionLoad()
+    if (!authResult.success) return authResult
+    if (authResult.data === null) return unauthorized(op)
+    return resultCreate(undefined)
+  }
+
+  const organizationCipherMutationAuthorize = async (
+    op: string,
+    organizationId: string | null | undefined,
+  ): Promise<Result<void>> => {
+    if (organizationId === undefined || organizationId === null) return resultCreate(undefined)
+    const profileResult = await syncProfileRead(op)
+    if (!profileResult.success) return profileResult
+    if (
+      profileResult.data?.organizations.some(
+        (organization) => organization.id === organizationId && organization.status === 2,
+      )
+    )
+      return resultCreate(undefined)
+    return resultErrorCreate(op, "Organization access is unavailable.", {
+      code: "platform.forbidden",
+      statusCode: 403,
+    })
+  }
+
+  const cipherCollectionAssignmentAuthorize = async (
+    op: string,
+    organizationId: string | null | undefined,
+    collectionIds: readonly string[],
+  ): Promise<Result<void>> => {
+    const organizationResult = await organizationCipherMutationAuthorize(op, organizationId)
+    if (!organizationResult.success) return organizationResult
+    if (collectionIds.length === 0) return resultCreate(undefined)
+    const collectionsResult = await syncCollectionsRead(op)
+    if (!collectionsResult.success) return collectionsResult
+    if (collectionsResult.data === null) {
+      return resultErrorCreate(op, "Organization collections are unavailable.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    for (const collectionId of collectionIds) {
+      const collection = collectionsResult.data.find(
+        (entry) => entry.id === collectionId && entry.organizationId === organizationId,
+      )
+      if (collection === undefined || collection.readOnly === true || collection.unmanaged === true) {
+        return resultErrorCreate(op, "Collection write permission was denied.", {
+          code: "platform.forbidden",
+          statusCode: 403,
+        })
+      }
+    }
+    return resultCreate(undefined)
+  }
+
+  const cipherMutationPermissionAuthorize = (
+    op: string,
+    cipher: ExtensionCipher,
+    permission: "edit" | "delete" | "restore",
+  ): Result<void> => {
+    if (cipher.edit === false) {
+      return resultErrorCreate(op, "Cipher is read-only.", { code: "platform.forbidden", statusCode: 403 })
+    }
+    if (permission === "delete" && cipher.permissions?.delete === false) {
+      return resultErrorCreate(op, "Cipher delete permission was denied.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    if (permission === "restore" && cipher.permissions?.restore === false) {
+      return resultErrorCreate(op, "Cipher restore permission was denied.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    return resultCreate(undefined)
+  }
+
+  const cipherMutationTargetRead = async (
+    op: string,
+    cipherId: string,
+  ): Promise<Result<{ encrypted: BitwardenEncryptedCipher; plain: ExtensionCipher }>> => {
+    const authResult = await mutationAuthRequire(op)
+    if (!authResult.success) return authResult
+    const cipherRead = options.apiClient.cipherRead
+    if (cipherRead === undefined) return internal(op, "Cipher read API is unavailable.")
+    const responseResult = await protectedRequest((accessToken) => cipherRead(cipherId, { accessToken }))
+    if (!responseResult.success) return responseResult
+    const encryptedResult = v.safeParse(bitwardenEncryptedCipherSchema, responseResult.data)
+    if (!encryptedResult.success) return internal(op, "Cipher response is invalid.")
+    if (encryptedResult.output.id !== cipherId)
+      return internal(op, "Cipher response does not match the requested cipher.")
+    if (!cipherReadPermissionAllowed(encryptedResult.output)) {
+      return resultErrorCreate(op, "Cipher read permission was denied.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    }
+    const organizationResult = await organizationCipherReadAuthorize(encryptedResult.output, op)
+    if (!organizationResult.success) return organizationResult
+    const decryptedResult = await options.vaultSession.cipherDecrypt(encryptedResult.output)
+    if (!decryptedResult.success) return decryptedResult
+    const plainResult = v.safeParse(extensionCipherSchema, decryptedResult.data)
+    if (!plainResult.success) return internal(op, "Decrypted cipher response is invalid.")
+    return resultCreate({ encrypted: encryptedResult.output, plain: plainResult.output })
+  }
+
+  const cipherMutationEncryptedResponseRead = (
+    op: string,
+    response: unknown,
+    cipherId?: string,
+    cipherType?: ExtensionCipher["type"],
+  ): Result<BitwardenEncryptedCipher> => {
+    const encryptedResult = v.safeParse(bitwardenEncryptedCipherSchema, response)
+    if (!encryptedResult.success) return internal(op, "Cipher mutation response is invalid.")
+    if (cipherId !== undefined && encryptedResult.output.id !== cipherId)
+      return internal(op, "Cipher mutation response does not match the requested cipher.")
+    if (cipherType !== undefined && encryptedResult.output.type !== cipherType)
+      return internal(op, "Cipher mutation response type does not match the request.")
+    return resultCreate(encryptedResult.output)
+  }
+
+  const cipherMutationResponseRead = async (
+    op: string,
+    response: unknown,
+    cipherId?: string,
+    cipherType?: ExtensionCipher["type"],
+  ): Promise<Result<ExtensionCipher>> => {
+    const encryptedResult = cipherMutationEncryptedResponseRead(op, response, cipherId, cipherType)
+    if (!encryptedResult.success) return encryptedResult
+    const decryptedResult = await options.vaultSession.cipherDecrypt(encryptedResult.data)
+    if (!decryptedResult.success) return decryptedResult
+    const plainResult = v.safeParse(extensionCipherSchema, decryptedResult.data)
+    if (!plainResult.success) return internal(op, "Decrypted cipher mutation response is invalid.")
+    return resultCreate(plainResult.output)
+  }
+
+  const mutationSyncRun = async (): Promise<Result<void>> => {
+    const syncResult = await syncRun(true)
+    if (!syncResult.success) return syncResult
+    return resultCreate(undefined)
+  }
+
+  const folderMutationResponseRead = async (
+    op: string,
+    response: unknown,
+    folderId?: string,
+  ): Promise<Result<ExtensionFolder>> => {
+    const encryptedResult = v.safeParse(bitwardenEncryptedFolderSchema, response)
+    if (!encryptedResult.success) return internal(op, "Folder mutation response is invalid.")
+    if (folderId !== undefined && encryptedResult.output.id !== folderId)
+      return internal(op, "Folder mutation response does not match the requested folder.")
+    const decryptedResult = await options.vaultSession.folderDecrypt(encryptedResult.output)
+    if (!decryptedResult.success) return decryptedResult
+    const plainResult = v.safeParse(extensionFolderSchema, decryptedResult.data)
+    if (!plainResult.success) return internal(op, "Decrypted folder mutation response is invalid.")
+    return resultCreate(plainResult.output)
+  }
+
+  const folderTargetRead = async (op: string, folderId: string): Promise<Result<ExtensionFolder>> => {
+    const authResult = await mutationAuthRequire(op)
+    if (!authResult.success) return authResult
+    const apiRead = options.apiClient.folderRead
+    if (apiRead === undefined) return internal(op, "Folder read API is unavailable.")
+    const responseResult = await protectedRequest((accessToken) => apiRead(folderId, { accessToken }))
+    if (!responseResult.success) return responseResult
+    return folderMutationResponseRead(op, responseResult.data, folderId)
+  }
+
+  const folderDtoRead = (op: string, folder: ExtensionFolder): Result<ExtensionBackgroundFolderDto> => {
+    const parsed = v.safeParse(extensionBackgroundFolderDtoSchema, extensionBackgroundFolderDtoCreate(folder))
+    if (!parsed.success) return internal(op, "Folder response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const folderList = (request: unknown): Promise<Result<ExtensionBackgroundFolderListResult>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.folderList"
+      const parsedRequest = v.safeParse(extensionFolderListRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Folder list request is invalid.", v.summarize(parsedRequest.issues))
+      const authResult = await mutationAuthRequire(op)
+      if (!authResult.success) return authResult
+      const apiList = options.apiClient.folderList
+      if (apiList === undefined) return internal(op, "Folder list API is unavailable.")
+      const responseResult = await protectedRequest((accessToken) => apiList({ accessToken }))
+      if (!responseResult.success) return responseResult
+      const responseParsed = v.safeParse(bitwardenFolderListResponseSchema, responseResult.data)
+      if (!responseParsed.success) return internal(op, "Folder list response is invalid.")
+      const folders: ExtensionBackgroundFolderListResult = []
+      for (const encryptedFolder of responseParsed.output.data) {
+        const folderResult = await folderMutationResponseRead(op, encryptedFolder)
+        if (!folderResult.success) return folderResult
+        const dtoResult = folderDtoRead(op, folderResult.data)
+        if (!dtoResult.success) return dtoResult
+        folders.push(dtoResult.data)
+      }
+      const resultParsed = v.safeParse(extensionBackgroundFolderListResultSchema, folders)
+      if (!resultParsed.success) return internal(op, "Folder list response is invalid.")
+      return resultCreate(resultParsed.output)
+    })
+
+  const folderRead = (request: unknown): Promise<Result<ExtensionBackgroundFolderDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.folderRead"
+      const parsedRequest = v.safeParse(extensionFolderReadRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Folder read request is invalid.", v.summarize(parsedRequest.issues))
+      const folderResult = await folderTargetRead(op, parsedRequest.output.folderId)
+      if (!folderResult.success) return folderResult
+      return folderDtoRead(op, folderResult.data)
+    })
+
+  const folderCreate = (request: unknown): Promise<Result<ExtensionBackgroundFolderDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.folderCreate"
+      const parsedRequest = v.safeParse(extensionFolderCreateRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Folder create request is invalid.", v.summarize(parsedRequest.issues))
+      const authResult = await mutationAuthRequire(op)
+      if (!authResult.success) return authResult
+      const encryptedResult = await options.vaultSession.folderEncrypt(parsedRequest.output.folder)
+      if (!encryptedResult.success) return encryptedResult
+      const apiCreate = options.apiClient.folderCreate
+      if (apiCreate === undefined) return internal(op, "Folder create API is unavailable.")
+      const createResult = await protectedRequest((accessToken) =>
+        apiCreate({ id: encryptedResult.data.id, name: encryptedResult.data.name }, { accessToken }),
+      )
+      if (!createResult.success) return createResult
+      const folderResult = await folderMutationResponseRead(op, createResult.data)
+      if (!folderResult.success) return folderResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return folderDtoRead(op, folderResult.data)
+    })
+
+  const folderUpdate = (request: unknown): Promise<Result<ExtensionBackgroundFolderDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.folderUpdate"
+      const parsedRequest = v.safeParse(extensionFolderUpdateRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Folder update request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await folderTargetRead(op, parsedRequest.output.folderId)
+      if (!targetResult.success) return targetResult
+      if (parsedRequest.output.folder.id !== parsedRequest.output.folderId)
+        return invalidRequest(op, "Folder update request ID does not match the target folder.")
+      const encryptedResult = await options.vaultSession.folderEncrypt(parsedRequest.output.folder)
+      if (!encryptedResult.success) return encryptedResult
+      const apiUpdate = options.apiClient.folderUpdate
+      if (apiUpdate === undefined) return internal(op, "Folder update API is unavailable.")
+      const updateResult = await protectedRequest((accessToken) =>
+        apiUpdate(
+          parsedRequest.output.folderId,
+          { id: encryptedResult.data.id, name: encryptedResult.data.name },
+          { accessToken },
+        ),
+      )
+      if (!updateResult.success) return updateResult
+      const folderResult = await folderMutationResponseRead(op, updateResult.data, parsedRequest.output.folderId)
+      if (!folderResult.success) return folderResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return folderDtoRead(op, folderResult.data)
+    })
+
+  const folderDelete = (request: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.folderDelete"
+      const parsedRequest = v.safeParse(extensionFolderDeleteRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Folder delete request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await folderTargetRead(op, parsedRequest.output.folderId)
+      if (!targetResult.success) return targetResult
+      const apiDelete = options.apiClient.folderDelete
+      if (apiDelete === undefined) return internal(op, "Folder delete API is unavailable.")
+      const deleteResult = await protectedRequest((accessToken) =>
+        apiDelete(parsedRequest.output.folderId, { accessToken }),
+      )
+      if (!deleteResult.success) return deleteResult
+      return mutationSyncRun()
+    })
+
+  const collectionDtoRead = (op: string, collection: ExtensionCollection): Result<ExtensionBackgroundCollectionDto> => {
+    const parsed = v.safeParse(
+      extensionBackgroundCollectionDtoSchema,
+      extensionBackgroundCollectionDtoCreate(collection),
+    )
+    if (!parsed.success) return internal(op, "Collection response is invalid.")
+    return resultCreate(parsed.output)
+  }
+
+  const collectionMutationResponseRead = async (
+    op: string,
+    response: unknown,
+    organizationId: string,
+    collectionId?: string,
+  ): Promise<Result<ExtensionCollection>> => {
+    const encryptedResult = v.safeParse(bitwardenEncryptedCollectionSchema, response)
+    if (!encryptedResult.success) return internal(op, "Collection mutation response is invalid.")
+    if (encryptedResult.output.organizationId !== organizationId)
+      return resultErrorCreate(op, "Collection response organization does not match the request.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    if (collectionId !== undefined && encryptedResult.output.id !== collectionId)
+      return internal(op, "Collection mutation response does not match the requested collection.")
+    const decryptedResult = await options.vaultSession.collectionDecrypt(encryptedResult.output)
+    if (!decryptedResult.success) return decryptedResult
+    const parsed = v.safeParse(extensionCollectionSchema, decryptedResult.data)
+    if (!parsed.success) return internal(op, "Decrypted collection mutation response is invalid.")
+    if (parsed.output.organizationId !== organizationId)
+      return resultErrorCreate(op, "Collection response organization does not match the request.", {
+        code: "platform.forbidden",
+        statusCode: 403,
+      })
+    if (collectionId !== undefined && parsed.output.id !== collectionId)
+      return internal(op, "Decrypted collection response does not match the requested collection.")
+    return resultCreate(parsed.output)
+  }
+
+  const collectionMutationRequestCreate = (
+    op: string,
+    collection: BitwardenEncryptedCollection,
+    groups: BitwardenCollectionMutationRequest["groups"],
+    users: BitwardenCollectionMutationRequest["users"],
+  ): Result<BitwardenCollectionMutationRequest> => {
+    const parsed = v.safeParse(bitwardenCollectionMutationRequestSchema, {
+      id: collection.id,
+      name: collection.name,
+      ...(collection.externalId === undefined ? {} : { externalId: collection.externalId }),
+      groups,
+      users,
+    })
+    if (!parsed.success)
+      return invalidRequest(op, "Collection mutation request is invalid.", v.summarize(parsed.issues))
+    return resultCreate(parsed.output)
+  }
+
+  const collectionTargetRead = async (
+    op: string,
+    organizationId: string,
+    collectionId: string,
+  ): Promise<
+    Result<{ collection: ExtensionCollection; organization: ExtensionSyncSnapshot["profile"]["organizations"][number] }>
+  > => {
+    const authResult = await mutationAuthRequire(op)
+    if (!authResult.success) return authResult
+    const organizationResult = await collectionOrganizationReadAuthorize(op, organizationId)
+    if (!organizationResult.success) return organizationResult
+    const apiRead = options.apiClient.collectionRead
+    if (apiRead === undefined) return internal(op, "Collection read API is unavailable.")
+    const responseResult = await protectedRequest((accessToken) =>
+      apiRead(organizationId, collectionId, { accessToken }),
+    )
+    if (!responseResult.success) return responseResult
+    const collectionResult = await collectionMutationResponseRead(op, responseResult.data, organizationId, collectionId)
+    if (!collectionResult.success) return collectionResult
+    const permissionResult = collectionReadPermissionAuthorize(op, collectionResult.data, organizationResult.data)
+    if (!permissionResult.success) return permissionResult
+    return resultCreate({ collection: collectionResult.data, organization: organizationResult.data })
+  }
+
+  const collectionList = (request: unknown): Promise<Result<ExtensionBackgroundCollectionListResult>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.collectionList"
+      const parsedRequest = v.safeParse(extensionCollectionListRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Collection list request is invalid.", v.summarize(parsedRequest.issues))
+      const authResult = await mutationAuthRequire(op)
+      if (!authResult.success) return authResult
+      const organizationResult = await collectionOrganizationReadAuthorize(op, parsedRequest.output.organizationId)
+      if (!organizationResult.success) return organizationResult
+      const apiList = options.apiClient.collectionList
+      if (apiList === undefined) return internal(op, "Collection list API is unavailable.")
+      const responseResult = await protectedRequest((accessToken) => apiList({ accessToken }))
+      if (!responseResult.success) return responseResult
+      const responseParsed = v.safeParse(bitwardenCollectionListResponseSchema, responseResult.data)
+      if (!responseParsed.success) return internal(op, "Collection list response is invalid.")
+      const collections: ExtensionBackgroundCollectionListResult = []
+      for (const encryptedCollection of responseParsed.output.data) {
+        if (encryptedCollection.organizationId !== parsedRequest.output.organizationId) continue
+        const collectionResult = await collectionMutationResponseRead(
+          op,
+          encryptedCollection,
+          parsedRequest.output.organizationId,
+        )
+        if (!collectionResult.success) return collectionResult
+        const permissionResult = collectionReadPermissionAuthorize(op, collectionResult.data, organizationResult.data)
+        if (!permissionResult.success) continue
+        const dtoResult = collectionDtoRead(op, collectionResult.data)
+        if (!dtoResult.success) return dtoResult
+        collections.push(dtoResult.data)
+      }
+      const resultParsed = v.safeParse(extensionBackgroundCollectionListResultSchema, collections)
+      if (!resultParsed.success) return internal(op, "Collection list response is invalid.")
+      return resultCreate(resultParsed.output)
+    })
+
+  const collectionRead = (request: unknown): Promise<Result<ExtensionBackgroundCollectionDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.collectionRead"
+      const parsedRequest = v.safeParse(extensionCollectionReadRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Collection read request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await collectionTargetRead(
+        op,
+        parsedRequest.output.organizationId,
+        parsedRequest.output.collectionId,
+      )
+      if (!targetResult.success) return targetResult
+      return collectionDtoRead(op, targetResult.data.collection)
+    })
+
+  const collectionCreate = (request: unknown): Promise<Result<ExtensionBackgroundCollectionDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.collectionCreate"
+      const parsedRequest = v.safeParse(extensionCollectionCreateRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Collection create request is invalid.", v.summarize(parsedRequest.issues))
+      const authResult = await mutationAuthRequire(op)
+      if (!authResult.success) return authResult
+      const organizationResult = await collectionOrganizationReadAuthorize(op, parsedRequest.output.organizationId)
+      if (!organizationResult.success) return organizationResult
+      if (!collectionOrganizationPermissionAllowed(organizationResult.data, "createNewCollections")) {
+        return resultErrorCreate(op, "Collection create permission was denied.", {
+          code: "platform.forbidden",
+          statusCode: 403,
+        })
+      }
+      if (parsedRequest.output.collection.organizationId !== parsedRequest.output.organizationId)
+        return invalidRequest(op, "Collection organization does not match the request.")
+      const encryptedResult = await options.vaultSession.collectionEncrypt(parsedRequest.output.collection)
+      if (!encryptedResult.success) return encryptedResult
+      const requestResult = collectionMutationRequestCreate(
+        op,
+        encryptedResult.data,
+        parsedRequest.output.groups,
+        parsedRequest.output.users,
+      )
+      if (!requestResult.success) return requestResult
+      const apiCreate = options.apiClient.collectionCreate
+      if (apiCreate === undefined) return internal(op, "Collection create API is unavailable.")
+      const createResult = await protectedRequest((accessToken) =>
+        apiCreate(parsedRequest.output.organizationId, requestResult.data, { accessToken }),
+      )
+      if (!createResult.success) return createResult
+      const collectionResult = await collectionMutationResponseRead(
+        op,
+        createResult.data,
+        parsedRequest.output.organizationId,
+      )
+      if (!collectionResult.success) return collectionResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return collectionDtoRead(op, collectionResult.data)
+    })
+
+  const collectionUpdate = (request: unknown): Promise<Result<ExtensionBackgroundCollectionDto>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.collectionUpdate"
+      const parsedRequest = v.safeParse(extensionCollectionUpdateRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Collection update request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await collectionTargetRead(
+        op,
+        parsedRequest.output.organizationId,
+        parsedRequest.output.collectionId,
+      )
+      if (!targetResult.success) return targetResult
+      const permissionResult = collectionManagePermissionAuthorize(
+        op,
+        targetResult.data.collection,
+        targetResult.data.organization,
+        "editAnyCollection",
+      )
+      if (!permissionResult.success) return permissionResult
+      if (parsedRequest.output.collection.id !== parsedRequest.output.collectionId)
+        return invalidRequest(op, "Collection update request ID does not match the target collection.")
+      if (parsedRequest.output.collection.organizationId !== parsedRequest.output.organizationId)
+        return invalidRequest(op, "Collection organization does not match the request.")
+      const encryptedResult = await options.vaultSession.collectionEncrypt(parsedRequest.output.collection)
+      if (!encryptedResult.success) return encryptedResult
+      const requestResult = collectionMutationRequestCreate(
+        op,
+        encryptedResult.data,
+        parsedRequest.output.groups,
+        parsedRequest.output.users,
+      )
+      if (!requestResult.success) return requestResult
+      const apiUpdate = options.apiClient.collectionUpdate
+      if (apiUpdate === undefined) return internal(op, "Collection update API is unavailable.")
+      const updateResult = await protectedRequest((accessToken) =>
+        apiUpdate(parsedRequest.output.organizationId, parsedRequest.output.collectionId, requestResult.data, {
+          accessToken,
+        }),
+      )
+      if (!updateResult.success) return updateResult
+      const collectionResult = await collectionMutationResponseRead(
+        op,
+        updateResult.data,
+        parsedRequest.output.organizationId,
+        parsedRequest.output.collectionId,
+      )
+      if (!collectionResult.success) return collectionResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return collectionDtoRead(op, collectionResult.data)
+    })
+
+  const collectionDelete = (request: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.collectionDelete"
+      const parsedRequest = v.safeParse(extensionCollectionDeleteRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Collection delete request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await collectionTargetRead(
+        op,
+        parsedRequest.output.organizationId,
+        parsedRequest.output.collectionId,
+      )
+      if (!targetResult.success) return targetResult
+      const permissionResult = collectionManagePermissionAuthorize(
+        op,
+        targetResult.data.collection,
+        targetResult.data.organization,
+        "deleteAnyCollection",
+      )
+      if (!permissionResult.success) return permissionResult
+      const apiDelete = options.apiClient.collectionDelete
+      if (apiDelete === undefined) return internal(op, "Collection delete API is unavailable.")
+      const deleteResult = await protectedRequest((accessToken) =>
+        apiDelete(parsedRequest.output.organizationId, parsedRequest.output.collectionId, { accessToken }),
+      )
+      if (!deleteResult.success) return deleteResult
+      return mutationSyncRun()
+    })
+
+  const cipherDetailRead = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherDetailRead"
+      const parsedRequest = v.safeParse(extensionCipherDetailReadRequestSchema, request)
+      if (!parsedRequest.success)
+        return invalidRequest(op, "Cipher detail read request is invalid.", v.summarize(parsedRequest.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsedRequest.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const resultParsed = v.safeParse(extensionCipherDetailReadResultSchema, targetResult.data.plain)
+      if (!resultParsed.success) return internal(op, "Decrypted cipher detail is invalid.")
+      return resultCreate(resultParsed.output)
+    })
+
+  const attachmentUpload = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.attachmentUpload"
+      const parsed = v.safeParse(extensionAttachmentUploadRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "Attachment upload request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      const dataResult = base64Decode(parsed.output.dataBase64)
+      if (!dataResult.success) return invalidRequest(op, "Attachment data is invalid.")
+      const attachmentKeyResult = secureRandomBytes(64)
+      if (!attachmentKeyResult.success) {
+        dataResult.data.fill(0)
+        return attachmentKeyResult
+      }
+      const attachmentKey = attachmentKeyResult.data
+      let encryptedData: Uint8Array | undefined
+      try {
+        const encryptedDataResult = await bitwardenAttachmentBinaryEncrypt(dataResult.data, attachmentKey)
+        if (!encryptedDataResult.success) return encryptedDataResult
+        encryptedData = encryptedDataResult.data
+        const temporaryId = `upload-${now()}`
+        const attachmentCipherResult = await options.vaultSession.cipherEncrypt({
+          ...targetResult.data.plain,
+          attachments: [
+            ...(targetResult.data.plain.attachments ?? []),
+            { id: temporaryId, fileName: parsed.output.fileName, key: base64Encode(attachmentKey) },
+          ],
+        })
+        if (!attachmentCipherResult.success) return attachmentCipherResult
+        const encryptedAttachment = attachmentCipherResult.data.attachments?.find((entry) => entry.id === temporaryId)
+        if (encryptedAttachment?.key === undefined || encryptedAttachment.key === null) {
+          return internal(op, "Attachment key could not be encrypted.")
+        }
+        const apiUpload = options.apiClient.attachmentUpload
+        if (apiUpload === undefined) return internal(op, "Attachment upload API is unavailable.")
+        const uploadResult = await protectedRequest((accessToken) =>
+          apiUpload(
+            parsed.output.cipherId,
+            encryptedData as Uint8Array,
+            encryptedAttachment.fileName,
+            encryptedAttachment.key as string,
+            { accessToken },
+          ),
+        )
+        if (!uploadResult.success) return uploadResult
+        const responseResult = await cipherMutationResponseRead(
+          op,
+          uploadResult.data,
+          parsed.output.cipherId,
+          targetResult.data.plain.type,
+        )
+        if (!responseResult.success) return responseResult
+        const syncResult = await mutationSyncRun()
+        if (!syncResult.success) return syncResult
+        return responseResult
+      } finally {
+        dataResult.data.fill(0)
+        attachmentKey.fill(0)
+        encryptedData?.fill(0)
+      }
+    })
+
+  const attachmentDownload = (request: unknown): Promise<Result<ExtensionAttachmentDownloadResult>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.attachmentDownload"
+      const parsed = v.safeParse(extensionAttachmentDownloadRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "Attachment download request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const attachment = targetResult.data.plain.attachments?.find((entry) => entry.id === parsed.output.attachmentId)
+      if (attachment === undefined || attachment.key === undefined || attachment.key === null) {
+        return invalidRequest(op, "Attachment could not be found.")
+      }
+      const keyResult = base64Decode(attachment.key)
+      if (!keyResult.success) return internal(op, "Attachment key is invalid.")
+      const apiDownload = options.apiClient.attachmentDownload
+      if (apiDownload === undefined) {
+        keyResult.data.fill(0)
+        return internal(op, "Attachment download API is unavailable.")
+      }
+      let encryptedData: Uint8Array | undefined
+      let plainData: Uint8Array | undefined
+      try {
+        const downloadResult = await protectedRequest((accessToken) =>
+          apiDownload(parsed.output.cipherId, parsed.output.attachmentId, { accessToken }),
+        )
+        if (!downloadResult.success) return downloadResult
+        encryptedData = downloadResult.data
+        const decryptResult = await bitwardenAttachmentBinaryDecrypt(encryptedData, keyResult.data)
+        if (!decryptResult.success) return decryptResult
+        plainData = decryptResult.data
+        return resultCreate({ fileName: attachment.fileName, dataBase64: base64Encode(plainData) })
+      } finally {
+        keyResult.data.fill(0)
+        encryptedData?.fill(0)
+        plainData?.fill(0)
+      }
+    })
+
+  const attachmentDelete = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.attachmentDelete"
+      const parsed = v.safeParse(extensionAttachmentDeleteRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "Attachment delete request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      if (!targetResult.data.plain.attachments?.some((entry) => entry.id === parsed.output.attachmentId)) {
+        return invalidRequest(op, "Attachment could not be found.")
+      }
+      const apiDelete = options.apiClient.attachmentDelete
+      if (apiDelete === undefined) return internal(op, "Attachment delete API is unavailable.")
+      const deleteResult = await protectedRequest((accessToken) =>
+        apiDelete(parsed.output.cipherId, parsed.output.attachmentId, { accessToken }),
+      )
+      if (!deleteResult.success) return deleteResult
+      const responseResult = await cipherMutationResponseRead(
+        op,
+        deleteResult.data.cipher,
+        parsed.output.cipherId,
+        targetResult.data.plain.type,
+      )
+      if (!responseResult.success) return responseResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return responseResult
+    })
+
+  const vaultSearch = (request: unknown): Promise<Result<ExtensionVaultSearchResult>> => {
+    const op = "extensionBackgroundService.vaultSearch"
+    const parsed = v.safeParse(extensionVaultSearchRequestSchema, request)
+    if (!parsed.success)
+      return Promise.resolve(invalidRequest(op, "Vault search request is invalid.", v.summarize(parsed.issues)))
+    const searchRequest: ExtensionVaultSearchRequest = parsed.output
+    return syncSnapshotLoad().then((snapshotResult) => {
+      if (!snapshotResult.success) return snapshotResult
+      if (snapshotResult.data === null) return unavailable(op, "Vault data is unavailable.")
+      return resultCreate(extensionVaultSearch(snapshotResult.data, searchRequest))
+    })
+  }
 
   const activityRun = async (): Promise<Result<void>> => {
     const op = "extensionBackgroundService.activity"
@@ -721,6 +1635,230 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const conditionalSync = (): Promise<Result<ExtensionSyncResult>> => operationRun(() => syncRun(false))
   const fullSync = (): Promise<Result<ExtensionSyncResult>> => operationRun(() => syncRun(true))
   const manualSync = (): Promise<Result<ExtensionSyncResult>> => fullSync()
+
+  const cipherCreate = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherCreate"
+      const parsed = v.safeParse(extensionCipherCreateRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher create request is invalid.", v.summarize(parsed.issues))
+      const authResult = await mutationAuthRequire(op)
+      if (!authResult.success) return authResult
+      const cipher = parsed.output.cipher
+      const organizationId = cipher.organizationId ?? null
+      const collectionIds = cipher.collectionIds === undefined ? undefined : [...new Set(cipher.collectionIds)]
+      if (organizationId === null && collectionIds !== undefined && collectionIds.length > 0) {
+        return resultErrorCreate(op, "Personal ciphers cannot be assigned to collections.", {
+          code: "platform.forbidden",
+          statusCode: 403,
+        })
+      }
+      const collectionAuthorizationResult = await cipherCollectionAssignmentAuthorize(
+        op,
+        organizationId,
+        collectionIds ?? [],
+      )
+      if (!collectionAuthorizationResult.success) return collectionAuthorizationResult
+      const encryptedResult = await options.vaultSession.cipherEncrypt(cipher)
+      if (!encryptedResult.success) return encryptedResult
+      const requestResult = extensionCipherMutationRequestCreate(encryptedResult.data, {
+        ...(collectionIds === undefined ? {} : { collectionIds }),
+      })
+      if (!requestResult.success) return requestResult
+      const apiCreate = options.apiClient.cipherCreate
+      if (apiCreate === undefined) return internal(op, "Cipher create API is unavailable.")
+      const createResult = await protectedRequest((accessToken) => apiCreate(requestResult.data, { accessToken }))
+      if (!createResult.success) return createResult
+      const responseResult = cipherMutationEncryptedResponseRead(op, createResult.data, undefined, cipher.type)
+      if (!responseResult.success) return responseResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, responseResult.data, undefined, cipher.type)
+    })
+
+  const cipherUpdate = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherUpdate"
+      const parsed = v.safeParse(extensionCipherUpdateRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher update request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      const sourceCipher = parsed.output.cipher
+      if (sourceCipher.id !== parsed.output.cipherId)
+        return invalidRequest(op, "Cipher update request ID does not match the target cipher.")
+      const targetOrganizationId = targetResult.data.plain.organizationId ?? null
+      const sourceOrganizationId =
+        sourceCipher.organizationId === undefined ? targetOrganizationId : sourceCipher.organizationId
+      if (sourceOrganizationId !== targetOrganizationId) {
+        return resultErrorCreate(op, "Cipher organization cannot be changed by an update.", {
+          code: "platform.forbidden",
+          statusCode: 403,
+        })
+      }
+      const sourceCollectionIds =
+        sourceCipher.collectionIds === undefined ? targetResult.data.plain.collectionIds : sourceCipher.collectionIds
+      const sourceKey = sourceCipher.key === undefined ? targetResult.data.plain.key : sourceCipher.key
+      const cipherResult = v.safeParse(extensionCipherSchema, {
+        ...sourceCipher,
+        organizationId: targetOrganizationId,
+        ...(sourceCollectionIds === undefined ? {} : { collectionIds: sourceCollectionIds }),
+        ...(sourceKey === undefined ? {} : { key: sourceKey }),
+      })
+      if (!cipherResult.success)
+        return invalidRequest(op, "Cipher update request is invalid.", v.summarize(cipherResult.issues))
+      const encryptedResult = await options.vaultSession.cipherEncrypt(cipherResult.output)
+      if (!encryptedResult.success) return encryptedResult
+      const requestResult = extensionCipherMutationRequestCreate(encryptedResult.data, {
+        ...(sourceCollectionIds === undefined ? {} : { collectionIds: sourceCollectionIds }),
+        lastKnownRevisionDate: sourceCipher.revisionDate,
+      })
+      if (!requestResult.success) return requestResult
+      const apiUpdate = options.apiClient.cipherUpdate
+      if (apiUpdate === undefined) return internal(op, "Cipher update API is unavailable.")
+      const updateResult = await protectedRequest((accessToken) =>
+        apiUpdate(parsed.output.cipherId, requestResult.data, { accessToken }),
+      )
+      if (!updateResult.success) return updateResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, updateResult.data, parsed.output.cipherId, targetResult.data.plain.type)
+    })
+
+  const cipherPartial = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherPartial"
+      const parsed = v.safeParse(extensionCipherPartialRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "Cipher partial update request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      const partial = {
+        ...(parsed.output.favorite === undefined ? {} : { favorite: parsed.output.favorite }),
+        ...(parsed.output.folderId === undefined ? {} : { folderId: parsed.output.folderId }),
+      }
+      const apiPartial = options.apiClient.cipherPartial
+      if (apiPartial === undefined) return internal(op, "Cipher partial update API is unavailable.")
+      const partialResult = await protectedRequest((accessToken) =>
+        apiPartial(parsed.output.cipherId, partial, { accessToken }),
+      )
+      if (!partialResult.success) return partialResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, partialResult.data, parsed.output.cipherId, targetResult.data.plain.type)
+    })
+
+  const cipherDelete = (request: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherDelete"
+      const parsed = v.safeParse(extensionCipherDeleteRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher delete request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "delete")
+      if (!permissionResult.success) return permissionResult
+      const apiDelete = options.apiClient.cipherDelete
+      if (apiDelete === undefined) return internal(op, "Cipher delete API is unavailable.")
+      const deleteResult = await protectedRequest((accessToken) =>
+        apiDelete(parsed.output.cipherId, parsed.output.hard, { accessToken }),
+      )
+      if (!deleteResult.success) return deleteResult
+      return mutationSyncRun()
+    })
+
+  const cipherRestore = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherRestore"
+      const parsed = v.safeParse(extensionCipherRestoreRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher restore request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "restore")
+      if (!permissionResult.success) return permissionResult
+      const apiRestore = options.apiClient.cipherRestore
+      if (apiRestore === undefined) return internal(op, "Cipher restore API is unavailable.")
+      const restoreResult = await protectedRequest((accessToken) => apiRestore(parsed.output.cipherId, { accessToken }))
+      if (!restoreResult.success) return restoreResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, restoreResult.data, parsed.output.cipherId, targetResult.data.plain.type)
+    })
+
+  const cipherArchive = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherArchive"
+      const parsed = v.safeParse(extensionCipherArchiveRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher archive request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      const apiArchive = options.apiClient.cipherArchive
+      if (apiArchive === undefined) return internal(op, "Cipher archive API is unavailable.")
+      const archiveResult = await protectedRequest((accessToken) =>
+        apiArchive(parsed.output.cipherId, parsed.output.archived, { accessToken }),
+      )
+      if (!archiveResult.success) return archiveResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, archiveResult.data, parsed.output.cipherId, targetResult.data.plain.type)
+    })
+
+  const cipherMove = (request: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherMove"
+      const parsed = v.safeParse(extensionCipherMoveRequestSchema, request)
+      if (!parsed.success) return invalidRequest(op, "Cipher move request is invalid.", v.summarize(parsed.issues))
+      for (const cipherId of parsed.output.ids) {
+        const targetResult = await cipherMutationTargetRead(op, cipherId)
+        if (!targetResult.success) return targetResult
+        const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+        if (!permissionResult.success) return permissionResult
+      }
+      const apiMove = options.apiClient.cipherMove
+      if (apiMove === undefined) return internal(op, "Cipher move API is unavailable.")
+      const moveResult = await protectedRequest((accessToken) =>
+        apiMove(parsed.output.ids, parsed.output.folderId, { accessToken }),
+      )
+      if (!moveResult.success) return moveResult
+      return mutationSyncRun()
+    })
+
+  const cipherCollectionsUpdate = (request: unknown): Promise<Result<ExtensionCipher>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.cipherCollectionsUpdate"
+      const parsed = v.safeParse(extensionCipherCollectionsUpdateRequestSchema, request)
+      if (!parsed.success)
+        return invalidRequest(op, "Cipher collection assignment request is invalid.", v.summarize(parsed.issues))
+      const targetResult = await cipherMutationTargetRead(op, parsed.output.cipherId)
+      if (!targetResult.success) return targetResult
+      const permissionResult = cipherMutationPermissionAuthorize(op, targetResult.data.plain, "edit")
+      if (!permissionResult.success) return permissionResult
+      const organizationId = targetResult.data.plain.organizationId ?? null
+      if (organizationId === null) {
+        return resultErrorCreate(op, "Personal ciphers cannot be assigned to collections.", {
+          code: "platform.forbidden",
+          statusCode: 403,
+        })
+      }
+      const collectionAuthorizationResult = await cipherCollectionAssignmentAuthorize(
+        op,
+        organizationId,
+        parsed.output.collectionIds,
+      )
+      if (!collectionAuthorizationResult.success) return collectionAuthorizationResult
+      const apiCollectionsUpdate = options.apiClient.cipherCollectionsUpdate
+      if (apiCollectionsUpdate === undefined) return internal(op, "Cipher collection assignment API is unavailable.")
+      const collectionResult = await protectedRequest((accessToken) =>
+        apiCollectionsUpdate(parsed.output.cipherId, parsed.output.collectionIds, { accessToken }),
+      )
+      if (!collectionResult.success) return collectionResult
+      const syncResult = await mutationSyncRun()
+      if (!syncResult.success) return syncResult
+      return cipherMutationResponseRead(op, collectionResult.data, parsed.output.cipherId, targetResult.data.plain.type)
+    })
 
   const passkeyConsentContexts = new Map<string, ExtensionPasskeyConsentContext>()
 
@@ -1045,8 +2183,31 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     conditionalSync,
     fullSync,
     manualSync,
+    cipherCreate,
+    cipherUpdate,
+    cipherPartial,
+    cipherDelete,
+    cipherRestore,
+    cipherArchive,
+    cipherMove,
+    cipherCollectionsUpdate,
+    attachmentUpload,
+    attachmentDownload,
+    attachmentDelete,
+    folderList,
+    folderRead,
+    folderCreate,
+    folderUpdate,
+    folderDelete,
+    collectionList,
+    collectionRead,
+    collectionCreate,
+    collectionUpdate,
+    collectionDelete,
     sessionHandoffCreate,
     syncSnapshotLoad,
+    cipherDetailRead,
+    vaultSearch,
     unlock,
     lock,
     logout,

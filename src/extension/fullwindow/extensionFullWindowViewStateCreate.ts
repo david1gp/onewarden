@@ -1,5 +1,11 @@
 import { createMemo } from "solid-js"
-import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import * as v from "valibot"
+import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import { vaultSortApply } from "../../shared/vault/vaultSortApply.js"
+import { vaultSortDefault } from "../../shared/vault/vaultSortDefault.js"
+import { vaultSortOptions } from "../../shared/vault/vaultSortOptions.js"
+import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
+import { vaultSortSchema } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
@@ -16,6 +22,7 @@ import { extensionFullWindowLoginIdSchema } from "./extensionFullWindowLoginIdSc
 import { extensionFullWindowLoginSearchMatch } from "./extensionFullWindowLoginSearchMatch.js"
 import { extensionFullWindowLoginUriMatch } from "./extensionFullWindowLoginUriMatch.js"
 import { extensionFullWindowPaneSchema } from "./extensionFullWindowPaneSchema.js"
+import { extensionFullWindowResourceStateCreate } from "./extensionFullWindowResourceStateCreate.js"
 import { extensionFullWindowSiteFilterSchema } from "./extensionFullWindowSiteFilterSchema.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -39,11 +46,17 @@ const timeoutLabels: Record<string, string> = {
 const actionOptions = ["lock", "logout"]
 const actionLabels: Record<string, string> = { lock: "Lock", logout: "Log out" }
 
+type ExtensionFullWindowViewSortOptions = {
+  vaultSort?: () => VaultSort
+  onVaultSortChange?: (sort: VaultSort) => void
+}
+
 /** Component-local view state and command glue for the full-window vault. */
 export function extensionFullWindowViewStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
   initialState?: { pane?: string; selectedLoginId?: string },
+  sortOptions: ExtensionFullWindowViewSortOptions = {},
 ) {
   const searchQuerySignal = extensionFullWindowUrlSignalCreate("q")
   const selectedLoginIdSignal = initialState
@@ -53,8 +66,19 @@ export function extensionFullWindowViewStateCreate(
     ? createSignalObject(initialState.pane ?? extensionFullWindowPane.vault)
     : extensionFullWindowUrlSignalCreate("pane", extensionFullWindowPane.vault, extensionFullWindowPaneSchema)
   const siteOnlySignal = extensionFullWindowUrlSignalCreate("site", "", extensionFullWindowSiteFilterSchema)
+  const vaultCategorySignal = extensionFullWindowUrlSignalCreate("category", "logins")
   const emailSignal = createSignalObject("")
   const masterPasswordSignal = createSignalObject("")
+  const localVaultSortSignal = createSignalObject<VaultSort>(vaultSortDefault)
+  const resourceState = extensionFullWindowResourceStateCreate(model, commands)
+  const resourceFilteredModel = createMemo(() => ({
+    ...model(),
+    logins: model().logins.filter(resourceState.cipherMatches),
+    secureNotes: model().secureNotes.filter(resourceState.cipherMatches),
+    cards: model().cards.filter(resourceState.cipherMatches),
+    identities: model().identities.filter(resourceState.cipherMatches),
+    sshKeys: model().sshKeys.filter(resourceState.cipherMatches),
+  }))
 
   const environmentSignal = createSignalObject(extensionFullWindowEnvironmentSettingsCreate())
   const environmentTouchedSignal = createSignalObject(false)
@@ -75,15 +99,33 @@ export function extensionFullWindowViewStateCreate(
   const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
   const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
   const isVaultPane = createMemo(() => !isGeneratorPane() && !isSettingsPane())
+  const isLoginCategory = createMemo(
+    () => !["notes", "cards", "identities", "ssh-keys"].includes(vaultCategorySignal.get()),
+  )
+  const isSecureNoteCategory = createMemo(() => vaultCategorySignal.get() === "notes")
+  const isCardCategory = createMemo(() => vaultCategorySignal.get() === "cards")
+  const isIdentityCategory = createMemo(() => vaultCategorySignal.get() === "identities")
+  const isSshKeyCategory = createMemo(() => vaultCategorySignal.get() === "ssh-keys")
 
   const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
   const siteFilterAvailable = createMemo(() => hostname() !== null)
   const siteLabel = createMemo(() => hostname() ?? "No active site")
-  const visibleLogins = createMemo(() =>
-    model()
+  const vaultSort = createMemo(() => sortOptions.vaultSort?.() ?? localVaultSortSignal.get())
+  const vaultSortSet = (value: string): void => {
+    const parsed = v.safeParse(vaultSortSchema, value)
+    if (!parsed.success) return
+    localVaultSortSignal.set(parsed.output)
+    sortOptions.onVaultSortChange?.(parsed.output)
+  }
+  const vaultSortSignal: SignalObject<string> = { get: vaultSort, set: vaultSortSet }
+  const vaultSortOptionValues = () => vaultSortOptions.map((option) => option.value)
+  const vaultSortLabel = (value: string) => vaultSortOptions.find((option) => option.value === value)?.label ?? value
+  const visibleLogins = createMemo(() => {
+    const filteredLogins = resourceFilteredModel()
       .logins.filter((login) => !siteOnly() || extensionFullWindowLoginUriMatch(login, hostname()))
-      .filter((login) => extensionFullWindowLoginSearchMatch(login, searchQuerySignal.get())),
-  )
+      .filter((login) => extensionFullWindowLoginSearchMatch(login, searchQuerySignal.get()))
+    return vaultSortApply(filteredLogins, vaultSort())
+  })
   const { isLoading, isLocked, isLoggedOut, isError, isReady, isEmpty, hasNoLogins } = extensionVaultStatusStateCreate(
     status,
     extensionFullWindowStatus,
@@ -105,6 +147,10 @@ export function extensionFullWindowViewStateCreate(
   const selectedLogin = createMemo(
     () => visibleLogins().find((login) => login.id === selectedLoginIdSignal.get()) ?? null,
   )
+  const selectedLoginCipher = createMemo(() => {
+    const cipher = model().selectedLoginCipher
+    return cipher?.id === selectedLoginIdSignal.get() ? cipher : null
+  })
 
   const environment = createMemo(() => (environmentTouchedSignal.get() ? environmentSignal.get() : model().environment))
   const regionSignal = {
@@ -154,11 +200,19 @@ export function extensionFullWindowViewStateCreate(
   const fieldIsCopied = (field: ExtensionCopyableField) => model().copiedFieldKey === field.key
   const totpIsCopied = (login: ExtensionLogin) => model().copiedFieldKey === `totp:${login.id}`
 
-  const loginSelect = (login: ExtensionLogin) => selectedLoginIdSignal.set(login.id)
+  const loginSelect = (login: ExtensionLogin) => {
+    selectedLoginIdSignal.set(login.id)
+    commands().loginRead(login.id)
+  }
   const loginDeselect = () => selectedLoginIdSignal.set("")
   const vaultPaneOpen = () => paneSignal.set(extensionFullWindowPane.vault)
   const generatorPaneOpen = () => paneSignal.set(extensionFullWindowPane.generator)
   const settingsPaneOpen = () => paneSignal.set(extensionFullWindowPane.settings)
+  const loginCategoryOpen = () => vaultCategorySignal.set("logins")
+  const secureNoteCategoryOpen = () => vaultCategorySignal.set("notes")
+  const cardCategoryOpen = () => vaultCategorySignal.set("cards")
+  const identityCategoryOpen = () => vaultCategorySignal.set("identities")
+  const sshKeyCategoryOpen = () => vaultCategorySignal.set("ssh-keys")
   const siteOnlyToggle = () => siteOnlySignal.set(siteOnly() ? "" : "1")
 
   const loginFill = (login: ExtensionLogin) => commands().loginFill(login)
@@ -188,6 +242,7 @@ export function extensionFullWindowViewStateCreate(
     masterPasswordSignal.set("")
     commands().vaultUnlock(masterPassword)
   }
+  if (selectedLoginIdSignal.get() !== "") commands().loginRead(selectedLoginIdSignal.get())
 
   return {
     searchQuerySignal,
@@ -203,6 +258,9 @@ export function extensionFullWindowViewStateCreate(
     siteOnly,
     siteFilterAvailable,
     siteOnlyToggle,
+    vaultSortSignal,
+    vaultSortOptionValues,
+    vaultSortLabel,
     errorMessage,
     environmentSaveStatus,
     environmentSaveErrorMessage,
@@ -228,13 +286,25 @@ export function extensionFullWindowViewStateCreate(
     isEmpty,
     hasNoLogins,
     isVaultPane,
+    isLoginCategory,
+    isSecureNoteCategory,
+    isCardCategory,
+    isIdentityCategory,
+    isSshKeyCategory,
     isGeneratorPane,
     isSettingsPane,
     vaultPaneOpen,
     generatorPaneOpen,
     settingsPaneOpen,
+    loginCategoryOpen,
+    secureNoteCategoryOpen,
+    cardCategoryOpen,
+    identityCategoryOpen,
+    sshKeyCategoryOpen,
     visibleLogins,
     selectedLogin,
+    selectedLoginCipher,
+    loginDetailLoading: () => model().loginDetailLoading,
     loginSelect,
     loginDeselect,
     fieldIsCopied,
@@ -251,5 +321,7 @@ export function extensionFullWindowViewStateCreate(
     accountLogin,
     environmentSave,
     lockPolicySave,
+    resourceState,
+    resourceFilteredModel,
   }
 }

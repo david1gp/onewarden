@@ -5,5 +5,6 @@ export const extensionStorageKeys = {
   syncCache: "onewarden.sync-cache",
   lockPolicy: "onewarden.lock-policy",
   generatorPreferences: "onewarden.generator-preferences",
+  vaultSort: "onewarden.vault-sort",
   createDrafts: "onewarden.create-drafts",
 } as const
