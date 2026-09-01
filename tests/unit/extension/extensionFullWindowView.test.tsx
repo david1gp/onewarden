@@ -493,7 +493,7 @@ test("extensionFullWindowView navigates among URL-backed vault, generator and se
   const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  expect(root.getByRole("heading", { name: "Password Generator" })).toBeDefined()
+  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
   expect(root.queryByLabelText("Search logins")).toBeNull()
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -510,18 +510,19 @@ test("extensionFullWindowView navigates among URL-backed vault, generator and se
 test("extensionFullWindowGeneratorPane updates useful generation controls", () => {
   const root = fullWindowRender({ status: "loggedOut" })
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  fireEvent.click(root.getByRole("radio", { name: "Password" }))
   const password = root.getByLabelText("Generated password") as HTMLInputElement
 
   expect(password.value).toHaveLength(20)
   fireEvent.input(root.getByLabelText("Password length slider"), { target: { value: "32" } })
   expect(password.value).toHaveLength(32)
 
-  fireEvent.click(root.getByLabelText(/Uppercase/))
-  fireEvent.click(root.getByLabelText(/Numbers/))
-  fireEvent.click(root.getByLabelText(/Symbols/))
+  fireEvent.click(root.container.querySelector("#generator-uppercase") as HTMLInputElement)
+  fireEvent.click(root.container.querySelector("#generator-numbers") as HTMLInputElement)
+  fireEvent.click(root.container.querySelector("#generator-symbols") as HTMLInputElement)
   fireEvent.click(root.getByRole("button", { name: "Regenerate password" }))
   expect(password.value).toMatch(/^[a-z]{32}$/)
-  expect((root.getByLabelText(/Lowercase/) as HTMLInputElement).disabled).toBe(true)
+  expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).disabled).toBe(true)
 
   fireEvent.click(root.getByRole("button", { name: "Show" }))
   expect(password.type).toBe("text")
@@ -538,6 +539,7 @@ test("extensionFullWindowGeneratorPane copies the generated password", async () 
   })
   const root = fullWindowRender({ status: "loggedOut" })
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  fireEvent.click(root.getByRole("radio", { name: "Password" }))
   const password = root.getByLabelText("Generated password") as HTMLInputElement
 
   fireEvent.click(root.getByRole("button", { name: "Copy" }))
@@ -548,4 +550,45 @@ test("extensionFullWindowGeneratorPane copies the generated password", async () 
 
   root.unmount()
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
+})
+
+test("extensionFullWindowGeneratorPane defaults to and controls passphrases", () => {
+  const root = fullWindowRender({ status: "loggedOut" })
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+
+  const passphrase = root.getByLabelText("Generated passphrase") as HTMLInputElement
+  const wordCount = root.getByLabelText("Number of words") as HTMLInputElement
+  const separator = root.getByLabelText("Word separator") as HTMLInputElement
+  const includeNumber = root.container.querySelector("#passphrase-include-number") as HTMLInputElement
+
+  expect(root.getByRole("group", { name: "Type" })).toBeDefined()
+  expect(root.getByRole("radio", { name: "Passphrase" }).getAttribute("aria-checked")).toBe("true")
+  expect(wordCount.value).toBe("3")
+  expect(separator.value).toBe("-")
+  expect(includeNumber.checked).toBe(true)
+  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(3)
+  expect(passphrase.value.match(/\d/g)).toHaveLength(1)
+
+  fireEvent.input(wordCount, { target: { value: "2" } })
+  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(3)
+  fireEvent.input(wordCount, { target: { value: "21" } })
+  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(20)
+  fireEvent.input(separator, { target: { value: "|" } })
+  fireEvent.click(includeNumber)
+
+  expect(separator.value).toBe("|")
+  expect(includeNumber.checked).toBe(false)
+  expect(passphrase.value.split("|")).toHaveLength(20)
+  expect(passphrase.value).not.toMatch(/\d/)
+
+  fireEvent.click(root.getByRole("radio", { name: "Password" }))
+  expect(root.getByLabelText("Password length")).toBeDefined()
+  expect(root.queryByLabelText("Number of words")).toBeNull()
+  fireEvent.click(root.getByRole("radio", { name: "Passphrase" }))
+  expect((root.getByLabelText("Number of words") as HTMLInputElement).value).toBe("20")
+  expect((root.getByLabelText("Word separator") as HTMLInputElement).value).toBe("|")
+  expect((root.container.querySelector("#passphrase-include-number") as HTMLInputElement).checked).toBe(false)
+  expect((root.getByRole("button", { name: "Regenerate passphrase" }) as HTMLButtonElement).disabled).toBe(false)
+
+  root.unmount()
 })

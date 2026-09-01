@@ -1,29 +1,42 @@
 import { createMemo, type JSX } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import { passphraseGenerate } from "../../shared/crypto/passphraseGenerate.js"
 import { passwordGenerate } from "../../shared/crypto/passwordGenerate.js"
+import { extensionFullWindowGeneratorMode } from "./ExtensionFullWindowGeneratorMode.js"
 
 type PasswordCopyStatus = "idle" | "copying" | "copied" | "error"
 
-/** Local controls and secure generation state for the full-window password generator. */
+const PASSPHRASE_WORDS_MIN = 3
+const PASSPHRASE_WORDS_MAX = 20
+
+/** Local controls and secure generation state for the full-window passphrase and password generator. */
 export function extensionFullWindowGeneratorPaneStateCreate(
   options: {
+    initialMode?: keyof typeof extensionFullWindowGeneratorMode
     initialPassword?: string
     initialPasswordVisible?: boolean
     initialCopyStatus?: PasswordCopyStatus
     initialErrorMessage?: string | null
     passwordGenerate?: typeof passwordGenerate
+    passphraseGenerate?: typeof passphraseGenerate
     clipboardWrite?: (value: string) => Promise<void>
   } = {},
 ) {
+  const modeValueSignal = createSignalObject<string>(options.initialMode ?? extensionFullWindowGeneratorMode.passphrase)
   const lengthSignal = createSignalObject(20)
   const lowercaseSignal = createSignalObject(true)
   const uppercaseSignal = createSignalObject(true)
   const numbersSignal = createSignalObject(true)
   const symbolsSignal = createSignalObject(true)
+  const wordCountSignal = createSignalObject(3)
+  const wordSeparatorSignal = createSignalObject("-")
+  const includeNumberSignal = createSignalObject(true)
   const passwordSignal = createSignalObject(options.initialPassword ?? "")
   const passwordVisibleSignal = createSignalObject(options.initialPasswordVisible ?? false)
   const copyStatusSignal = createSignalObject<PasswordCopyStatus>(options.initialCopyStatus ?? "idle")
   const errorMessageSignal = createSignalObject<string | null>(options.initialErrorMessage ?? null)
+
+  const passphraseMode = () => modeValueSignal.get() === extensionFullWindowGeneratorMode.passphrase
 
   const enabledCharacterGroupCount = createMemo(
     () =>
@@ -34,15 +47,21 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   )
 
   const passwordRegenerate = () => {
-    const result = (options.passwordGenerate ?? passwordGenerate)({
-      length: lengthSignal.get(),
-      characterPolicy: {
-        lowercase: lowercaseSignal.get(),
-        uppercase: uppercaseSignal.get(),
-        numbers: numbersSignal.get(),
-        symbols: symbolsSignal.get(),
-      },
-    })
+    const result = passphraseMode()
+      ? (options.passphraseGenerate ?? passphraseGenerate)({
+          numWords: wordCountSignal.get(),
+          wordSeparator: wordSeparatorSignal.get(),
+          includeNumber: includeNumberSignal.get(),
+        })
+      : (options.passwordGenerate ?? passwordGenerate)({
+          length: lengthSignal.get(),
+          characterPolicy: {
+            lowercase: lowercaseSignal.get(),
+            uppercase: uppercaseSignal.get(),
+            numbers: numbersSignal.get(),
+            symbols: symbolsSignal.get(),
+          },
+        })
     if (!result.success) {
       errorMessageSignal.set(result.errorMessage)
       return
@@ -50,6 +69,16 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     passwordSignal.set(result.data)
     copyStatusSignal.set("idle")
     errorMessageSignal.set(null)
+  }
+
+  const modeSignal: SignalObject<string> = {
+    get: modeValueSignal.get,
+    set: (mode) => {
+      if (!(mode in extensionFullWindowGeneratorMode)) return
+      if (mode === modeValueSignal.get()) return
+      modeValueSignal.set(mode)
+      passwordRegenerate()
+    },
   }
 
   const characterGroupSet = (signal: SignalObject<boolean>, enabled: boolean) => {
@@ -76,6 +105,27 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   const passwordLengthInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
     passwordLengthSet(Number(event.currentTarget.value))
 
+  const wordCountSet = (wordCount: number) => {
+    if (!Number.isFinite(wordCount)) return
+    wordCountSignal.set(Math.min(PASSPHRASE_WORDS_MAX, Math.max(PASSPHRASE_WORDS_MIN, Math.trunc(wordCount))))
+    passwordRegenerate()
+  }
+  const wordCountInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
+    wordCountSet(Number(event.currentTarget.value))
+
+  const wordSeparatorSet = (wordSeparator: string) => {
+    const characters = [...wordSeparator]
+    wordSeparatorSignal.set(characters.length === 0 ? "" : (characters.at(-1) ?? ""))
+    passwordRegenerate()
+  }
+  const wordSeparatorInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (event) =>
+    wordSeparatorSet(event.currentTarget.value)
+
+  const includeNumberSet = (includeNumber: boolean) => {
+    includeNumberSignal.set(includeNumber)
+    passwordRegenerate()
+  }
+
   const passwordCopy = async () => {
     copyStatusSignal.set("copying")
     const clipboardWrite = options.clipboardWrite ?? navigator.clipboard?.writeText.bind(navigator.clipboard)
@@ -94,6 +144,9 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   if (options.initialPassword === undefined) passwordRegenerate()
 
   return {
+    modeSignal,
+    modeOptions: () => [extensionFullWindowGeneratorMode.passphrase, extensionFullWindowGeneratorMode.password],
+    passphraseMode,
     lengthSignal,
     lowercase: lowercaseSignal.get,
     uppercase: uppercaseSignal.get,
@@ -107,6 +160,14 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     uppercaseDisabled,
     numbersDisabled,
     symbolsDisabled,
+    wordCount: wordCountSignal.get,
+    wordCountSet,
+    wordCountInput,
+    wordSeparator: wordSeparatorSignal.get,
+    wordSeparatorSet,
+    wordSeparatorInput,
+    includeNumber: includeNumberSignal.get,
+    includeNumberSet,
     password: passwordSignal.get,
     passwordVisible: passwordVisibleSignal.get,
     passwordVisibilityToggle,
