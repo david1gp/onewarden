@@ -42,25 +42,22 @@ const bitwardenEncryptedCipherRecordSchema = v.looseObject({
 
 export const bitwardenEncryptedCipherSchema = v.pipe(
   bitwardenEncryptedCipherRecordSchema,
-  v.check(
-    (value) => {
-      const record = value as {
-        type: number
-        login?: unknown
-        secureNote?: unknown
-        card?: unknown
-        identity?: unknown
-        sshKey?: unknown
-      }
-      if (record.type === 1) return record.login !== undefined && record.login !== null
-      if (record.type === 2) return record.secureNote !== undefined && record.secureNote !== null
-      if (record.type === 3) return record.card !== undefined && record.card !== null
-      if (record.type === 4) return record.identity !== undefined && record.identity !== null
-      if (record.type === 5) return record.sshKey !== undefined && record.sshKey !== null
-      return false
-    },
-    "Encrypted cipher payload must match its cipher type.",
-  ),
+  v.check((value) => {
+    const record = value as {
+      type: number
+      login?: unknown
+      secureNote?: unknown
+      card?: unknown
+      identity?: unknown
+      sshKey?: unknown
+    }
+    if (record.type === 1) return record.login !== undefined && record.login !== null
+    if (record.type === 2) return record.secureNote !== undefined && record.secureNote !== null
+    if (record.type === 3) return record.card !== undefined && record.card !== null
+    if (record.type === 4) return record.identity !== undefined && record.identity !== null
+    if (record.type === 5) return record.sshKey !== undefined && record.sshKey !== null
+    return false
+  }, "Encrypted cipher payload must match its cipher type."),
 )
 
 export type BitwardenEncryptedCipher = v.InferOutput<typeof bitwardenEncryptedCipherSchema>

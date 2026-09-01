@@ -1,16 +1,16 @@
-import type { Result } from "#result"
 import { onMount } from "solid-js"
+import type { Result } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessageSchema.js"
-import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import { extensionFullWindowCommandsCreate } from "./extensionFullWindowCommandsCreate.js"
-import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
-import { extensionFullWindowViewModelCreate } from "./extensionFullWindowViewModelCreate.js"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import { extensionGeneratorPreferencesDefault } from "../storage/extensionGeneratorPreferencesDefault.js"
 import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
+import { extensionFullWindowCommandsCreate } from "./extensionFullWindowCommandsCreate.js"
+import { extensionFullWindowViewModelCreate } from "./extensionFullWindowViewModelCreate.js"
 
 type ExtensionGeneratorPreferencesStorage = Pick<
   ReturnType<typeof extensionStorageCreate>,

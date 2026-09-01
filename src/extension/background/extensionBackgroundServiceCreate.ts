@@ -1,7 +1,10 @@
 import * as v from "valibot"
 import { type Result } from "#result"
 import type { BitwardenEncryptedLoginCipherCreateRequest } from "../../shared/api/bitwardenEncryptedLoginCipherCreateRequestSchema.js"
-import { type BitwardenEncryptedCipher, bitwardenEncryptedCipherSchema } from "../../shared/api/bitwardenEncryptedCipherSchema.js"
+import {
+  type BitwardenEncryptedCipher,
+  bitwardenEncryptedCipherSchema,
+} from "../../shared/api/bitwardenEncryptedCipherSchema.js"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
@@ -218,7 +221,9 @@ function syncCipherWireCreate(
   revisionDate: number,
 ): BitwardenEncryptedCipher | null {
   const revision =
-    cipher.revisionDate !== undefined && cipher.revisionDate.length > 0 ? cipher.revisionDate : String(revisionDate)
+    typeof cipher.revisionDate === "string" && cipher.revisionDate.length > 0
+      ? cipher.revisionDate
+      : String(revisionDate)
   const parsed = v.safeParse(bitwardenEncryptedCipherSchema, {
     ...cipher,
     object: "cipherDetails",
@@ -243,6 +248,10 @@ function syncCipherPlainRead(cipher: BitwardenEncryptedCipher): ExtensionCipher 
     if (parsed.success) return parsed.output
   }
   return null
+}
+
+function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): ExtensionPersonalLoginCipher[] {
+  return ciphers.filter((cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1)
 }
 
 export function extensionBackgroundServiceCreate(options: ExtensionBackgroundServiceOptions) {
@@ -823,7 +832,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       const syncResult = await syncRun(true)
       if (!syncResult.success) return syncResult
       const snapshot = syncResult.data.snapshot
-      for (const cipher of snapshot.ciphers) {
+      const loginCiphers = extensionLoginCiphersRead(snapshot.ciphers)
+      for (const cipher of loginCiphers) {
         if (cipher.deletedDate !== null) continue
         for (const credential of cipher.login.fido2Credentials ?? []) {
           if (
@@ -839,7 +849,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       const registrationResult = await extensionPasskeyCredentialCreate(value, consentResult.data.userVerified, now)
       if (!registrationResult.success) return registrationResult
       const targetCipher =
-        value.cipherId === null ? null : snapshot.ciphers.find((cipher) => cipher.id === value.cipherId)
+        value.cipherId === null ? null : loginCiphers.find((cipher) => cipher.id === value.cipherId)
       if (value.cipherId !== null && targetCipher === undefined)
         return invalidRequest(op, "The selected login could not be found.")
       if (targetCipher === undefined) return invalidRequest(op, "The selected login could not be found.")
@@ -928,7 +938,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
       const syncResult = await syncRun(true)
       if (!syncResult.success) return syncResult
-      const credentials = syncResult.data.snapshot.ciphers
+      const loginCiphers = extensionLoginCiphersRead(syncResult.data.snapshot.ciphers)
+      const credentials = loginCiphers
         .filter((cipher) => cipher.deletedDate === null)
         .flatMap((cipher) => cipher.login.fido2Credentials ?? [])
       const assertionRequest: ExtensionPasskeyAssertionRequest = {
@@ -941,7 +952,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         consentResult.data.userVerified,
       )
       if (!assertionResult.success) return assertionResult
-      const selectedCipher = syncResult.data.snapshot.ciphers.find((cipher) =>
+      const selectedCipher = loginCiphers.find((cipher) =>
         (cipher.login.fido2Credentials ?? []).some(
           (credential) =>
             passkeyRpIdMatches(credential.rpId, rpIdResult.data) &&

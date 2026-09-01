@@ -42,10 +42,7 @@ export async function extensionCipherDecrypt(
 
   const cipherKeyResult = await extensionCipherKeyResolve(encryptedCipher, userKey, organizationKeys)
   if (!cipherKeyResult.success) return cipherKeyResult
-  const cipherForMapping =
-    encryptedCipher.viewPassword === false
-      ? { ...encryptedCipher }
-      : encryptedCipher
+  const cipherForMapping = encryptedCipher.viewPassword === false ? { ...encryptedCipher } : encryptedCipher
   const mappedResult = await extensionCipherMap(cipherForMapping, (value) =>
     extensionEncStringDecryptText(value, cipherKeyResult.data),
   )

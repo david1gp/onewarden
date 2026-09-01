@@ -9,6 +9,7 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
+import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import { ExtensionFullWindowGeneratorPane } from "./ExtensionFullWindowGeneratorPane.jsx"
 import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
@@ -16,7 +17,6 @@ import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewStateCreate.js"
-import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 
 export interface ExtensionFullWindowViewProps {
   model: () => ExtensionFullWindowViewModel

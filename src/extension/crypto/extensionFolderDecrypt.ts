@@ -1,6 +1,9 @@
 import * as v from "valibot"
 import { type Result } from "#result"
-import { type BitwardenEncryptedFolder, bitwardenEncryptedFolderSchema } from "../../shared/api/bitwardenEncryptedFolderSchema.js"
+import {
+  type BitwardenEncryptedFolder,
+  bitwardenEncryptedFolderSchema,
+} from "../../shared/api/bitwardenEncryptedFolderSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { extensionEncStringDecryptText } from "./extensionEncStringDecryptText.js"

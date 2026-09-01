@@ -1,7 +1,7 @@
 import { render } from "solid-js/web"
-import { ExtensionFullWindowApp } from "./ExtensionFullWindowApp.jsx"
 import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import { ExtensionFullWindowApp } from "./ExtensionFullWindowApp.jsx"
 import "../extensionStyles.css"
 
 const root = document.getElementById("root")

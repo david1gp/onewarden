@@ -30,10 +30,7 @@ const identityStringFields = [
 ] as const
 const sshKeyStringFields = ["privateKey", "publicKey", "keyFingerprint"] as const
 
-async function optionalStringMap(
-  value: unknown,
-  map: StringMap,
-): Promise<Result<string | null | undefined>> {
+async function optionalStringMap(value: unknown, map: StringMap): Promise<Result<string | null | undefined>> {
   if (value === undefined || value === null) return resultCreate(value)
   if (typeof value !== "string") return resultCreate(value as never)
   return map(value)
@@ -111,7 +108,10 @@ async function typeDataMap(value: unknown, fields: readonly string[], map: Strin
   return recordStringFieldsMap(value as Record<string, unknown>, fields, map)
 }
 
-export async function extensionCipherMap<Cipher extends CipherMap>(cipher: Cipher, map: StringMap): Promise<Result<Cipher>> {
+export async function extensionCipherMap<Cipher extends CipherMap>(
+  cipher: Cipher,
+  map: StringMap,
+): Promise<Result<Cipher>> {
   const nameResult = await optionalStringMap(cipher.name, map)
   if (!nameResult.success) return nameResult
   const notesResult = await optionalStringMap(cipher.notes, map)

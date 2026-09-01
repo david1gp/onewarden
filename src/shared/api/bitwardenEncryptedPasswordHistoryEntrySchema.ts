@@ -5,6 +5,4 @@ export const bitwardenEncryptedPasswordHistoryEntrySchema = v.looseObject({
   lastUsedDate: v.string(),
 })
 
-export type BitwardenEncryptedPasswordHistoryEntry = v.InferOutput<
-  typeof bitwardenEncryptedPasswordHistoryEntrySchema
->
+export type BitwardenEncryptedPasswordHistoryEntry = v.InferOutput<typeof bitwardenEncryptedPasswordHistoryEntrySchema>
