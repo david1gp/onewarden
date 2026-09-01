@@ -1,4 +1,12 @@
 import * as v from "valibot"
+import { extensionAccountPasswordSetupRequestSchema } from "../auth/extensionAccountPasswordSetupRequestSchema.js"
+import { extensionAccountRegisterRequestSchema } from "../auth/extensionAccountRegisterRequestSchema.js"
+import { extensionAccountVerificationEmailSendRequestSchema } from "../auth/extensionAccountVerificationEmailSendRequestSchema.js"
+import { extensionAccountVerifyRequestSchema } from "../auth/extensionAccountVerifyRequestSchema.js"
+import { extensionLoginChallengeIdRequestSchema } from "../auth/extensionLoginChallengeIdRequestSchema.js"
+import { extensionLoginChallengeSubmitRequestSchema } from "../auth/extensionLoginChallengeSubmitRequestSchema.js"
+import { extensionLoginRequestSchema } from "../auth/extensionLoginRequestSchema.js"
+import { extensionUnlockRequestSchema } from "../auth/extensionUnlockRequestSchema.js"
 import { extensionAttachmentDeleteRequestSchema } from "../background/extensionAttachmentDeleteRequestSchema.js"
 import { extensionAttachmentDownloadRequestSchema } from "../background/extensionAttachmentDownloadRequestSchema.js"
 import { extensionAttachmentUploadRequestSchema } from "../background/extensionAttachmentUploadRequestSchema.js"
@@ -34,8 +42,18 @@ const extensionRuntimeSurfaceSchema = v.picklist(["popup", "fullwindow"])
 
 const extensionRuntimeMessageSchemaData = v.variant("type", [
   v.strictObject({ type: v.literal("initialize") }),
-  v.strictObject({ type: v.literal("login"), request: v.unknown() }),
-  v.strictObject({ type: v.literal("unlock"), request: v.unknown() }),
+  v.strictObject({ type: v.literal("login"), request: extensionLoginRequestSchema }),
+  v.strictObject({ type: v.literal("loginChallengeSubmit"), request: extensionLoginChallengeSubmitRequestSchema }),
+  v.strictObject({ type: v.literal("loginChallengeEmailSend"), request: extensionLoginChallengeIdRequestSchema }),
+  v.strictObject({ type: v.literal("loginChallengeCancel"), request: extensionLoginChallengeIdRequestSchema }),
+  v.strictObject({ type: v.literal("accountRegister"), request: extensionAccountRegisterRequestSchema }),
+  v.strictObject({
+    type: v.literal("accountVerificationEmailSend"),
+    request: extensionAccountVerificationEmailSendRequestSchema,
+  }),
+  v.strictObject({ type: v.literal("accountVerify"), request: extensionAccountVerifyRequestSchema }),
+  v.strictObject({ type: v.literal("accountPasswordSetup"), request: extensionAccountPasswordSetupRequestSchema }),
+  v.strictObject({ type: v.literal("unlock"), request: extensionUnlockRequestSchema }),
   v.strictObject({
     type: v.literal("viewModelLoad"),
     surface: v.optional(extensionRuntimeSurfaceSchema, "popup"),

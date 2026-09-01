@@ -48,6 +48,7 @@ export function extensionPopupViewStateCreate(
   const generatorOpen = () => commands().generatorOpen()
   const settingsOpen = () => commands().settingsOpen()
   const accountLogin = () => commands().accountLogin()
+  const accountRegister = () => commands().accountRegister()
 
   const vaultUnlock = () => {
     const masterPassword = masterPasswordSignal.get()
@@ -86,5 +87,6 @@ export function extensionPopupViewStateCreate(
     settingsOpen,
     vaultUnlock,
     accountLogin,
+    accountRegister,
   }
 }

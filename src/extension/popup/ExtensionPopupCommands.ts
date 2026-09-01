@@ -30,4 +30,6 @@ export interface ExtensionPopupCommands {
   vaultUnlock: (masterPassword: string) => void
   /** Start the login flow from the logged-out state or log in with credentials. */
   accountLogin: (credentials?: { email: string; password: string }) => void
+  /** Open extension-native account creation and verification in the full window. */
+  accountRegister: () => void
 }

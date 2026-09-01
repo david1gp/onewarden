@@ -35,6 +35,8 @@ export function extensionFullWindowViewModelCreate(
     sshKeysLoading: false,
     sshKeyDetailLoading: false,
     errorMessage: null,
+    authChallenge: null,
+    authMessage: null,
     busy: false,
     copiedFieldKey: null,
     attachmentOperationId: null,

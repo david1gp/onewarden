@@ -9,6 +9,8 @@ import {
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
 import { extensionAutofillFillValuesCreate } from "../autofill/extensionAutofillFillValuesCreate.js"
+import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
+import { extensionLoginResultSchema } from "../auth/extensionLoginResultSchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
@@ -52,6 +54,13 @@ type ExtensionBackgroundService = Pick<
   ReturnType<typeof extensionBackgroundServiceCreate>,
   | "start"
   | "passwordLogin"
+  | "loginChallengeSubmit"
+  | "loginChallengeEmailSend"
+  | "loginChallengeCancel"
+  | "accountRegister"
+  | "accountVerificationEmailSend"
+  | "accountVerify"
+  | "accountPasswordSetup"
   | "unlock"
   | "conditionalSync"
   | "manualSync"
@@ -372,7 +381,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
   }
 
   const fullWindowOpen = async (
-    pane?: "vault" | "generator" | "settings",
+    pane?: "vault" | "generator" | "settings" | "auth",
   ): Promise<Result<{ created: boolean; url: string }>> => {
     const op = "extensionBackgroundRouter.fullWindowOpen"
     let url: string
@@ -509,21 +518,35 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     )
   }
 
-  const login = async (request: unknown): Promise<Result<void>> => {
-    const initializeResult = await initialize()
-    if (!initializeResult.success) return initializeResult
-    const result = await options.service.passwordLogin(request)
+  const loginResultValidate = (result: Result<ExtensionLoginResult>, op: string): Result<ExtensionLoginResult> => {
     if (!result.success) return result
-    options.autofill?.startAll()
-    return resultCreate(undefined)
+    const parsed = v.safeParse(extensionLoginResultSchema, result.data)
+    if (!parsed.success) return internal(op, "Login response is invalid.")
+    if (parsed.output.status === "authenticated") options.autofill?.startAll()
+    return resultCreate(parsed.output)
   }
 
-  const unlock = async (request: unknown): Promise<Result<void>> => {
+  const login = async (request: unknown): Promise<Result<ExtensionLoginResult>> => {
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
-    const result = await options.service.unlock(request)
-    if (result.success) options.autofill?.startAll()
-    return result
+    return loginResultValidate(await options.service.passwordLogin(request), "extensionBackgroundRouter.login")
+  }
+
+  const unlock = async (request: unknown): Promise<Result<ExtensionLoginResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return loginResultValidate(await options.service.unlock(request), "extensionBackgroundRouter.unlock")
+  }
+
+  const loginChallengeSubmit = async (
+    request: Extract<ExtensionRuntimeMessage, { type: "loginChallengeSubmit" }>["request"],
+  ): Promise<Result<ExtensionLoginResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return loginResultValidate(
+      await options.service.loginChallengeSubmit(request),
+      "extensionBackgroundRouter.loginChallengeSubmit",
+    )
   }
 
   const conditionalSync = async (): Promise<Result<unknown>> => {
@@ -996,6 +1019,20 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         if (!requestResult.success) return requestResult
         return login(requestResult.data)
       }
+      case "loginChallengeSubmit":
+        return loginChallengeSubmit(message.request)
+      case "loginChallengeEmailSend":
+        return options.service.loginChallengeEmailSend(message.request)
+      case "loginChallengeCancel":
+        return options.service.loginChallengeCancel(message.request)
+      case "accountRegister":
+        return options.service.accountRegister(message.request)
+      case "accountVerificationEmailSend":
+        return options.service.accountVerificationEmailSend(message.request)
+      case "accountVerify":
+        return options.service.accountVerify(message.request)
+      case "accountPasswordSetup":
+        return options.service.accountPasswordSetup(message.request)
       case "unlock": {
         const requestResult = requestRead(message.request, "extensionBackgroundRouter.unlock")
         if (!requestResult.success) return requestResult

@@ -12,6 +12,8 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
+import { ExtensionAccountAuthView } from "../auth/ExtensionAccountAuthView.jsx"
+import { ExtensionLoginChallengeView } from "../auth/ExtensionLoginChallengeView.jsx"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import { ExtensionFullWindowCardPane } from "./ExtensionFullWindowCardPane.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
@@ -95,6 +97,17 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         >
           Settings
         </ButtonIcon>
+        <Show when={state.isLoggedOut()}>
+          <Button
+            variant={state.isAuthPane() ? "filledBlue" : "ghost"}
+            size="sm"
+            aria-current={state.isAuthPane() ? "page" : undefined}
+            onClick={state.authPaneOpen}
+            class="min-h-10"
+          >
+            Create account
+          </Button>
+        </Show>
         <Show when={state.isVaultPane()}>
           <span aria-hidden="true" class="mx-1 hidden h-6 w-px bg-slate-300 sm:block dark:bg-slate-700" />
           <Show when={state.isLoginCategory()}>
@@ -119,6 +132,25 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
       </nav>
 
       <Separator />
+
+      <Show when={state.isAuthPane() && state.isLoggedOut()}>
+        <ExtensionAccountAuthView
+          commands={p.commands}
+          environment={() => p.model().environment}
+          onLogin={state.accountLoginOpen}
+          onSettings={state.settingsPaneOpen}
+          idPrefix={p.idPrefix}
+        />
+      </Show>
+
+      <Show when={state.isAuthPane() && !state.isLoggedOut()}>
+        <section role="status" class="flex max-w-md flex-col gap-2 py-6">
+          <p class="text-sm">Account setup is available after logging out.</p>
+          <Button variant="filledBlue" onClick={state.vaultPaneOpen}>
+            Return to vault
+          </Button>
+        </section>
+      </Show>
 
       <Show when={state.isSettingsPane()}>
         <ExtensionFullWindowSettingsPane
@@ -188,39 +220,71 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         </Show>
 
         <Show when={state.isLoggedOut()}>
-          <section class="flex max-w-md flex-col gap-2 py-6">
-            <p class="text-sm">Sign in to open your vault.</p>
-            <InputS
-              type="email"
-              aria-label="Email address"
-              placeholder="Email address"
-              valueSignal={state.emailSignal}
-            />
-            <InputS
-              type="password"
-              aria-label="Master password"
-              placeholder="Master password"
-              valueSignal={state.masterPasswordSignal}
-            />
-            <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
-              Log in
-            </Button>
-          </section>
+          <Show
+            when={state.authChallenge()}
+            fallback={
+              <section class="flex max-w-md flex-col gap-2 py-6">
+                <p class="text-sm">Sign in to open your vault.</p>
+                <InputS
+                  type="email"
+                  aria-label="Email address"
+                  placeholder="Email address"
+                  valueSignal={state.emailSignal}
+                />
+                <InputS
+                  type="password"
+                  aria-label="Master password"
+                  placeholder="Master password"
+                  valueSignal={state.masterPasswordSignal}
+                />
+                <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
+                  Log in
+                </Button>
+              </section>
+            }
+          >
+            {(challenge) => (
+              <ExtensionLoginChallengeView
+                challenge={challenge}
+                commands={p.commands}
+                busy={state.busy}
+                errorMessage={state.errorMessage}
+                statusMessage={state.authMessage}
+                idPrefix={p.idPrefix}
+              />
+            )}
+          </Show>
         </Show>
 
         <Show when={state.isLocked()}>
-          <section class="flex max-w-md flex-col gap-2 py-6">
-            <p class="text-sm">Your vault is locked.</p>
-            <InputS
-              type="password"
-              aria-label="Master password"
-              placeholder="Master password"
-              valueSignal={state.masterPasswordSignal}
-            />
-            <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
-              Unlock
-            </Button>
-          </section>
+          <Show
+            when={state.authChallenge()}
+            fallback={
+              <section class="flex max-w-md flex-col gap-2 py-6">
+                <p class="text-sm">Your vault is locked.</p>
+                <InputS
+                  type="password"
+                  aria-label="Master password"
+                  placeholder="Master password"
+                  valueSignal={state.masterPasswordSignal}
+                />
+                <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
+                  Unlock
+                </Button>
+              </section>
+            }
+          >
+            {(challenge) => (
+              <ExtensionLoginChallengeView
+                challenge={challenge}
+                commands={p.commands}
+                busy={state.busy}
+                errorMessage={state.errorMessage}
+                statusMessage={state.authMessage}
+                idPrefix={p.idPrefix}
+              />
+            )}
+          </Show>
         </Show>
 
         <Show when={state.isError()}>

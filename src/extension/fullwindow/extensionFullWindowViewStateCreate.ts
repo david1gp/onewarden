@@ -92,6 +92,8 @@ export function extensionFullWindowViewStateCreate(
   const status = createMemo(() => model().status)
   const hostname = createMemo(() => model().hostname)
   const errorMessage = createMemo(() => model().errorMessage)
+  const authChallenge = createMemo(() => model().authChallenge)
+  const authMessage = createMemo(() => model().authMessage)
   const busy = createMemo(() => model().busy)
   const environmentSaveStatus = createMemo(() => model().environmentSaveStatus)
   const environmentSaveErrorMessage = createMemo(() =>
@@ -105,7 +107,8 @@ export function extensionFullWindowViewStateCreate(
 
   const isSettingsPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.settings)
   const isGeneratorPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.generator)
-  const isVaultPane = createMemo(() => !isGeneratorPane() && !isSettingsPane())
+  const isAuthPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.auth)
+  const isVaultPane = createMemo(() => paneSignal.get() === extensionFullWindowPane.vault)
   const isLoginCategory = createMemo(
     () => !["notes", "cards", "identities", "ssh-keys"].includes(vaultCategorySignal.get()),
   )
@@ -242,6 +245,11 @@ export function extensionFullWindowViewStateCreate(
   const vaultPaneOpen = () => paneSignal.set(extensionFullWindowPane.vault)
   const generatorPaneOpen = () => paneSignal.set(extensionFullWindowPane.generator)
   const settingsPaneOpen = () => paneSignal.set(extensionFullWindowPane.settings)
+  const authPaneOpen = () => paneSignal.set(extensionFullWindowPane.auth)
+  const accountLoginOpen = (email = "") => {
+    emailSignal.set(email)
+    paneSignal.set(extensionFullWindowPane.vault)
+  }
   const loginCategoryOpen = () => vaultCategorySignal.set("logins")
   const secureNoteCategoryOpen = () => vaultCategorySignal.set("notes")
   const cardCategoryOpen = () => vaultCategorySignal.set("cards")
@@ -297,6 +305,8 @@ export function extensionFullWindowViewStateCreate(
     vaultSortOptionValues,
     vaultSortLabel,
     errorMessage,
+    authChallenge,
+    authMessage,
     environmentSaveStatus,
     environmentSaveErrorMessage,
     busy,
@@ -334,9 +344,12 @@ export function extensionFullWindowViewStateCreate(
     isSshKeyCategory,
     isGeneratorPane,
     isSettingsPane,
+    isAuthPane,
     vaultPaneOpen,
     generatorPaneOpen,
     settingsPaneOpen,
+    authPaneOpen,
+    accountLoginOpen,
     loginCategoryOpen,
     secureNoteCategoryOpen,
     cardCategoryOpen,

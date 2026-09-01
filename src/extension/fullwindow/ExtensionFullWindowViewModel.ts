@@ -3,6 +3,7 @@ import type { ExtensionBackgroundCollectionDto } from "../background/extensionBa
 import type { ExtensionBackgroundFolderDto } from "../background/extensionBackgroundFolderDtoSchema.js"
 import type { ExtensionCipherDetailReadResult } from "../background/extensionCipherDetailReadResultSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
+import type { ExtensionLoginChallenge } from "../auth/extensionLoginChallengeSchema.js"
 import type { ExtensionProfile } from "../crypto/extensionProfileSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
@@ -41,6 +42,8 @@ export interface ExtensionFullWindowViewModel {
   sshKeysLoading: boolean
   sshKeyDetailLoading: boolean
   errorMessage: string | null
+  authChallenge: ExtensionLoginChallenge | null
+  authMessage: string | null
   busy: boolean
   copiedFieldKey: string | null
   attachmentOperationId: string | null

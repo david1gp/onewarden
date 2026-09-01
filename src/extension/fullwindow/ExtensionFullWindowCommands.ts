@@ -1,3 +1,9 @@
+import type { Result } from "#result"
+import type { ExtensionAccountPasswordSetupRequest } from "../auth/extensionAccountPasswordSetupRequestSchema.js"
+import type { ExtensionAccountRegisterRequest } from "../auth/extensionAccountRegisterRequestSchema.js"
+import type { ExtensionAccountVerificationEmailSendRequest } from "../auth/extensionAccountVerificationEmailSendRequestSchema.js"
+import type { ExtensionAccountVerifyRequest } from "../auth/extensionAccountVerifyRequestSchema.js"
+import type { ExtensionLoginChallengeSubmitRequest } from "../auth/extensionLoginChallengeSubmitRequestSchema.js"
 import type { ExtensionBackgroundCollectionDto } from "../background/extensionBackgroundCollectionDtoSchema.js"
 import type { ExtensionBackgroundFolderDto } from "../background/extensionBackgroundFolderDtoSchema.js"
 import type { ExtensionCipherAttachment } from "../crypto/extensionCipherAttachmentSchema.js"
@@ -65,6 +71,25 @@ export interface ExtensionFullWindowCommands {
     credentials?: { email: string; password: string },
     environment?: ExtensionFullWindowEnvironmentSettings,
   ) => void
+  loginChallengeSubmit: (request: ExtensionLoginChallengeSubmitRequest) => void
+  loginChallengeEmailSend: (challengeId: string) => void
+  loginChallengeCancel: (challengeId: string) => void
+  accountRegister: (
+    request: ExtensionAccountRegisterRequest,
+    environment: ExtensionFullWindowEnvironmentSettings,
+  ) => Promise<Result<void>>
+  accountVerificationEmailSend: (
+    request: ExtensionAccountVerificationEmailSendRequest,
+    environment: ExtensionFullWindowEnvironmentSettings,
+  ) => Promise<Result<{ token?: string; userId?: string }>>
+  accountVerify: (
+    request: ExtensionAccountVerifyRequest,
+    environment: ExtensionFullWindowEnvironmentSettings,
+  ) => Promise<Result<void>>
+  accountPasswordSetup: (
+    request: ExtensionAccountPasswordSetupRequest,
+    environment: ExtensionFullWindowEnvironmentSettings,
+  ) => Promise<Result<void>>
   environmentSave: (environment: ExtensionFullWindowEnvironmentSettings) => void
   lockPolicySave: (policy: ExtensionLockPolicy) => void
   autofillPolicySave?: (policy: ExtensionAutofillPolicy) => void

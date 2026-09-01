@@ -27,10 +27,23 @@ import { secureRandomBytes } from "../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
+import { totpSecretParse } from "../../shared/totp/totpSecretParse.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
+import { extensionAccountKeyMaterialCreate } from "../auth/extensionAccountKeyMaterialCreate.js"
+import { extensionAccountPasswordSetupRequestSchema } from "../auth/extensionAccountPasswordSetupRequestSchema.js"
+import { extensionAccountRegisterRequestSchema } from "../auth/extensionAccountRegisterRequestSchema.js"
+import { extensionAccountVerificationEmailSendRequestSchema } from "../auth/extensionAccountVerificationEmailSendRequestSchema.js"
+import { extensionAccountVerifyRequestSchema } from "../auth/extensionAccountVerifyRequestSchema.js"
+import type { ExtensionLoginChallenge } from "../auth/extensionLoginChallengeSchema.js"
+import { extensionLoginChallengeIdRequestSchema } from "../auth/extensionLoginChallengeIdRequestSchema.js"
+import { extensionLoginChallengeSubmitRequestSchema } from "../auth/extensionLoginChallengeSubmitRequestSchema.js"
+import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
+import { extensionLoginRequestSchema } from "../auth/extensionLoginRequestSchema.js"
+import { extensionLoginTwoFactorProvider } from "../auth/extensionLoginTwoFactorProvider.js"
+import { extensionUnlockRequestSchema } from "../auth/extensionUnlockRequestSchema.js"
 import { extensionCredentialCapturePlanCreate } from "../autofill/extensionCredentialCapturePlanCreate.js"
-import { extensionCredentialCaptureRequestSchema } from "../autofill/extensionCredentialCaptureRequestSchema.js"
 import type { ExtensionCredentialCapturePrompt } from "../autofill/extensionCredentialCapturePromptSchema.js"
+import { extensionCredentialCaptureRequestSchema } from "../autofill/extensionCredentialCaptureRequestSchema.js"
 import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
 import { extensionCollectionSchema } from "../crypto/extensionCollectionSchema.js"
@@ -39,8 +52,6 @@ import { extensionMasterKeyDerive } from "../crypto/extensionMasterKeyDerive.js"
 import { extensionMasterPasswordHashDerive } from "../crypto/extensionMasterPasswordHashDerive.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import { extensionProfileSchema } from "../crypto/extensionProfileSchema.js"
-import { extensionEmailSchema } from "../extensionEmailSchema.js"
-import { extensionPasswordSchema } from "../extensionPasswordSchema.js"
 import { extensionSessionHandoffCreate } from "../handoff/extensionSessionHandoffCreate.js"
 import { extensionPasskeyAssertionCreate } from "../passkey/extensionPasskeyAssertionCreate.js"
 import type { ExtensionPasskeyAssertionRequest } from "../passkey/extensionPasskeyAssertionRequestSchema.js"
@@ -105,6 +116,8 @@ import {
   extensionVaultSearchRequestSchema,
 } from "./extensionVaultSearchRequestSchema.js"
 import type { ExtensionVaultSearchResult } from "./extensionVaultSearchResultSchema.js"
+import { type TwoFactorChallenge, twoFactorChallengeSchema } from "../../web/auth/model/twoFactorChallengeSchema.js"
+import { twoFactorWebAuthnChallengeResponseSchema } from "../../web/auth/model/twoFactorWebAuthnChallengeResponseSchema.js"
 
 type ExtensionApiClient = Pick<
   ReturnType<typeof extensionBitwardenApiClientCreate>,
@@ -135,7 +148,12 @@ type ExtensionApiClient = Pick<
       | "collectionCreate"
       | "collectionUpdate"
       | "collectionDelete"
+      | "accountRegister"
+      | "accountVerificationEmailSend"
+      | "accountVerify"
+      | "accountPasswordSetup"
       | "sessionHandoffCreate"
+      | "twoFactorEmailLoginSend"
     >
   >
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
@@ -159,6 +177,21 @@ type PasswordLoginRequest = {
   deviceType: string
 }
 
+type PasswordAuthenticationContext = {
+  request: PasswordLoginRequest
+  prelogin: BitwardenPreloginResponse
+  passwordHash: string
+}
+
+type PendingLoginChallenge = {
+  id: string
+  expiresAt: number
+  purpose: "login" | "unlock"
+  context: PasswordAuthenticationContext
+  password: string | null
+  challenge: TwoFactorChallenge
+}
+
 type AuthenticatedPassword = {
   prelogin: BitwardenPreloginResponse
   token: BitwardenPasswordTokenResponse
@@ -174,21 +207,6 @@ type ExtensionSyncResult = {
   lastSyncedAt: number
   snapshot: ExtensionSyncSnapshot
 }
-
-const passwordLoginRequestSchema = v.object({
-  email: extensionEmailSchema,
-  password: extensionPasswordSchema,
-  clientId: v.optional(v.pipe(v.string(), v.minLength(1)), "browser"),
-  scope: v.optional(v.pipe(v.string(), v.minLength(1)), "api offline_access"),
-  deviceIdentifier: v.optional(v.pipe(v.string(), v.minLength(1)), "onewarden-extension"),
-  deviceName: v.optional(v.pipe(v.string(), v.minLength(1)), "OneWarden"),
-  deviceType: v.optional(v.pipe(v.string(), v.minLength(1)), "14"),
-})
-
-const unlockRequestSchema = v.object({
-  email: v.optional(extensionEmailSchema),
-  password: extensionPasswordSchema,
-})
 
 const syncRequestSchema = v.object({
   force: v.optional(v.boolean(), false),
@@ -356,10 +374,22 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const now = options.now ?? Date.now
   let operationChain: Promise<void> = Promise.resolve()
   let refreshInFlight: Promise<Result<ExtensionAuthSession>> | null = null
+  let pendingLoginChallenge: PendingLoginChallenge | null = null
   const credentialCapturePending = new Map<
     string,
     { expiresAt: number; kind: "add" | "change"; cipher: ExtensionPersonalLoginCipher }
   >()
+  const credentialCapturePendingDrop = (promptId: string): void => {
+    credentialCapturePending.delete(promptId)
+  }
+  const credentialCapturePendingClear = (): void => {
+    credentialCapturePending.clear()
+  }
+  const credentialCapturePendingExpiredDrop = (currentTime: number): void => {
+    for (const [id, pending] of credentialCapturePending) {
+      if (pending.expiresAt <= currentTime) credentialCapturePendingDrop(id)
+    }
+  }
 
   const operationRun = <T>(operation: () => Promise<Result<T>>): Promise<Result<T>> => {
     const result = operationChain.then(operation, operation)
@@ -467,7 +497,9 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     return request(refreshResult.data.accessToken)
   }
 
-  const passwordAuthenticate = async (request: PasswordLoginRequest): Promise<Result<AuthenticatedPassword>> => {
+  const passwordAuthenticationContextCreate = async (
+    request: PasswordLoginRequest,
+  ): Promise<Result<PasswordAuthenticationContext>> => {
     const preloginResult = await options.apiClient.prelogin({ email: request.email })
     if (!preloginResult.success) return preloginResult
 
@@ -483,22 +515,186 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     const encodedPasswordHash = base64Encode(passwordHashResult.data)
     passwordHashResult.data.fill(0)
 
+    return resultCreate({ request, prelogin: preloginResult.data, passwordHash: encodedPasswordHash })
+  }
+
+  const passwordAuthenticate = async (
+    context: PasswordAuthenticationContext,
+    twoFactor?: { provider: number; token: string; rememberDevice: boolean },
+  ): Promise<Result<AuthenticatedPassword>> => {
+    const request = context.request
     const tokenResult = await options.apiClient.passwordToken({
       grant_type: "password",
       client_id: request.clientId,
-      password: encodedPasswordHash,
+      password: context.passwordHash,
       scope: request.scope,
       username: request.email,
       device_identifier: request.deviceIdentifier,
       device_name: request.deviceName,
       device_type: request.deviceType,
+      ...(twoFactor === undefined
+        ? {}
+        : {
+            two_factor_provider: String(twoFactor.provider),
+            two_factor_token: twoFactor.token,
+            two_factor_remember: twoFactor.rememberDevice ? "1" : "0",
+          }),
     })
     if (!tokenResult.success) return tokenResult
     const previousAuthResult = await options.storage.authSessionLoad()
     if (!previousAuthResult.success) return previousAuthResult
     const authSessionResult = authSessionCreate(tokenResult.data, request.email, previousAuthResult.data, now)
     if (!authSessionResult.success) return authSessionResult
-    return resultCreate({ prelogin: preloginResult.data, token: tokenResult.data, authSession: authSessionResult.data })
+    return resultCreate({ prelogin: context.prelogin, token: tokenResult.data, authSession: authSessionResult.data })
+  }
+
+  const loginChallengeRead = (result: Result<unknown>): Result<TwoFactorChallenge> => {
+    const op = "extensionBackgroundService.loginChallengeRead"
+    if (result.success || result.code !== "auth.two-factor-required" || result.errorData === undefined) {
+      return invalidRequest(op, "Authentication challenge is unavailable.")
+    }
+    try {
+      const parsed = v.safeParse(twoFactorChallengeSchema, JSON.parse(result.errorData))
+      if (!parsed.success) return invalidRequest(op, "Authentication challenge is invalid.")
+      return resultCreate(parsed.output)
+    } catch {
+      return invalidRequest(op, "Authentication challenge is invalid.")
+    }
+  }
+
+  const loginChallengePublicCreate = (
+    pending: PendingLoginChallenge,
+    errorMessage: string | null = null,
+  ): Result<ExtensionLoginChallenge> => {
+    const providers: Array<0 | 1 | 7 | 8> = []
+    for (const rawProvider of pending.challenge.TwoFactorProviders) {
+      const provider = typeof rawProvider === "number" ? rawProvider : Number.parseInt(rawProvider, 10)
+      if ((provider === 0 || provider === 1 || provider === 7) && !providers.includes(provider)) {
+        providers.push(provider)
+      }
+    }
+    if (!providers.includes(extensionLoginTwoFactorProvider.recoveryCode)) {
+      providers.push(extensionLoginTwoFactorProvider.recoveryCode)
+    }
+    if (providers.length === 0)
+      return unavailable("extensionBackgroundService.loginChallenge", "No supported verification method is available.")
+
+    const emailData = v.safeParse(
+      v.object({ Email: v.pipe(v.string(), v.minLength(1)) }),
+      pending.challenge.TwoFactorProviders2?.[String(extensionLoginTwoFactorProvider.email)],
+    )
+    const webAuthnData = v.safeParse(
+      v.object({ Challenge: twoFactorWebAuthnChallengeResponseSchema }),
+      pending.challenge.TwoFactorProviders2?.[String(extensionLoginTwoFactorProvider.webauthn)],
+    )
+    const webAuthn =
+      providers.includes(extensionLoginTwoFactorProvider.webauthn) && webAuthnData.success
+        ? webAuthnData.output.Challenge
+        : null
+    const supportedProviders =
+      webAuthn === null
+        ? providers.filter((provider) => provider !== extensionLoginTwoFactorProvider.webauthn)
+        : providers
+    return resultCreate({
+      challengeId: pending.id,
+      providers: supportedProviders,
+      emailHint: emailData.success ? emailData.output.Email : null,
+      webAuthn,
+      errorMessage,
+    })
+  }
+
+  const pendingLoginChallengeCreate = (
+    purpose: "login" | "unlock",
+    context: PasswordAuthenticationContext,
+    password: string | null,
+    challenge: TwoFactorChallenge,
+  ): Result<ExtensionLoginResult> => {
+    const id = globalThis.crypto?.randomUUID?.() ?? `login-challenge-${now()}-${Math.random().toString(36).slice(2)}`
+    pendingLoginChallenge = { id, expiresAt: now() + 5 * 60_000, purpose, context, password, challenge }
+    const publicResult = loginChallengePublicCreate(pendingLoginChallenge)
+    if (!publicResult.success) {
+      pendingLoginChallenge = null
+      return publicResult
+    }
+    return resultCreate({ status: "challenge", challenge: publicResult.data })
+  }
+
+  const accountRegister = async (input: unknown): Promise<Result<void>> => {
+    const op = "extensionBackgroundService.accountRegister"
+    const parsed = v.safeParse(extensionAccountRegisterRequestSchema, input)
+    if (!parsed.success)
+      return invalidRequest(op, "Account registration request is invalid.", v.summarize(parsed.issues))
+    if (options.apiClient.accountRegister === undefined) return unavailable(op, "Account registration is unavailable.")
+    const request = parsed.output
+    const keyMaterialResult = await extensionAccountKeyMaterialCreate({
+      email: request.email,
+      masterPassword: request.masterPassword,
+      kdf: 0,
+      kdfIterations: 600_000,
+      kdfMemory: null,
+      kdfParallelism: null,
+    })
+    if (!keyMaterialResult.success) return keyMaterialResult
+    const keyMaterial = keyMaterialResult.data
+    const result = await options.apiClient.accountRegister({
+      email: request.email,
+      masterPasswordHash: keyMaterial.masterPasswordHash,
+      userSymmetricKey: keyMaterial.userSymmetricKey,
+      masterPasswordHint: request.masterPasswordHint,
+      name: request.name,
+      kdf: 0,
+      kdfIterations: 600_000,
+      kdfMemory: null,
+      kdfParallelism: null,
+      keys: keyMaterial.keys,
+    })
+    keyMaterial.userKey.fill(0)
+    if (!result.success) return result
+    return resultCreate(undefined)
+  }
+
+  const accountVerificationEmailSend = async (input: unknown) => {
+    const op = "extensionBackgroundService.accountVerificationEmailSend"
+    const parsed = v.safeParse(extensionAccountVerificationEmailSendRequestSchema, input)
+    if (!parsed.success) return invalidRequest(op, "Verification email request is invalid.", v.summarize(parsed.issues))
+    if (options.apiClient.accountVerificationEmailSend === undefined) {
+      return unavailable<{ token?: string; userId?: string }>(op, "Email verification is unavailable.")
+    }
+    return options.apiClient.accountVerificationEmailSend(parsed.output)
+  }
+
+  const accountVerify = async (input: unknown): Promise<Result<void>> => {
+    const op = "extensionBackgroundService.accountVerify"
+    const parsed = v.safeParse(extensionAccountVerifyRequestSchema, input)
+    if (!parsed.success) return invalidRequest(op, "Email verification request is invalid.", v.summarize(parsed.issues))
+    if (options.apiClient.accountVerify === undefined) return unavailable(op, "Email verification is unavailable.")
+    return options.apiClient.accountVerify(parsed.output)
+  }
+
+  const accountPasswordSetup = async (input: unknown): Promise<Result<void>> => {
+    const op = "extensionBackgroundService.accountPasswordSetup"
+    const parsed = v.safeParse(extensionAccountPasswordSetupRequestSchema, input)
+    if (!parsed.success) return invalidRequest(op, "Password setup request is invalid.", v.summarize(parsed.issues))
+    if (options.apiClient.accountPasswordSetup === undefined) return unavailable(op, "Password setup is unavailable.")
+    const request = parsed.output
+    const keyMaterialResult = await extensionAccountKeyMaterialCreate(request)
+    if (!keyMaterialResult.success) return keyMaterialResult
+    const keyMaterial = keyMaterialResult.data
+    const result = await options.apiClient.accountPasswordSetup({
+      accessToken: request.accessToken,
+      masterPasswordHash: keyMaterial.masterPasswordHash,
+      userSymmetricKey: keyMaterial.userSymmetricKey,
+      masterPasswordHint: request.masterPasswordHint,
+      kdf: request.kdf,
+      kdfIterations: request.kdfIterations,
+      kdfMemory: request.kdfMemory,
+      kdfParallelism: request.kdfParallelism,
+      keys: keyMaterial.keys,
+    })
+    keyMaterial.userKey.fill(0)
+    if (!result.success) return result
+    return resultCreate(undefined)
   }
 
   const timeoutAction = async (policy: ExtensionLockPolicy): Promise<Result<void>> => {
@@ -1544,29 +1740,36 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     return timeoutReconcile()
   }
 
-  const passwordLogin = (request: unknown): Promise<Result<ExtensionAuthSession>> =>
+  const passwordLogin = (request: unknown): Promise<Result<ExtensionLoginResult>> =>
     operationRun(async () => {
       const op = "extensionBackgroundService.passwordLogin"
-      const parsed = v.safeParse(passwordLoginRequestSchema, request)
+      const parsed = v.safeParse(extensionLoginRequestSchema, request)
       if (!parsed.success) return invalidRequest(op, "Password login request is invalid.", v.summarize(parsed.issues))
+      pendingLoginChallenge = null
       if (refreshInFlight !== null) await refreshInFlight
       const lockResult = await options.vaultSession.lock()
       if (!lockResult.success) return lockResult
       const clearAlarmResult = await alarmClear()
       if (!clearAlarmResult.success) return clearAlarmResult
-      const authResult = await passwordAuthenticate(parsed.output)
-      if (!authResult.success) return authResult
+      const contextResult = await passwordAuthenticationContextCreate(parsed.output)
+      if (!contextResult.success) return contextResult
+      const authResult = await passwordAuthenticate(contextResult.data)
+      if (!authResult.success) {
+        const challengeResult = loginChallengeRead(authResult)
+        if (!challengeResult.success) return authResult
+        return pendingLoginChallengeCreate("login", contextResult.data, null, challengeResult.data)
+      }
       const saveResult = await options.storage.authSessionSave(authResult.data.authSession)
       if (!saveResult.success) return saveResult
-      return resultCreate(authResult.data.authSession)
+      return resultCreate({ status: "authenticated" })
     })
 
   const refreshToken = (): Promise<Result<ExtensionAuthSession>> => refreshTokenCoordinated(true)
 
-  const unlock = (request: unknown): Promise<Result<void>> =>
+  const unlock = (request: unknown): Promise<Result<ExtensionLoginResult>> =>
     operationRun(async () => {
       const op = "extensionBackgroundService.unlock"
-      const parsed = v.safeParse(unlockRequestSchema, request)
+      const parsed = v.safeParse(extensionUnlockRequestSchema, request)
       if (!parsed.success) return invalidRequest(op, "Vault unlock request is invalid.", v.summarize(parsed.issues))
       if (refreshInFlight !== null) await refreshInFlight
       const previousAuthResult = await options.storage.authSessionLoad()
@@ -1576,7 +1779,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         email = previousAuthResult.data?.email ?? undefined
       }
       if (email === undefined) return invalidRequest(op, "Account email is required.")
-      const authResult = await passwordAuthenticate({
+      pendingLoginChallenge = null
+      const contextResult = await passwordAuthenticationContextCreate({
         email,
         password: parsed.output.password,
         clientId: "browser",
@@ -1585,7 +1789,13 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         deviceName: "OneWarden",
         deviceType: "14",
       })
-      if (!authResult.success) return authResult
+      if (!contextResult.success) return contextResult
+      const authResult = await passwordAuthenticate(contextResult.data)
+      if (!authResult.success) {
+        const challengeResult = loginChallengeRead(authResult)
+        if (!challengeResult.success) return authResult
+        return pendingLoginChallengeCreate("unlock", contextResult.data, parsed.output.password, challengeResult.data)
+      }
       const saveResult = await options.storage.authSessionSave(authResult.data.authSession)
       if (!saveResult.success) return saveResult
       const unlockResult = await options.vaultSession.unlock({
@@ -1602,13 +1812,112 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
         if (!rollbackResult.success) return rollbackResult
         return unlockResult
       }
-      return timeoutReconcile()
+      const timeoutResult = await timeoutReconcile()
+      if (!timeoutResult.success) return timeoutResult
+      return resultCreate({ status: "authenticated" })
+    })
+
+  const loginChallengeSubmit = (input: unknown): Promise<Result<ExtensionLoginResult>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.loginChallengeSubmit"
+      const parsed = v.safeParse(extensionLoginChallengeSubmitRequestSchema, input)
+      if (!parsed.success) return invalidRequest(op, "Login challenge response is invalid.", v.summarize(parsed.issues))
+      const pending = pendingLoginChallenge
+      if (pending === null || pending.id !== parsed.output.challengeId) {
+        return invalidRequest(op, "Login challenge is no longer available.")
+      }
+      if (pending.expiresAt <= now()) {
+        pendingLoginChallenge = null
+        return resultErrorCreate(op, "Login challenge expired. Start again.", {
+          code: "auth.challenge-expired",
+          statusCode: 401,
+        })
+      }
+      const advertisedProviders = pending.challenge.TwoFactorProviders.map(Number)
+      if (
+        parsed.output.provider !== extensionLoginTwoFactorProvider.recoveryCode &&
+        !advertisedProviders.includes(parsed.output.provider)
+      ) {
+        return invalidRequest(op, "The selected verification method is unavailable.")
+      }
+      const previousAuthResult = await options.storage.authSessionLoad()
+      if (!previousAuthResult.success) return previousAuthResult
+      const authResult = await passwordAuthenticate(pending.context, parsed.output)
+      if (!authResult.success) {
+        const nextChallengeResult = loginChallengeRead(authResult)
+        if (!nextChallengeResult.success) return authResult
+        pending.challenge = nextChallengeResult.data
+        const publicResult = loginChallengePublicCreate(pending, authResult.errorMessage)
+        if (!publicResult.success) return publicResult
+        return resultCreate({ status: "challenge", challenge: publicResult.data })
+      }
+      const saveResult = await options.storage.authSessionSave(authResult.data.authSession)
+      if (!saveResult.success) return saveResult
+      if (pending.purpose === "unlock") {
+        if (pending.password === null) return internal(op, "Unlock credentials are unavailable.")
+        const unlockResult = await options.vaultSession.unlock({
+          email: pending.context.request.email,
+          password: pending.password,
+          prelogin: pending.context.prelogin,
+          token: authResult.data.token,
+        })
+        if (!unlockResult.success) {
+          const rollbackResult =
+            previousAuthResult.data === null
+              ? await options.storage.authSessionClear()
+              : await options.storage.authSessionSave(previousAuthResult.data)
+          if (!rollbackResult.success) return rollbackResult
+          return unlockResult
+        }
+        const timeoutResult = await timeoutReconcile()
+        if (!timeoutResult.success) return timeoutResult
+      }
+      pendingLoginChallenge = null
+      return resultCreate({ status: "authenticated" })
+    })
+
+  const loginChallengeEmailSend = (input: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.loginChallengeEmailSend"
+      const parsed = v.safeParse(extensionLoginChallengeIdRequestSchema, input)
+      if (!parsed.success) return invalidRequest(op, "Email challenge request is invalid.", v.summarize(parsed.issues))
+      const pending = pendingLoginChallenge
+      if (pending === null || pending.id !== parsed.output.challengeId || pending.expiresAt <= now()) {
+        pendingLoginChallenge = null
+        return resultErrorCreate(op, "Login challenge expired. Start again.", {
+          code: "auth.challenge-expired",
+          statusCode: 401,
+        })
+      }
+      if (!pending.challenge.TwoFactorProviders.map(Number).includes(extensionLoginTwoFactorProvider.email)) {
+        return invalidRequest(op, "Email verification is unavailable.")
+      }
+      if (options.apiClient.twoFactorEmailLoginSend === undefined) {
+        return unavailable(op, "Email verification is unavailable.")
+      }
+      return options.apiClient.twoFactorEmailLoginSend({
+        email: pending.context.request.email,
+        deviceIdentifier: pending.context.request.deviceIdentifier,
+        masterPasswordHash: pending.context.passwordHash,
+      })
+    })
+
+  const loginChallengeCancel = (input: unknown): Promise<Result<void>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.loginChallengeCancel"
+      const parsed = v.safeParse(extensionLoginChallengeIdRequestSchema, input)
+      if (!parsed.success)
+        return invalidRequest(op, "Login challenge cancellation is invalid.", v.summarize(parsed.issues))
+      if (pendingLoginChallenge?.id === parsed.output.challengeId) pendingLoginChallenge = null
+      return resultCreate(undefined)
     })
 
   const lock = (): Promise<Result<void>> =>
     operationRun(async () => {
       const lockResult = await options.vaultSession.lock()
       if (!lockResult.success) return lockResult
+      pendingLoginChallenge = null
+      credentialCapturePendingClear()
       return alarmClear()
     })
 
@@ -1617,6 +1926,8 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       if (refreshInFlight !== null) await refreshInFlight
       const logoutResult = await options.vaultSession.logout()
       if (!logoutResult.success) return logoutResult
+      pendingLoginChallenge = null
+      credentialCapturePendingClear()
       return alarmClear()
     })
 
@@ -1653,13 +1964,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     if (!snapshotResult.success) return snapshotResult
     if (snapshotResult.data === null) return unavailable(op, "Vault data is unavailable.")
     const currentTime = now()
-    for (const [id, pending] of credentialCapturePending) {
-      if (pending.expiresAt <= currentTime) credentialCapturePending.delete(id)
-    }
+    credentialCapturePendingExpiredDrop(currentTime)
     while (credentialCapturePending.size >= 50) {
       const first = credentialCapturePending.keys().next().value
       if (typeof first !== "string") break
-      credentialCapturePending.delete(first)
+      credentialCapturePendingDrop(first)
     }
     const id = extensionCredentialCaptureIdCreate()
     const plan = extensionCredentialCapturePlanCreate(
@@ -1672,6 +1981,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     const site = extensionCredentialCaptureSiteRead(parsed.output.url)
     if (site === null) return invalidRequest(op, "Credential capture URL is invalid.")
     if (plan.kind === "atRisk") return resultCreate({ id, kind: plan.kind, site, risk: plan.risk })
+    credentialCapturePendingDrop(id)
     credentialCapturePending.set(id, {
       expiresAt: currentTime + 60_000,
       kind: plan.kind,
@@ -1681,21 +1991,29 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   }
 
   const credentialCaptureDiscard = (promptId: string): Result<void> => {
-    credentialCapturePending.delete(promptId)
+    credentialCapturePendingDrop(promptId)
     return resultCreate(undefined)
   }
 
-  const credentialCaptureCommit = async (promptId: string): Promise<Result<"saved" | "updated">> => {
+  const credentialCaptureCommit = async (
+    promptId: string,
+    totp: string | null = null,
+  ): Promise<Result<"saved" | "updated">> => {
     const op = "extensionBackgroundService.credentialCaptureCommit"
     const parsed = v.safeParse(v.pipe(v.string(), v.minLength(1), v.maxLength(192)), promptId)
     if (!parsed.success) return invalidRequest(op, "Credential capture prompt is invalid.")
     const pending = credentialCapturePending.get(parsed.output)
-    credentialCapturePending.delete(parsed.output)
+    credentialCapturePendingDrop(parsed.output)
     if (pending === undefined || pending.expiresAt <= now()) {
       return resultErrorCreate(op, "Credential capture prompt has expired.", {
         code: "platform.invalid-request",
         statusCode: 400,
       })
+    }
+    if (totp !== null) {
+      const totpResult = totpSecretParse(totp)
+      if (!totpResult.success) return invalidRequest(op, "Authenticator key is invalid.")
+      pending.cipher = { ...pending.cipher, login: { ...pending.cipher.login, totp } }
     }
     const mutationResult =
       pending.kind === "add"
@@ -2246,7 +2564,14 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   })
 
   return {
+    accountRegister,
+    accountVerificationEmailSend,
+    accountVerify,
+    accountPasswordSetup,
     passwordLogin,
+    loginChallengeSubmit,
+    loginChallengeEmailSend,
+    loginChallengeCancel,
     refreshToken,
     sync,
     conditionalSync,

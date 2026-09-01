@@ -1,8 +1,11 @@
 import type { Result } from "#result"
+import * as v from "valibot"
 import { base64Decode } from "../../shared/crypto/base64Decode.js"
 import { base64Encode } from "../../shared/crypto/base64Encode.js"
 import type { ExtensionBackgroundCollectionDto } from "../background/extensionBackgroundCollectionDtoSchema.js"
 import type { ExtensionBackgroundFolderDto } from "../background/extensionBackgroundFolderDtoSchema.js"
+import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
+import { extensionLoginResultSchema } from "../auth/extensionLoginResultSchema.js"
 import type { ExtensionClipboardAdapter } from "../clipboard/extensionClipboardAdapter.js"
 import { extensionClipboardAdapterCreate } from "../clipboard/extensionClipboardAdapterCreate.js"
 import { extensionCommonCommandsCreate } from "../commands/extensionCommonCommandsCreate.js"
@@ -522,9 +525,97 @@ export function extensionFullWindowCommandsCreate(
         onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: res.errorMessage ?? "Login failed." }))
         return
       }
+      const loginResult = v.safeParse(extensionLoginResultSchema, res.data)
+      if (loginResult.success && loginResult.output.status === "challenge") {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          authChallenge: loginResult.output.challenge,
+          authMessage: null,
+          errorMessage: null,
+        }))
+        return
+      }
       await onRefresh()
     })
   }
+
+  const loginChallengeResultHandle = async (result: Result<ExtensionLoginResult>): Promise<void> => {
+    if (!result.success) {
+      onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: result.errorMessage, authMessage: null }))
+      return
+    }
+    const parsed = v.safeParse(extensionLoginResultSchema, result.data)
+    if (!parsed.success) {
+      onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: "Login response is invalid." }))
+      return
+    }
+    if (parsed.output.status === "challenge") {
+      onModelUpdate((prev) => ({
+        ...prev,
+        busy: false,
+        authChallenge: parsed.output.challenge,
+        authMessage: null,
+        errorMessage: parsed.output.challenge.errorMessage,
+      }))
+      return
+    }
+    onModelUpdate((prev) => ({ ...prev, authChallenge: null, authMessage: null, errorMessage: null }))
+    await onRefresh()
+  }
+
+  const loginChallengeSubmit: ExtensionFullWindowCommands["loginChallengeSubmit"] = (request) => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null, authMessage: null }))
+    void sender({ type: "loginChallengeSubmit", request }).then(loginChallengeResultHandle)
+  }
+
+  const loginChallengeEmailSend: ExtensionFullWindowCommands["loginChallengeEmailSend"] = (challengeId) => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null, authMessage: null }))
+    void sender({ type: "loginChallengeEmailSend", request: { challengeId } }).then((result) => {
+      onModelUpdate((prev) => ({
+        ...prev,
+        busy: false,
+        errorMessage: result.success ? null : result.errorMessage,
+        authMessage: result.success ? "Verification code sent. Check your email." : null,
+      }))
+    })
+  }
+
+  const loginChallengeCancel: ExtensionFullWindowCommands["loginChallengeCancel"] = (challengeId) => {
+    void sender({ type: "loginChallengeCancel", request: { challengeId } })
+    onModelUpdate((prev) => ({
+      ...prev,
+      busy: false,
+      authChallenge: null,
+      authMessage: null,
+      errorMessage: null,
+    }))
+  }
+
+  const vaultUnlock = (masterPassword: string) => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null, authMessage: null }))
+    void sender({ type: "unlock", request: { password: masterPassword } }).then(loginChallengeResultHandle)
+  }
+
+  const accountRequestSend = async <T>(
+    message: ExtensionRuntimeMessage,
+    environment: ExtensionFullWindowEnvironmentSettings,
+  ): Promise<Result<T>> => {
+    const permissionResult = await hostPermissionRequest(environment)
+    if (!permissionResult.success) return permissionResult
+    return sender(message)
+  }
+
+  const accountRegister: ExtensionFullWindowCommands["accountRegister"] = (request, environment) =>
+    accountRequestSend({ type: "accountRegister", request }, environment)
+  const accountVerificationEmailSend: ExtensionFullWindowCommands["accountVerificationEmailSend"] = (
+    request,
+    environment,
+  ) => accountRequestSend({ type: "accountVerificationEmailSend", request }, environment)
+  const accountVerify: ExtensionFullWindowCommands["accountVerify"] = (request, environment) =>
+    accountRequestSend({ type: "accountVerify", request }, environment)
+  const accountPasswordSetup: ExtensionFullWindowCommands["accountPasswordSetup"] = (request, environment) =>
+    accountRequestSend({ type: "accountPasswordSetup", request }, environment)
 
   const environmentSave = (environment: ExtensionFullWindowEnvironmentSettings) => {
     onModelUpdate((prev) => ({
@@ -663,8 +754,15 @@ export function extensionFullWindowCommandsCreate(
     vaultSync: commonCommands.vaultSync,
     vaultLock: commonCommands.vaultLock,
     vaultLogout: commonCommands.vaultLogout,
-    vaultUnlock: commonCommands.vaultUnlock,
+    vaultUnlock,
     accountLogin,
+    loginChallengeSubmit,
+    loginChallengeEmailSend,
+    loginChallengeCancel,
+    accountRegister,
+    accountVerificationEmailSend,
+    accountVerify,
+    accountPasswordSetup,
     environmentSave,
     lockPolicySave,
     autofillPolicySave,

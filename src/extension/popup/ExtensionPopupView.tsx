@@ -91,6 +91,9 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
             Log in
           </Button>
+          <Button variant="outline" disabled={state.busy()} onClick={state.accountRegister}>
+            Create account
+          </Button>
         </section>
       </Show>
 

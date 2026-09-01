@@ -50,6 +50,7 @@ const popupCommands: ExtensionPopupCommands = {
   settingsOpen: actionIgnore,
   vaultUnlock: actionIgnore,
   accountLogin: actionIgnore,
+  accountRegister: actionIgnore,
 }
 
 const fullWindowCommands: ExtensionFullWindowCommands = {
@@ -99,6 +100,10 @@ const fullWindowCommands: ExtensionFullWindowCommands = {
   vaultLogout: actionIgnore,
   vaultUnlock: actionIgnore,
   accountLogin: actionIgnore,
+  accountRegister: () => Promise.resolve(resultCreate(undefined)),
+  accountVerificationEmailSend: () => Promise.resolve(resultCreate({})),
+  accountVerify: () => Promise.resolve(resultCreate(undefined)),
+  accountPasswordSetup: () => Promise.resolve(resultCreate(undefined)),
   environmentSave: actionIgnore,
   lockPolicySave: actionIgnore,
 }

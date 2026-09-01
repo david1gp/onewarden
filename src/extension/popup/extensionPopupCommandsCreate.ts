@@ -69,6 +69,10 @@ export function extensionPopupCommandsCreate(
     void sender({ type: "fullWindowOpen", pane: "vault" })
   }
 
+  const accountRegister = () => {
+    void sender({ type: "fullWindowOpen", pane: "auth" })
+  }
+
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
@@ -82,6 +86,7 @@ export function extensionPopupCommandsCreate(
     settingsOpen,
     vaultUnlock: commonCommands.vaultUnlock,
     accountLogin,
+    accountRegister,
     ...overrides,
   }
 }

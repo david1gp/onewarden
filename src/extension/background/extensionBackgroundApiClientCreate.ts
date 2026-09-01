@@ -10,6 +10,10 @@ type ExtensionApiClientMethods = Pick<
   | "prelogin"
   | "passwordToken"
   | "refreshToken"
+  | "accountRegister"
+  | "accountVerificationEmailSend"
+  | "accountVerify"
+  | "accountPasswordSetup"
   | "revisionDate"
   | "sync"
   | "cipherList"
@@ -70,6 +74,38 @@ export function extensionBackgroundApiClientCreate(storage: ExtensionStorage): E
     const clientResult = await clientLoad()
     if (!clientResult.success) return clientResult
     return clientResult.data.refreshToken(request)
+  }
+
+  const accountRegister = async (
+    request: Parameters<ExtensionApiClient["accountRegister"]>[0],
+  ): ReturnType<ExtensionApiClient["accountRegister"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.accountRegister(request)
+  }
+
+  const accountVerificationEmailSend = async (
+    request: Parameters<ExtensionApiClient["accountVerificationEmailSend"]>[0],
+  ): ReturnType<ExtensionApiClient["accountVerificationEmailSend"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.accountVerificationEmailSend(request)
+  }
+
+  const accountVerify = async (
+    request: Parameters<ExtensionApiClient["accountVerify"]>[0],
+  ): ReturnType<ExtensionApiClient["accountVerify"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.accountVerify(request)
+  }
+
+  const accountPasswordSetup = async (
+    request: Parameters<ExtensionApiClient["accountPasswordSetup"]>[0],
+  ): ReturnType<ExtensionApiClient["accountPasswordSetup"]> => {
+    const clientResult = await clientLoad()
+    if (!clientResult.success) return clientResult
+    return clientResult.data.accountPasswordSetup(request)
   }
 
   const revisionDate = async (
@@ -320,6 +356,10 @@ export function extensionBackgroundApiClientCreate(storage: ExtensionStorage): E
     prelogin,
     passwordToken,
     refreshToken,
+    accountRegister,
+    accountVerificationEmailSend,
+    accountVerify,
+    accountPasswordSetup,
     revisionDate,
     sync,
     cipherList,

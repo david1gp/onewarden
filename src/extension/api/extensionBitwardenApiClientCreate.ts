@@ -68,6 +68,27 @@ import {
   type SessionHandoffCreateResponse,
   sessionHandoffCreateResponseSchema,
 } from "../../shared/sessionHandoff/sessionHandoffCreateResponseSchema.js"
+import {
+  type WebAuthRegisterRequestInput,
+  webAuthRegisterRequestSchema,
+} from "../../web/auth/model/webAuthRegisterRequestSchema.js"
+import {
+  type WebAuthSetPasswordRequestInput,
+  webAuthSetPasswordRequestSchema,
+} from "../../web/auth/model/webAuthSetPasswordRequestSchema.js"
+import {
+  type WebAuthVerificationEmailSendRequestInput,
+  webAuthVerificationEmailSendRequestSchema,
+} from "../../web/auth/model/webAuthVerificationEmailSendRequestSchema.js"
+import {
+  type WebAuthVerifyEmailRequestInput,
+  webAuthVerifyEmailRequestSchema,
+} from "../../web/auth/model/webAuthVerifyEmailRequestSchema.js"
+import { twoFactorChallengeSchema } from "../../web/auth/model/twoFactorChallengeSchema.js"
+import {
+  type WebAuthTwoFactorEmailLoginSendRequestInput,
+  webAuthTwoFactorEmailLoginSendRequestSchema,
+} from "../../web/auth/model/webAuthTwoFactorEmailLoginSendRequestSchema.js"
 import type { ExtensionEnvironment } from "./extensionEnvironmentSchema.js"
 
 type FetchImplementation = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -77,6 +98,14 @@ type ProtectedRequest = {
 }
 
 const jsonHeaders = { accept: "application/json", "content-type": "application/json" }
+const registerResponseSchema = v.object({
+  object: v.literal("register"),
+  captchaBypassToken: v.optional(v.string()),
+})
+const setPasswordResponseSchema = v.object({
+  object: v.literal("set-password"),
+  captchaBypassToken: v.optional(v.string()),
+})
 
 function apiUrlCreate(environment: ExtensionEnvironment, path: string): string {
   return `${environment.api}${path}`
@@ -160,6 +189,72 @@ async function jsonRequest<TSchema extends v.GenericSchema>(
   return responseJsonParse(op, response, schema)
 }
 
+async function passwordTokenRequest(
+  fetchImplementation: FetchImplementation,
+  url: string,
+  request: BitwardenPasswordTokenRequest,
+): Promise<Result<BitwardenPasswordTokenResponse>> {
+  const op = "extensionBitwardenApiClient.passwordToken"
+  let response: Response
+  try {
+    response = await fetchImplementation(url, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+      body: tokenBodyCreate(request),
+    })
+  } catch {
+    return resultErrorCreate(op, "Bitwarden request failed.", { code: "platform.unavailable", statusCode: 503 })
+  }
+  let text: string
+  try {
+    text = await response.text()
+  } catch {
+    return resultErrorCreate(op, "Bitwarden response could not be read.", {
+      code: "platform.unavailable",
+      statusCode: 503,
+    })
+  }
+  if (!response.ok) {
+    if (response.status === 400) {
+      try {
+        const challengeResult = v.safeParse(twoFactorChallengeSchema, JSON.parse(text))
+        if (challengeResult.success) {
+          return resultErrorCreate(
+            op,
+            challengeResult.output.error_description ?? "Two-factor authentication is required.",
+            {
+              code: "auth.two-factor-required",
+              statusCode: 400,
+              errorData: JSON.stringify(challengeResult.output),
+            },
+          )
+        }
+      } catch {
+        // Preserve the normal API error when the response is not a challenge contract.
+      }
+    }
+    return resultTryParsingFetchErr(op, text, response.status, response.statusText)
+  }
+  let body: unknown
+  try {
+    body = JSON.parse(text)
+  } catch {
+    return resultErrorCreate(op, "Bitwarden response was not valid JSON.", {
+      code: "platform.internal",
+      statusCode: 500,
+    })
+  }
+  const parsed = v.safeParse(bitwardenPasswordTokenResponseSchema, body)
+  if (!parsed.success) {
+    return resultErrorCreate(op, "Bitwarden response did not match its contract.", {
+      code: "platform.internal",
+      statusCode: 500,
+      errorData: v.summarize(parsed.issues),
+    })
+  }
+  return resultCreate(parsed.output)
+}
+
 function tokenBodyCreate(request: BitwardenPasswordTokenRequest | BitwardenRefreshTokenRequest): string {
   const body = new URLSearchParams()
   for (const [key, value] of Object.entries(request)) {
@@ -212,17 +307,24 @@ export function extensionBitwardenApiClientCreate(
       const op = "extensionBitwardenApiClient.passwordToken"
       const requestResult = requestValidationParse(op, request, bitwardenPasswordTokenRequestSchema)
       if (!requestResult.success) return Promise.resolve(requestResult)
-      return jsonRequest(
+      return passwordTokenRequest(
         fetchImplementation,
         identityUrlCreate(environment, identityRoutePathRead(bitwardenApiRoutes.token.path)),
-        op,
-        {
-          method: "POST",
-          headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
-          body: tokenBodyCreate(requestResult.data),
-        },
-        bitwardenPasswordTokenResponseSchema,
+        requestResult.data,
       )
+    },
+
+    twoFactorEmailLoginSend(request: WebAuthTwoFactorEmailLoginSendRequestInput): Promise<Result<void>> {
+      const op = "extensionBitwardenApiClient.twoFactorEmailLoginSend"
+      const requestResult = requestValidationParse(op, request, webAuthTwoFactorEmailLoginSendRequestSchema)
+      if (!requestResult.success) return Promise.resolve(requestResult)
+      const bodyResult = jsonBodyCreate(op, requestResult.data)
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return emptyRequest(fetchImplementation, apiUrlCreate(environment, "/two-factor/send-email-login"), op, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: bodyResult.data,
+      })
     },
 
     refreshToken(request: BitwardenRefreshTokenRequest): Promise<Result<BitwardenRefreshTokenResponse>> {
@@ -239,6 +341,104 @@ export function extensionBitwardenApiClientCreate(
           body: tokenBodyCreate(requestResult.data),
         },
         bitwardenRefreshTokenResponseSchema,
+      )
+    },
+
+    accountRegister(request: WebAuthRegisterRequestInput) {
+      const op = "extensionBitwardenApiClient.accountRegister"
+      const requestResult = requestValidationParse(op, request, webAuthRegisterRequestSchema)
+      if (!requestResult.success) return Promise.resolve(requestResult)
+      const normalized = requestResult.data
+      const bodyResult = jsonBodyCreate(op, {
+        email: normalized.email,
+        masterPasswordHash: normalized.masterPasswordHash,
+        key: normalized.userSymmetricKey,
+        masterPasswordHint: normalized.masterPasswordHint,
+        name: normalized.name,
+        kdf: normalized.kdf,
+        kdfIterations: normalized.kdfIterations,
+        kdfMemory: normalized.kdfMemory,
+        kdfParallelism: normalized.kdfParallelism,
+        keys: normalized.keys,
+      })
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return jsonRequest(
+        fetchImplementation,
+        identityUrlCreate(environment, "/accounts/register"),
+        op,
+        { method: "POST", headers: jsonHeaders, body: bodyResult.data },
+        registerResponseSchema,
+      )
+    },
+
+    async accountVerificationEmailSend(request: WebAuthVerificationEmailSendRequestInput) {
+      const op = "extensionBitwardenApiClient.accountVerificationEmailSend"
+      const requestResult = requestValidationParse(op, request, webAuthVerificationEmailSendRequestSchema)
+      if (!requestResult.success) return requestResult
+      const bodyResult = jsonBodyCreate(op, requestResult.data)
+      if (!bodyResult.success) return bodyResult
+      let response: Response
+      try {
+        response = await fetchImplementation(
+          identityUrlCreate(environment, "/accounts/register/send-verification-email"),
+          { method: "POST", headers: jsonHeaders, body: bodyResult.data },
+        )
+      } catch {
+        return resultErrorCreate(op, "Verification email request failed.", {
+          code: "platform.unavailable",
+          statusCode: 503,
+        })
+      }
+      if (response.status === 204) return resultCreate({})
+      const result = await responseJsonParse(
+        op,
+        response,
+        v.union([v.string(), v.object({ userId: v.optional(v.string()), token: v.optional(v.string()) })]),
+      )
+      if (!result.success) return result
+      if (typeof result.data === "string") return resultCreate({ token: result.data })
+      return resultCreate(result.data)
+    },
+
+    accountVerify(request: WebAuthVerifyEmailRequestInput): Promise<Result<void>> {
+      const op = "extensionBitwardenApiClient.accountVerify"
+      const requestResult = requestValidationParse(op, request, webAuthVerifyEmailRequestSchema)
+      if (!requestResult.success) return Promise.resolve(requestResult)
+      const bodyResult = jsonBodyCreate(op, requestResult.data)
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return emptyRequest(fetchImplementation, apiUrlCreate(environment, "/accounts/verify-email-token"), op, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: bodyResult.data,
+      })
+    },
+
+    accountPasswordSetup(request: WebAuthSetPasswordRequestInput) {
+      const op = "extensionBitwardenApiClient.accountPasswordSetup"
+      const requestResult = requestValidationParse(op, request, webAuthSetPasswordRequestSchema)
+      if (!requestResult.success) return Promise.resolve(requestResult)
+      const normalized = requestResult.data
+      const bodyResult = jsonBodyCreate(op, {
+        masterPasswordHash: normalized.masterPasswordHash,
+        key: normalized.userSymmetricKey,
+        masterPasswordHint: normalized.masterPasswordHint,
+        kdf: normalized.kdf,
+        kdfIterations: normalized.kdfIterations,
+        kdfMemory: normalized.kdfMemory,
+        kdfParallelism: normalized.kdfParallelism,
+        keys: normalized.keys,
+      })
+      if (!bodyResult.success) return Promise.resolve(bodyResult)
+      return jsonRequest(
+        fetchImplementation,
+        apiUrlCreate(environment, "/accounts/set-password"),
+        op,
+        {
+          method: "POST",
+          headers: jsonHeadersWithAuthorization(normalized.accessToken),
+          body: bodyResult.data,
+        },
+        setPasswordResponseSchema,
       )
     },
 
