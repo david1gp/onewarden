@@ -1,12 +1,14 @@
 import * as v from "valibot"
 import { extensionEncryptedPayloadSchema } from "./extensionEncryptedPayloadSchema.js"
-import { extensionStorageSchemaVersion } from "./extensionStorageSchemaVersion.js"
+import { extensionSyncStorageSchemaVersion } from "./extensionSyncStorageSchemaVersion.js"
 
 const encryptedCipherIdSchema = v.pipe(v.string(), v.minLength(1))
+const encryptedCipherTypeSchema = v.optional(v.picklist([1, 2, 3, 4, 5]))
 
 const extensionEncryptedSyncCipherSchema = v.strictObject({
   id: encryptedCipherIdSchema,
   revisionDate: v.pipe(v.string(), v.minLength(1)),
+  type: encryptedCipherTypeSchema,
   payload: extensionEncryptedPayloadSchema,
 })
 
@@ -18,7 +20,7 @@ const extensionSyncStorageDataSchema = v.strictObject({
 })
 
 export const extensionSyncStorageSchema = v.strictObject({
-  schemaVersion: v.literal(extensionStorageSchemaVersion),
+  schemaVersion: v.literal(extensionSyncStorageSchemaVersion),
   ...extensionSyncStorageDataSchema.entries,
 })
 

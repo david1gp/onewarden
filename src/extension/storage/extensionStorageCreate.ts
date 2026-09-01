@@ -17,6 +17,8 @@ import type { ExtensionStorageAdapter } from "./extensionStorageAdapter.js"
 import { extensionStorageKeys } from "./extensionStorageKeys.js"
 import { extensionStorageSchemaVersion } from "./extensionStorageSchemaVersion.js"
 import { type ExtensionSyncStorage, extensionSyncStorageSchema } from "./extensionSyncStorageSchema.js"
+import { extensionSyncStorageMigrate } from "./extensionSyncStorageMigrate.js"
+import { extensionSyncStorageSchemaVersion } from "./extensionSyncStorageSchemaVersion.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 
@@ -104,6 +106,10 @@ function storageVersionedCreate<T extends Record<string, unknown>>(data: T): T &
   return { schemaVersion: extensionStorageSchemaVersion, ...data }
 }
 
+function syncStorageVersionedCreate<T extends Record<string, unknown>>(data: T): T & { schemaVersion: number } {
+  return { schemaVersion: extensionSyncStorageSchemaVersion, ...data }
+}
+
 export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
   const environmentSettingsLoad = async (): Promise<Result<ExtensionEnvironmentSource | null>> => {
     const op = "extensionStorage.environmentSettingsLoad"
@@ -183,11 +189,20 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
 
   const syncCacheLoad = async (): Promise<Result<ExtensionSyncStorage | null>> => {
     const op = "extensionStorage.syncCacheLoad"
-    const result = await storageRead(adapter.local, extensionStorageKeys.syncCache, extensionSyncStorageSchema, op)
+    const result = await storageRead(adapter.local, extensionStorageKeys.syncCache, v.unknown(), op)
     if (!result.success) return result
     if (result.data === null) return resultCreate(null)
-    const { schemaVersion: _schemaVersion, ...syncCache } = result.data
-    return resultCreate(syncCache)
+    const migrationResult = extensionSyncStorageMigrate(result.data)
+    if (!migrationResult.success) return migrationResult
+    const saveResult = await storageWrite(
+      adapter.local,
+      extensionStorageKeys.syncCache,
+      extensionSyncStorageSchema,
+      syncStorageVersionedCreate(migrationResult.data),
+      op,
+    )
+    if (!saveResult.success) return saveResult
+    return migrationResult
   }
 
   const syncCacheSave = (syncCache: ExtensionSyncStorage): Promise<Result<void>> =>
@@ -195,7 +210,7 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
       adapter.local,
       extensionStorageKeys.syncCache,
       extensionSyncStorageSchema,
-      storageVersionedCreate<ExtensionSyncStorage>(syncCache),
+      syncStorageVersionedCreate<ExtensionSyncStorage>(syncCache),
       "extensionStorage.syncCacheSave",
     )
 
