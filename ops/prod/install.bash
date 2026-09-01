@@ -44,6 +44,6 @@ install -d -m 700 "$HOME/.local/share/onewarden"
 
 # prodctl deploys a source archive. Build the bundled runtime package in the
 # release so the service does not depend on release-local node_modules.
-"$bun_path" install --frozen-lockfile
+"$bun_path" install --frozen-lockfile --ignore-scripts
 "$bun_path" run build:vault
 "$bun_path" run backend:package
