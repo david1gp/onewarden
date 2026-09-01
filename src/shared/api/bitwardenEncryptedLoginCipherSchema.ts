@@ -1,6 +1,8 @@
 import * as v from "valibot"
+import { bitwardenEncryptedAttachmentSchema } from "./bitwardenEncryptedAttachmentSchema.js"
 import { bitwardenEncryptedLoginCipherFieldSchema } from "./bitwardenEncryptedLoginCipherFieldSchema.js"
 import { bitwardenEncryptedLoginSchema } from "./bitwardenEncryptedLoginSchema.js"
+import { bitwardenEncryptedPasswordHistoryEntrySchema } from "./bitwardenEncryptedPasswordHistoryEntrySchema.js"
 
 export const bitwardenEncryptedLoginCipherSchema = v.looseObject({
   object: v.picklist(["cipher", "cipherDetails", "cipherMini"]),
@@ -18,6 +20,9 @@ export const bitwardenEncryptedLoginCipherSchema = v.looseObject({
   collectionIds: v.optional(v.array(v.string())),
   login: bitwardenEncryptedLoginSchema,
   fields: v.array(bitwardenEncryptedLoginCipherFieldSchema),
+  attachments: v.optional(v.nullable(v.array(bitwardenEncryptedAttachmentSchema))),
+  passwordHistory: v.optional(v.nullable(v.array(bitwardenEncryptedPasswordHistoryEntrySchema))),
+  archivedDate: v.optional(v.nullable(v.string())),
 })
 
 export type BitwardenEncryptedLoginCipher = v.InferOutput<typeof bitwardenEncryptedLoginCipherSchema>
