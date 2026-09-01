@@ -1,5 +1,7 @@
 import { createEffect, createMemo, onCleanup, onMount } from "solid-js"
-import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import * as v from "valibot"
+import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import { type VaultSort, vaultSortSchema } from "../../shared/vault/vaultSortSchema.js"
 import { webAuthSessionDefault } from "../auth/model/webAuthSessionDefault.js"
 import { cipherApiClientCreate } from "../ciphers/actions/cipherApiClientCreate.js"
 import { cipherItemFromDemo } from "../ciphers/model/cipherItemFromDemo.js"
@@ -11,8 +13,11 @@ import { vaultFilterApply } from "../vault/model/vaultFilterApply.js"
 import type { VaultFolder } from "../vault/model/vaultFolderSchema.js"
 import type { VaultItemCategory } from "../vault/model/vaultItemCategorySchema.js"
 import { vaultItemOwnershipResolve } from "../vault/model/vaultItemOwnershipResolve.js"
+import { vaultItemsSortApply } from "../vault/model/vaultItemsSortApply.js"
 import { vaultKeyboardWorkflowHandle } from "../vault/model/vaultKeyboardWorkflowHandle.js"
 import { vaultOwnershipScopeResolve } from "../vault/model/vaultOwnershipScopeResolve.js"
+import { vaultSortStorageLoad } from "../vault/model/vaultSortStorageLoad.js"
+import { vaultSortStorageSave } from "../vault/model/vaultSortStorageSave.js"
 import { vaultUrlStateParse } from "../vault/model/vaultUrlStateParse.js"
 import { vaultUrlStateSync } from "../vault/model/vaultUrlStateSync.js"
 import { vaultDemoStore } from "./vaultDemoStore.js"
@@ -127,7 +132,23 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     includeDeleted: props.includeDeleted ?? false,
   })
 
-  const filteredItems = () => vaultFilterApply(items(), currentFilter())
+  const selectedSort = createSignalObject<VaultSort>(vaultSortStorageLoad())
+
+  const sortSignal: SignalObject<string> = {
+    get: () => selectedSort.get(),
+    set: (sort: string) => {
+      const parsed = v.safeParse(vaultSortSchema, sort)
+      if (!parsed.success) return
+      selectedSort.set(parsed.output)
+      vaultSortStorageSave(parsed.output)
+    },
+  }
+
+  const selectSort = (sort: string) => {
+    sortSignal.set(sort)
+  }
+
+  const filteredItems = () => vaultItemsSortApply(vaultFilterApply(items(), currentFilter()), selectedSort.get())
 
   const selectedItem = () => {
     const currentId = selectedItemId.get()
@@ -566,6 +587,9 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     selectedCollection: selectedCollection.get,
     searchQuery: searchQuery.get,
     selectedItemId: selectedItemId.get,
+    selectedSort: selectedSort.get,
+    selectedSortSignal: sortSignal,
+    selectSort,
     activeMobileTab: activeMobileTab.get,
     setMobileTab: activeMobileTab.set,
     setSearchInputElement: searchInputElement.set,

@@ -111,6 +111,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             selectedVault={state.selectedVault}
             selectedFolder={state.selectedFolder}
             selectedCollection={state.selectedCollection}
+            selectedSortSignal={state.selectedSortSignal}
             searchInputElement={state.setSearchInputElement}
             onSelectItem={state.selectItem}
             onSearchChange={state.setSearchQuery}

@@ -1,10 +1,13 @@
 import { createMemo } from "solid-js"
+import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
+import { vaultSortDefault } from "../../shared/vault/vaultSortDefault.js"
+import { vaultSortOptions } from "../../shared/vault/vaultSortOptions.js"
+import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 import { vaultCardPanMask } from "./vaultCardPanMask.js"
 import { vaultCategoryIconResolve } from "./vaultCategoryIconResolve.js"
 import { vaultCategoryThemeResolve } from "./vaultCategoryThemeResolve.js"
 import { vaultCategoryTitleResolve } from "./vaultCategoryTitleResolve.js"
 import type { VaultItem } from "./vaultItemSchema.js"
-import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 
 export interface VaultEntryListStateProps {
   items: () => readonly VaultItem[]
@@ -15,6 +18,7 @@ export interface VaultEntryListStateProps {
   selectedFolder: () => string | null
   selectedCollection?: () => string | null
   collections?: () => readonly VaultCollection[]
+  selectedSortSignal?: SignalObject<string>
   searchInputElement?: (element: HTMLInputElement) => void
   onSelectItem: (id: string) => void
   onSearchChange: (query: string) => void
@@ -24,6 +28,12 @@ export interface VaultEntryListStateProps {
 }
 
 export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
+  const fallbackSortSignal = createSignalObject<string>(vaultSortDefault)
+  const sortSignal = props.selectedSortSignal ?? fallbackSortSignal
+
+  const sortOptions = () => vaultSortOptions.map((option) => option.value)
+  const sortOptionLabel = (value: string) => vaultSortOptions.find((option) => option.value === value)?.label ?? value
+
   const filterTitle = createMemo(() => {
     if (props.selectedFolder()) {
       return props.selectedFolder() ?? "Folders"
@@ -90,6 +100,9 @@ export function vaultEntryListStateCreate(props: VaultEntryListStateProps) {
     items: props.items,
     selectedItemId: props.selectedItemId,
     searchQuery: props.searchQuery,
+    sortSignal,
+    sortOptions,
+    sortOptionLabel,
     filterTitle,
     getCategoryIcon: vaultCategoryIconResolve,
     getCategoryTheme: vaultCategoryThemeResolve,

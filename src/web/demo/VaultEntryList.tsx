@@ -1,5 +1,6 @@
 import { For, type JSX, Show } from "solid-js"
 import { Input } from "#ui/input/input/Input.jsx"
+import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { ButtonIconOnly } from "#ui/interactive/button/ButtonIconOnly.jsx"
@@ -61,6 +62,19 @@ export function VaultEntryList(props: VaultEntryListStateProps): JSX.Element {
             <Icon path={vaultSvgIcons.plus} class="mr-1 size-3" />
             New Item
           </Button>
+        </div>
+
+        <div class="mt-2.5">
+          <label for="vault-sort-select" class="sr-only">
+            Sort vault items
+          </label>
+          <SelectSingleNative
+            id="vault-sort-select"
+            valueSignal={state.sortSignal}
+            getOptions={state.sortOptions}
+            valueText={state.sortOptionLabel}
+            class="h-8 rounded-md border-slate-200 bg-slate-50 py-1 text-xs text-slate-700 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:bg-slate-900"
+          />
         </div>
       </div>
 
