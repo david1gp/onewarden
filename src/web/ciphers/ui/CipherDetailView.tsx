@@ -6,6 +6,8 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
+import { CopyActionButton } from "../../../ui/interactive/button/CopyActionButton.jsx"
+import { LabeledValueRow } from "../../../ui/static/value/LabeledValueRow.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { CipherAttachmentsSection } from "./CipherAttachmentsSection.jsx"
 import { CipherCustomFieldsView } from "./CipherCustomFieldsView.jsx"
@@ -209,47 +211,51 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                     {/* Username Field */}
                     <Show when={item().login?.username}>
-                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                        <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            Username
-                          </p>
+                      <LabeledValueRow
+                        class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
+                        label="Username"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
                           <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                             {item().login?.username}
                           </p>
-                        </div>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="h-8 shrink-0 text-sm"
-                          icon={state.copiedField() === "username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass={`size-3.5 fill-current dark:fill-current ${
-                            state.copiedField() === "username"
-                              ? "text-emerald-700 dark:text-emerald-300"
-                              : "text-slate-600 dark:text-slate-400"
-                          }`}
-                          onClick={() => state.copyToClipboard("username", item().login?.username ?? "")}
-                          aria-label={state.copiedField() === "username" ? "Copied username" : "Copy username"}
-                        >
-                          {state.copiedField() === "username" ? "Copied" : "Copy"}
-                        </ButtonIcon>
-                      </div>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "username"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy username"
+                            copiedAriaLabel="Copied username"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 shrink-0 text-sm"
+                            iconClass={`size-3.5 fill-current dark:fill-current ${
+                              state.copiedField() === "username"
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : "text-slate-600 dark:text-slate-400"
+                            }`}
+                            onCopy={() => state.copyToClipboard("username", item().login?.username ?? "")}
+                          />
+                        }
+                      />
                     </Show>
 
                     {/* Password Field */}
                     <Show when={item().login?.password}>
-                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                        <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            Password
-                          </p>
+                      <LabeledValueRow
+                        class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
+                        label="Password"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
                           <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
                             {state.canViewPassword() && state.isPasswordRevealed()
                               ? item().login?.password
                               : "••••••••••••••••••••"}
                           </p>
-                        </div>
-                        <div class="flex shrink-0 items-center gap-1.5">
+                        }
+                        actionClass="gap-1.5"
+                        action={
                           <Show when={state.canViewPassword()}>
                             <ButtonIcon
                               variant="ghost"
@@ -262,56 +268,64 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                             >
                               {state.isPasswordRevealed() ? "Hide" : "Show"}
                             </ButtonIcon>
-                            <ButtonIcon
+                            <CopyActionButton
+                              isCopied={state.copiedField() === "password"}
+                              label="Copy"
+                              copiedLabel="Copied"
+                              ariaLabel="Copy password"
+                              copiedAriaLabel="Copied password"
                               variant="subtle"
                               size="sm"
                               class="h-8 text-sm"
-                              icon={state.copiedField() === "password" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                               iconClass={`size-3.5 fill-current dark:fill-current ${
                                 state.copiedField() === "password"
                                   ? "text-emerald-700 dark:text-emerald-300"
                                   : "text-slate-600 dark:text-slate-400"
                               }`}
-                              onClick={() => state.copyToClipboard("password", item().login?.password ?? "")}
-                              aria-label={state.copiedField() === "password" ? "Copied password" : "Copy password"}
-                            >
-                              {state.copiedField() === "password" ? "Copied" : "Copy"}
-                            </ButtonIcon>
+                              onCopy={() => state.copyToClipboard("password", item().login?.password ?? "")}
+                            />
                           </Show>
-                        </div>
-                      </div>
+                        }
+                      />
                     </Show>
 
                     {/* TOTP Field */}
                     <Show when={item().login?.totp}>
-                      <div class="group flex items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80">
-                        <div class="min-w-0 flex-1">
-                          <div class="flex items-center gap-1.5">
-                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                      <LabeledValueRow
+                        class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
+                        label={
+                          <>
+                            <span class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
                               One-Time Password (2FA)
-                            </p>
+                            </span>
                             <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
-                          </div>
+                          </>
+                        }
+                        labelClass="flex items-center gap-1.5"
+                        value={
                           <p class="truncate font-mono font-bold text-blue-700 text-lg tracking-wider select-all dark:text-blue-300">
                             {item().login?.totp}
                           </p>
-                        </div>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="h-8 shrink-0 text-sm"
-                          icon={state.copiedField() === "totp" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass={`size-3.5 fill-current dark:fill-current ${
-                            state.copiedField() === "totp"
-                              ? "text-emerald-700 dark:text-emerald-300"
-                              : "text-slate-600 dark:text-slate-400"
-                          }`}
-                          onClick={() => state.copyToClipboard("totp", item().login?.totp?.replace(/\s+/g, "") ?? "")}
-                          aria-label={state.copiedField() === "totp" ? "Copied OTP" : "Copy OTP"}
-                        >
-                          {state.copiedField() === "totp" ? "Copied" : "Copy"}
-                        </ButtonIcon>
-                      </div>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "totp"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy OTP"
+                            copiedAriaLabel="Copied OTP"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 shrink-0 text-sm"
+                            iconClass={`size-3.5 fill-current dark:fill-current ${
+                              state.copiedField() === "totp"
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : "text-slate-600 dark:text-slate-400"
+                            }`}
+                            onCopy={() => state.copyToClipboard("totp", item().login?.totp?.replace(/\s+/g, "") ?? "")}
+                          />
+                        }
+                      />
                     </Show>
 
                     {/* URI / Website Field */}
@@ -370,67 +384,72 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
                   {/* Cardholder Name */}
                   <Show when={item().card?.cardholderName}>
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Cardholder Name
-                        </p>
+                    <LabeledValueRow
+                      class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                      label="Cardholder Name"
+                      labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                      value={
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().card?.cardholderName}
                         </p>
-                      </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "cardholder" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass="size-3.5"
-                        onClick={() => state.copyToClipboard("cardholder", item().card?.cardholderName ?? "")}
-                        aria-label="Copy Cardholder Name"
-                      >
-                        {state.copiedField() === "cardholder" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
+                      }
+                      action={
+                        <CopyActionButton
+                          isCopied={state.copiedField() === "cardholder"}
+                          label="Copy"
+                          copiedLabel="Copied"
+                          ariaLabel="Copy Cardholder Name"
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          iconClass="size-3.5"
+                          onCopy={() => state.copyToClipboard("cardholder", item().card?.cardholderName ?? "")}
+                        />
+                      }
+                    />
                   </Show>
 
                   {/* Card Number */}
                   <Show when={item().card?.number}>
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Card Number
-                        </p>
+                    <LabeledValueRow
+                      class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                      label="Card Number"
+                      labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                      value={
                         <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
                           {state.formattedCardNumber()}
                         </p>
-                      </div>
-                      <div class="flex shrink-0 items-center gap-1.5">
-                        <ButtonIcon
-                          variant="ghost"
-                          size="sm"
-                          class="h-8 text-sm"
-                          icon={state.isCardNumberRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                          iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                          onClick={() => state.toggleCardNumberReveal()}
-                          aria-label={state.isCardNumberRevealed() ? "Hide card number" : "Show card number"}
-                        >
-                          {state.isCardNumberRevealed() ? "Hide" : "Show"}
-                        </ButtonIcon>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="h-8 text-sm"
-                          icon={state.copiedField() === "cardNumber" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass="size-3.5"
-                          onClick={() =>
-                            state.copyToClipboard("cardNumber", item().card?.number?.replace(/\s+/g, "") ?? "")
-                          }
-                          aria-label="Copy Card Number"
-                        >
-                          {state.copiedField() === "cardNumber" ? "Copied" : "Copy"}
-                        </ButtonIcon>
-                      </div>
-                    </div>
+                      }
+                      actionClass="gap-1.5"
+                      action={
+                        <>
+                          <ButtonIcon
+                            variant="ghost"
+                            size="sm"
+                            class="h-8 text-sm"
+                            icon={state.isCardNumberRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                            iconClass="size-3.5 text-slate-600 dark:text-slate-400"
+                            onClick={() => state.toggleCardNumberReveal()}
+                            aria-label={state.isCardNumberRevealed() ? "Hide card number" : "Show card number"}
+                          >
+                            {state.isCardNumberRevealed() ? "Hide" : "Show"}
+                          </ButtonIcon>
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "cardNumber"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy Card Number"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() =>
+                              state.copyToClipboard("cardNumber", item().card?.number?.replace(/\s+/g, "") ?? "")
+                            }
+                          />
+                        </>
+                      }
+                    />
                   </Show>
 
                   {/* Expiration & Security Code */}
@@ -447,40 +466,43 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     </Show>
 
                     <Show when={item().card?.code}>
-                      <div class="flex items-center justify-between gap-2">
-                        <div>
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            Security Code (CVV)
-                          </p>
+                      <LabeledValueRow
+                        class="gap-2"
+                        label="Security Code (CVV)"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
                           <p class="font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                             {state.isCvvRevealed() ? item().card?.code : "•••"}
                           </p>
-                        </div>
-                        <div class="flex items-center gap-1">
-                          <ButtonIcon
-                            variant="ghost"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={state.isCvvRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                            iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                            onClick={() => state.toggleCvvReveal()}
-                            aria-label={state.isCvvRevealed() ? "Hide CVV" : "Show CVV"}
-                          >
-                            {state.isCvvRevealed() ? "Hide" : "Show"}
-                          </ButtonIcon>
-                          <ButtonIcon
-                            variant="subtle"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={state.copiedField() === "cvv" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                            iconClass="size-3.5"
-                            onClick={() => state.copyToClipboard("cvv", item().card?.code ?? "")}
-                            aria-label="Copy CVV"
-                          >
-                            {state.copiedField() === "cvv" ? "Copied" : "Copy"}
-                          </ButtonIcon>
-                        </div>
-                      </div>
+                        }
+                        actionClass="gap-1"
+                        action={
+                          <>
+                            <ButtonIcon
+                              variant="ghost"
+                              size="sm"
+                              class="h-8 text-sm"
+                              icon={state.isCvvRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                              iconClass="size-3.5 text-slate-600 dark:text-slate-400"
+                              onClick={() => state.toggleCvvReveal()}
+                              aria-label={state.isCvvRevealed() ? "Hide CVV" : "Show CVV"}
+                            >
+                              {state.isCvvRevealed() ? "Hide" : "Show"}
+                            </ButtonIcon>
+                            <CopyActionButton
+                              isCopied={state.copiedField() === "cvv"}
+                              label="Copy"
+                              copiedLabel="Copied"
+                              ariaLabel="Copy CVV"
+                              variant="subtle"
+                              size="sm"
+                              class="h-8 text-sm"
+                              iconClass="size-3.5"
+                              onCopy={() => state.copyToClipboard("cvv", item().card?.code ?? "")}
+                            />
+                          </>
+                        }
+                      />
                     </Show>
                   </div>
                 </CardWrapper>
@@ -493,101 +515,109 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
 
                   {/* Full Name */}
                   <Show when={state.formattedIdentityFullName()}>
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Full Name
-                        </p>
+                    <LabeledValueRow
+                      class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                      label="Full Name"
+                      labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                      value={
                         <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
                           {state.formattedIdentityFullName()}
                         </p>
-                      </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "fullname" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass="size-3.5"
-                        onClick={() => state.copyToClipboard("fullname", state.formattedIdentityFullName())}
-                        aria-label="Copy Full Name"
-                      >
-                        {state.copiedField() === "fullname" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
+                      }
+                      action={
+                        <CopyActionButton
+                          isCopied={state.copiedField() === "fullname"}
+                          label="Copy"
+                          copiedLabel="Copied"
+                          ariaLabel="Copy Full Name"
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          iconClass="size-3.5"
+                          onCopy={() => state.copyToClipboard("fullname", state.formattedIdentityFullName())}
+                        />
+                      }
+                    />
                   </Show>
 
                   {/* Email & Phone */}
                   <Show when={item().identity?.username}>
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80">
-                      <div class="min-w-0 flex-1">
-                        <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                          Username
-                        </p>
+                    <LabeledValueRow
+                      class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                      label="Username"
+                      labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                      value={
                         <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                           {item().identity?.username}
                         </p>
-                      </div>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 shrink-0 text-sm"
-                        icon={state.copiedField() === "identity-username" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass="size-3.5"
-                        onClick={() => state.copyToClipboard("identity-username", item().identity?.username ?? "")}
-                        aria-label="Copy Identity Username"
-                      >
-                        {state.copiedField() === "identity-username" ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </div>
+                      }
+                      action={
+                        <CopyActionButton
+                          isCopied={state.copiedField() === "identity-username"}
+                          label="Copy"
+                          copiedLabel="Copied"
+                          ariaLabel="Copy Identity Username"
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 shrink-0 text-sm"
+                          iconClass="size-3.5"
+                          onCopy={() => state.copyToClipboard("identity-username", item().identity?.username ?? "")}
+                        />
+                      }
+                    />
                   </Show>
 
                   <div class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
                     <Show when={item().identity?.email}>
-                      <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            Email
-                          </p>
+                      <LabeledValueRow
+                        class="gap-2"
+                        label="Email"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
                           <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.email}
                           </p>
-                        </div>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="h-8 shrink-0 text-sm"
-                          icon={state.copiedField() === "email" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass="size-3.5"
-                          onClick={() => state.copyToClipboard("email", item().identity?.email ?? "")}
-                          aria-label="Copy Email"
-                        >
-                          {state.copiedField() === "email" ? "Copied" : "Copy"}
-                        </ButtonIcon>
-                      </div>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "email"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy Email"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 shrink-0 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() => state.copyToClipboard("email", item().identity?.email ?? "")}
+                          />
+                        }
+                      />
                     </Show>
 
                     <Show when={item().identity?.phone}>
-                      <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                            Phone
-                          </p>
+                      <LabeledValueRow
+                        class="gap-2"
+                        label="Phone"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
                           <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">
                             {item().identity?.phone}
                           </p>
-                        </div>
-                        <ButtonIcon
-                          variant="subtle"
-                          size="sm"
-                          class="shrink-0 text-sm"
-                          icon={state.copiedField() === "phone" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                          iconClass="size-3.5"
-                          onClick={() => state.copyToClipboard("phone", item().identity?.phone ?? "")}
-                          aria-label="Copy Phone"
-                        >
-                          {state.copiedField() === "phone" ? "Copied" : "Copy"}
-                        </ButtonIcon>
-                      </div>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "phone"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy Phone"
+                            variant="subtle"
+                            size="sm"
+                            class="shrink-0 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() => state.copyToClipboard("phone", item().identity?.phone ?? "")}
+                          />
+                        }
+                      />
                     </Show>
                   </div>
 
@@ -622,101 +652,109 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   >
                     <div class="space-y-2 border-t border-slate-100 pt-2.5 dark:border-slate-800/80">
                       <Show when={item().identity?.ssn}>
-                        <div class="flex items-center justify-between gap-2">
-                          <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                              SSN / National ID
-                            </p>
+                        <LabeledValueRow
+                          class="gap-2"
+                          label="SSN / National ID"
+                          labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                          value={
                             <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {state.isSsnRevealed() ? item().identity?.ssn : "•••-••-••••"}
                             </p>
-                          </div>
-                          <div class="flex items-center gap-1.5">
-                            <ButtonIcon
-                              variant="ghost"
-                              size="sm"
-                              class="h-8 text-sm"
-                              icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                              iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                              onClick={() => state.toggleSsnReveal()}
-                              aria-label={state.isSsnRevealed() ? "Hide SSN" : "Show SSN"}
-                            >
-                              {state.isSsnRevealed() ? "Hide" : "Show"}
-                            </ButtonIcon>
-                            <ButtonIcon
-                              variant="subtle"
-                              size="sm"
-                              class="h-8 text-sm"
-                              icon={state.copiedField() === "ssn" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                              iconClass="size-3.5"
-                              onClick={() => state.copyToClipboard("ssn", item().identity?.ssn ?? "")}
-                              aria-label="Copy SSN"
-                            >
-                              {state.copiedField() === "ssn" ? "Copied" : "Copy"}
-                            </ButtonIcon>
-                          </div>
-                        </div>
+                          }
+                          actionClass="gap-1.5"
+                          action={
+                            <>
+                              <ButtonIcon
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 text-sm"
+                                icon={state.isSsnRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                                iconClass="size-3.5 text-slate-600 dark:text-slate-400"
+                                onClick={() => state.toggleSsnReveal()}
+                                aria-label={state.isSsnRevealed() ? "Hide SSN" : "Show SSN"}
+                              >
+                                {state.isSsnRevealed() ? "Hide" : "Show"}
+                              </ButtonIcon>
+                              <CopyActionButton
+                                isCopied={state.copiedField() === "ssn"}
+                                label="Copy"
+                                copiedLabel="Copied"
+                                ariaLabel="Copy SSN"
+                                variant="subtle"
+                                size="sm"
+                                class="h-8 text-sm"
+                                iconClass="size-3.5"
+                                onCopy={() => state.copyToClipboard("ssn", item().identity?.ssn ?? "")}
+                              />
+                            </>
+                          }
+                        />
                       </Show>
 
                       <Show when={item().identity?.passportNumber}>
-                        <div class="flex items-center justify-between gap-2">
-                          <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                              Passport Number
-                            </p>
+                        <LabeledValueRow
+                          class="gap-2"
+                          label="Passport Number"
+                          labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                          value={
                             <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {state.isPassportRevealed() ? item().identity?.passportNumber : "•••••••••"}
                             </p>
-                          </div>
-                          <div class="flex items-center gap-1.5">
-                            <ButtonIcon
-                              variant="ghost"
-                              size="sm"
-                              class="h-8 text-sm"
-                              icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                              iconClass="size-3.5 text-slate-600 dark:text-slate-400"
-                              onClick={() => state.togglePassportReveal()}
-                              aria-label={state.isPassportRevealed() ? "Hide Passport" : "Show Passport"}
-                            >
-                              {state.isPassportRevealed() ? "Hide" : "Show"}
-                            </ButtonIcon>
-                            <ButtonIcon
-                              variant="subtle"
-                              size="sm"
-                              class="h-8 text-sm"
-                              icon={state.copiedField() === "passport" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                              iconClass="size-3.5"
-                              onClick={() => state.copyToClipboard("passport", item().identity?.passportNumber ?? "")}
-                              aria-label="Copy Passport"
-                            >
-                              {state.copiedField() === "passport" ? "Copied" : "Copy"}
-                            </ButtonIcon>
-                          </div>
-                        </div>
+                          }
+                          actionClass="gap-1.5"
+                          action={
+                            <>
+                              <ButtonIcon
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 text-sm"
+                                icon={state.isPassportRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                                iconClass="size-3.5 text-slate-600 dark:text-slate-400"
+                                onClick={() => state.togglePassportReveal()}
+                                aria-label={state.isPassportRevealed() ? "Hide Passport" : "Show Passport"}
+                              >
+                                {state.isPassportRevealed() ? "Hide" : "Show"}
+                              </ButtonIcon>
+                              <CopyActionButton
+                                isCopied={state.copiedField() === "passport"}
+                                label="Copy"
+                                copiedLabel="Copied"
+                                ariaLabel="Copy Passport"
+                                variant="subtle"
+                                size="sm"
+                                class="h-8 text-sm"
+                                iconClass="size-3.5"
+                                onCopy={() => state.copyToClipboard("passport", item().identity?.passportNumber ?? "")}
+                              />
+                            </>
+                          }
+                        />
                       </Show>
 
                       <Show when={item().identity?.licenseNumber}>
-                        <div class="flex items-center justify-between gap-2">
-                          <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                              Driver's License Number
-                            </p>
+                        <LabeledValueRow
+                          class="gap-2"
+                          label="Driver's License Number"
+                          labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                          value={
                             <p class="truncate font-mono text-sm text-slate-900 select-all dark:text-slate-100">
                               {item().identity?.licenseNumber}
                             </p>
-                          </div>
-                          <ButtonIcon
-                            variant="subtle"
-                            size="sm"
-                            class="h-8 text-sm"
-                            icon={state.copiedField() === "license" ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                            iconClass="size-3.5"
-                            onClick={() => state.copyToClipboard("license", item().identity?.licenseNumber ?? "")}
-                            aria-label="Copy License"
-                          >
-                            {state.copiedField() === "license" ? "Copied" : "Copy"}
-                          </ButtonIcon>
-                        </div>
+                          }
+                          action={
+                            <CopyActionButton
+                              isCopied={state.copiedField() === "license"}
+                              label="Copy"
+                              copiedLabel="Copied"
+                              ariaLabel="Copy License"
+                              variant="subtle"
+                              size="sm"
+                              class="h-8 text-sm"
+                              iconClass="size-3.5"
+                              onCopy={() => state.copyToClipboard("license", item().identity?.licenseNumber ?? "")}
+                            />
+                          }
+                        />
                       </Show>
                     </div>
                   </Show>
@@ -731,17 +769,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 <CardWrapper class="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                   <div class="flex items-center justify-between">
                     <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">Secure Notes</p>
-                    <ButtonIcon
+                    <CopyActionButton
+                      isCopied={state.copiedField() === "notes"}
+                      label="Copy"
+                      copiedLabel="Copied"
+                      ariaLabel="Copy Notes"
                       variant="subtle"
                       size="sm"
                       class="h-8 text-sm"
-                      icon={state.copiedField() === "notes" ? vaultSvgIcons.check : vaultSvgIcons.copy}
                       iconClass="size-3.5"
-                      onClick={() => state.copyToClipboard("notes", item().notes ?? "")}
-                      aria-label="Copy Notes"
-                    >
-                      {state.copiedField() === "notes" ? "Copied" : "Copy"}
-                    </ButtonIcon>
+                      onCopy={() => state.copyToClipboard("notes", item().notes ?? "")}
+                    />
                   </div>
                   <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 font-mono text-slate-900 text-sm leading-relaxed dark:bg-slate-950 dark:text-slate-100">
                     {item().notes}

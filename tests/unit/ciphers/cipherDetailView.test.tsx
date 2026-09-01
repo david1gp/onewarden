@@ -63,6 +63,15 @@ describe("CipherDetailView component", () => {
     expect(screen.getByText("492 018")).toBeDefined()
     expect(screen.getByText("https://github.company.internal/login")).toBeDefined()
     expect(screen.getAllByText("Engineering").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText("••••••••••••••••••••")).toBeDefined()
+
+    // Test copy action feedback
+    screen.getByLabelText("Copy username").click()
+    expect(screen.getByLabelText("Copied username")).toBeDefined()
+    screen.getByLabelText("Copy password").click()
+    expect(screen.getByLabelText("Copied password")).toBeDefined()
+    screen.getByLabelText("Copy OTP").click()
+    expect(screen.getByLabelText("Copied OTP")).toBeDefined()
 
     // Test show/hide password toggle
     const hideShowButton = screen.getByLabelText("Show password")
@@ -122,6 +131,10 @@ describe("CipherDetailView component", () => {
     const notes = screen.getByText("High-contrast operational notes")
     expect(notes.classList.contains("text-slate-900")).toBe(true)
     expect(notes.classList.contains("dark:text-slate-100")).toBe(true)
+    expect(notesHeading.parentElement?.classList.contains("flex")).toBe(true)
+    expect(notesHeading.parentElement?.nextElementSibling?.tagName).toBe("PRE")
+    screen.getByLabelText("Copy Notes").click()
+    expect(screen.getByRole("button", { name: "Copy Notes" }).textContent).toContain("Copied")
 
     const contentGrid = Array.from(screen.container.querySelectorAll("div")).find(
       (element) => element.classList.contains("grid-cols-1") && element.classList.contains("@3xl:grid-cols-2"),
@@ -155,14 +168,29 @@ describe("CipherDetailView component", () => {
     expect(screen.getByText("Alex J. Rivera")).toBeDefined()
     expect(screen.getByText("•••• •••• •••• 8819")).toBeDefined()
     expect(screen.getByText("09/29")).toBeDefined()
+    expect(screen.getByLabelText("Copy Cardholder Name")).toBeDefined()
+
+    // Copy actions retain their keys, labels, feedback, and grouping.
+    const cardholderCopy = screen.getByRole("button", { name: "Copy Cardholder Name" })
+    cardholderCopy.click()
+    expect(cardholderCopy.textContent).toContain("Copied")
+
+    const cardNumberCopy = screen.getByRole("button", { name: "Copy Card Number" })
+    const cardNumberReveal = screen.getByRole("button", { name: "Show card number" })
+    expect(cardNumberReveal.parentElement).toBe(cardNumberCopy.parentElement)
+    cardNumberCopy.click()
+    expect(cardNumberCopy.textContent).toContain("Copied")
 
     // Toggle card number reveal
-    const revealCardBtn = screen.getByLabelText("Show card number")
-    revealCardBtn.click()
+    cardNumberReveal.click()
     expect(screen.getByText("4242 4242 4242 8819")).toBeDefined()
 
     // Toggle CVV reveal
     const revealCvvBtn = screen.getByLabelText("Show CVV")
+    const cvvCopy = screen.getByRole("button", { name: "Copy CVV" })
+    expect(revealCvvBtn.parentElement).toBe(cvvCopy.parentElement)
+    cvvCopy.click()
+    expect(cvvCopy.textContent).toContain("Copied")
     revealCvvBtn.click()
     expect(screen.getByText("714")).toBeDefined()
 
@@ -182,6 +210,7 @@ describe("CipherDetailView component", () => {
         middleName: "Jordan",
         lastName: "Rivera",
         company: "Acme Corp",
+        username: "arivera",
         email: "alex@acme.com",
         phone: "+1 555-0199",
         address1: "100 Main St",
@@ -191,6 +220,7 @@ describe("CipherDetailView component", () => {
         country: "USA",
         ssn: "123-45-6789",
         passportNumber: "P981247",
+        licenseNumber: "CA-D1234567",
       },
       reprompt: 0,
     }
@@ -199,14 +229,40 @@ describe("CipherDetailView component", () => {
 
     expect(screen.getByText("Alex Rivera Profile")).toBeDefined()
     expect(screen.getByText("Mr Alex Jordan Rivera")).toBeDefined()
+    expect(screen.getByText("arivera")).toBeDefined()
     expect(screen.getByText("alex@acme.com")).toBeDefined()
     expect(screen.getByText("+1 555-0199")).toBeDefined()
     expect(screen.getByText("•••-••-••••")).toBeDefined()
+    expect(screen.getByText("•••••••••")).toBeDefined()
+    expect(screen.getByText("CA-D1234567")).toBeDefined()
+
+    const address = screen.getByText(/100 Main St/)
+    expect(address.classList.contains("whitespace-pre-line")).toBe(true)
+
+    for (const label of [
+      "Copy Full Name",
+      "Copy Identity Username",
+      "Copy Email",
+      "Copy Phone",
+      "Copy SSN",
+      "Copy Passport",
+      "Copy License",
+    ]) {
+      const copyButton = screen.getByRole("button", { name: label })
+      copyButton.click()
+      expect(copyButton.textContent).toContain("Copied")
+    }
 
     // Toggle SSN reveal
     const revealSsnBtn = screen.getByLabelText("Show SSN")
     revealSsnBtn.click()
     expect(screen.getByText("123-45-6789")).toBeDefined()
+    expect(screen.getByLabelText("Hide SSN")).toBeDefined()
+
+    // Toggle passport reveal, while the license remains copy-only.
+    screen.getByLabelText("Show Passport").click()
+    expect(screen.getByText("P981247")).toBeDefined()
+    expect(screen.queryByLabelText("Show License")).toBeNull()
 
     screen.unmount()
   })

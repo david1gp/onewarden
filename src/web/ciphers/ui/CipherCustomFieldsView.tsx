@@ -3,6 +3,8 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
+import { CopyActionButton } from "../../../ui/interactive/button/CopyActionButton.jsx"
+import { LabeledValueRow } from "../../../ui/static/value/LabeledValueRow.jsx"
 import {
   type CipherCustomFieldsViewStateProps,
   cipherCustomFieldsViewStateCreate,
@@ -22,11 +24,11 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
               const isCopied = () => state.copiedFieldIndex() === idx()
 
               return (
-                <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80">
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                      {field.name}
-                    </p>
+                <LabeledValueRow
+                  class="gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80"
+                  label={field.name}
+                  labelClass="truncate font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                  value={
                     <Show
                       when={field.type !== 2}
                       fallback={
@@ -42,38 +44,42 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
                         {isRevealed() ? field.value : "••••••••••••"}
                       </p>
                     </Show>
-                  </div>
-                  <div class="flex shrink-0 items-center gap-1.5">
-                    <Show when={field.type === 1}>
-                      <ButtonIcon
-                        variant="ghost"
-                        size="sm"
-                        class="h-8 text-sm"
-                        icon={isRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
-                        iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
-                        onClick={() => state.toggleConcealedField(idx())}
-                        aria-label={isRevealed() ? "Hide field value" : "Show field value"}
-                      >
-                        {isRevealed() ? "Hide" : "Show"}
-                      </ButtonIcon>
-                    </Show>
-                    <Show when={field.type !== 2}>
-                      <ButtonIcon
-                        variant="subtle"
-                        size="sm"
-                        class="h-8 text-sm"
-                        icon={isCopied() ? vaultSvgIcons.check : vaultSvgIcons.copy}
-                        iconClass={`size-3.5 fill-current dark:fill-current ${
-                          isCopied() ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"
-                        }`}
-                        onClick={() => state.copyField(idx(), field.value)}
-                        aria-label={isCopied() ? "Copied" : "Copy field value"}
-                      >
-                        {isCopied() ? "Copied" : "Copy"}
-                      </ButtonIcon>
-                    </Show>
-                  </div>
-                </div>
+                  }
+                  actionClass="gap-1.5"
+                  action={
+                    <>
+                      <Show when={field.type === 1}>
+                        <ButtonIcon
+                          variant="ghost"
+                          size="sm"
+                          class="h-8 text-sm"
+                          icon={isRevealed() ? vaultSvgIcons.eyeOff : vaultSvgIcons.eye}
+                          iconClass="size-3.5 fill-current dark:fill-current text-slate-600 dark:text-slate-400"
+                          onClick={() => state.toggleConcealedField(idx())}
+                          aria-label={isRevealed() ? "Hide field value" : "Show field value"}
+                        >
+                          {isRevealed() ? "Hide" : "Show"}
+                        </ButtonIcon>
+                      </Show>
+                      <Show when={field.type !== 2}>
+                        <CopyActionButton
+                          isCopied={isCopied()}
+                          label="Copy"
+                          copiedLabel="Copied"
+                          ariaLabel="Copy field value"
+                          copiedAriaLabel="Copied"
+                          variant="subtle"
+                          size="sm"
+                          class="h-8 text-sm"
+                          iconClass={`size-3.5 fill-current dark:fill-current ${
+                            isCopied() ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-400"
+                          }`}
+                          onCopy={() => state.copyField(idx(), field.value)}
+                        />
+                      </Show>
+                    </>
+                  }
+                />
               )
             }}
           </For>
