@@ -251,7 +251,9 @@ function syncCipherPlainRead(cipher: BitwardenEncryptedCipher): ExtensionCipher 
 }
 
 function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): ExtensionPersonalLoginCipher[] {
-  return ciphers.filter((cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1)
+  return ciphers.filter(
+    (cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1 || cipher.type === undefined,
+  )
 }
 
 export function extensionBackgroundServiceCreate(options: ExtensionBackgroundServiceOptions) {
@@ -488,9 +490,15 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       return internal("extensionBackgroundService.syncSnapshotCreate", "Sync profile is invalid.")
     const organizationKeysResult = await options.vaultSession.organizationKeysReplace(profileParsed.output)
     if (!organizationKeysResult.success) return organizationKeysResult
-    const foldersResult = await options.vaultSession.foldersDecrypt(envelope.folders)
+    const foldersResult =
+      envelope.folders.length === 0
+        ? resultCreate([])
+        : options.vaultSession.foldersDecrypt(envelope.folders)
     if (!foldersResult.success) return foldersResult
-    const collectionsResult = await options.vaultSession.collectionsDecrypt(envelope.collections)
+    const collectionsResult =
+      envelope.collections.length === 0
+        ? resultCreate([])
+        : options.vaultSession.collectionsDecrypt(envelope.collections)
     if (!collectionsResult.success) return collectionsResult
     const authorizedOrganizationIds = new Set(
       profileParsed.output.organizations

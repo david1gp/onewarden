@@ -76,7 +76,9 @@ type ExtensionBackgroundRouterOptions = {
 }
 
 function extensionLoginCiphersRead(ciphers: readonly ExtensionCipher[]): ExtensionPersonalLoginCipher[] {
-  return ciphers.filter((cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1)
+  return ciphers.filter(
+    (cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1 || cipher.type === undefined,
+  )
 }
 
 type ExtensionLoginViewData = {

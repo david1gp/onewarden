@@ -1,6 +1,7 @@
 import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionPasskeyConsent } from "./extensionPasskeyConsentSchema.js"
 import type { ExtensionPasskeyConsentContext } from "./extensionPasskeyConsentContextSchema.js"
@@ -9,7 +10,7 @@ import type { ExtensionPasskeyConsentUiModel } from "./extensionPasskeyConsentUi
 
 type ConsentService = {
   unlock: (request: unknown) => Promise<Result<void>>
-  syncSnapshotLoad: () => Promise<Result<{ ciphers: ExtensionPersonalLoginCipher[] } | null>>
+  syncSnapshotLoad: () => Promise<Result<{ ciphers: ExtensionCipher[] } | null>>
 }
 
 type ConsentWindows = {
@@ -78,7 +79,7 @@ export function extensionPasskeyConsentUiCreate(options: {
     return resultCreate(
       modelCreate(
         entry,
-        candidatesCreate(entry.context, snapshotResult.data?.ciphers ?? []),
+        candidatesCreate(entry.context, loginCiphersRead(snapshotResult.data?.ciphers ?? [])),
         false,
         verificationRequired,
       ),
@@ -107,7 +108,7 @@ export function extensionPasskeyConsentUiCreate(options: {
       return forbidden("Fresh verification is required.")
     const snapshotResult = await options.service.syncSnapshotLoad()
     if (!snapshotResult.success) return snapshotResult
-    const candidate = candidatesCreate(entry.context, snapshotResult.data?.ciphers ?? []).find(
+    const candidate = candidatesCreate(entry.context, loginCiphersRead(snapshotResult.data?.ciphers ?? [])).find(
       (value) => value.cipherId === request.cipherId && value.credentialId === request.credentialId,
     )
     if (candidate === undefined) return conflict("The selected credential is no longer available. Choose again.")
@@ -178,6 +179,12 @@ function candidatesCreate(context: ExtensionPasskeyConsentContext, ciphers: Exte
             organization: cipher.organizationId !== null && cipher.organizationId !== undefined,
             readOnly: cipher.edit === false && credential.counter > 0,
           })),
+  )
+}
+
+function loginCiphersRead(ciphers: readonly ExtensionCipher[]): ExtensionPersonalLoginCipher[] {
+  return ciphers.filter(
+    (cipher): cipher is ExtensionPersonalLoginCipher => cipher.type === 1 || cipher.type === undefined,
   )
 }
 

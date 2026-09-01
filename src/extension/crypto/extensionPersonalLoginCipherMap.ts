@@ -46,7 +46,11 @@ export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLog
     if (!fieldNameResult.success) return fieldNameResult
     const fieldValueResult = await optionalStringMap(field.value, map)
     if (!fieldValueResult.success) return fieldValueResult
-    fields.push({ ...field, name: fieldNameResult.data, value: fieldValueResult.data })
+    fields.push({
+      ...field,
+      name: fieldNameResult.data as string | null,
+      value: fieldValueResult.data as string | null,
+    })
   }
 
   const attachments: NonNullable<PersonalLoginCipher["attachments"]> | null | undefined =

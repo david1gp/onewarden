@@ -2,14 +2,26 @@ import * as v from "valibot"
 import { bitwardenEncryptedAttachmentSchema } from "./bitwardenEncryptedAttachmentSchema.js"
 import { bitwardenEncryptedCardSchema } from "./bitwardenEncryptedCardSchema.js"
 import { bitwardenEncryptedIdentitySchema } from "./bitwardenEncryptedIdentitySchema.js"
+import { bitwardenEncryptedFido2CredentialSchema } from "./bitwardenEncryptedFido2CredentialSchema.js"
 import { bitwardenEncryptedLoginCipherFieldSchema } from "./bitwardenEncryptedLoginCipherFieldSchema.js"
 import { bitwardenEncryptedLoginSchema } from "./bitwardenEncryptedLoginSchema.js"
 import { bitwardenEncryptedPasswordHistoryEntrySchema } from "./bitwardenEncryptedPasswordHistoryEntrySchema.js"
 import { bitwardenEncryptedSecureNoteSchema } from "./bitwardenEncryptedSecureNoteSchema.js"
 import { bitwardenEncryptedSshKeySchema } from "./bitwardenEncryptedSshKeySchema.js"
+import { bitwardenFido2CredentialSchema } from "./bitwardenFido2CredentialSchema.js"
 
 const bitwardenEncryptedCipherObjectSchema = v.picklist(["cipher", "cipherDetails", "cipherMini"])
 const bitwardenEncryptedCipherTypeSchema = v.picklist([1, 2, 3, 4, 5])
+const bitwardenEncryptedSyncLoginSchema = v.looseObject({
+  username: v.nullable(v.string()),
+  password: v.nullable(v.string()),
+  uris: v.array(v.looseObject({ uri: v.nullable(v.string()), match: v.nullish(v.number()) })),
+  uri: v.optional(v.nullable(v.string())),
+  totp: v.nullable(v.string()),
+  fido2Credentials: v.optional(
+    v.nullable(v.array(v.union([bitwardenEncryptedFido2CredentialSchema, bitwardenFido2CredentialSchema]))),
+  ),
+})
 
 const bitwardenEncryptedCipherRecordSchema = v.looseObject({
   object: v.optional(bitwardenEncryptedCipherObjectSchema),
@@ -33,7 +45,7 @@ const bitwardenEncryptedCipherRecordSchema = v.looseObject({
   fields: v.optional(v.nullable(v.array(bitwardenEncryptedLoginCipherFieldSchema))),
   attachments: v.optional(v.nullable(v.array(bitwardenEncryptedAttachmentSchema))),
   passwordHistory: v.optional(v.nullable(v.array(bitwardenEncryptedPasswordHistoryEntrySchema))),
-  login: v.optional(v.nullable(bitwardenEncryptedLoginSchema)),
+  login: v.optional(v.nullable(v.union([bitwardenEncryptedLoginSchema, bitwardenEncryptedSyncLoginSchema]))),
   secureNote: v.optional(v.nullable(bitwardenEncryptedSecureNoteSchema)),
   card: v.optional(v.nullable(bitwardenEncryptedCardSchema)),
   identity: v.optional(v.nullable(bitwardenEncryptedIdentitySchema)),

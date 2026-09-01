@@ -29,7 +29,10 @@ function extensionSyncStorageError(message: string, errorData?: string): Result<
 
 export function extensionSyncStorageMigrate(value: unknown): Result<ExtensionSyncStorage> {
   const current = v.safeParse(extensionSyncStorageSchema, value)
-  if (current.success) return resultCreate(current.output)
+  if (current.success) {
+    const { schemaVersion: _schemaVersion, ...currentData } = current.output
+    return resultCreate(currentData)
+  }
 
   const legacy = v.safeParse(extensionSyncStorageLegacySchema, value)
   if (!legacy.success) {
