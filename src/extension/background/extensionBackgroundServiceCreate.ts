@@ -848,8 +848,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       }
       const registrationResult = await extensionPasskeyCredentialCreate(value, consentResult.data.userVerified, now)
       if (!registrationResult.success) return registrationResult
-      const targetCipher =
-        value.cipherId === null ? null : loginCiphers.find((cipher) => cipher.id === value.cipherId)
+      const targetCipher = value.cipherId === null ? null : loginCiphers.find((cipher) => cipher.id === value.cipherId)
       if (value.cipherId !== null && targetCipher === undefined)
         return invalidRequest(op, "The selected login could not be found.")
       if (targetCipher === undefined) return invalidRequest(op, "The selected login could not be found.")
