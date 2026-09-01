@@ -21,6 +21,6 @@ Persist password/passphrase generator UI choices across generator and extension 
 ## Tasks
 
 - [x] 1. Add validated generator-preferences support to extension storage.
-- [ ] 2. Hydrate and save generator pane preferences.
+- [x] 2. Hydrate and save generator pane preferences.
 - [ ] 3. Add focused persistence tests and run static verification.
 - [ ] 4. Verify persistence across reload/reopen in the browser.
