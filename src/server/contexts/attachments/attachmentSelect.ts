@@ -1,2 +1,9 @@
-export const attachmentSelect =
-  "id, cipher_uuid AS cipherUuid, file_name AS fileName, file_size AS fileSize, akey AS key"
+import { attachments } from "../../database/schema/attachments.js"
+
+export const attachmentSelect = {
+  id: attachments.id,
+  cipherUuid: attachments.cipherUuid,
+  fileName: attachments.fileName,
+  fileSize: attachments.fileSize,
+  key: attachments.akey,
+}

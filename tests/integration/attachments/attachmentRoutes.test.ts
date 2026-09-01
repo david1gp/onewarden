@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { attachmentFileStorageAdapterCreate } from "../../../src/server/contexts/attachments/attachmentFileStorageAdapterCreate.js"
 import { attachmentFindById } from "../../../src/server/contexts/attachments/attachmentFindById.js"
+import { attachmentSave } from "../../../src/server/contexts/attachments/attachmentSave.js"
 import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
 import type { IdentityDevice } from "../../../src/server/contexts/identity/identityDevice.js"
 import { identityDeviceSave } from "../../../src/server/contexts/identity/identityDeviceSave.js"
@@ -259,6 +260,120 @@ test("attachment v2 upload/download, replacement, aliases, deletion, revision, a
   expect(await context.storage.read("cipher-one", "attachment-two")).toEqual({ success: true, data: null })
   expect(context.notifications.map((notification) => (notification as { type: number }).type)).toEqual([0, 0, 0, 0])
   expect(context.pushes.map((notification) => (notification as { type: number }).type)).toEqual([0, 0, 0, 0])
+})
+
+test("authenticated attachment export metadata and bytes enforce access without URL or token leakage", async () => {
+  const context = await contextCreate({
+    identifiers: ["cipher-one", "cipher-two", "attachment-one", "attachment-two"],
+  })
+  const firstCipher = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(cipherData()),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  const secondCipher = await context.app.request("https://vault.example/api/ciphers", {
+    body: JSON.stringify(cipherData()),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(firstCipher.status).toBe(200)
+  expect(secondCipher.status).toBe(200)
+
+  const firstMetadata = await context.app.request("https://vault.example/api/ciphers/cipher-one/attachment/v2", {
+    body: JSON.stringify({ fileName: "encrypted-name", fileSize: 4, key: "encrypted-key" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  const secondMetadata = await context.app.request("https://vault.example/api/ciphers/cipher-two/attachment/v2", {
+    body: JSON.stringify({ fileName: "foreign-name", fileSize: 5, key: "foreign-key" }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(firstMetadata.status).toBe(200)
+  expect(secondMetadata.status).toBe(200)
+
+  const encryptedBytes = new Uint8Array([0, 255, 1, 254])
+  expect(await context.storage.write("cipher-one", "attachment-one", encryptedBytes)).toEqual({
+    success: true,
+    data: undefined,
+  })
+
+  const metadataResponse = await context.app.request("https://vault.example/api/ciphers/cipher-one/attachments", {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(metadataResponse.status).toBe(200)
+  const metadataBody = await metadataResponse.text()
+  expect(metadataBody).not.toContain("url")
+  expect(metadataBody).not.toContain("token")
+  expect(JSON.parse(metadataBody)).toEqual({
+    data: [
+      {
+        fileName: "encrypted-name",
+        id: "attachment-one",
+        key: "encrypted-key",
+        object: "attachment",
+        size: "4",
+      },
+    ],
+    object: "list",
+  })
+
+  const bytesResponse = await context.app.request(
+    "https://vault.example/api/ciphers/cipher-one/attachment/attachment-one/data",
+    { headers: { authorization: `Bearer ${context.token}` } },
+  )
+  expect(bytesResponse.status).toBe(200)
+  expect(bytesResponse.headers.get("content-type")).toBe("application/octet-stream")
+  expect(new Uint8Array(await bytesResponse.arrayBuffer())).toEqual(encryptedBytes)
+
+  const unauthorizedMetadata = await context.app.request("https://vault.example/api/ciphers/cipher-one/attachments")
+  expect(unauthorizedMetadata.status).toBe(401)
+  const unauthorizedBytes = await context.app.request(
+    "https://vault.example/api/ciphers/cipher-one/attachment/attachment-one/data",
+  )
+  expect(unauthorizedBytes.status).toBe(401)
+
+  context.database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", [
+    "foreign-org",
+    "Foreign Organization",
+    "foreign@example.com",
+  ])
+  context.database.run(
+    `INSERT INTO ciphers
+      (uuid, created_at, updated_at, user_uuid, organization_uuid, key, atype, name, data)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ["foreign-cipher", date, date, null, "foreign-org", "foreign-cipher-key", 1, "Foreign Cipher", "{}"],
+  )
+  expect(
+    attachmentSave(context.database, {
+      cipherUuid: "foreign-cipher",
+      fileName: "foreign-name",
+      fileSize: 1,
+      id: "foreign-attachment",
+      key: "foreign-key",
+    }).success,
+  ).toBe(true)
+  const foreignMetadata = await context.app.request("https://vault.example/api/ciphers/foreign-cipher/attachments", {
+    headers: { authorization: `Bearer ${context.token}` },
+  })
+  expect(foreignMetadata.status).toBe(400)
+  const foreignBytes = await context.app.request(
+    "https://vault.example/api/ciphers/foreign-cipher/attachment/foreign-attachment/data",
+    { headers: { authorization: `Bearer ${context.token}` } },
+  )
+  expect(foreignBytes.status).toBe(400)
+
+  const foreignAttachment = await context.app.request(
+    "https://vault.example/api/ciphers/cipher-one/attachment/attachment-two/data",
+    { headers: { authorization: `Bearer ${context.token}` } },
+  )
+  expect(foreignAttachment.status).toBe(400)
+
+  const missingStorage = await context.app.request(
+    "https://vault.example/api/ciphers/cipher-two/attachment/attachment-two/data",
+    { headers: { authorization: `Bearer ${context.token}` } },
+  )
+  expect(missingStorage.status).toBe(404)
 })
 
 test("attachment quota, declared-size leeway, and hard cipher deletion clean up storage", async () => {

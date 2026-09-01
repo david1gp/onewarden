@@ -1,13 +1,15 @@
 import { expect, test } from "bun:test"
-import manifest from "../../tools/compatibility/upstream-route-manifest.json"
 import { attachmentDownloadTokenCreate } from "../../src/server/contexts/attachments/attachmentDownloadTokenCreate.js"
 import { attachmentDownloadTokenVerify } from "../../src/server/contexts/attachments/attachmentDownloadTokenVerify.js"
 import { serverAppCreate } from "../../src/server/serverAppCreate.js"
 import { serverRouteRegistrationIntrospect } from "../../src/server/serverRouteRegistrationIntrospect.js"
 import { clockTestCreate } from "../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../src/shared/crypto/rsaKeyPairGenerate.js"
+import manifest from "../../tools/compatibility/upstream-route-manifest.json"
 
 const expectedRoutes = [
+  ["GET", "/api/ciphers/:cipher_id/attachments"],
+  ["GET", "/api/ciphers/:cipher_id/attachment/:attachment_id/data"],
   ["GET", "/api/ciphers/:cipher_id/attachment/:attachment_id"],
   ["POST", "/api/ciphers/:cipher_id/attachment/v2"],
   ["POST", "/api/ciphers/:cipher_id/attachment/:attachment_id"],

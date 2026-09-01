@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite"
 import { afterEach, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
+import { sql } from "drizzle-orm"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -10,6 +11,7 @@ import { backupManifestValidate } from "../../../../src/server/backup/backupMani
 import { databaseClose } from "../../../../src/server/database/databaseClose.js"
 import { databaseMigrate } from "../../../../src/server/database/databaseMigrate.js"
 import { databaseOpen } from "../../../../src/server/database/databaseOpen.js"
+import type { DatabaseConnection } from "../../../../src/server/database/database.js"
 
 const temporaryDirectories: string[] = []
 
@@ -19,7 +21,7 @@ function temporaryDirectoryCreate(): string {
   return directory
 }
 
-function databaseCreate(path: string): Database {
+function databaseCreate(path: string): DatabaseConnection {
   const result = databaseOpen(path)
   if (!result.success) throw new Error(result.errorMessage)
   const migrationResult = databaseMigrate(result.data)
@@ -55,8 +57,8 @@ async function backupCreate(directory: string): Promise<{
   writeFileSync(join(paths.sendsFolder, "send.txt"), "backup send")
   writeFileSync(join(paths.attachmentsFolder, "attachment.txt"), "backup attachment")
   const database = databaseCreate(paths.databasePath)
-  database.exec("CREATE TABLE restore_entries (value TEXT NOT NULL)")
-  database.run("INSERT INTO restore_entries (value) VALUES (?)", ["backup"])
+  database.drizzle.run(sql.raw("CREATE TABLE restore_entries (value TEXT NOT NULL)"))
+  database.drizzle.run(sql`INSERT INTO restore_entries (value) VALUES ( ${"backup"} )`)
   databaseClose(database)
   const backupResult = await backupBundleCreate({
     attachmentsFolder: paths.attachmentsFolder,
@@ -78,7 +80,7 @@ test("backupBundleRestore stages and atomically activates data while retaining a
   writeFileSync(join(directory, ".env"), "DATABASE_PATH=preserve-me\n")
 
   const updatedDatabase = databaseCreate(paths.databasePath)
-  updatedDatabase.run("INSERT INTO restore_entries (value) VALUES (?)", ["current"])
+  updatedDatabase.drizzle.run(sql`INSERT INTO restore_entries (value) VALUES ( ${"current"} )`)
   databaseClose(updatedDatabase)
   writeFileSync(join(paths.sendsFolder, "send.txt"), "current send")
   writeFileSync(join(paths.attachmentsFolder, "current.txt"), "current attachment")
@@ -175,5 +177,22 @@ test("backupBundleRestore rejects in-memory targets before changing live data", 
   expect(result).toMatchObject({
     success: false,
     errorMessage: "In-memory database targets cannot be restored.",
+  })
+})
+
+test("backupBundleRestore refuses to treat an S3 location as a filesystem target", async () => {
+  const directory = temporaryDirectoryCreate()
+  const paths = await backupCreate(directory)
+
+  const result = await backupBundleRestore({
+    attachmentsFolder: "s3://onewarden-attachments/production",
+    backupDirectory: paths.backupDirectory,
+    databasePath: paths.databasePath,
+    sendsFolder: paths.sendsFolder,
+  })
+
+  expect(result).toMatchObject({
+    success: false,
+    errorMessage: "S3 attachment objects must be restored independently.",
   })
 })

@@ -12,6 +12,7 @@ test("serverConfigLoad applies defaults for known runtime settings", () => {
       DATABASE_PATH: "./data/onewarden.sqlite3",
       SENDS_FOLDER: "./data/sends",
       ATTACHMENTS_FOLDER: "./data/attachments",
+      S3_FORCE_PATH_STYLE: false,
       BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
       INCREASE_NOTE_SIZE_LIMIT: false,
@@ -69,6 +70,7 @@ test("serverConfigLoad parses and validates known runtime settings", () => {
       IP_HEADER: "CF-Connecting-IP",
       IP_HEADER_TRUSTED_PROXIES: "10.0.0.0/8, 2001:db8::/32",
       ATTACHMENTS_FOLDER: "./data/attachments",
+      S3_FORCE_PATH_STYLE: false,
       SENDS_FOLDER: "./data/sends",
       BACKUP_FOLDER: "./data/backups",
       SENDS_ALLOWED: true,
@@ -233,6 +235,44 @@ test("serverConfigLoad trims a custom attachment folder", () => {
     success: true,
     data: { ATTACHMENTS_FOLDER: "/var/lib/onewarden/attachments" },
   })
+})
+
+test("serverConfigLoad accepts S3 attachment locations and compatible client settings", () => {
+  expect(serverConfigLoad({ ATTACHMENTS_FOLDER: " s3://attachments " })).toMatchObject({
+    success: true,
+    data: { ATTACHMENTS_FOLDER: "s3://attachments" },
+  })
+  expect(
+    serverConfigLoad({
+      ATTACHMENTS_FOLDER: "s3://attachments/onewarden/encrypted",
+      S3_ENDPOINT: " http://minio.internal:9000 ",
+      S3_FORCE_PATH_STYLE: "true",
+    }),
+  ).toMatchObject({
+    success: true,
+    data: {
+      ATTACHMENTS_FOLDER: "s3://attachments/onewarden/encrypted",
+      S3_ENDPOINT: "http://minio.internal:9000",
+      S3_FORCE_PATH_STYLE: true,
+    },
+  })
+})
+
+test("serverConfigLoad rejects malformed S3 attachment locations", () => {
+  for (const ATTACHMENTS_FOLDER of [
+    "s3://",
+    "s3:///prefix",
+    "s3:/attachments",
+    "S3://attachments",
+    "s3://bucket?key=value",
+  ])
+    expect(serverConfigLoad({ ATTACHMENTS_FOLDER }).success).toBe(false)
+})
+
+test("serverConfigLoad rejects malformed S3-compatible client settings", () => {
+  expect(serverConfigLoad({ S3_ENDPOINT: "ftp://storage.example.com" }).success).toBe(false)
+  expect(serverConfigLoad({ S3_ENDPOINT: "https://user:secret@storage.example.com" }).success).toBe(false)
+  expect(serverConfigLoad({ S3_FORCE_PATH_STYLE: "yes" }).success).toBe(false)
 })
 
 test("serverConfigLoad parses independent scheduled-job intervals and allows disabling them", () => {

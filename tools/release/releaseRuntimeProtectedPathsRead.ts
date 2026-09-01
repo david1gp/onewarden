@@ -16,6 +16,7 @@ export async function releaseRuntimeProtectedPathsRead(runtimeDirectory: string)
     environment.ICON_CACHE_FOLDER ?? "./data/icon_cache",
   ]
   for (const configuredPath of configuredPaths) {
+    if (configuredPath.startsWith("s3://")) continue
     const absolutePath = isAbsolute(configuredPath)
       ? resolve(configuredPath)
       : resolve(runtimeDirectory, configuredPath)

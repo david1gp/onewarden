@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite"
 import { afterEach, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
+import { sql } from "drizzle-orm"
 import {
   existsSync,
   mkdirSync,
@@ -17,6 +18,7 @@ import { backupBundleCreate } from "../../../../src/server/backup/backupBundleCr
 import { databaseClose } from "../../../../src/server/database/databaseClose.js"
 import { databaseMigrate } from "../../../../src/server/database/databaseMigrate.js"
 import { databaseOpen } from "../../../../src/server/database/databaseOpen.js"
+import type { DatabaseConnection } from "../../../../src/server/database/database.js"
 
 const temporaryDirectories: string[] = []
 
@@ -26,7 +28,7 @@ function temporaryDirectoryCreate(): string {
   return directory
 }
 
-function databaseCreate(path: string): Database {
+function databaseCreate(path: string): DatabaseConnection {
   const result = databaseOpen(path)
   if (!result.success) throw new Error(result.errorMessage)
   const migrationResult = databaseMigrate(result.data)
@@ -64,8 +66,8 @@ test("backupBundleCreate snapshots WAL state, storage files, and integrity metad
   writeFileSync(join(attachmentsFolder, "cipher-one", "attachment.bin"), Buffer.from([1, 2, 3, 4]))
 
   const liveDatabase = databaseCreate(databasePath)
-  liveDatabase.exec("CREATE TABLE backup_wal_entries (value TEXT NOT NULL)")
-  liveDatabase.run("INSERT INTO backup_wal_entries (value) VALUES (?)", ["written in WAL"])
+  liveDatabase.drizzle.run(sql.raw("CREATE TABLE backup_wal_entries (value TEXT NOT NULL)"))
+  liveDatabase.drizzle.run(sql`INSERT INTO backup_wal_entries (value) VALUES (${"written in WAL"})`)
   expect(existsSync(`${databasePath}-wal`)).toBe(true)
 
   const result = await backupBundleCreate({
@@ -81,6 +83,8 @@ test("backupBundleCreate snapshots WAL state, storage files, and integrity metad
 
   const manifest = manifestRead(join(result.data, "manifest.json"))
   expect(manifest).toMatchObject({ format: "onewarden-backup", version: 1, schemaVersion: 20 })
+  const schemaVersions = liveDatabase.drizzle.all<{ version: number }>(sql`SELECT version FROM schema_version`)
+  expect(manifest.schemaVersion).toBe(Math.max(...schemaVersions.map((row) => row.version)))
   expect(manifest.files.map((file) => file.path)).toEqual([
     "attachments/cipher-one/attachment.bin",
     "database.sqlite3",
@@ -138,5 +142,29 @@ test("backupBundleCreate rejects in-memory databases and symlinked storage", asy
     success: false,
     errorMessage: "Backup destination cannot be inside configured storage.",
   })
+  databaseClose(database)
+})
+
+test("backupBundleCreate omits S3 attachment objects from filesystem bundles", async () => {
+  const directory = temporaryDirectoryCreate()
+  const databasePath = join(directory, "onewarden.sqlite3")
+  const sendsFolder = join(directory, "sends")
+  mkdirSync(sendsFolder, { recursive: true })
+  writeFileSync(join(sendsFolder, "send.txt"), "send")
+  const database = databaseCreate(databasePath)
+
+  const result = await backupBundleCreate({
+    attachmentsFolder: "s3://onewarden-attachments/production",
+    databasePath,
+    destinationRoot: join(directory, "backups"),
+    sendsFolder,
+  })
+
+  expect(result.success).toBe(true)
+  if (!result.success) return
+  expect(manifestRead(join(result.data, "manifest.json")).files.map((file) => file.path)).toEqual([
+    "database.sqlite3",
+    "sends/send.txt",
+  ])
   databaseClose(database)
 })

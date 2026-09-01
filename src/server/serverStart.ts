@@ -3,7 +3,7 @@ import { loggerCreate } from "../shared/logging/loggerCreate.js"
 import { serverConfigLoad } from "./config/serverConfigLoad.js"
 import { adminBackupAdapterCreate } from "./contexts/admin/adminBackupAdapterCreate.js"
 import { adminConfigCreate } from "./contexts/admin/adminConfigCreate.js"
-import { attachmentFileStorageAdapterCreate } from "./contexts/attachments/attachmentFileStorageAdapterCreate.js"
+import { attachmentStorageCreate } from "./contexts/attachments/attachmentStorageCreate.js"
 import { iconCacheAdapterCreate } from "./contexts/icons/iconCacheAdapterCreate.js"
 import { iconConfigLoad } from "./contexts/icons/iconConfigLoad.js"
 import { identityConfigLoad } from "./contexts/identity/identityConfigLoad.js"
@@ -76,7 +76,7 @@ if (!tokenKeyPairResult.success) {
 }
 const tokenKeyPair = tokenKeyPairResult.data
 const sendStorage = sendFileStorageAdapterCreate({ directory: configResult.data.SENDS_FOLDER })
-const attachmentStorage = attachmentFileStorageAdapterCreate({ directory: configResult.data.ATTACHMENTS_FOLDER })
+const attachmentStorage = attachmentStorageCreate(configResult.data)
 const notificationHub = notificationHubCreate({
   enabled: configResult.data.ENABLE_WEBSOCKET,
   proxy: configResult.data.PROXY,

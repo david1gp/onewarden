@@ -16,10 +16,13 @@ Verify a package without deployment checks with `bun run release:verify -- dist`
 `bun run backup -- [destination]` creates a timestamped backup directory under
 `BACKUP_FOLDER` (default `./data/backups`), or under the supplied destination
 root. Each bundle contains a consistent `database.sqlite3` snapshot (including
-the live WAL), configured `sends/` and `attachments/` files, and a
+the live WAL), configured local `sends/` and `attachments/` files, and a
 non-secret `manifest.json` with the schema version and SHA-256 entries. Bundle
 creation rejects symlinks and path escapes and finalizes with an atomic rename.
-Backups under the managed runtime are excluded from package replacement.
+S3 attachment objects are not included; back up and restore that bucket or
+prefix independently. Predeploy backups cover SQLite and local Sends when S3
+attachments are configured. Backups under the managed runtime are excluded
+from package replacement.
 
 ## Restore
 
@@ -33,7 +36,51 @@ integrity and schema compatibility, stages the complete database and storage
 tree, and then activates it. The previous database, Sends, and attachments are
 kept in a timestamped `onewarden-restore-quarantine-*` directory; `.env` is
 never moved. A failed activation rolls back when possible while retaining that
-quarantine for manual recovery.
+quarantine for manual recovery. The built-in restore refuses an S3
+`ATTACHMENTS_FOLDER`; restore the matching object-store data independently.
+
+## Attachment storage
+
+Local filesystem storage remains the default:
+
+```dotenv
+ATTACHMENTS_FOLDER=./data/attachments
+```
+
+Select AWS S3 by setting `ATTACHMENTS_FOLDER` to a bucket and optional prefix.
+The AWS SDK resolves the region and credentials through its standard chains,
+so set a region (for example `AWS_REGION`) and provide credentials through
+environment variables, shared AWS configuration, or an instance/container
+role as appropriate. Environment credentials use the standard
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`
+variables:
+
+```dotenv
+ATTACHMENTS_FOLDER=s3://onewarden-attachments/production
+AWS_REGION=eu-central-1
+```
+
+For an S3-compatible service, set its HTTP(S) endpoint and enable path-style
+requests when required by that service. A region is still required by the AWS
+SDK; use a value accepted by the provider.
+
+```dotenv
+ATTACHMENTS_FOLDER=s3://onewarden-attachments/production
+AWS_REGION=us-east-1
+S3_ENDPOINT=https://objects.example.com
+S3_FORCE_PATH_STYLE=true
+```
+
+`S3_ENDPOINT` is optional and must not contain embedded credentials.
+`S3_FORCE_PATH_STYLE` defaults to `false`. With the example prefix, encrypted
+bytes are stored as
+`production/<cipherUuid>/<attachmentId>`; without a prefix, keys are
+`<cipherUuid>/<attachmentId>`. Attachment metadata remains in SQLite and
+downloads continue through authenticated, short-lived OneWarden URLs.
+
+Changing from a local path to `s3://...` does not migrate existing attachment
+files. Copy them separately using the same object-key layout before switching,
+or existing attachments will be unavailable.
 
 ## Deploy
 
@@ -44,7 +91,8 @@ quarantine for manual recovery.
     to `./data/attachments`; relative paths resolve from the runtime working
     directory, as with `SENDS_FOLDER`. Configured attachment folders inside the
     managed runtime are protected during package replacement; absolute folders
-    outside it are unaffected.
+    outside it are unaffected. S3 attachment locations are external and are not
+    copied, restored, or protected by the deployment tooling.
 2. Ensure the default managed runtime directory exists:
    `mkdir -p ~/projects/adaptive/onewarden`.
 3. Run `bun run backend:deploy` from this checkout.

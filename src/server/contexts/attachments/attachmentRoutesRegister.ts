@@ -1,6 +1,6 @@
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
-import { type Result, type ResultErr } from "#result"
+import type { Result, ResultErr } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
@@ -27,7 +27,9 @@ import { pushRelayCipherUpdate } from "../push/pushRelayCipherUpdate.js"
 import type { Attachment } from "./attachment.js"
 import { attachmentDelete } from "./attachmentDelete.js"
 import { attachmentDownloadTokenVerify } from "./attachmentDownloadTokenVerify.js"
+import { attachmentExportMetadataCreate } from "./attachmentExportMetadataCreate.js"
 import { attachmentFileStorageAdapterCreate } from "./attachmentFileStorageAdapterCreate.js"
+import { attachmentFindByCipher } from "./attachmentFindByCipher.js"
 import { attachmentFindById } from "./attachmentFindById.js"
 import { type AttachmentMultipart, attachmentMultipartSchema } from "./attachmentMultipartSchema.js"
 import type { AttachmentRouteOptions } from "./attachmentRouteOptions.js"
@@ -343,6 +345,67 @@ export function attachmentRoutesRegister(app: Hono<AuthenticationEnvironment>, o
     })
   }
 
+  const exportMetadata = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = attachmentRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const pathResult = requestPathParse(context, attachmentCipherPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const cipherResult = await attachmentCipherResolve(
+      requestContext.data.database,
+      pathResult.data.cipher_id,
+      requestContext.data.userUuid,
+      false,
+      "attachmentRoutesExportMetadata",
+      options.groupsEnabled,
+    )
+    if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
+    const attachmentsResult = attachmentFindByCipher(requestContext.data.database, cipherResult.data.uuid)
+    if (!attachmentsResult.success) return apiErrorResponseCreate(attachmentsResult)
+    const data = attachmentsResult.data.map(attachmentExportMetadataCreate)
+    return context.json({ data, object: "list" })
+  }
+
+  const exportBytes = async (context: Context<AuthenticationEnvironment>) => {
+    const requestContext = attachmentRequestContextResolve(context, options)
+    if (!requestContext.success) return apiErrorResponseCreate(requestContext)
+    const pathResult = requestPathParse(context, attachmentPathSchema)
+    if (!pathResult.success) return apiErrorResponseCreate(pathResult)
+    const cipherResult = await attachmentCipherResolve(
+      requestContext.data.database,
+      pathResult.data.cipher_id,
+      requestContext.data.userUuid,
+      false,
+      "attachmentRoutesExportBytes",
+      options.groupsEnabled,
+    )
+    if (!cipherResult.success) return apiErrorResponseCreate(cipherResult)
+    const attachmentResult = attachmentFindById(requestContext.data.database, pathResult.data.attachment_id)
+    if (!attachmentResult.success) return apiErrorResponseCreate(attachmentResult)
+    if (attachmentResult.data === null)
+      return apiErrorResponseCreate(attachmentNotFoundErrorCreate("attachmentRoutesExportBytes"))
+    if (attachmentResult.data.cipherUuid !== pathResult.data.cipher_id)
+      return apiErrorResponseCreate(
+        attachmentErrorCreate("attachmentRoutesExportBytes", "Attachment doesn't belong to cipher"),
+      )
+    try {
+      const fileResult = await storage.read(cipherResult.data.uuid, attachmentResult.data.id)
+      if (!fileResult.success || fileResult.data === null)
+        return apiErrorResponseCreate(
+          apiErrorCreate("attachmentRoutesExportBytes", "platform.not-found", "Attachment file doesn't exist."),
+        )
+      return new Response(fileResult.data.slice().buffer as ArrayBuffer, {
+        headers: { "content-type": "application/octet-stream" },
+        status: 200,
+      })
+    } catch {
+      return apiErrorResponseCreate(
+        apiErrorCreate("attachmentRoutesExportBytes", "platform.unavailable", "Attachment storage unavailable."),
+      )
+    }
+  }
+
+  app.get("/api/ciphers/:cipher_id/attachments", authenticate("get_attachment_metadata"), exportMetadata)
+  app.get("/api/ciphers/:cipher_id/attachment/:attachment_id/data", authenticate("get_attachment_data"), exportBytes)
   app.get("/api/ciphers/:cipher_id/attachment/:attachment_id", authenticate("get_attachment"), get)
   app.post("/api/ciphers/:cipher_id/attachment/v2", authenticate("post_attachment_v2"), createV2)
   app.post("/api/ciphers/:cipher_id/attachment/:attachment_id", authenticate("post_attachment_v2_data"), uploadV2)
@@ -561,12 +624,9 @@ async function cipherJsonResponse(
   userUuid: string,
   options: AttachmentRouteOptions,
 ): Promise<Result<Record<string, unknown>>> {
-  return cipherToJson(
-    options.database ?? context.get("database")!,
-    cipher,
-    userUuid,
-    attachmentJsonOptions(context, options),
-  )
+  const database = options.database ?? context.get("database")
+  if (database === undefined) return resultErrorCreate("cipherJsonResponse", "Database unavailable.")
+  return cipherToJson(database, cipher, userUuid, attachmentJsonOptions(context, options))
 }
 
 function attachmentJsonOptions(
@@ -592,6 +652,10 @@ function attachmentOriginResolve(context: Context<AuthenticationEnvironment>, op
 
 function attachmentErrorCreate(op: string, message: string): ResultErr {
   return apiErrorCreate(op, "platform.invalid-request", message)
+}
+
+function attachmentNotFoundErrorCreate(op: string): ResultErr {
+  return apiErrorCreate(op, "platform.not-found", "Attachment doesn't exist")
 }
 
 type AttachmentRequestContext = {

@@ -6,8 +6,9 @@ import { attachmentSizeByOrganization } from "../../../src/server/contexts/attac
 import { attachmentSizeByUser } from "../../../src/server/contexts/attachments/attachmentSizeByUser.js"
 import { attachmentToJson } from "../../../src/server/contexts/attachments/attachmentToJson.js"
 import { cipherSave } from "../../../src/server/contexts/ciphers/cipherSave.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { cipherToJson } from "../../../src/server/contexts/ciphers/cipherToJson.js"
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
@@ -107,6 +108,30 @@ test("attachment persistence serializes metadata and aggregates personal and org
     },
   })
   expect(jsonResult.success ? jsonResult.data.url : "").toContain("/attachments/cipher-one/attachment-one?token=")
+
+  const unsignedCipherResult = await cipherToJson(database, cipher, "attachment-user")
+  expect(unsignedCipherResult.success).toBe(true)
+  if (!unsignedCipherResult.success) return
+  expect(unsignedCipherResult.data.attachments).toBeNull()
+  expect(JSON.stringify(unsignedCipherResult.data)).not.toContain("attachment-one")
+  expect(JSON.stringify(unsignedCipherResult.data)).not.toContain("encrypted-name")
+  expect(JSON.stringify(unsignedCipherResult.data)).not.toContain("attachment-key")
+  expect(JSON.stringify(unsignedCipherResult.data)).not.toContain("/attachments/")
+
+  const signedCipherResult = await cipherToJson(database, cipher, "attachment-user", {
+    clock: clockTestCreate("2026-08-28T00:00:00.000Z"),
+    origin: "https://vault.example",
+    privateKey: keyPairResult.data.privateKey,
+  })
+  expect(signedCipherResult.success).toBe(true)
+  if (!signedCipherResult.success) return
+  expect(signedCipherResult.data.attachments).toMatchObject([
+    {
+      id: "attachment-one",
+      key: "encrypted-key",
+      url: expect.stringContaining("/attachments/cipher-one/attachment-one?token="),
+    },
+  ])
 })
 
 test("attachment organization totals are persisted through cipher ownership", () => {

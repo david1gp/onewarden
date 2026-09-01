@@ -11,6 +11,15 @@ const serverConfigPortSchema = v.pipe(
   v.maxValue(65535),
 )
 const serverConfigDatabasePathSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
+const serverConfigAttachmentsFolderSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.minLength(1),
+  v.check(
+    serverConfigAttachmentsFolderIsValid,
+    "ATTACHMENTS_FOLDER must be a local path or an s3://bucket/optional-prefix location.",
+  ),
+)
 const serverConfigBackupFolderSchema = v.pipe(v.string(), v.trim(), v.minLength(1))
 const serverConfigLogLevelSchema = v.picklist(["debug", "info", "warn", "error"])
 const serverConfigProxySchema = v.pipe(
@@ -18,6 +27,12 @@ const serverConfigProxySchema = v.pipe(
   v.trim(),
   v.picklist(["false", "true"]),
   v.transform((value) => value === "true"),
+)
+const serverConfigS3EndpointSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.url(),
+  v.check(serverConfigS3EndpointIsValid, "S3_ENDPOINT must be an HTTP or HTTPS URL."),
 )
 const serverConfigIpHeaderSchema = v.pipe(v.string(), v.trim())
 const serverConfigIpHeaderTrustedProxiesSchema = v.pipe(v.string(), v.trim())
@@ -97,7 +112,9 @@ export const serverConfigSchema = v.object({
   PORT: v.optional(serverConfigPortSchema, "3000"),
   DATABASE_PATH: v.optional(serverConfigDatabasePathSchema, "./data/onewarden.sqlite3"),
   SENDS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/sends"),
-  ATTACHMENTS_FOLDER: v.optional(serverConfigDatabasePathSchema, "./data/attachments"),
+  ATTACHMENTS_FOLDER: v.optional(serverConfigAttachmentsFolderSchema, "./data/attachments"),
+  S3_ENDPOINT: v.optional(serverConfigS3EndpointSchema),
+  S3_FORCE_PATH_STYLE: v.optional(serverConfigProxySchema, "false"),
   BACKUP_FOLDER: v.optional(serverConfigBackupFolderSchema, "./data/backups"),
   SENDS_ALLOWED: v.optional(serverConfigProxySchema, "true"),
   USER_SEND_LIMIT: serverConfigOptionalNonNegativeIntegerSchema,
@@ -138,6 +155,35 @@ export const serverConfigSchema = v.object({
 })
 
 export type ServerConfig = v.InferOutput<typeof serverConfigSchema>
+
+function serverConfigAttachmentsFolderIsValid(value: string): boolean {
+  if (!/^s3:/i.test(value)) return true
+  if (!value.startsWith("s3://")) return false
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === "s3:" &&
+      url.hostname.length > 0 &&
+      url.username === "" &&
+      url.password === "" &&
+      url.port === "" &&
+      url.search === "" &&
+      url.hash === "" &&
+      !url.pathname.startsWith("//")
+    )
+  } catch {
+    return false
+  }
+}
+
+function serverConfigS3EndpointIsValid(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return (url.protocol === "http:" || url.protocol === "https:") && url.username === "" && url.password === ""
+  } catch {
+    return false
+  }
+}
 
 function serverConfigPublicOriginIsSafe(value: string): boolean {
   try {

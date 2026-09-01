@@ -114,7 +114,10 @@ export async function releasePredeployVerify(options: ReleasePredeployVerifyOpti
 
   const databasePath = releaseConfiguredPathResolve(runtimeDirectory, configResult.data.DATABASE_PATH)
   const sendsPath = releaseConfiguredPathResolve(runtimeDirectory, configResult.data.SENDS_FOLDER)
-  const attachmentsPath = releaseConfiguredPathResolve(runtimeDirectory, configResult.data.ATTACHMENTS_FOLDER)
+  const attachmentsAreS3 = configResult.data.ATTACHMENTS_FOLDER.startsWith("s3://")
+  const attachmentsPath = attachmentsAreS3
+    ? configResult.data.ATTACHMENTS_FOLDER
+    : releaseConfiguredPathResolve(runtimeDirectory, configResult.data.ATTACHMENTS_FOLDER)
   const backupPath = releaseConfiguredPathResolve(runtimeDirectory, configResult.data.BACKUP_FOLDER)
   const iconCachePath = releaseConfiguredPathResolve(
     runtimeDirectory,
@@ -126,7 +129,7 @@ export async function releasePredeployVerify(options: ReleasePredeployVerifyOpti
     [
       { label: "database", path: databasePath, file: true },
       { label: "Sends", path: sendsPath, file: false },
-      { label: "attachments", path: attachmentsPath, file: false },
+      ...(attachmentsAreS3 ? [] : [{ label: "attachments", path: attachmentsPath, file: false }]),
       { label: "backup", path: backupPath, file: false },
       { label: "icon cache", path: iconCachePath, file: false },
     ],
