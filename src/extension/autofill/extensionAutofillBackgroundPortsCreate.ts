@@ -1,5 +1,6 @@
 import * as v from "valibot"
 import type { Result } from "#result"
+import { totpCodeFreshCreate } from "../../shared/totp/totpCodeFreshCreate.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionAutofillBackgroundMessage } from "./extensionAutofillBackgroundMessageSchema.js"
@@ -27,7 +28,7 @@ type ExtensionAutofillService = {
   syncSnapshotLoad: () => Promise<Result<{ ciphers: ExtensionCipher[] } | null>>
   cipherDetailRead: (request: { cipherId: string }) => Promise<Result<ExtensionCipher>>
   credentialCaptureAssess?: (request: unknown) => Promise<Result<ExtensionCredentialCapturePrompt | null>>
-  credentialCaptureCommit?: (promptId: string) => Promise<Result<"saved" | "updated">>
+  credentialCaptureCommit?: (promptId: string, totp: string | null) => Promise<Result<"saved" | "updated">>
   credentialCaptureDiscard?: (promptId: string) => Result<void>
 }
 type ExtensionAutofillPolicyStorage = {
@@ -36,6 +37,7 @@ type ExtensionAutofillPolicyStorage = {
 }
 type ExtensionAutofillConnection = {
   port: BackgroundPort
+  active: boolean
   documentId: string | null
   lastRevision: number
   fields: Map<string, ExtensionAutofillFieldDescriptor>
@@ -47,6 +49,7 @@ type ExtensionAutofillConnection = {
   pageLoadFilledForms: Set<string>
   credentialPrompts: Map<string, { promptId: string; revision: number; kind: "add" | "change" | "atRisk" }>
   credentialCaptureBusy: Set<string>
+  credentialCaptureGeneration: number
 }
 
 /** Owns per-frame matching and releases only selected, authorized values for immediate insertion. */
@@ -70,9 +73,14 @@ export function extensionAutofillBackgroundPortsCreate(
     }
     const key = `${tabId}:${frameId}`
     const previous = connections.get(key)
-    if (previous !== undefined && previous.port !== port) previous.port.disconnect()
+    if (previous !== undefined && previous.port !== port) {
+      previous.active = false
+      extensionCredentialPromptsClear(previous, options?.service)
+      previous.port.disconnect()
+    }
     const connection: ExtensionAutofillConnection = {
       port,
+      active: true,
       documentId: null,
       lastRevision: -1,
       fields: new Map(),
@@ -81,6 +89,7 @@ export function extensionAutofillBackgroundPortsCreate(
       pageLoadFilledForms: new Set(),
       credentialPrompts: new Map(),
       credentialCaptureBusy: new Set(),
+      credentialCaptureGeneration: 0,
     }
     connections.set(key, connection)
 
@@ -151,6 +160,7 @@ export function extensionAutofillBackgroundPortsCreate(
     })
     port.onDisconnect.addListener(() => {
       if (connections.get(key)?.port === port) {
+        connection.active = false
         extensionCredentialPromptsClear(connection, options?.service)
         connections.delete(key)
       }
@@ -206,6 +216,7 @@ async function extensionCredentialCaptureHandle(
     !formFields.some((field) => field.kind === "currentPassword" || field.kind === "newPassword")
   )
     return
+  const captureGeneration = connection.credentialCaptureGeneration
   const actionUrl = extensionCredentialActionUrlResolve(message.actionUrl, trustedUrl)
   if (actionUrl === null) return
   const policyResult = await storage.autofillPolicyLoad()
@@ -222,7 +233,11 @@ async function extensionCredentialCaptureHandle(
   })
   connection.credentialCaptureBusy.delete(message.requestId)
   if (!assessResult.success || assessResult.data === null) return
-  if (message.revision !== connection.lastRevision) {
+  if (
+    !connection.active ||
+    message.revision !== connection.lastRevision ||
+    captureGeneration !== connection.credentialCaptureGeneration
+  ) {
     service.credentialCaptureDiscard?.(assessResult.data.id)
     return
   }
@@ -232,6 +247,8 @@ async function extensionCredentialCaptureHandle(
     service.credentialCaptureDiscard?.(first[1].promptId)
     connection.credentialPrompts.delete(first[0])
   }
+  const previous = connection.credentialPrompts.get(message.requestId)
+  if (previous !== undefined) service.credentialCaptureDiscard?.(previous.promptId)
   connection.credentialPrompts.set(message.requestId, {
     promptId: assessResult.data.id,
     revision: message.revision,
@@ -258,23 +275,38 @@ async function extensionCredentialDecisionHandle(
   const pending = connection.credentialPrompts.get(message.requestId)
   if (
     pending === undefined ||
-    service?.credentialCaptureDiscard === undefined ||
     pending.promptId !== message.promptId ||
     pending.revision !== message.revision ||
     message.revision !== connection.lastRevision
   )
     return
   connection.credentialPrompts.delete(message.requestId)
-  if (message.decision === "accept" && pending.kind !== "atRisk" && service.credentialCaptureCommit !== undefined) {
-    const result = await service.credentialCaptureCommit(pending.promptId)
+  if (message.decision === "expire") {
+    service?.credentialCaptureDiscard?.(pending.promptId)
+    extensionCredentialOutcomePost(connection, message, "expired")
+    return
+  }
+  if (message.decision === "accept" && pending.kind !== "atRisk") {
+    if (service?.credentialCaptureCommit === undefined) {
+      service?.credentialCaptureDiscard?.(pending.promptId)
+      extensionCredentialOutcomePost(connection, message, "unavailable")
+      return
+    }
+    const result = await service.credentialCaptureCommit(pending.promptId, message.totp)
     extensionCredentialOutcomePost(
       connection,
       message,
-      result.success ? result.data : result.statusCode === 401 ? "locked" : "unavailable",
+      result.success
+        ? result.data
+        : result.statusCode === 401
+          ? "locked"
+          : result.errorMessage === "Credential capture prompt has expired."
+            ? "expired"
+            : "unavailable",
     )
     return
   }
-  service.credentialCaptureDiscard(pending.promptId)
+  service?.credentialCaptureDiscard?.(pending.promptId)
   if (message.decision === "neverSite" && storage?.autofillPolicySave !== undefined) {
     const policyResult = await storage.autofillPolicyLoad()
     const site = extensionCredentialSiteRead(connection.port.sender?.url)
@@ -297,7 +329,7 @@ function extensionCredentialOutcomePost(
     v.InferOutput<typeof extensionAutofillContentMessageSchema>,
     { type: "autofill.credentialPromptDecision" }
   >,
-  status: "saved" | "updated" | "dismissed" | "suppressed" | "stale" | "locked" | "unavailable",
+  status: "saved" | "updated" | "dismissed" | "suppressed" | "expired" | "stale" | "locked" | "unavailable",
 ): void {
   if (connection.documentId === null) return
   extensionAutofillBackgroundMessagePost(connection.port, {
@@ -314,6 +346,7 @@ function extensionCredentialPromptsClear(
   connection: ExtensionAutofillConnection,
   service: ExtensionAutofillService | undefined,
 ): void {
+  connection.credentialCaptureGeneration += 1
   if (service !== undefined) {
     for (const prompt of connection.credentialPrompts.values()) service.credentialCaptureDiscard?.(prompt.promptId)
   }
@@ -501,6 +534,19 @@ async function extensionAutofillSelectionHandle(
     return
   }
   const values = extensionAutofillFillValuesCreate(detailResult.data)
+  if (field.kind === "totp" && detailResult.data.type === 1) {
+    const seed = detailResult.data.viewPassword === false ? null : detailResult.data.login.totp
+    if (seed === null || seed.trim() === "") {
+      extensionAutofillFillRejectedPost(connection, message, "unavailable")
+      return
+    }
+    const codeResult = await totpCodeFreshCreate(seed)
+    if (!codeResult.success || connection.lastRevision !== message.revision) {
+      extensionAutofillFillRejectedPost(connection, message, "unavailable")
+      return
+    }
+    values.push({ kind: "totp", value: codeResult.data })
+  }
   if (values.length === 0) {
     extensionAutofillFillRejectedPost(connection, message, "unavailable")
     return

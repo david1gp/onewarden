@@ -29,3 +29,27 @@ test("credential prompt exposes accessible add, change and at-risk actions", () 
     document.body.replaceChildren()
   }
 })
+
+test("credential prompt renders explicit save failure and expiry statuses", () => {
+  const attachShadow = HTMLElement.prototype.attachShadow
+  HTMLElement.prototype.attachShadow = function () {
+    return attachShadow.call(this, { mode: "open" })
+  }
+  try {
+    const mounted = extensionCredentialPromptMount({
+      document,
+      prompt: { id: "status", kind: "add", site: "example.test", risk: null },
+      onDecision: () => {},
+    })
+    const host = document.querySelector("[data-onewarden-autofill='credential-prompt']") as HTMLElement
+    const dialog = host.shadowRoot?.querySelector("[role='dialog']")
+    mounted.statusRender("locked")
+    expect(dialog?.textContent).toContain("Unlock OneWarden to save this login.")
+    mounted.statusRender("expired")
+    expect(dialog?.textContent).toContain("This save prompt expired.")
+    mounted.dismiss()
+  } finally {
+    HTMLElement.prototype.attachShadow = attachShadow
+    document.body.replaceChildren()
+  }
+})

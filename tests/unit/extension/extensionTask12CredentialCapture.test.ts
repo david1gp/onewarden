@@ -89,6 +89,14 @@ describe("task 12 credential comparison", () => {
     expect(
       extensionCredentialCapturePlanCreate(request, [loginCreate(), loginCreate({ id: "login-2" })], 1, () => "new"),
     ).toEqual({ kind: "atRisk", risk: "ambiguous" })
+    expect(
+      extensionCredentialCapturePlanCreate(
+        request,
+        [loginCreate({ login: { ...loginCreate().login, username: "someone-else@example.test" } })],
+        1,
+        () => "new",
+      ),
+    ).toEqual({ kind: "atRisk", risk: "ambiguous" })
   })
 
   test("bounds strict capture contracts", () => {
@@ -100,7 +108,7 @@ describe("task 12 credential comparison", () => {
   })
 })
 
-test("content captures POST submissions without cancelling the page and suppresses immediate duplicates", () => {
+test("content captures POST submissions without cancelling the page and suppresses immediate duplicates", async () => {
   document.body.innerHTML = `<form method="post" action="https://example.test/session">
     <input autocomplete="username" value="person@example.test">
     <input type="password" autocomplete="current-password" value="new-password">
@@ -123,11 +131,74 @@ test("content captures POST submissions without cancelling the page and suppress
   const second = new SubmitEvent("submit", { bubbles: true, cancelable: true })
   form.dispatchEvent(first)
   form.dispatchEvent(second)
+  await new Promise((resolve) => setTimeout(resolve, 0))
   const captures = sent.filter((message) => (message as { type?: string }).type === "autofill.credentialCapture")
   expect(first.defaultPrevented).toBe(false)
   expect(captures).toHaveLength(1)
   expect(captures[0]).toMatchObject({ method: "POST", cause: "submit", username: "person@example.test" })
   stop()
+})
+
+test("content suppresses delayed submit and correlated network duplicates but permits a new credential fingerprint", async () => {
+  const dateNow = Date.now
+  let now = 1_788_192_000_000
+  Date.now = () => now
+  try {
+    document.body.innerHTML = `<form method="post" action="https://example.test/session">
+      <input autocomplete="username" value="person@example.test">
+      <input type="password" autocomplete="new-password" value="new-password">
+    </form>`
+    const sent: unknown[] = []
+    const onMessage = eventCreate<(message: unknown) => void>()
+    const onDisconnect = eventCreate<() => void>()
+    const stop = extensionAutofillContentStart({
+      document,
+      window,
+      connect: () => ({ postMessage: (message) => sent.push(message), disconnect: () => {}, onMessage, onDisconnect }),
+      mutationObserverCreate: (callback) => new MutationObserver(callback),
+      timeoutSet: (callback, delay) => window.setTimeout(callback, delay),
+      timeoutClear: (timer) => window.clearTimeout(timer),
+    })
+    const ready = sent[0] as { documentId: string }
+    onMessage.emit({ type: "autofill.start", documentId: ready.documentId })
+    const form = document.querySelector("form") as HTMLFormElement
+    const password = form.querySelector("input[type='password']") as HTMLInputElement
+    password.dispatchEvent(new Event("input", { bubbles: true }))
+    form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    now += 2_500
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: window,
+        data: {
+          source: "onewarden.credential-capture.v1",
+          type: "network",
+          method: "POST",
+          url: "https://example.test/session",
+        },
+      }),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    password.value = "another-password"
+    password.dispatchEvent(new Event("input", { bubbles: true }))
+    now += 1_000
+    form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const captures = sent.filter((message) => (message as { type?: string }).type === "autofill.credentialCapture")
+    expect(captures).toHaveLength(2)
+    expect(captures.map((capture) => (capture as { password: string }).password)).toEqual([
+      "new-password",
+      "another-password",
+    ])
+    password.value = "new-password"
+    now += 31_000
+    form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(sent.filter((message) => (message as { type?: string }).type === "autofill.credentialCapture")).toHaveLength(3)
+    stop()
+  } finally {
+    Date.now = dateNow
+  }
 })
 
 test("page bridge reports POST, PUT and PATCH metadata without reading or changing request bodies", async () => {
@@ -154,5 +225,34 @@ test("page bridge reports POST, PUT and PATCH metadata without reading or changi
     { source: "onewarden.credential-capture.v1", type: "network", method: "PATCH", url: "/patch" },
   ])
   expect(calls[0]?.init?.body).toBe(body)
+  stop()
+})
+
+test("page bridge reports XHR method and URL metadata while passing the body through unchanged", () => {
+  const page = new Window({ url: "https://example.test/login" })
+  const reports: unknown[] = []
+  const bodies: unknown[] = []
+  class FakeXMLHttpRequest {
+    open(_method: string, _url: string | URL): void {}
+
+    send(body?: unknown): void {
+      bodies.push(body)
+    }
+  }
+  page.postMessage = ((message: unknown) => reports.push(message)) as typeof page.postMessage
+  page.XMLHttpRequest = FakeXMLHttpRequest as unknown as typeof page.XMLHttpRequest
+  const stop = extensionCredentialNetworkBridgeStart(page as unknown as Window & {
+    XMLHttpRequest: typeof XMLHttpRequest
+    HTMLFormElement: typeof HTMLFormElement
+  })
+  const body = { privateValue: "must-pass-through-unchanged" }
+  const xhr = new FakeXMLHttpRequest()
+  xhr.open("PATCH", "/session")
+  xhr.send(body)
+  expect(reports).toEqual([
+    { source: "onewarden.credential-capture.v1", type: "network", method: "PATCH", url: "/session" },
+  ])
+  expect(bodies).toEqual([body])
+  expect(JSON.stringify(reports)).not.toContain("privateValue")
   stop()
 })

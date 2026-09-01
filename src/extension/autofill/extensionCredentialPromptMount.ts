@@ -1,15 +1,16 @@
 import type { ExtensionCredentialCapturePrompt } from "./extensionCredentialCapturePromptSchema.js"
 
 type PromptDecision = "accept" | "dismiss" | "neverSite"
+type PromptStatus = "saving" | "saved" | "updated" | "expired" | "stale" | "locked" | "unavailable"
 
 /** Mounts a closed, secret-free and keyboard-accessible capture notification. */
 export function extensionCredentialPromptMount(options: {
   document: Document
   prompt: ExtensionCredentialCapturePrompt
-  onDecision: (decision: PromptDecision) => void
+  onDecision: (decision: PromptDecision, totp: string | null) => void
 }): {
   dismiss: () => void
-  statusRender: (status: "saving" | "saved" | "updated" | "unavailable") => void
+  statusRender: (status: PromptStatus) => void
   hostConnected: () => boolean
 } {
   const host = options.document.createElement("div")
@@ -34,6 +35,9 @@ export function extensionCredentialPromptMount(options: {
     button.primary { background: #175ddc; border-color: #175ddc; color: #fff; }
     button:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
     button[disabled] { cursor: wait; opacity: .65; }
+    label { display: block; margin: 0 0 14px; }
+    input { background: Field; border: 1px solid GrayText; border-radius: 6px; color: FieldText; display: block;
+      font: 14px/1.3 monospace; margin-top: 5px; padding: 8px; width: 100%; }
   `
   const dialog = options.document.createElement("section")
   dialog.setAttribute("role", "dialog")
@@ -47,11 +51,18 @@ export function extensionCredentialPromptMount(options: {
   const actions = options.document.createElement("div")
   actions.className = "actions"
   const buttons: HTMLButtonElement[] = []
+  const totpInput = options.document.createElement("input")
+  totpInput.type = "password"
+  totpInput.autocomplete = "off"
+  totpInput.placeholder = "Base32 seed or otpauth:// URI"
+  const totpLabel = options.document.createElement("label")
+  totpLabel.textContent = "Authenticator key (optional; never enter a one-time code)"
+  totpLabel.append(totpInput)
   let disposed = false
 
   const decisionSend = (decision: PromptDecision): void => {
     if (disposed) return
-    options.onDecision(decision)
+    options.onDecision(decision, decision === "accept" ? totpInput.value.trim() || null : null)
     if (decision !== "accept") dispose()
   }
   const buttonAppend = (label: string, decision: PromptDecision, primary = false): void => {
@@ -84,7 +95,7 @@ export function extensionCredentialPromptMount(options: {
   }
   buttonAppend("Not now", "dismiss")
   buttonAppend("Never for this site", "neverSite")
-  dialog.append(title, message, actions)
+  dialog.append(title, message, ...(options.prompt.kind === "atRisk" ? [] : [totpLabel]), actions)
   shadow.append(style, dialog)
 
   const keydownHandle = (event: KeyboardEvent): void => {
@@ -104,16 +115,21 @@ export function extensionCredentialPromptMount(options: {
     dismiss: dispose,
     hostConnected: () => host.isConnected,
     statusRender: (status) => {
-      const labels = {
+      const labels: Record<PromptStatus, string> = {
         saving: "Saving securely…",
         saved: "Login added to OneWarden.",
         updated: "Saved login changed.",
-        unavailable: "OneWarden could not save this login.",
+        expired: "This save prompt expired. Submit the form again to save it.",
+        stale: "This save prompt is no longer available.",
+        locked: "Unlock OneWarden to save this login.",
+        unavailable: "OneWarden could not save this login. Try again later.",
       }
       title.textContent = status === "saved" || status === "updated" ? "Done" : "OneWarden"
       message.textContent = labels[status]
       for (const button of buttons) button.disabled = status === "saving"
-      if (status !== "saving") actions.replaceChildren(...buttons.filter((button) => button.textContent === "Not now"))
+      actions.replaceChildren(
+        ...(status === "saving" ? buttons : buttons.filter((button) => button.textContent === "Not now")),
+      )
     },
   }
 }

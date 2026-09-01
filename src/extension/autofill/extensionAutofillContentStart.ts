@@ -1,4 +1,5 @@
 import * as v from "valibot"
+import { sha256Digest } from "../../shared/crypto/sha256Digest.js"
 import { extensionAutofillBackgroundMessageSchema } from "./extensionAutofillBackgroundMessageSchema.js"
 import type { ExtensionAutofillContentMessage } from "./extensionAutofillContentMessageSchema.js"
 import { extensionAutofillControlsFill } from "./extensionAutofillControlsFill.js"
@@ -8,6 +9,9 @@ import { extensionAutofillInlineMenuMount } from "./extensionAutofillInlineMenuM
 import { extensionAutofillPortName } from "./extensionAutofillPortName.js"
 import { extensionCredentialCaptureRead } from "./extensionCredentialCaptureRead.js"
 import { extensionCredentialPromptMount } from "./extensionCredentialPromptMount.js"
+
+const credentialCaptureDedupeWindowMs = 30_000
+const credentialCaptureDedupeMax = 64
 
 type PortEvent<T> = { addListener: (listener: T) => void; removeListener?: (listener: T) => void }
 type AutofillPort = {
@@ -57,7 +61,8 @@ export function extensionAutofillContentStart(
   let credentialPromptTimer: number | null = null
   const filledForms = new Set<string>()
   const dirtyCredentialForms = new Map<string, number>()
-  const capturedForms = new Map<string, number>()
+  const capturedFingerprints = new Map<string, number>()
+  const captureFingerprintSalt = documentId
 
   const messagePost = (message: ExtensionAutofillContentMessage): void => {
     try {
@@ -150,8 +155,27 @@ export function extensionAutofillContentStart(
         requestId: current.requestId,
         promptId: current.promptId,
         decision: "dismiss",
+        totp: null,
       })
     }
+  }
+  const credentialPromptExpire = (): void => {
+    const current = credentialPromptRequest
+    credentialPromptRequest = null
+    if (credentialPromptTimer !== null) context.timeoutClear(credentialPromptTimer)
+    credentialPromptTimer = null
+    if (current === null) return
+    credentialPrompt?.statusRender("expired")
+    credentialPromptTimer = context.timeoutSet(() => credentialPromptDismiss(false), 4_000)
+    messagePost({
+      type: "autofill.credentialPromptDecision",
+      documentId,
+      revision,
+      requestId: current.requestId,
+      promptId: current.promptId,
+      decision: "expire",
+      totp: null,
+    })
   }
   const credentialCapturePost = (
     formId: string,
@@ -160,12 +184,35 @@ export function extensionAutofillContentStart(
     cause: "submit" | "programmaticSubmit" | "network",
   ): void => {
     if (!started || destroyed) return
-    const lastCapture = capturedForms.get(formId) ?? 0
     const currentTime = Date.now()
-    if (currentTime - lastCapture < 2_000) return
     const capture = extensionCredentialCaptureRead({ fields, fieldKinds, fieldFormIds, formId })
     if (capture === null) return
-    capturedForms.set(formId, currentTime)
+    void credentialCapturePostAsync(formId, method, actionUrl, cause, capture, currentTime)
+  }
+  const credentialCapturePostAsync = async (
+    formId: string,
+    method: "POST" | "PUT" | "PATCH",
+    actionUrl: string,
+    cause: "submit" | "programmaticSubmit" | "network",
+    capture: { username: string | null; password: string },
+    currentTime: number,
+  ): Promise<void> => {
+    const fingerprint = await credentialCaptureFingerprintCreate(
+      captureFingerprintSalt,
+      capture.username,
+      capture.password,
+    )
+    if (!started || destroyed) return
+    for (const [knownFingerprint, knownAt] of capturedFingerprints) {
+      if (currentTime - knownAt > credentialCaptureDedupeWindowMs) capturedFingerprints.delete(knownFingerprint)
+    }
+    if (capturedFingerprints.has(fingerprint)) return
+    while (capturedFingerprints.size >= credentialCaptureDedupeMax) {
+      const first = capturedFingerprints.keys().next().value
+      if (typeof first !== "string") break
+      capturedFingerprints.delete(first)
+    }
+    capturedFingerprints.set(fingerprint, currentTime)
     messagePost({
       type: "autofill.credentialCapture",
       documentId,
@@ -334,7 +381,7 @@ export function extensionAutofillContentStart(
     signature = ""
     filledForms.clear()
     dirtyCredentialForms.clear()
-    capturedForms.clear()
+    capturedFingerprints.clear()
     credentialPromptDismiss(true)
     if (menu !== null) menuDismiss("navigation")
     messagePost({ type: "autofill.navigation", documentId, revision })
@@ -376,7 +423,7 @@ export function extensionAutofillContentStart(
     fieldKinds.clear()
     fieldFormIds.clear()
     dirtyCredentialForms.clear()
-    capturedForms.clear()
+    capturedFingerprints.clear()
     signature = ""
     if (menu !== null) menuDismiss(reason)
     credentialPromptDismiss(true)
@@ -435,7 +482,14 @@ export function extensionAutofillContentStart(
         parsed.output.fieldId === activeFieldId &&
         parsed.output.requestId === activeRequestId
       ) {
-        extensionAutofillControlsFill(fields, fieldKinds, parsed.output.fieldId, parsed.output.values)
+        const filledCount = extensionAutofillControlsFill(
+          fields,
+          fieldKinds,
+          parsed.output.fieldId,
+          parsed.output.values,
+        )
+        const totp = parsed.output.values.find((value) => value.kind === "totp")
+        if (filledCount === 0 && totp !== undefined) void context.window.navigator.clipboard?.writeText(totp.value)
         menuDismiss("blur")
       }
       if (
@@ -457,7 +511,7 @@ export function extensionAutofillContentStart(
         credentialPrompt = extensionCredentialPromptMount({
           document: context.document,
           prompt: parsed.output.prompt,
-          onDecision: (decision) => {
+          onDecision: (decision, totp) => {
             const current = credentialPromptRequest
             if (current === null) return
             messagePost({
@@ -467,12 +521,13 @@ export function extensionAutofillContentStart(
               requestId: current.requestId,
               promptId: current.promptId,
               decision,
+              totp,
             })
             if (decision === "accept") credentialPrompt?.statusRender("saving")
             else credentialPromptRequest = null
           },
         })
-        credentialPromptTimer = context.timeoutSet(() => credentialPromptDismiss(true), 30_000)
+        credentialPromptTimer = context.timeoutSet(credentialPromptExpire, 30_000)
       }
       if (
         parsed.output.type === "autofill.credentialOutcome" &&
@@ -487,7 +542,10 @@ export function extensionAutofillContentStart(
         else if (parsed.output.status === "updated") credentialPrompt?.statusRender("updated")
         else if (parsed.output.status === "dismissed" || parsed.output.status === "suppressed") {
           credentialPromptDismiss(false)
-        } else credentialPrompt?.statusRender("unavailable")
+        } else if (parsed.output.status === "expired") credentialPrompt?.statusRender("expired")
+        else if (parsed.output.status === "stale") credentialPrompt?.statusRender("stale")
+        else if (parsed.output.status === "locked") credentialPrompt?.statusRender("locked")
+        else credentialPrompt?.statusRender("unavailable")
       }
     }
     const disconnectHandle = (): void => {
@@ -569,6 +627,29 @@ function extensionAutofillDocumentIdCreate(): string {
 
 function extensionAutofillRequestIdCreate(): string {
   return globalThis.crypto?.randomUUID?.() ?? `request-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+async function credentialCaptureFingerprintCreate(
+  salt: string,
+  username: string | null,
+  password: string,
+): Promise<string> {
+  // Keep only the digest in the bounded dedupe map; raw values are not persisted or added to bridge metadata.
+  const value = `${salt}\u0000${username ?? "<null>"}\u0000${password}`
+  const digestResult = await sha256Digest(value)
+  if (digestResult.success) {
+    return Array.from(digestResult.data, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  }
+  return credentialCaptureFingerprintFallbackCreate(value)
+}
+
+function credentialCaptureFingerprintFallbackCreate(value: string): string {
+  let hash = 2_166_136_261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16_777_619)
+  }
+  return (hash >>> 0).toString(16)
 }
 
 const extensionAutofillChrome = (globalThis as typeof globalThis & { chrome?: { runtime?: { connect?: unknown } } })

@@ -65,7 +65,7 @@ export const extensionAutofillBackgroundMessageSchema = v.variant("type", [
     revision: revisionSchema,
     requestId: requestIdSchema,
     promptId: requestIdSchema,
-    status: v.picklist(["saved", "updated", "dismissed", "suppressed", "stale", "locked", "unavailable"]),
+    status: v.picklist(["saved", "updated", "dismissed", "suppressed", "expired", "stale", "locked", "unavailable"]),
   }),
 ])
 

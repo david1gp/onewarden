@@ -91,6 +91,83 @@ test("capture router validates frame state, keeps prompts secret-free and commit
   expect(port.messages.at(-1)).toMatchObject({ type: "autofill.credentialOutcome", status: "updated" })
 })
 
+test("capture router discards replaced proposals and completes expiry explicitly", async () => {
+  const onConnect = eventCreate<(port: ReturnType<typeof portCreate>) => void>()
+  const discarded: string[] = []
+  let assessment = 0
+  extensionAutofillBackgroundPortsCreate(
+    { onConnect },
+    {
+      service: {
+        start: async () => resultCreate(undefined),
+        syncSnapshotLoad: async () => resultCreate(null),
+        cipherDetailRead: async () => resultCreate({} as never),
+        credentialCaptureAssess: async () => {
+          assessment += 1
+          return resultCreate({
+            id: `prompt-${assessment}`,
+            kind: "change" as const,
+            site: "example.test",
+            risk: null,
+          })
+        },
+        credentialCaptureDiscard: (id) => {
+          discarded.push(id)
+          return resultCreate(undefined)
+        },
+      },
+      storage: {
+        autofillPolicyLoad: async () => resultCreate({ pageLoadEnabled: false, disabledSites: [] }),
+      },
+    },
+  )
+  const port = portCreate()
+  onConnect.emit(port)
+  port.onMessage.emit({ type: "autofill.ready", documentId: "doc", revision: 0 })
+  port.onMessage.emit({
+    type: "autofill.fieldsChanged",
+    documentId: "doc",
+    revision: 1,
+    url: "https://example.test/login",
+    fields: [
+      { id: "user", formId: "form", kind: "username", control: "input" },
+      { id: "password", formId: "form", kind: "currentPassword", control: "input" },
+    ],
+  })
+  const capture = (requestId: string) =>
+    port.onMessage.emit({
+      type: "autofill.credentialCapture",
+      documentId: "doc",
+      revision: 1,
+      formId: "form",
+      requestId,
+      url: "https://example.test/login",
+      actionUrl: "https://example.test/session",
+      method: "POST",
+      cause: "submit",
+      username: "person@example.test",
+      password: "raw-secret",
+    })
+  capture("request-1")
+  await Promise.resolve()
+  await Promise.resolve()
+  capture("request-1")
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(discarded).toEqual(["prompt-1"])
+  port.onMessage.emit({
+    type: "autofill.credentialPromptDecision",
+    documentId: "doc",
+    revision: 1,
+    requestId: "request-1",
+    promptId: "prompt-2",
+    decision: "expire",
+  })
+  await Promise.resolve()
+  expect(discarded).toEqual(["prompt-1", "prompt-2"])
+  expect(port.messages.at(-1)).toMatchObject({ type: "autofill.credentialOutcome", status: "expired" })
+})
+
 function portCreate() {
   const messages: unknown[] = []
   const onMessage = eventCreate<(message: unknown) => void>()

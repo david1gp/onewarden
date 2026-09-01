@@ -74,7 +74,8 @@ export const extensionAutofillContentMessageSchema = v.variant("type", [
     revision: revisionSchema,
     requestId: requestIdSchema,
     promptId: requestIdSchema,
-    decision: v.picklist(["accept", "dismiss", "neverSite"]),
+    decision: v.picklist(["accept", "dismiss", "neverSite", "expire"]),
+    totp: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(2_048))), null),
   }),
 ])
 

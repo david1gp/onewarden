@@ -1,5 +1,5 @@
-import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import { extensionPersonalLoginSiteMatch } from "../background/extensionPersonalLoginSiteMatch.js"
+import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionAutofillCandidate } from "./extensionAutofillCandidateSchema.js"
 import type { ExtensionAutofillFieldKind } from "./extensionAutofillFieldKindSchema.js"
 
@@ -15,6 +15,14 @@ export function extensionAutofillCandidatesCreate(
   return ciphers
     .filter((cipher) => cipher.type === type && cipher.deletedDate === null && (cipher.archivedDate ?? null) === null)
     .filter((cipher) => cipher.type !== 1 || extensionPersonalLoginSiteMatch(cipher, url))
+    .filter(
+      (cipher) =>
+        fieldKind !== "totp" ||
+        (cipher.type === 1 &&
+          cipher.viewPassword !== false &&
+          cipher.login.totp !== null &&
+          cipher.login.totp.trim() !== ""),
+    )
     .map((cipher): ExtensionAutofillCandidate => {
       const permission: ExtensionAutofillCandidate["permission"] =
         cipher.permissions?.read === false ? "restricted" : cipher.edit === false ? "readOnly" : "allowed"
@@ -30,7 +38,7 @@ export function extensionAutofillCandidatesCreate(
 }
 
 function extensionAutofillCipherTypeResolve(kind: ExtensionAutofillFieldKind): 1 | 3 | 4 | null {
-  if (kind === "username" || kind === "currentPassword") return 1
+  if (kind === "username" || kind === "currentPassword" || kind === "totp") return 1
   if (kind.startsWith("card")) return 3
   if (kind.startsWith("identity")) return 4
   return null

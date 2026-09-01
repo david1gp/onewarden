@@ -22,16 +22,13 @@ export function extensionCredentialCapturePlanCreate(
 
   const matching = ciphers.filter((cipher) => extensionPersonalLoginSiteMatch(cipher, request.url))
   const usernameMatches = matching.filter((cipher) => cipher.login.username === request.username)
-  if (usernameMatches.some((cipher) => cipher.login.password === request.password)) return null
   if (usernameMatches.length > 1) return { kind: "atRisk", risk: "ambiguous" }
-
-  const samePassword = matching.filter((cipher) => cipher.login.password === request.password)
-  const target = usernameMatches[0] ?? (samePassword.length === 1 ? samePassword[0] : undefined)
+  const target = usernameMatches[0]
   if (target !== undefined) {
+    if (target.login.password === request.password) return null
     if (target.edit === false || target.viewPassword === false) return { kind: "atRisk", risk: "readOnly" }
-    const changedPassword = target.login.password !== request.password
     const history = [...(target.passwordHistory ?? [])]
-    if (changedPassword && target.login.password !== null && target.login.password !== "") {
+    if (target.login.password !== null && target.login.password !== "") {
       history.unshift({ password: target.login.password, lastUsedDate: new Date(now).toISOString() })
     }
     return {
@@ -43,7 +40,7 @@ export function extensionCredentialCapturePlanCreate(
       },
     }
   }
-  if (samePassword.length > 1) return { kind: "atRisk", risk: "ambiguous" }
+  if (matching.length > 0) return { kind: "atRisk", risk: "ambiguous" }
 
   return {
     kind: "add",
