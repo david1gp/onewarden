@@ -33,7 +33,7 @@ export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLog
   for (const uri of cipher.login.uris) {
     const uriResult = await optionalStringMap(uri.uri, map)
     if (!uriResult.success) return uriResult
-    uris.push({ ...uri, uri: uriResult.data })
+    uris.push({ ...uri, uri: uriResult.data as string | null })
   }
 
   const legacyUriResult =
@@ -81,9 +81,9 @@ export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLog
     notes: notesResult.data,
     login: {
       ...cipher.login,
-      username: usernameResult.data,
-      password: passwordResult.data,
-      totp: totpResult.data,
+      username: usernameResult.data as string | null,
+      password: passwordResult.data as string | null,
+      totp: totpResult.data as string | null,
       uris,
       ...(legacyUriResult.data === undefined ? {} : { uri: legacyUriResult.data }),
     },
