@@ -6,8 +6,11 @@ import type { ExtensionPersonalLoginCipher } from "./extensionPersonalLoginCiphe
 type PersonalLoginCipher = ExtensionPersonalLoginCipher | BitwardenEncryptedLoginCipher
 type StringMap = (value: string) => Promise<Result<string>>
 
-async function nullableStringMap(value: string | null, map: StringMap): Promise<Result<string | null>> {
-  if (value === null) return resultCreate(null)
+async function optionalStringMap(
+  value: string | null | undefined,
+  map: StringMap,
+): Promise<Result<string | null | undefined>> {
+  if (value === null || value === undefined) return resultCreate(value)
   return map(value)
 }
 
@@ -17,33 +20,59 @@ export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLog
 ): Promise<Result<Cipher>> {
   const nameResult = await map(cipher.name)
   if (!nameResult.success) return nameResult
-  const notesResult = await nullableStringMap(cipher.notes, map)
+  const notesResult = await optionalStringMap(cipher.notes, map)
   if (!notesResult.success) return notesResult
-  const usernameResult = await nullableStringMap(cipher.login.username, map)
+  const usernameResult = await optionalStringMap(cipher.login.username, map)
   if (!usernameResult.success) return usernameResult
-  const passwordResult = await nullableStringMap(cipher.login.password, map)
+  const passwordResult = await optionalStringMap(cipher.login.password, map)
   if (!passwordResult.success) return passwordResult
-  const totpResult = await nullableStringMap(cipher.login.totp, map)
+  const totpResult = await optionalStringMap(cipher.login.totp, map)
   if (!totpResult.success) return totpResult
 
   const uris: Array<{ uri: string | null; match?: number | null }> = []
   for (const uri of cipher.login.uris) {
-    const uriResult = await nullableStringMap(uri.uri, map)
+    const uriResult = await optionalStringMap(uri.uri, map)
     if (!uriResult.success) return uriResult
     uris.push({ ...uri, uri: uriResult.data })
   }
 
   const legacyUriResult =
-    cipher.login.uri === undefined ? resultCreate(undefined) : await nullableStringMap(cipher.login.uri, map)
+    cipher.login.uri === undefined ? resultCreate(undefined) : await optionalStringMap(cipher.login.uri, map)
   if (!legacyUriResult.success) return legacyUriResult
 
   const fields: Array<{ name: string | null; value: string | null; type: number; linkedId: number | null }> = []
   for (const field of cipher.fields) {
-    const fieldNameResult = await nullableStringMap(field.name, map)
+    const fieldNameResult = await optionalStringMap(field.name, map)
     if (!fieldNameResult.success) return fieldNameResult
-    const fieldValueResult = await nullableStringMap(field.value, map)
+    const fieldValueResult = await optionalStringMap(field.value, map)
     if (!fieldValueResult.success) return fieldValueResult
     fields.push({ ...field, name: fieldNameResult.data, value: fieldValueResult.data })
+  }
+
+  const attachments: NonNullable<PersonalLoginCipher["attachments"]> | null | undefined =
+    cipher.attachments === undefined || cipher.attachments === null ? cipher.attachments : []
+  if (attachments !== undefined && attachments !== null) {
+    for (const attachment of cipher.attachments ?? []) {
+      const fileNameResult = await optionalStringMap(attachment.fileName, map)
+      if (!fileNameResult.success) return fileNameResult
+      const keyResult = await optionalStringMap(attachment.key, map)
+      if (!keyResult.success) return keyResult
+      attachments.push({
+        ...attachment,
+        fileName: fileNameResult.data as string,
+        ...(attachment.key === undefined ? {} : { key: keyResult.data }),
+      })
+    }
+  }
+
+  const passwordHistory: NonNullable<PersonalLoginCipher["passwordHistory"]> | null | undefined =
+    cipher.passwordHistory === undefined || cipher.passwordHistory === null ? cipher.passwordHistory : []
+  if (passwordHistory !== undefined && passwordHistory !== null) {
+    for (const entry of cipher.passwordHistory ?? []) {
+      const passwordResult = await optionalStringMap(entry.password, map)
+      if (!passwordResult.success) return passwordResult
+      passwordHistory.push({ ...entry, password: passwordResult.data as string })
+    }
   }
 
   return resultCreate({
@@ -59,5 +88,7 @@ export async function extensionPersonalLoginCipherMap<Cipher extends PersonalLog
       ...(legacyUriResult.data === undefined ? {} : { uri: legacyUriResult.data }),
     },
     fields,
+    ...(cipher.attachments === undefined ? {} : { attachments }),
+    ...(cipher.passwordHistory === undefined ? {} : { passwordHistory }),
   } as Cipher)
 }

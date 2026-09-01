@@ -1,4 +1,6 @@
 import * as v from "valibot"
+import { extensionCipherAttachmentSchema } from "./extensionCipherAttachmentSchema.js"
+import { extensionCipherPasswordHistoryEntrySchema } from "./extensionCipherPasswordHistoryEntrySchema.js"
 import { bitwardenFido2CredentialSchema } from "../../shared/api/bitwardenFido2CredentialSchema.js"
 
 const nullableStringSchema = v.nullable(v.string())
@@ -48,6 +50,9 @@ export const extensionPersonalLoginCipherSchema = v.looseObject({
   ),
   login: extensionPersonalLoginCipherLoginSchema,
   fields: v.array(extensionPersonalLoginCipherFieldSchema),
+  attachments: v.optional(v.nullable(v.array(extensionCipherAttachmentSchema))),
+  passwordHistory: v.optional(v.nullable(v.array(extensionCipherPasswordHistoryEntrySchema))),
+  archivedDate: v.optional(v.nullable(v.string())),
 })
 
 export type ExtensionPersonalLoginCipher = v.InferOutput<typeof extensionPersonalLoginCipherSchema>
