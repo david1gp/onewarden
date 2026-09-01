@@ -4,6 +4,8 @@ set -euo pipefail
 ports_file="$HOME/.config/onewarden/prodctl-ports.env"
 environment_file="$HOME/.config/onewarden/.env.production"
 
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+
 command -v bun >/dev/null 2>&1 || {
 	printf 'onewarden install: bun is required\n' >&2
 	exit 1
@@ -30,7 +32,6 @@ source "$ports_file"
 	exit 1
 }
 
-export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 install -d -m 700 "$HOME/.local/share/onewarden"
 
 # prodctl deploys a source archive. Build the bundled runtime package in the
