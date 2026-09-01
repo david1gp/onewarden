@@ -1,9 +1,12 @@
-import { type Result } from "#result"
+import { and, eq } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { ciphers } from "../../database/schema/ciphers.js"
+import { folders } from "../../database/schema/folders.js"
 import type { AttachmentFileStorageAdapter } from "../attachments/attachmentFileStorageAdapter.js"
 import { folderCipherDeleteAllByFolder } from "../folders/folderCipherDeleteAllByFolder.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
@@ -44,7 +47,7 @@ export async function cipherPurge(
       const dependencyResult = cipherDeleteDependencies(database, cipher.uuid)
       if (!dependencyResult.success) return dependencyResult
       try {
-        database.run("DELETE FROM ciphers WHERE uuid = ?", [cipher.uuid])
+        database.drizzle.delete(ciphers).where(eq(ciphers.uuid, cipher.uuid)).run()
       } catch {
         return resultErrorCreate("cipherPurge", "Cipher purge failed.")
       }
@@ -55,7 +58,10 @@ export async function cipherPurge(
         const mappingResult = folderCipherDeleteAllByFolder(database, folder.uuid)
         if (!mappingResult.success) return mappingResult
         try {
-          database.run("DELETE FROM folders WHERE uuid = ? AND user_uuid = ?", [folder.uuid, userUuid])
+          database.drizzle
+            .delete(folders)
+            .where(and(eq(folders.uuid, folder.uuid), eq(folders.userUuid, userUuid)))
+            .run()
         } catch {
           return resultErrorCreate("cipherPurge", "Folder purge failed.")
         }

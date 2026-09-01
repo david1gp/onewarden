@@ -1,12 +1,12 @@
 import type { OrganizationSsoConfig } from "./organizationSsoConfig.js"
-import type { OrganizationSsoConfigRow } from "./organizationSsoConfigRow.js"
+import type { OrganizationSsoConfigRow } from "../../database/schema/organizationSsoConfigs.js"
 
 export function organizationSsoConfigFromRow(row: OrganizationSsoConfigRow): OrganizationSsoConfig {
   return {
-    creationDate: row.creation_date,
+    creationDate: row.creationDate,
     data: row.data,
-    enabled: row.enabled === true || row.enabled === 1,
-    organizationUuid: row.org_uuid,
-    revisionDate: row.revision_date,
+    enabled: row.enabled,
+    organizationUuid: row.orgUuid,
+    revisionDate: row.revisionDate,
   }
 }

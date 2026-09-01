@@ -5,6 +5,7 @@ import * as v from "valibot"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import type { IdentityUser } from "../identity/identityUser.js"
@@ -14,6 +15,7 @@ import { twoFactorProtectedActionDataSchema } from "./twoFactorProtectedActionDa
 import { twoFactorProtectedActionInvalidate } from "./twoFactorProtectedActionInvalidate.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
+import { and, eq } from "drizzle-orm"
 
 export async function twoFactorProtectedActionCreate(
   database: DatabaseConnection,
@@ -30,14 +32,20 @@ export async function twoFactorProtectedActionCreate(
       "Email is disabled for this server. Either enable email or login using your master password instead of login via device.",
     )
   try {
-    const existing = database
-      .query<{ uuid: string }, [string, number]>("SELECT uuid FROM twofactor WHERE user_uuid = ? AND atype = ? LIMIT 1")
-      .get(user.uuid, twoFactorProviderType.protectedActions)
-    if (existing !== null) {
-      const existingData = database
-        .query<{ data: string }, [string]>("SELECT data FROM twofactor WHERE uuid = ? LIMIT 1")
-        .get(existing.uuid)
-      if (existingData === null) return resultErrorCreate(op, "Protected action token not found.")
+    const existing = database.drizzle
+      .select({ uuid: twoFactor.uuid })
+      .from(twoFactor)
+      .where(and(eq(twoFactor.userUuid, user.uuid), eq(twoFactor.atype, twoFactorProviderType.protectedActions)))
+      .limit(1)
+      .get()
+    if (existing !== undefined) {
+      const existingData = database.drizzle
+        .select({ data: twoFactor.data })
+        .from(twoFactor)
+        .where(eq(twoFactor.uuid, existing.uuid))
+        .limit(1)
+        .get()
+      if (existingData === undefined) return resultErrorCreate(op, "Protected action token not found.")
       const tokenSentResult = twoFactorPersistedJsonParse(
         op,
         existingData.data,
@@ -56,7 +64,7 @@ export async function twoFactorProtectedActionCreate(
           code: "platform.invalid-request",
           statusCode: 400,
         })
-      database.run("DELETE FROM twofactor WHERE uuid = ?", [existing.uuid])
+      database.drizzle.delete(twoFactor).where(eq(twoFactor.uuid, existing.uuid)).run()
     }
     const tokenSize = config.EMAIL_TOKEN_SIZE ?? 6
     if (!Number.isSafeInteger(tokenSize) || tokenSize < 1 || tokenSize > 32)

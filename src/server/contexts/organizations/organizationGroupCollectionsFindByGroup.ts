@@ -2,6 +2,10 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, asc, eq } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
 import type { OrganizationCollectionAccessData } from "./organizationCollectionAccessDataSchema.js"
 
 export function organizationGroupCollectionsFindByGroup(
@@ -11,35 +15,34 @@ export function organizationGroupCollectionsFindByGroup(
 ): Result<OrganizationCollectionAccessData[]> {
   const op = "organizationGroupCollectionsFindByGroup"
   try {
-    const rows = database
-      .query<OrganizationGroupCollectionRow, [string, string]>(
-        `SELECT cg.collections_uuid AS collection_uuid,
-                cg.read_only, cg.hide_passwords, cg.manage
-         FROM collections_groups AS cg
-         JOIN groups AS g
-           ON g.uuid = cg.groups_uuid AND g.organizations_uuid = ?
-         JOIN collections AS c
-           ON c.uuid = cg.collections_uuid AND c.org_uuid = g.organizations_uuid
-         WHERE cg.groups_uuid = ?
-         ORDER BY cg.collections_uuid`,
+    const rows = database.drizzle
+      .select({
+        collectionUuid: collectionsGroups.collectionsUuid,
+        hidePasswords: collectionsGroups.hidePasswords,
+        manage: collectionsGroups.manage,
+        readOnly: collectionsGroups.readOnly,
+      })
+      .from(collectionsGroups)
+      .innerJoin(
+        groups,
+        and(eq(groups.uuid, collectionsGroups.groupsUuid), eq(groups.organizationsUuid, organizationUuid)),
       )
-      .all(organizationUuid, groupUuid)
+      .innerJoin(
+        collections,
+        and(eq(collections.uuid, collectionsGroups.collectionsUuid), eq(collections.orgUuid, groups.organizationsUuid)),
+      )
+      .where(eq(collectionsGroups.groupsUuid, groupUuid))
+      .orderBy(asc(collectionsGroups.collectionsUuid))
+      .all()
     return resultCreate(
       rows.map((row) => ({
-        hidePasswords: row.hide_passwords === 1,
-        id: row.collection_uuid,
-        manage: row.manage === 1,
-        readOnly: row.read_only === 1,
+        hidePasswords: row.hidePasswords,
+        id: row.collectionUuid,
+        manage: row.manage,
+        readOnly: row.readOnly,
       })),
     )
   } catch {
     return resultErrorCreate(op, "Group collection access lookup failed.")
   }
-}
-
-type OrganizationGroupCollectionRow = {
-  collection_uuid: string
-  hide_passwords: number
-  manage: number
-  read_only: number
 }

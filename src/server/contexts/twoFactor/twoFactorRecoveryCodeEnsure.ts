@@ -2,32 +2,41 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { users } from "../../database/schema/users.js"
 import type { IdentityUser } from "../identity/identityUser.js"
 import { twoFactorRecoveryCodeCreate } from "./twoFactorRecoveryCodeCreate.js"
+import { eq, sql } from "drizzle-orm"
 
 export function twoFactorRecoveryCodeEnsure(database: DatabaseConnection, user: IdentityUser): Result<string> {
   const op = "twoFactorRecoveryCodeEnsure"
   try {
-    const existing = database
-      .query<{ totp_recover: string | null }, [string]>("SELECT totp_recover FROM users WHERE uuid = ? LIMIT 1")
-      .get(user.uuid)
-    if (existing === null) return resultErrorCreate(op, "Recovery code save failed.")
-    if (existing.totp_recover !== null) {
-      user.totpRecover = existing.totp_recover
-      return resultCreate(existing.totp_recover)
+    const existing = database.drizzle
+      .select({ totpRecover: users.totpRecover })
+      .from(users)
+      .where(eq(users.uuid, user.uuid))
+      .limit(1)
+      .get()
+    if (existing === undefined) return resultErrorCreate(op, "Recovery code save failed.")
+    if (existing.totpRecover !== null) {
+      user.totpRecover = existing.totpRecover
+      return resultCreate(existing.totpRecover)
     }
     const codeResult = twoFactorRecoveryCodeCreate()
     if (!codeResult.success) return codeResult
-    database.run("UPDATE users SET totp_recover = COALESCE(totp_recover, ?) WHERE uuid = ?", [
-      codeResult.data,
-      user.uuid,
-    ])
-    const saved = database
-      .query<{ totp_recover: string | null }, [string]>("SELECT totp_recover FROM users WHERE uuid = ? LIMIT 1")
-      .get(user.uuid)
-    if (saved === null || saved.totp_recover === null) return resultErrorCreate(op, "Recovery code save failed.")
-    user.totpRecover = saved.totp_recover
-    return resultCreate(saved.totp_recover)
+    database.drizzle
+      .update(users)
+      .set({ totpRecover: sql`coalesce(${users.totpRecover}, ${codeResult.data})` })
+      .where(eq(users.uuid, user.uuid))
+      .run()
+    const saved = database.drizzle
+      .select({ totpRecover: users.totpRecover })
+      .from(users)
+      .where(eq(users.uuid, user.uuid))
+      .limit(1)
+      .get()
+    if (saved === undefined || saved.totpRecover === null) return resultErrorCreate(op, "Recovery code save failed.")
+    user.totpRecover = saved.totpRecover
+    return resultCreate(saved.totpRecover)
   } catch {
     return resultErrorCreate(op, "Recovery code save failed.")
   }

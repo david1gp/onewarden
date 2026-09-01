@@ -1,5 +1,5 @@
-import { type Result, type ResultErr } from "#result"
 import * as v from "valibot"
+import type { Result, ResultErr } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import type { CipherImportResult } from "../../../shared/api/cipherImportResultSchema.js"
 import type { Clock } from "../../../shared/clock/clock.js"
@@ -9,6 +9,8 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { isoTimestampSchema } from "../../../shared/validation/isoTimestampSchema.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { ciphers } from "../../database/schema/ciphers.js"
+import { type FolderRow, folders } from "../../database/schema/folders.js"
 import { folderSave } from "../folders/folderSave.js"
 import { folderUserRevisionUpdate } from "../folders/folderUserRevisionUpdate.js"
 import type { Cipher } from "./cipher.js"
@@ -272,11 +274,11 @@ function cipherImportIdIsSafe(value: string): boolean {
   return value.length >= 1 && value.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)
 }
 
-function cipherImportFolderRowsFind(database: DatabaseConnection): Result<Array<{ uuid: string; userUuid: string }>> {
+function cipherImportFolderRowsFind(database: DatabaseConnection): Result<Array<Pick<FolderRow, "uuid" | "userUuid">>> {
   const op = "cipherImportFolderRowsFind"
   try {
-    const rows = database.query<{ uuid: string; user_uuid: string }, []>("SELECT uuid, user_uuid FROM folders").all()
-    return resultCreate(rows.map((row) => ({ userUuid: row.user_uuid, uuid: row.uuid })))
+    const rows = database.drizzle.select({ uuid: folders.uuid, userUuid: folders.userUuid }).from(folders).all()
+    return resultCreate(rows)
   } catch {
     return resultErrorCreate(op, "Folder ownership lookup failed.")
   }
@@ -285,7 +287,7 @@ function cipherImportFolderRowsFind(database: DatabaseConnection): Result<Array<
 function cipherImportCipherIdsFind(database: DatabaseConnection): Result<Set<string>> {
   const op = "cipherImportCipherIdsFind"
   try {
-    const rows = database.query<{ uuid: string }, []>("SELECT uuid FROM ciphers").all()
+    const rows = database.drizzle.select({ uuid: ciphers.uuid }).from(ciphers).all()
     return resultCreate(new Set(rows.map((row) => row.uuid)))
   } catch {
     return resultErrorCreate(op, "Cipher ownership lookup failed.")

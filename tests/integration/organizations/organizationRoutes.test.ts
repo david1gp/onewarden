@@ -17,6 +17,11 @@ import { passwordHashCreate } from "../../../src/shared/crypto/passwordHashCreat
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
+import type { webAuthSessionCreate } from "../../../src/web/auth/model/webAuthSessionCreate.js"
+import { organizationApiClientCreate } from "../../../src/web/organizations/api/organizationApiClientCreate.js"
+import { bitwardenOrganizationJsonExportExecute } from "../../../src/web/organizations/model/bitwardenOrganizationJsonExportExecute.js"
+import { bitwardenOrganizationJsonImportExecute } from "../../../src/web/organizations/model/bitwardenOrganizationJsonImportExecute.js"
+import organizationJsonFixture from "../../fixtures/bitwardenOrganizationJsonTask8.json"
 
 const keyPairResult = rsaKeyPairGenerate()
 if (!keyPairResult.success) throw new Error(keyPairResult.errorMessage)
@@ -120,6 +125,10 @@ async function contextCreate(configOverrides: Parameters<typeof identityConfigCr
       invitedUserUuid,
       invitedSecurityStamp,
       domainUuid,
+      "00000000-0000-4000-8000-000000000109",
+      "00000000-0000-4000-8000-000000000110",
+      "00000000-0000-4000-8000-000000000111",
+      "00000000-0000-4000-8000-000000000112",
     ]),
     identity: {
       clock,
@@ -517,6 +526,104 @@ test("the final organization owner cannot leave", async () => {
   expect(leaveResponse.status).toBe(400)
   expect((await leaveResponse.json()).message).toBe("The last owner can't leave")
   expect(context.database.query("SELECT COUNT(*) AS count FROM users_organizations").get()).toEqual({ count: 1 })
+})
+
+test("organization JSON import and export use the permission-enforcing API routes", async () => {
+  const context = await contextCreate()
+  const createResponse = await context.app.request("https://vault.example/api/organizations", {
+    body: JSON.stringify({
+      billingEmail: "billing@example.com",
+      collectionName: "Initial Collection",
+      key: "encrypted-owner-key",
+      name: "Organization",
+      planType: 6,
+    }),
+    headers: jsonHeaders(context.token),
+    method: "POST",
+  })
+  expect(createResponse.status).toBe(200)
+
+  const session = {
+    session: () => ({
+      accessToken: context.token,
+      email: "owner@example.com",
+      encryptedUserKey: "encrypted-user-key",
+      expiresAt: Date.now() + 60_000,
+      kdf: 0,
+      kdfIterations: 100_000,
+      kdfMemory: null,
+      kdfParallelism: null,
+      refreshToken: "organization-refresh-token",
+      tokenType: "Bearer",
+      userId: userUuid,
+    }),
+  } as ReturnType<typeof webAuthSessionCreate>
+  const apiClient = organizationApiClientCreate({
+    baseUrl: "https://vault.example",
+    fetchFn: async (input, init) => context.app.request(String(input), init),
+    token: () => context.token,
+  })
+  const organizationKey = new Uint8Array(64).fill(2)
+
+  const importResult = await bitwardenOrganizationJsonImportExecute({
+    apiClient,
+    organizationId: organizationUuid,
+    organizationKey,
+    rawContent: JSON.stringify({
+      ...organizationJsonFixture,
+      collections: organizationJsonFixture.collections.map((collection) => ({
+        ...collection,
+        organizationId: organizationUuid,
+      })),
+      items: organizationJsonFixture.items.map((item) => ({ ...item, organizationId: organizationUuid })),
+    }),
+    session,
+  })
+  expect(importResult).toMatchObject({ success: true, data: { cipherCount: 4, collectionCount: 2, warnings: [] } })
+  expect(
+    context.database.query("SELECT atype AS type, COUNT(*) AS count FROM ciphers GROUP BY atype ORDER BY atype").all(),
+  ).toEqual([
+    { type: 1, count: 1 },
+    { type: 2, count: 1 },
+    { type: 3, count: 1 },
+    { type: 4, count: 1 },
+  ])
+
+  const exportResult = await bitwardenOrganizationJsonExportExecute({
+    apiClient,
+    organizationId: organizationUuid,
+    organizationKey,
+    session,
+  })
+  expect(exportResult.success).toBe(true)
+  if (!exportResult.success) return
+  const exported = JSON.parse(exportResult.data.content) as typeof organizationJsonFixture
+  expect(exported.collections.map((collection) => collection.name)).toEqual([
+    "Initial Collection",
+    "Engineering",
+    "Shared",
+  ])
+  expect(exported.items.map((item) => item.name)).toEqual([
+    "Example Organization Login",
+    "Example Organization Note",
+    "Example Organization Card",
+    "Example Organization Identity",
+  ])
+  expect(exported.items.every((item) => item.collectionIds && item.collectionIds.length > 0)).toBe(true)
+
+  context.database.run("DELETE FROM users_organizations WHERE user_uuid = ? AND org_uuid = ?", [
+    userUuid,
+    organizationUuid,
+  ])
+  const deniedImportResponse = await context.app.request(
+    `https://vault.example/api/ciphers/import-organization?organizationId=${organizationUuid}`,
+    {
+      body: JSON.stringify({ ciphers: [], collections: [], collectionRelationships: [] }),
+      headers: jsonHeaders(context.token),
+      method: "POST",
+    },
+  )
+  expect(deniedImportResponse.status).toBe(401)
 })
 
 test("organization policy list, get, create-update, aliases, and authorization match upstream behavior", async () => {

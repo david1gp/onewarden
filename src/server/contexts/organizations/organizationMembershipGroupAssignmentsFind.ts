@@ -2,6 +2,9 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, asc, eq } from "drizzle-orm"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
 
 export function organizationMembershipGroupAssignmentsFind(
   database: DatabaseConnection,
@@ -10,17 +13,16 @@ export function organizationMembershipGroupAssignmentsFind(
 ): Result<string[]> {
   const op = "organizationMembershipGroupAssignmentsFind"
   try {
-    const rows = database
-      .query<{ groups_uuid: string }, [string, string]>(
-        `SELECT group_user.groups_uuid
-         FROM groups_users AS group_user
-         INNER JOIN groups AS group_record ON group_record.uuid = group_user.groups_uuid
-         WHERE group_user.users_organizations_uuid = ?
-           AND group_record.organizations_uuid = ?
-         ORDER BY group_user.groups_uuid`,
+    const rows = database.drizzle
+      .select({ groupUuid: groupsUsers.groupsUuid })
+      .from(groupsUsers)
+      .innerJoin(groups, eq(groups.uuid, groupsUsers.groupsUuid))
+      .where(
+        and(eq(groupsUsers.usersOrganizationsUuid, membershipUuid), eq(groups.organizationsUuid, organizationUuid)),
       )
-      .all(membershipUuid, organizationUuid)
-    return resultCreate(rows.map((row) => row.groups_uuid))
+      .orderBy(asc(groupsUsers.groupsUuid))
+      .all()
+    return resultCreate(rows.map((row) => row.groupUuid))
   } catch {
     return resultErrorCreate(op, "Organization group assignment lookup failed.")
   }

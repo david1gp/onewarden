@@ -2,9 +2,10 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { asc, eq } from "drizzle-orm"
+import { organizationDomains, type OrganizationDomainRow } from "../../database/schema/organizationDomains.js"
 import type { OrganizationDomain } from "./organizationDomain.js"
 import { organizationDomainFromRow } from "./organizationDomainFromRow.js"
-import type { OrganizationDomainRow } from "./organizationDomainRow.js"
 
 export function organizationDomainFindByOrganization(
   database: DatabaseConnection,
@@ -12,13 +13,12 @@ export function organizationDomainFindByOrganization(
 ): Result<OrganizationDomain[]> {
   const op = "organizationDomainFindByOrganization"
   try {
-    const rows = database
-      .query<OrganizationDomainRow, [string]>(
-        `SELECT uuid, org_uuid, txt, domain_name, creation_date, next_run_date,
-                job_run_count, verified_date, last_checked_date
-         FROM organization_domains WHERE org_uuid = ? ORDER BY domain_name`,
-      )
-      .all(organizationUuid)
+    const rows: OrganizationDomainRow[] = database.drizzle
+      .select()
+      .from(organizationDomains)
+      .where(eq(organizationDomains.orgUuid, organizationUuid))
+      .orderBy(asc(organizationDomains.domainName))
+      .all()
     return resultCreate(rows.map(organizationDomainFromRow))
   } catch {
     return resultErrorCreate(op, "Organization domain lookup failed.")

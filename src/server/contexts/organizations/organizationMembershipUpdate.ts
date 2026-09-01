@@ -3,6 +3,12 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, count, eq, inArray } from "drizzle-orm"
+import { collections as collectionsTable } from "../../database/schema/collections.js"
+import { groups as groupsTable } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import type { OrganizationMembershipUpdateData } from "./organizationMembershipUpdateDataSchema.js"
 import { organizationMembershipFindByUuidAndOrganization } from "./organizationMembershipFindByUuidAndOrganization.js"
@@ -70,38 +76,48 @@ export function organizationMembershipUpdate(
     member.type = newType
 
     try {
-      database.run(
-        `DELETE FROM users_collections
-         WHERE user_uuid = ?
-           AND collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)`,
-        [member.userUuid, organizationUuid],
-      )
+      const collectionUuids = database.drizzle
+        .select({ uuid: collectionsTable.uuid })
+        .from(collectionsTable)
+        .where(eq(collectionsTable.orgUuid, organizationUuid))
+      database.drizzle
+        .delete(usersCollections)
+        .where(
+          and(
+            eq(usersCollections.userUuid, member.userUuid),
+            inArray(usersCollections.collectionUuid, collectionUuids),
+          ),
+        )
+        .run()
       if (!member.accessAll) {
         for (const collection of data.collections ?? []) {
-          database.run(
-            `INSERT INTO users_collections (user_uuid, collection_uuid, read_only, hide_passwords, manage)
-             VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(user_uuid, collection_uuid) DO UPDATE SET
-               read_only = excluded.read_only,
-               hide_passwords = excluded.hide_passwords,
-               manage = excluded.manage`,
-            [
-              member.userUuid,
-              collection.id,
-              collection.readOnly ? 1 : 0,
-              collection.hidePasswords ? 1 : 0,
-              collection.manage ? 1 : 0,
-            ],
-          )
+          database.drizzle
+            .insert(usersCollections)
+            .values({
+              userUuid: member.userUuid,
+              collectionUuid: collection.id,
+              readOnly: collection.readOnly,
+              hidePasswords: collection.hidePasswords,
+              manage: collection.manage,
+            })
+            .onConflictDoUpdate({
+              target: [usersCollections.userUuid, usersCollections.collectionUuid],
+              set: {
+                readOnly: collection.readOnly,
+                hidePasswords: collection.hidePasswords,
+                manage: collection.manage,
+              },
+            })
+            .run()
         }
       }
-      database.run("DELETE FROM groups_users WHERE users_organizations_uuid = ?", [member.uuid])
+      database.drizzle.delete(groupsUsers).where(eq(groupsUsers.usersOrganizationsUuid, member.uuid)).run()
       for (const groupUuid of data.groups ?? []) {
-        database.run(
-          `INSERT INTO groups_users (groups_uuid, users_organizations_uuid)
-           VALUES (?, ?) ON CONFLICT(groups_uuid, users_organizations_uuid) DO NOTHING`,
-          [groupUuid, member.uuid],
-        )
+        database.drizzle
+          .insert(groupsUsers)
+          .values({ groupsUuid: groupUuid, usersOrganizationsUuid: member.uuid })
+          .onConflictDoNothing()
+          .run()
       }
     } catch {
       return resultErrorCreate(op, "Organization membership assignment update failed.")
@@ -123,11 +139,17 @@ function organizationMembershipRoleLevel(type: number): number {
 
 function organizationMembershipConfirmedOwnerCount(database: DatabaseConnection, organizationUuid: string): number {
   return (
-    database
-      .query<{ count: number }, [string, number, number]>(
-        "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = ? AND atype = ?",
+    database.drizzle
+      .select({ count: count() })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.orgUuid, organizationUuid),
+          eq(usersOrganizations.status, organizationMembershipStatus.confirmed),
+          eq(usersOrganizations.atype, organizationMembershipType.owner),
+        ),
       )
-      .get(organizationUuid, 2, organizationMembershipType.owner)?.count ?? 0
+      .get()?.count ?? 0
   )
 }
 
@@ -138,12 +160,13 @@ function organizationMembershipUpdateCollectionsValidate(
 ): Result<void> {
   try {
     for (const collection of collections ?? []) {
-      const row = database
-        .query<{ uuid: string }, [string, string]>(
-          "SELECT uuid FROM collections WHERE uuid = ? AND org_uuid = ? LIMIT 1",
-        )
-        .get(collection.id, organizationUuid)
-      if (row === null)
+      const row = database.drizzle
+        .select({ uuid: collectionsTable.uuid })
+        .from(collectionsTable)
+        .where(and(eq(collectionsTable.uuid, collection.id), eq(collectionsTable.orgUuid, organizationUuid)))
+        .limit(1)
+        .get()
+      if (row === undefined)
         return organizationErrorCreate("organizationMembershipUpdate", "Collection not found in Organization")
     }
     return resultCreate(undefined)
@@ -159,12 +182,13 @@ function organizationMembershipUpdateGroupsValidate(
 ): Result<void> {
   try {
     for (const groupUuid of groups) {
-      const row = database
-        .query<{ uuid: string }, [string, string]>(
-          "SELECT uuid FROM groups WHERE uuid = ? AND organizations_uuid = ? LIMIT 1",
-        )
-        .get(groupUuid, organizationUuid)
-      if (row === null)
+      const row = database.drizzle
+        .select({ uuid: groupsTable.uuid })
+        .from(groupsTable)
+        .where(and(eq(groupsTable.uuid, groupUuid), eq(groupsTable.organizationsUuid, organizationUuid)))
+        .limit(1)
+        .get()
+      if (row === undefined)
         return organizationErrorCreate("organizationMembershipUpdate", "Group not found in Organization")
     }
     return resultCreate(undefined)

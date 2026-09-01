@@ -1,5 +1,6 @@
 import type { Context, Hono } from "hono"
 import type { Result } from "#result"
+import { and, eq, or } from "drizzle-orm"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
@@ -33,6 +34,7 @@ import { organizationCollectionToJson } from "./organizationCollectionToJson.js"
 import { organizationCollectionUpdate } from "./organizationCollectionUpdate.js"
 import { organizationCollectionUserAccessFindByCollection } from "./organizationCollectionUserAccessFindByCollection.js"
 import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
@@ -637,14 +639,21 @@ function organizationCollectionManageAllMembershipsFind(
 ): Result<string[]> {
   const op = "organizationCollectionManageAllMembershipsFind"
   try {
-    const rows = database
-      .query<{ uuid: string }, [string]>(
-        `SELECT uuid
-         FROM users_organizations
-         WHERE org_uuid = ? AND status = 2
-           AND (atype <= 1 OR (atype = 3 AND access_all = 1))`,
+    const rows = database.drizzle
+      .select({ uuid: usersOrganizations.uuid })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.orgUuid, organizationUuid),
+          eq(usersOrganizations.status, 2),
+          or(
+            eq(usersOrganizations.atype, 0),
+            eq(usersOrganizations.atype, 1),
+            and(eq(usersOrganizations.atype, 3), eq(usersOrganizations.accessAll, true)),
+          ),
+        ),
       )
-      .all(organizationUuid)
+      .all()
     return { success: true, data: rows.map((row) => row.uuid) }
   } catch {
     return organizationErrorCreate(op, "Organization membership lookup failed.")

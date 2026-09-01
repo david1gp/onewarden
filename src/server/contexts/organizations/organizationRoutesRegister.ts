@@ -299,7 +299,6 @@ export function organizationRoutesRegister(
       clock: options.clock,
       origin: authentication.host,
       privateKey: options.privateKey,
-      userUuid: authentication.user.uuid,
     })
     if (!result.success) return apiErrorResponseCreate(result)
     return context.json(result.data)

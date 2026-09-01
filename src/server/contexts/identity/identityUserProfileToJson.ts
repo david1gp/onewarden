@@ -1,6 +1,10 @@
 import type { DatabaseConnection } from "../../database/database.js"
+import { organizations } from "../../database/schema/organizations.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
 import type { IdentityUser } from "./identityUser.js"
+import { and, asc, eq } from "drizzle-orm"
 
 export function identityUserProfileToJson(
   user: IdentityUser,
@@ -49,15 +53,15 @@ export function identityUserProfileToJson(
 }
 
 type IdentityUserProfileOrganizationRow = {
-  access_all: number
+  accessAll: boolean
   akey: string
-  membership_uuid: string
-  organization_identifier: string | null
-  organization_name: string
-  organization_private_key: string | null
-  organization_public_key: string | null
-  organization_uuid: string
-  reset_password_key: string | null
+  membershipUuid: string
+  organizationIdentifier: string | null
+  organizationName: string
+  organizationPrivateKey: string | null
+  organizationPublicKey: string | null
+  organizationUuid: string
+  resetPasswordKey: string | null
   status: number
   atype: number
 }
@@ -69,19 +73,25 @@ function identityUserProfileOrganizations(
   groupsEnabled: boolean,
 ): Record<string, unknown>[] {
   try {
-    const memberships = database
-      .query<IdentityUserProfileOrganizationRow, [string]>(
-        `SELECT member.uuid AS membership_uuid, member.org_uuid AS organization_uuid,
-                organization.name AS organization_name, organization.identifier AS organization_identifier,
-                organization.private_key AS organization_private_key,
-                organization.public_key AS organization_public_key, member.access_all, member.status,
-                member.atype, member.reset_password_key, member.akey
-         FROM users_organizations AS member
-         JOIN organizations AS organization ON organization.uuid = member.org_uuid
-         WHERE member.user_uuid = ? AND member.status = 2
-         ORDER BY member.org_uuid`,
-      )
-      .all(userUuid)
+    const memberships = database.drizzle
+      .select({
+        membershipUuid: usersOrganizations.uuid,
+        organizationUuid: usersOrganizations.orgUuid,
+        organizationName: organizations.name,
+        organizationIdentifier: organizations.identifier,
+        organizationPrivateKey: organizations.privateKey,
+        organizationPublicKey: organizations.publicKey,
+        accessAll: usersOrganizations.accessAll,
+        status: usersOrganizations.status,
+        atype: usersOrganizations.atype,
+        resetPasswordKey: usersOrganizations.resetPasswordKey,
+        akey: usersOrganizations.akey,
+      })
+      .from(usersOrganizations)
+      .innerJoin(organizations, eq(organizations.uuid, usersOrganizations.orgUuid))
+      .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.status, 2)))
+      .orderBy(asc(usersOrganizations.orgUuid))
+      .all()
     return memberships.map((membership) =>
       identityUserProfileOrganizationToJson(membership, userUuid, config, groupsEnabled),
     )
@@ -97,11 +107,11 @@ function identityUserProfileOrganizationToJson(
   groupsEnabled: boolean,
 ): Record<string, unknown> {
   const type = membership.atype === 3 ? 4 : membership.atype
-  const customWithAllAccess = type === 4 && membership.access_all === 1
+  const customWithAllAccess = type === 4 && membership.accessAll
   return {
-    id: membership.organization_uuid,
-    identifier: membership.organization_identifier,
-    name: membership.organization_name,
+    id: membership.organizationUuid,
+    identifier: membership.organizationIdentifier,
+    name: membership.organizationName,
     seats: 20,
     maxCollections: null,
     usersGetPremium: true,
@@ -114,9 +124,8 @@ function identityUserProfileOrganizationToJson(
     usePolicies: true,
     useApi: true,
     selfHost: true,
-    hasPublicAndPrivateKeys:
-      membership.organization_private_key !== null && membership.organization_public_key !== null,
-    resetPasswordEnrolled: membership.reset_password_key !== null,
+    hasPublicAndPrivateKeys: membership.organizationPrivateKey !== null && membership.organizationPublicKey !== null,
+    resetPasswordEnrolled: membership.resetPasswordKey !== null,
     useResetPassword: config.MAIL_ENABLED,
     ssoBound: false,
     useSso: true,
@@ -133,7 +142,7 @@ function identityUserProfileOrganizationToJson(
     useOrganizationDomains: true,
     usePam: false,
     usePhishingBlocker: false,
-    organizationUserId: membership.membership_uuid,
+    organizationUserId: membership.membershipUuid,
     providerId: null,
     providerName: null,
     providerType: null,
@@ -146,7 +155,7 @@ function identityUserProfileOrganizationToJson(
     familySponsorshipValidUntil: null,
     familySponsorshipToDelete: null,
     accessSecretsManager: false,
-    limitCollectionCreation: membership.atype < 3 || membership.access_all !== 1,
+    limitCollectionCreation: membership.atype < 3 || !membership.accessAll,
     limitCollectionDeletion: true,
     limitItemDeletion: false,
     allowAdminAccessToAllCollectionItems: true,
@@ -179,11 +188,12 @@ function identityUserProfileOrganizationToJson(
 function identityUserProfileTwoFactorEnabled(database: DatabaseConnection, userUuid: string): boolean {
   try {
     return (
-      (database
-        .query<{ count: number }, [string]>(
-          "SELECT COUNT(*) AS count FROM twofactor WHERE user_uuid = ? AND enabled = 1",
-        )
-        .get(userUuid)?.count ?? 0) > 0
+      database.drizzle
+        .select({ uuid: twoFactor.uuid })
+        .from(twoFactor)
+        .where(and(eq(twoFactor.userUuid, userUuid), eq(twoFactor.enabled, true)))
+        .limit(1)
+        .get() !== undefined
     )
   } catch {
     return false

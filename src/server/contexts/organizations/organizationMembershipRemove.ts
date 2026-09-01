@@ -3,6 +3,12 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, count, eq, inArray, ne } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { users } from "../../database/schema/users.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
 import { identityInvitationTake } from "../identity/identityInvitationTake.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipFindByUuidAndOrganization } from "./organizationMembershipFindByUuidAndOrganization.js"
@@ -35,32 +41,51 @@ export function organizationMembershipRemove(
       return organizationErrorCreate(op, "Can't delete the last owner")
 
     try {
-      database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", [revisionDate, member.userUuid])
-      database.run(
-        `DELETE FROM users_collections
-         WHERE user_uuid = ?
-           AND collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)`,
-        [member.userUuid, organizationUuid],
-      )
-      database.run("DELETE FROM groups_users WHERE users_organizations_uuid = ?", [member.uuid])
+      database.drizzle.update(users).set({ updatedAt: revisionDate }).where(eq(users.uuid, member.userUuid)).run()
+      const collectionUuids = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(eq(collections.orgUuid, organizationUuid))
+      database.drizzle
+        .delete(usersCollections)
+        .where(
+          and(
+            eq(usersCollections.userUuid, member.userUuid),
+            inArray(usersCollections.collectionUuid, collectionUuids),
+          ),
+        )
+        .run()
+      database.drizzle.delete(groupsUsers).where(eq(groupsUsers.usersOrganizationsUuid, member.uuid)).run()
       if (!mailEnabled) {
-        const invitedMembership = database
-          .query<{ uuid: string }, [string, number, string]>(
-            `SELECT uuid FROM users_organizations
-             WHERE user_uuid = ? AND status = ? AND uuid != ? LIMIT 1`,
+        const invitedMembership = database.drizzle
+          .select({ uuid: usersOrganizations.uuid })
+          .from(usersOrganizations)
+          .where(
+            and(
+              eq(usersOrganizations.userUuid, member.userUuid),
+              eq(usersOrganizations.status, organizationMembershipStatus.invited),
+              ne(usersOrganizations.uuid, member.uuid),
+            ),
           )
-          .get(member.userUuid, 0, member.uuid)
-        if (invitedMembership === null) {
-          const user = database
-            .query<{ email: string }, [string]>("SELECT email FROM users WHERE uuid = ? LIMIT 1")
-            .get(member.userUuid)
-          if (user !== null) {
+          .limit(1)
+          .get()
+        if (invitedMembership === undefined) {
+          const user = database.drizzle
+            .select({ email: users.email })
+            .from(users)
+            .where(eq(users.uuid, member.userUuid))
+            .limit(1)
+            .get()
+          if (user !== undefined) {
             const invitationResult = identityInvitationTake(database, user.email)
             if (!invitationResult.success) return invitationResult
           }
         }
       }
-      database.run("DELETE FROM users_organizations WHERE uuid = ? AND org_uuid = ?", [member.uuid, organizationUuid])
+      database.drizzle
+        .delete(usersOrganizations)
+        .where(and(eq(usersOrganizations.uuid, member.uuid), eq(usersOrganizations.orgUuid, organizationUuid)))
+        .run()
       return resultCreate({ userUuid: member.userUuid })
     } catch {
       return resultErrorCreate(op, "Organization membership removal failed.")
@@ -70,10 +95,16 @@ export function organizationMembershipRemove(
 
 function organizationMembershipConfirmedOwnerCount(database: DatabaseConnection, organizationUuid: string): number {
   return (
-    database
-      .query<{ count: number }, [string, number, number]>(
-        "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = ? AND atype = ?",
+    database.drizzle
+      .select({ count: count() })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.orgUuid, organizationUuid),
+          eq(usersOrganizations.status, organizationMembershipStatus.confirmed),
+          eq(usersOrganizations.atype, organizationMembershipType.owner),
+        ),
       )
-      .get(organizationUuid, organizationMembershipStatus.confirmed, organizationMembershipType.owner)?.count ?? 0
+      .get()?.count ?? 0
   )
 }

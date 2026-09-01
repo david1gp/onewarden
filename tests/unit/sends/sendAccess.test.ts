@@ -1,13 +1,15 @@
 import { expect, test } from "bun:test"
+import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import type { Send } from "../../../src/server/contexts/sends/send.js"
 import { sendCreate } from "../../../src/server/contexts/sends/sendCreate.js"
-import { sendRegisterAccess } from "../../../src/server/contexts/sends/sendRegisterAccess.js"
 import { sendFindByUuid } from "../../../src/server/contexts/sends/sendFindByUuid.js"
+import { sendRegisterAccess } from "../../../src/server/contexts/sends/sendRegisterAccess.js"
+import { sendSave } from "../../../src/server/contexts/sends/sendSave.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
 
 const date = "2026-08-28T00:00:00.000Z"
 const user: IdentityUser = {
@@ -77,5 +79,45 @@ test("Send access registration atomically stops at maxAccessCount", async () => 
   expect(sendRegisterAccess(database, createResult.data, clock)).toEqual({ success: true, data: true })
   expect(sendRegisterAccess(database, createResult.data, clock)).toEqual({ success: true, data: false })
   expect(sendFindByUuid(database, createResult.data.uuid)).toMatchObject({ success: true, data: { accessCount: 1 } })
+  databaseClose(database)
+})
+
+test("Send persistence preserves typed nullable, boolean, and binary fields through upsert", () => {
+  const databaseResult = databaseTestCreate()
+  expect(databaseResult.success).toBe(true)
+  if (!databaseResult.success) return
+  const database = databaseResult.data
+  expect(identityUserSave(database, user).success).toBe(true)
+
+  const send: Send = {
+    uuid: "send-upsert",
+    userUuid: user.uuid,
+    organizationUuid: null,
+    name: "Upsert",
+    notes: null,
+    type: 0,
+    data: JSON.stringify({ Text: "secret" }),
+    key: "key",
+    passwordHash: new Uint8Array([3, 4]),
+    passwordSalt: new Uint8Array([5, 6]),
+    passwordIterations: 100_000,
+    maxAccessCount: null,
+    accessCount: 0,
+    creationDate: date,
+    revisionDate: date,
+    expirationDate: null,
+    deletionDate: "2026-09-01T00:00:00.000Z",
+    disabled: true,
+    hideEmail: null,
+    emails: null,
+  }
+
+  expect(sendSave(database, send)).toEqual({ success: true, data: undefined })
+  const result = sendFindByUuid(database, send.uuid)
+  expect(result.success).toBe(true)
+  if (!result.success || result.data === null) return
+  expect(result.data).toMatchObject({ disabled: true, hideEmail: null, notes: null })
+  expect([...(result.data.passwordHash ?? [])]).toEqual([3, 4])
+  expect([...(result.data.passwordSalt ?? [])]).toEqual([5, 6])
   databaseClose(database)
 })

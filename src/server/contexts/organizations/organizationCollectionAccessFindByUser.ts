@@ -2,6 +2,13 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 
 export function organizationCollectionAccessFindByUser(
   database: DatabaseConnection,
@@ -11,54 +18,63 @@ export function organizationCollectionAccessFindByUser(
 ): Result<{ hidePasswords: boolean; manage: boolean; readOnly: boolean } | null> {
   const op = "organizationCollectionAccessFindByUser"
   try {
-    const row = database
-      .query<OrganizationCollectionAccessRow, [string, string]>(
-        `SELECT read_only, hide_passwords, manage
-         FROM users_collections
-         WHERE collection_uuid = ? AND user_uuid = ?
-         LIMIT 1`,
-      )
-      .get(collectionUuid, userUuid)
-    if (row !== null)
+    const row = database.drizzle
+      .select({
+        hidePasswords: usersCollections.hidePasswords,
+        manage: usersCollections.manage,
+        readOnly: usersCollections.readOnly,
+      })
+      .from(usersCollections)
+      .where(and(eq(usersCollections.collectionUuid, collectionUuid), eq(usersCollections.userUuid, userUuid)))
+      .limit(1)
+      .get()
+    if (row !== undefined)
       return resultCreate({
-        hidePasswords: row.hide_passwords === 1,
-        manage: row.manage === 1,
-        readOnly: row.read_only === 1,
+        hidePasswords: row.hidePasswords,
+        manage: row.manage,
+        readOnly: row.readOnly,
       })
     if (!groupsEnabled) return resultCreate(null)
-    const groupRow = database
-      .query<OrganizationCollectionGroupAccessRow, [string, string, string]>(
-        `SELECT cg.read_only, cg.hide_passwords, cg.manage, g.access_all
-         FROM collections AS c
-         JOIN users_organizations AS uo
-           ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ?
-         JOIN groups_users AS gu ON gu.users_organizations_uuid = uo.uuid
-         JOIN groups AS g ON g.uuid = gu.groups_uuid AND g.organizations_uuid = uo.org_uuid
-         LEFT JOIN collections_groups AS cg
-           ON cg.groups_uuid = g.uuid AND cg.collections_uuid = ?
-         WHERE c.uuid = ? AND (g.access_all = 1 OR cg.collections_uuid IS NOT NULL)
-         ORDER BY g.access_all DESC, g.uuid
-         LIMIT 1`,
+    const groupRow = database.drizzle
+      .select({
+        accessAll: groups.accessAll,
+        hidePasswords: collectionsGroups.hidePasswords,
+        manage: collectionsGroups.manage,
+        readOnly: collectionsGroups.readOnly,
+      })
+      .from(collections)
+      .innerJoin(
+        usersOrganizations,
+        and(eq(usersOrganizations.orgUuid, collections.orgUuid), eq(usersOrganizations.userUuid, userUuid)),
       )
-      .get(userUuid, collectionUuid, collectionUuid)
+      .innerJoin(groupsUsers, eq(groupsUsers.usersOrganizationsUuid, usersOrganizations.uuid))
+      .innerJoin(
+        groups,
+        and(eq(groups.uuid, groupsUsers.groupsUuid), eq(groups.organizationsUuid, usersOrganizations.orgUuid)),
+      )
+      .leftJoin(
+        collectionsGroups,
+        and(eq(collectionsGroups.groupsUuid, groups.uuid), eq(collectionsGroups.collectionsUuid, collectionUuid)),
+      )
+      .where(
+        and(
+          eq(collections.uuid, collectionUuid),
+          or(eq(groups.accessAll, true), isNotNull(collectionsGroups.collectionsUuid)),
+        ),
+      )
+      .orderBy(desc(groups.accessAll), asc(groups.uuid))
+      .limit(1)
+      .get()
     return resultCreate(
-      groupRow === null
+      groupRow === undefined
         ? null
         : {
-            hidePasswords: groupRow.access_all === 1 ? false : groupRow.hide_passwords === 1,
-            manage: groupRow.access_all === 1 ? false : groupRow.manage === 1,
-            readOnly: groupRow.access_all === 1 ? false : groupRow.read_only === 1,
+            hidePasswords: groupRow.accessAll ? false : (groupRow.hidePasswords ?? false),
+            manage: groupRow.accessAll ? false : (groupRow.manage ?? false),
+            readOnly: groupRow.accessAll ? false : (groupRow.readOnly ?? false),
           },
     )
   } catch {
     return resultErrorCreate(op, "Collection user access lookup failed.")
   }
 }
-
-type OrganizationCollectionAccessRow = {
-  hide_passwords: number
-  manage: number
-  read_only: number
-}
-
-type OrganizationCollectionGroupAccessRow = OrganizationCollectionAccessRow & { access_all: number }

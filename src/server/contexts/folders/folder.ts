@@ -1,7 +1,3 @@
-export type Folder = {
-  uuid: string
-  createdAt: string
-  updatedAt: string
-  userUuid: string
-  name: string
-}
+import type { FolderRow } from "../../database/schema/folders.js"
+
+export type Folder = FolderRow

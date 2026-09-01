@@ -1,5 +1,6 @@
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
+import { and, count, eq, isNotNull, sql } from "drizzle-orm"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
@@ -19,6 +20,7 @@ import { organizationDomainToJson } from "./organizationDomainToJson.js"
 import { organizationDomainVerify } from "./organizationDomainVerify.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
+import { organizationDomains } from "../../database/schema/organizationDomains.js"
 
 const organizationDomainPathSchema = v.object({ id: v.string() })
 
@@ -93,20 +95,30 @@ export function organizationDomainRoutesRegister(
     const bodyResult = await requestBodyParse(context, organizationDomainRequestSchema)
     if (!bodyResult.success) return apiErrorResponseCreate(bodyResult)
     const normalizedDomain = bodyResult.data.domainName.toLowerCase()
-    const claimed = database
-      .query<{ count: number }, [string]>(
-        "SELECT COUNT(*) AS count FROM organization_domains WHERE lower(domain_name) = lower(?) AND verified_date IS NOT NULL",
+    const claimed = database.drizzle
+      .select({ count: count() })
+      .from(organizationDomains)
+      .where(
+        and(
+          sql`lower(${organizationDomains.domainName}) = lower(${normalizedDomain})`,
+          isNotNull(organizationDomains.verifiedDate),
+        ),
       )
-      .get(normalizedDomain)
+      .get()
     if ((claimed?.count ?? 0) > 0)
       return apiErrorResponseCreate(
         organizationErrorCreate("organizationDomainRoutesCreate", "The domain is not available to be claimed.", 409),
       )
-    const duplicate = database
-      .query<{ count: number }, [string, string]>(
-        "SELECT COUNT(*) AS count FROM organization_domains WHERE org_uuid = ? AND lower(domain_name) = lower(?)",
+    const duplicate = database.drizzle
+      .select({ count: count() })
+      .from(organizationDomains)
+      .where(
+        and(
+          eq(organizationDomains.orgUuid, organizationUuid),
+          sql`lower(${organizationDomains.domainName}) = lower(${normalizedDomain})`,
+        ),
       )
-      .get(organizationUuid, normalizedDomain)
+      .get()
     if ((duplicate?.count ?? 0) > 0)
       return apiErrorResponseCreate(
         organizationErrorCreate(

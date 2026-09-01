@@ -3,6 +3,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { twoFactorIncomplete, type TwoFactorIncompleteInsert } from "../../database/schema/twoFactorIncomplete.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 
 export function twoFactorIncompleteMark(
@@ -18,12 +19,19 @@ export function twoFactorIncompleteMark(
   const op = "twoFactorIncompleteMark"
   if (!config.MAIL_ENABLED || (config.INCOMPLETE_2FA_TIME_LIMIT ?? 3) <= 0) return resultCreate(undefined)
   try {
-    database.run(
-      `INSERT OR IGNORE INTO twofactor_incomplete
-       (user_uuid, device_uuid, device_name, device_type, login_time, ip_address)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userUuid, deviceUuid, deviceName, deviceType, clock.now().toISOString(), ipAddress],
-    )
+    const values: TwoFactorIncompleteInsert = {
+      userUuid,
+      deviceUuid,
+      deviceName,
+      deviceType,
+      loginTime: clock.now().toISOString(),
+      ipAddress,
+    }
+    database.drizzle
+      .insert(twoFactorIncomplete)
+      .values(values)
+      .onConflictDoNothing({ target: [twoFactorIncomplete.userUuid, twoFactorIncomplete.deviceUuid] })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Incomplete two-factor login save failed.")

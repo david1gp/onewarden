@@ -1,22 +1,22 @@
 import type { IdentityAuthRequest } from "./identityAuthRequest.js"
-import type { IdentityAuthRequestRow } from "./identityAuthRequestRow.js"
+import type { AuthRequestRow } from "../../database/schema/authRequests.js"
 
-export function identityAuthRequestFromRow(row: IdentityAuthRequestRow): IdentityAuthRequest {
+export function identityAuthRequestFromRow(row: AuthRequestRow): IdentityAuthRequest {
   return {
     uuid: row.uuid,
-    userUuid: row.user_uuid,
-    organizationUuid: row.organization_uuid,
-    requestDeviceIdentifier: row.request_device_identifier,
-    deviceType: row.device_type,
-    requestIp: row.request_ip,
-    responseDeviceId: row.response_device_id,
-    accessCode: row.access_code,
-    publicKey: row.public_key,
-    encKey: row.enc_key,
-    masterPasswordHash: row.master_password_hash,
-    approved: row.approved === null ? null : row.approved === 1,
-    creationDate: row.creation_date,
-    responseDate: row.response_date,
-    authenticationDate: row.authentication_date,
+    userUuid: row.userUuid,
+    organizationUuid: row.organizationUuid,
+    requestDeviceIdentifier: row.requestDeviceIdentifier,
+    deviceType: row.deviceType,
+    requestIp: row.requestIp,
+    responseDeviceId: row.responseDeviceId,
+    accessCode: row.accessCode,
+    publicKey: row.publicKey,
+    encKey: row.encKey,
+    masterPasswordHash: row.masterPasswordHash,
+    approved: row.approved,
+    creationDate: row.creationDate,
+    responseDate: row.responseDate,
+    authenticationDate: row.authenticationDate,
   }
 }

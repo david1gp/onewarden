@@ -3,6 +3,8 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq } from "drizzle-orm"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
 import { organizationCollectionRevisionUpdate } from "./organizationCollectionRevisionUpdate.js"
 import { organizationGroupAffectedUserUuidsFind } from "./organizationGroupAffectedUserUuidsFind.js"
 
@@ -17,11 +19,10 @@ export function organizationGroupMemberDelete(
   const beforeResult = organizationGroupAffectedUserUuidsFind(database, organizationUuid, groupUuid)
   if (!beforeResult.success) return beforeResult
   try {
-    database.run(
-      `DELETE FROM groups_users
-       WHERE groups_uuid = ? AND users_organizations_uuid = ?`,
-      [groupUuid, membershipUuid],
-    )
+    database.drizzle
+      .delete(groupsUsers)
+      .where(and(eq(groupsUsers.groupsUuid, groupUuid), eq(groupsUsers.usersOrganizationsUuid, membershipUuid)))
+      .run()
   } catch {
     return resultErrorCreate(op, "Group member deletion failed.")
   }

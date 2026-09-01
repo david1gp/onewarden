@@ -242,6 +242,31 @@ test("sync hides SSH ciphers for clients before the SSH-compatible version and c
   expect((await excludedDomainsResponse.json()).domains).toBeNull()
 })
 
+test("sync succeeds with attachments when attachment URL signing is unavailable", async () => {
+  const context = await contextCreate()
+  context.database.run("INSERT INTO attachments (id, cipher_uuid, file_name, file_size, akey) VALUES (?, ?, ?, ?, ?)", [
+    "sync-attachment",
+    "sync-cipher",
+    "attachment-secret-name",
+    12,
+    "attachment-secret-key",
+  ])
+
+  const response = await context.app.request("https://vault.example/api/sync", {
+    headers: { authorization: `Bearer ${context.token}`, "Bitwarden-Client-Version": "2024.12.0" },
+  })
+
+  expect(response.status).toBe(200)
+  const body = await response.json()
+  const serialized = JSON.stringify(body)
+  const cipher = body.ciphers.find((item: { id: string }) => item.id === "sync-cipher")
+  expect(cipher.attachments).toBeNull()
+  expect(serialized).not.toContain("sync-attachment")
+  expect(serialized).not.toContain("attachment-secret-name")
+  expect(serialized).not.toContain("attachment-secret-key")
+  expect(serialized).not.toContain("/attachments/")
+})
+
 test("sync includes confirmed organization login ciphers with access permissions", async () => {
   const context = await contextCreate()
   const organizationId = organizationFixture.organizationId

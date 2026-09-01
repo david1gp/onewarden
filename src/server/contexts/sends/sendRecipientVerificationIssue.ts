@@ -1,4 +1,5 @@
-import { type Result } from "#result"
+import { and, eq, sql } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
@@ -6,22 +7,18 @@ import { sha256Hex } from "../../../shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { databaseTransaction } from "../../database/databaseTransaction.js"
+import {
+  type SendRecipientVerificationInsert,
+  type SendRecipientVerificationRow,
+  sendRecipientVerifications,
+} from "../../database/schema/sendRecipientVerifications.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import { twoFactorEmailTokenCreate } from "../twoFactor/twoFactorEmailTokenCreate.js"
-import { databaseTransaction } from "../../database/databaseTransaction.js"
 
 const sendRecipientVerificationResendCooldownSeconds = 30
 const sendRecipientVerificationResendLimit = 5
-
-type SendRecipientVerificationRow = {
-  attempts: number
-  last_sent_at: string
-  otp_expires_at: string
-  otp_hash: string
-  otp_salt: string
-  resend_count: number
-}
 
 export async function sendRecipientVerificationIssue(
   database: DatabaseConnection,
@@ -43,19 +40,22 @@ export async function sendRecipientVerificationIssue(
   const nowTimestamp = now.getTime()
   const expiresAt = new Date(nowTimestamp + Math.max(0, config.EMAIL_EXPIRATION_TIME ?? 600) * 1_000).toISOString()
   const persistenceResult = databaseTransaction(database, () => {
-    const row = database
-      .query<SendRecipientVerificationRow, [string, string]>(
-        `SELECT attempts, last_sent_at, otp_expires_at, otp_hash, otp_salt, resend_count
-         FROM send_recipient_verifications WHERE send_uuid = ? AND email = ? LIMIT 1`,
-      )
-      .get(sendUuid, email)
+    const row = database.drizzle
+      .select()
+      .from(sendRecipientVerifications)
+      .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+      .limit(1)
+      .get()
 
-    if (row !== null && sendRecipientVerificationRowIsValid(row)) {
-      const lastSentAt = Date.parse(row.last_sent_at)
+    if (row !== undefined && sendRecipientVerificationRowIsValid(row)) {
+      const lastSentAt = Date.parse(row.lastSentAt)
       if (!Number.isFinite(lastSentAt)) {
-        database.run("DELETE FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?", [sendUuid, email])
+        database.drizzle
+          .delete(sendRecipientVerifications)
+          .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+          .run()
       } else {
-        if (row.resend_count >= sendRecipientVerificationResendLimit)
+        if (row.resendCount >= sendRecipientVerificationResendLimit)
           return sendRecipientVerificationError("Too many verification code requests.", 429, "rate_limited")
         if (nowTimestamp < lastSentAt + sendRecipientVerificationResendCooldownSeconds * 1_000)
           return sendRecipientVerificationError(
@@ -64,25 +64,38 @@ export async function sendRecipientVerificationIssue(
             "rate_limited",
           )
       }
-    } else if (row !== null) {
-      database.run("DELETE FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?", [sendUuid, email])
+    } else if (row !== undefined) {
+      database.drizzle
+        .delete(sendRecipientVerifications)
+        .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+        .run()
     }
 
-    if (row === null || !sendRecipientVerificationRowIsValid(row)) {
-      database.run(
-        `INSERT INTO send_recipient_verifications
-         (send_uuid, email, otp_hash, otp_salt, otp_expires_at, attempts, last_sent_at, resend_count)
-         VALUES (?, ?, ?, ?, ?, 0, ?, 0)`,
-        [sendUuid, email, hashResult.data, salt, expiresAt, now.toISOString()],
-      )
+    if (row === undefined || !sendRecipientVerificationRowIsValid(row)) {
+      const values: SendRecipientVerificationInsert = {
+        sendUuid,
+        email,
+        otpHash: hashResult.data,
+        otpSalt: salt,
+        otpExpiresAt: expiresAt,
+        attempts: 0,
+        lastSentAt: now.toISOString(),
+        resendCount: 0,
+      }
+      database.drizzle.insert(sendRecipientVerifications).values(values).run()
     } else {
-      database.run(
-        `UPDATE send_recipient_verifications
-         SET otp_hash = ?, otp_salt = ?, otp_expires_at = ?, attempts = 0,
-             last_sent_at = ?, resend_count = resend_count + 1
-         WHERE send_uuid = ? AND email = ?`,
-        [hashResult.data, salt, expiresAt, now.toISOString(), sendUuid, email],
-      )
+      database.drizzle
+        .update(sendRecipientVerifications)
+        .set({
+          otpHash: hashResult.data,
+          otpSalt: salt,
+          otpExpiresAt: expiresAt,
+          attempts: 0,
+          lastSentAt: now.toISOString(),
+          resendCount: sql`${sendRecipientVerifications.resendCount} + 1`,
+        })
+        .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+        .run()
     }
     return resultCreate(undefined)
   })
@@ -101,11 +114,16 @@ export async function sendRecipientVerificationIssue(
 
   const invalidateResult = databaseTransaction(database, () => {
     try {
-      database.run("DELETE FROM send_recipient_verifications WHERE send_uuid = ? AND email = ? AND otp_hash = ?", [
-        sendUuid,
-        email,
-        hashResult.data,
-      ])
+      database.drizzle
+        .delete(sendRecipientVerifications)
+        .where(
+          and(
+            eq(sendRecipientVerifications.sendUuid, sendUuid),
+            eq(sendRecipientVerifications.email, email),
+            eq(sendRecipientVerifications.otpHash, hashResult.data),
+          ),
+        )
+        .run()
       return resultCreate(undefined)
     } catch {
       return resultErrorCreate("sendRecipientVerificationIssue", "Verification state cleanup failed.")
@@ -120,13 +138,13 @@ function sendRecipientVerificationRowIsValid(row: SendRecipientVerificationRow):
     typeof row.attempts === "number" &&
     Number.isSafeInteger(row.attempts) &&
     row.attempts >= 0 &&
-    typeof row.last_sent_at === "string" &&
-    typeof row.otp_expires_at === "string" &&
-    typeof row.otp_hash === "string" &&
-    typeof row.otp_salt === "string" &&
-    typeof row.resend_count === "number" &&
-    Number.isSafeInteger(row.resend_count) &&
-    row.resend_count >= 0
+    typeof row.lastSentAt === "string" &&
+    typeof row.otpExpiresAt === "string" &&
+    typeof row.otpHash === "string" &&
+    typeof row.otpSalt === "string" &&
+    typeof row.resendCount === "number" &&
+    Number.isSafeInteger(row.resendCount) &&
+    row.resendCount >= 0
   )
 }
 

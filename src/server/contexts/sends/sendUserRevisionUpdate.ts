@@ -1,7 +1,9 @@
-import { type Result } from "#result"
+import { eq } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { users } from "../../database/schema/users.js"
 
 export function sendUserRevisionUpdate(
   database: DatabaseConnection,
@@ -10,7 +12,7 @@ export function sendUserRevisionUpdate(
 ): Result<void> {
   const op = "sendUserRevisionUpdate"
   try {
-    database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", [revisionDate, userUuid])
+    database.drizzle.update(users).set({ updatedAt: revisionDate }).where(eq(users.uuid, userUuid)).run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "User revision update failed.")

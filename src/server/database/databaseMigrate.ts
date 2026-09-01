@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { type Result } from "#result"
+import { sql } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "./database.js"
+import { databaseConnectionStore } from "./databaseConnectionStore.js"
 import { databaseTransaction } from "./databaseTransaction.js"
 
 const databaseMigrationsPath = fileURLToPath(new URL("../../../migrations/", import.meta.url))
@@ -50,8 +52,8 @@ function databaseMigrationsPathResolve(): string {
 }
 
 function databaseMigrationVersionsRead(database: DatabaseConnection): Set<number> {
-  const rows = database.query<{ version: number }, []>("SELECT version FROM schema_version").all()
-  return new Set(rows.map((row) => row.version))
+  const rows = database.drizzle.values<[number]>(sql`SELECT version FROM schema_version`)
+  return new Set(rows.map((row) => row[0]).filter((version): version is number => version !== undefined))
 }
 
 export function databaseMigrate(
@@ -60,7 +62,7 @@ export function databaseMigrate(
 ): Result<void> {
   const op = "databaseMigrate"
   try {
-    database.exec(databaseSchemaVersionTableSql)
+    database.drizzle.run(sql.raw(databaseSchemaVersionTableSql))
     const migrations = databaseMigrationsRead(migrationsPath)
     const versions = new Set<number>()
     for (const migration of migrations) {
@@ -71,13 +73,14 @@ export function databaseMigrate(
     const appliedVersions = databaseMigrationVersionsRead(database)
     for (const migration of migrations) {
       if (appliedVersions.has(migration.version)) continue
-      const sql = readFileSync(migration.path, "utf8")
+      const migrationSql = readFileSync(migration.path, "utf8")
       const migrationResult = databaseTransaction(database, () => {
         try {
-          database.exec(sql)
-          database.run("INSERT INTO schema_version (version, applied_at) VALUES (?, CURRENT_TIMESTAMP)", [
-            migration.version,
-          ])
+          if (!databaseConnectionStore.migrationExecute(database, migrationSql))
+            return resultErrorCreate(op, "Database migration failed.")
+          database.drizzle.run(
+            sql`INSERT INTO schema_version (version, applied_at) VALUES (${migration.version}, CURRENT_TIMESTAMP)`,
+          )
           return resultCreate(undefined)
         } catch {
           return resultErrorCreate(op, "Database migration failed.")

@@ -2,6 +2,10 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { eq, inArray } from "drizzle-orm"
+import { organizations } from "../../database/schema/organizations.js"
+import { users } from "../../database/schema/users.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { Organization } from "./organization.js"
 
 export function organizationSave(
@@ -16,30 +20,35 @@ export function organizationSave(
       statusCode: 400,
     })
   try {
-    database.run(
-      `UPDATE users
-       SET updated_at = ?
-       WHERE uuid IN (SELECT user_uuid FROM users_organizations WHERE org_uuid = ?)`,
-      [revisionDate, organization.uuid],
-    )
-    database.run(
-      `INSERT INTO organizations (uuid, identifier, name, billing_email, private_key, public_key)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(uuid) DO UPDATE SET
-         identifier = excluded.identifier,
-         name = excluded.name,
-         billing_email = excluded.billing_email,
-         private_key = excluded.private_key,
-         public_key = excluded.public_key`,
-      [
-        organization.uuid,
-        organization.identifier,
-        organization.name,
-        organization.billingEmail,
-        organization.privateKey,
-        organization.publicKey,
-      ],
-    )
+    const userUuids = database.drizzle
+      .select({ uuid: usersOrganizations.userUuid })
+      .from(usersOrganizations)
+      .where(eq(usersOrganizations.orgUuid, organization.uuid))
+      .all()
+      .map((row) => row.uuid)
+    if (userUuids.length > 0)
+      database.drizzle.update(users).set({ updatedAt: revisionDate }).where(inArray(users.uuid, userUuids)).run()
+    database.drizzle
+      .insert(organizations)
+      .values({
+        uuid: organization.uuid,
+        identifier: organization.identifier,
+        name: organization.name,
+        billingEmail: organization.billingEmail,
+        privateKey: organization.privateKey,
+        publicKey: organization.publicKey,
+      })
+      .onConflictDoUpdate({
+        target: organizations.uuid,
+        set: {
+          identifier: organization.identifier,
+          name: organization.name,
+          billingEmail: organization.billingEmail,
+          privateKey: organization.privateKey,
+          publicKey: organization.publicKey,
+        },
+      })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Organization save failed.")

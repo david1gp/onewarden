@@ -1,27 +1,32 @@
+import { and, eq, ne } from "drizzle-orm"
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
 import type { Result, ResultErr } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import type { Clock } from "../../../shared/clock/clock.js"
-import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
-import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
+import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
+import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import { requestPathParse } from "../../../shared/validation/requestPathParse.js"
+import { devices } from "../../database/schema/devices.js"
+import { invitations } from "../../database/schema/invitations.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
-import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
+import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
 import { authenticationMiddlewareCreate } from "../authentication/authenticationMiddlewareCreate.js"
-import type { IdentityUser } from "../identity/identityUser.js"
+import { cipherFindByUser } from "../ciphers/cipherFindByUser.js"
+import { cipherToJson } from "../ciphers/cipherToJson.js"
 import { identityInvitationTake } from "../identity/identityInvitationTake.js"
+import { identityOriginResolve } from "../identity/identityOriginResolve.js"
+import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserFindByEmail } from "../identity/identityUserFindByEmail.js"
 import { identityUserFindByUuid } from "../identity/identityUserFindByUuid.js"
 import { identityUserPasswordSet } from "../identity/identityUserPasswordSet.js"
 import { identityUserSave } from "../identity/identityUserSave.js"
-import { identityOriginResolve } from "../identity/identityOriginResolve.js"
-import { cipherFindByUser } from "../ciphers/cipherFindByUser.js"
-import { cipherToJson } from "../ciphers/cipherToJson.js"
+import type { EmergencyAccess } from "./emergencyAccess.js"
 import { emergencyAccessDelete } from "./emergencyAccessDelete.js"
 import { emergencyAccessFindAllByGrantee } from "./emergencyAccessFindAllByGrantee.js"
 import { emergencyAccessFindAllByGrantor } from "./emergencyAccessFindAllByGrantor.js"
@@ -29,7 +34,6 @@ import { emergencyAccessFindByGrantorAndGranteeOrEmail } from "./emergencyAccess
 import { emergencyAccessFindByUuidAndEmail } from "./emergencyAccessFindByUuidAndEmail.js"
 import { emergencyAccessFindByUuidAndGrantee } from "./emergencyAccessFindByUuidAndGrantee.js"
 import { emergencyAccessFindByUuidAndGrantor } from "./emergencyAccessFindByUuidAndGrantor.js"
-import type { EmergencyAccess } from "./emergencyAccess.js"
 import { emergencyAccessInviteTokenCreate } from "./emergencyAccessInviteTokenCreate.js"
 import { emergencyAccessInviteTokenDecode } from "./emergencyAccessInviteTokenDecode.js"
 import type { EmergencyAccessNotificationAdapter } from "./emergencyAccessNotificationAdapter.js"
@@ -690,12 +694,15 @@ async function emergencyAccessPassword(
   const saveUserResult = identityUserSave(requestResult.data.database, userResult.data)
   if (!saveUserResult.success) return apiErrorResponseCreate(saveUserResult)
   try {
-    requestResult.data.database.run("DELETE FROM users_organizations WHERE user_uuid = ? AND atype != 0", [
-      userResult.data.uuid,
-    ])
-    requestResult.data.database.run("UPDATE devices SET twofactor_remember = NULL WHERE user_uuid = ?", [
-      userResult.data.uuid,
-    ])
+    requestResult.data.database.drizzle
+      .delete(usersOrganizations)
+      .where(and(eq(usersOrganizations.userUuid, userResult.data.uuid), ne(usersOrganizations.atype, 0)))
+      .run()
+    requestResult.data.database.drizzle
+      .update(devices)
+      .set({ twofactorRemember: null })
+      .where(eq(devices.userUuid, userResult.data.uuid))
+      .run()
   } catch {
     return apiErrorResponseCreate(
       emergencyAccessErrorCreate("emergencyAccessPassword", "Password takeover failed.", 500),
@@ -889,7 +896,11 @@ function emergencyAccessInvitationSave(database: EmergencyAccessRouteOptions["da
   if (database === undefined)
     return emergencyAccessErrorCreate("emergencyAccessInvitationSave", "Database unavailable.", 500)
   try {
-    database.run("INSERT INTO invitations (email) VALUES (?) ON CONFLICT(email) DO NOTHING", [email.toLowerCase()])
+    database.drizzle
+      .insert(invitations)
+      .values({ email: email.toLowerCase() })
+      .onConflictDoNothing({ target: invitations.email })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate("emergencyAccessInvitationSave", "Invitation save failed.")

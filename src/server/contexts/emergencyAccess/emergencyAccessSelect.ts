@@ -1,2 +1,16 @@
-export const emergencyAccessSelect =
-  "uuid, grantor_uuid AS grantorUuid, grantee_uuid AS granteeUuid, email, key_encrypted AS keyEncrypted, atype AS type, status, wait_time_days AS waitTimeDays, recovery_initiated_at AS recoveryInitiatedAt, last_notification_at AS lastNotificationAt, updated_at AS updatedAt, created_at AS createdAt"
+import { emergencyAccess } from "../../database/schema/emergencyAccess.js"
+
+export const emergencyAccessSelect = {
+  uuid: emergencyAccess.uuid,
+  grantorUuid: emergencyAccess.grantorUuid,
+  granteeUuid: emergencyAccess.granteeUuid,
+  email: emergencyAccess.email,
+  keyEncrypted: emergencyAccess.keyEncrypted,
+  type: emergencyAccess.atype,
+  status: emergencyAccess.status,
+  waitTimeDays: emergencyAccess.waitTimeDays,
+  recoveryInitiatedAt: emergencyAccess.recoveryInitiatedAt,
+  lastNotificationAt: emergencyAccess.lastNotificationAt,
+  updatedAt: emergencyAccess.updatedAt,
+  createdAt: emergencyAccess.createdAt,
+}

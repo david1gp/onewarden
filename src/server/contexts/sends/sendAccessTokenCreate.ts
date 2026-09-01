@@ -1,21 +1,23 @@
-import { type Result } from "#result"
+import { and, eq, gt, lt, sql } from "drizzle-orm"
+import type { KeyInput } from "jose"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
 import { jwtSign } from "../../../shared/crypto/jwtSign.js"
 import { sha256Hex } from "../../../shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import type { KeyInput } from "jose"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { sendRecipientVerifications } from "../../database/schema/sendRecipientVerifications.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import type { Send } from "./send.js"
 import { sendFindByAccessId } from "./sendFindByAccessId.js"
 import { sendIsAccessible } from "./sendIsAccessible.js"
 import { sendPasswordVerify } from "./sendPasswordVerify.js"
-import { sendRecipientVerificationIssue } from "./sendRecipientVerificationIssue.js"
 import { sendRecipientsNormalize } from "./sendRecipientsNormalize.js"
+import { sendRecipientVerificationIssue } from "./sendRecipientVerificationIssue.js"
 import { sendRegisterAccess } from "./sendRegisterAccess.js"
 
 type SendAccessTokenCreateOptions = {
@@ -24,8 +26,6 @@ type SendAccessTokenCreateOptions = {
   mail?: IdentityMailAdapter
   otp?: string
 }
-
-type SendRecipientVerificationOtpRow = { otp_salt: string }
 
 export async function sendAccessTokenCreate(
   database: DatabaseConnection,
@@ -144,13 +144,14 @@ async function sendRecipientVerificationOtpHashCreate(
 ): Promise<Result<string | null>> {
   const op = "sendRecipientVerificationOtpHashCreate"
   try {
-    const row = database
-      .query<SendRecipientVerificationOtpRow, [string, string]>(
-        "SELECT otp_salt FROM send_recipient_verifications WHERE send_uuid = ? AND email = ? LIMIT 1",
-      )
-      .get(sendUuid, email)
-    if (row === null || row.otp_salt.length === 0) return resultCreate(null)
-    const hashResult = await sha256Hex(`${row.otp_salt}:${otp}`)
+    const row = database.drizzle
+      .select({ otpSalt: sendRecipientVerifications.otpSalt })
+      .from(sendRecipientVerifications)
+      .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+      .limit(1)
+      .get()
+    if (row === undefined || row.otpSalt.length === 0) return resultCreate(null)
+    const hashResult = await sha256Hex(`${row.otpSalt}:${otp}`)
     if (!hashResult.success) return hashResult
     return resultCreate(hashResult.data)
   } catch {
@@ -167,37 +168,62 @@ function sendRecipientVerificationConsume(
   config: SendAccessTokenCreateOptions["config"],
 ): Result<boolean> {
   try {
-    const row = database
-      .query<{ attempts: number; otp_expires_at: string; otp_hash: string }, [string, string]>(
-        `SELECT attempts, otp_expires_at, otp_hash FROM send_recipient_verifications
-         WHERE send_uuid = ? AND email = ? LIMIT 1`,
-      )
-      .get(sendUuid, email)
-    if (row === null) return resultCreate(false)
+    const row = database.drizzle
+      .select({
+        attempts: sendRecipientVerifications.attempts,
+        otpExpiresAt: sendRecipientVerifications.otpExpiresAt,
+        otpHash: sendRecipientVerifications.otpHash,
+      })
+      .from(sendRecipientVerifications)
+      .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+      .limit(1)
+      .get()
+    if (row === undefined) return resultCreate(false)
     const limit = config?.EMAIL_ATTEMPTS_LIMIT ?? 3
     if (!Number.isSafeInteger(row.attempts) || row.attempts < 0 || row.attempts >= limit) {
-      database.run("DELETE FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?", [sendUuid, email])
+      database.drizzle
+        .delete(sendRecipientVerifications)
+        .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+        .run()
       return resultCreate(false)
     }
-    const expiresAt = Date.parse(row.otp_expires_at)
+    const expiresAt = Date.parse(row.otpExpiresAt)
     if (!Number.isFinite(expiresAt) || clock.now().getTime() >= expiresAt) {
-      database.run("DELETE FROM send_recipient_verifications WHERE send_uuid = ? AND email = ?", [sendUuid, email])
+      database.drizzle
+        .delete(sendRecipientVerifications)
+        .where(and(eq(sendRecipientVerifications.sendUuid, sendUuid), eq(sendRecipientVerifications.email, email)))
+        .run()
       return resultCreate(false)
     }
-    if (!constantTimeStringsEqual(row.otp_hash, hash)) {
-      database.run(
-        `UPDATE send_recipient_verifications SET attempts = attempts + 1
-         WHERE send_uuid = ? AND email = ? AND otp_hash = ? AND attempts < ?`,
-        [sendUuid, email, row.otp_hash, limit],
+    if (!constantTimeStringsEqual(row.otpHash, hash)) {
+      database.drizzle
+        .update(sendRecipientVerifications)
+        .set({ attempts: sql`${sendRecipientVerifications.attempts} + 1` })
+        .where(
+          and(
+            eq(sendRecipientVerifications.sendUuid, sendUuid),
+            eq(sendRecipientVerifications.email, email),
+            eq(sendRecipientVerifications.otpHash, row.otpHash),
+            lt(sendRecipientVerifications.attempts, limit),
+          ),
+        )
+        .run()
+      return resultCreate(false)
+    }
+    const deleteResult = database.drizzle
+      .delete(sendRecipientVerifications)
+      .where(
+        and(
+          eq(sendRecipientVerifications.sendUuid, sendUuid),
+          eq(sendRecipientVerifications.email, email),
+          eq(sendRecipientVerifications.otpHash, hash),
+          lt(sendRecipientVerifications.attempts, limit),
+          gt(sendRecipientVerifications.otpExpiresAt, clock.now().toISOString()),
+        ),
       )
-      return resultCreate(false)
-    }
-    const deleteResult = database.run(
-      `DELETE FROM send_recipient_verifications
-       WHERE send_uuid = ? AND email = ? AND otp_hash = ? AND attempts < ? AND otp_expires_at > ?`,
-      [sendUuid, email, hash, limit, clock.now().toISOString()],
-    )
-    return resultCreate(deleteResult.changes === 1)
+      .returning({ sendUuid: sendRecipientVerifications.sendUuid })
+      .all()
+    return resultCreate(deleteResult.length === 1)
   } catch {
     return resultErrorCreate("sendRecipientVerificationConsume", "Verification code validation failed.")
   }

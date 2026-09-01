@@ -151,7 +151,9 @@ const currentRouteRegistrations = [
     { basePath: "/", method: "PUT", path: "/api/organizations/:org_id/groups/:group_id/users" },
   ].flatMap((registration) => [registration, registration, registration]),
   ...[
+    { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachments" },
     { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
+    { basePath: "/", method: "GET", path: "/api/ciphers/:cipher_id/attachment/:attachment_id/data" },
     { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/v2" },
     { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment/:attachment_id" },
     { basePath: "/", method: "POST", path: "/api/ciphers/:cipher_id/attachment" },

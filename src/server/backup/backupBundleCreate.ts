@@ -3,11 +3,15 @@ import { randomUUID } from "node:crypto"
 import { constants, type Dirent } from "node:fs"
 import { type FileHandle, lstat, mkdir, open, readdir, realpath, rename, rm, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { type Result } from "#result"
+import { max } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/bun-sqlite"
+import type { Result } from "#result"
 import { sha256Hex } from "../../shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { databasePathIsMemory } from "../database/databasePathIsMemory.js"
+import { databaseSchema } from "../database/schema/databaseSchema.js"
+import { schemaVersion } from "../database/schema/schemaVersion.js"
 
 const BACKUP_MANIFEST_VERSION = 1
 const BACKUP_DATABASE_FILE = "database.sqlite3"
@@ -37,14 +41,19 @@ export async function backupBundleCreate(options: {
 
   const databasePathResult = await backupDatabasePathResolve(options.databasePath)
   if (!databasePathResult.success) return databasePathResult
+  const attachmentsAreS3 = options.attachmentsFolder.startsWith("s3://")
   const destinationRootCandidate = resolve(options.destinationRoot)
-  for (const sourceRootCandidate of [resolve(options.sendsFolder), resolve(options.attachmentsFolder)]) {
+  const sourceRootCandidates = [resolve(options.sendsFolder)]
+  if (!attachmentsAreS3) sourceRootCandidates.push(resolve(options.attachmentsFolder))
+  for (const sourceRootCandidate of sourceRootCandidates) {
     if (backupPathIsWithin(sourceRootCandidate, destinationRootCandidate))
       return resultErrorCreate(op, "Backup destination cannot be inside configured storage.")
   }
   const sendsFolderResult = await backupStorageDirectoryResolve(options.sendsFolder, "Sends")
   if (!sendsFolderResult.success) return sendsFolderResult
-  const attachmentsFolderResult = await backupStorageDirectoryResolve(options.attachmentsFolder, "Attachments")
+  const attachmentsFolderResult = attachmentsAreS3
+    ? resultCreate<string | null>(null)
+    : await backupStorageDirectoryResolve(options.attachmentsFolder, "Attachments")
   if (!attachmentsFolderResult.success) return attachmentsFolderResult
   const destinationRootResult = await backupDestinationRootPrepare(options.destinationRoot)
   if (!destinationRootResult.success) return destinationRootResult
@@ -171,7 +180,7 @@ async function backupDatabaseSnapshotRead(databasePath: string): Promise<Result<
   const op = "backupDatabaseSnapshotRead"
   let database: Database | undefined
   try {
-    // A read-only connection avoids changing journal mode or checkpointing the live database.
+    // Bun SQLite is retained here for read-only connection lifecycle and serialize (SQLite backup API).
     database = new Database(databasePath, { readonly: true })
   } catch {
     return resultErrorCreate(op, "Live database snapshot could not be opened.")
@@ -179,11 +188,13 @@ async function backupDatabaseSnapshotRead(databasePath: string): Promise<Result<
 
   let snapshotResult: Result<BackupDatabaseSnapshot>
   try {
-    const schemaVersionRow = database
-      .query<{ version: number | null }, []>("SELECT MAX(version) AS version FROM schema_version")
+    const databaseDrizzle = drizzle({ client: database, schema: databaseSchema })
+    const schemaVersionRow = databaseDrizzle
+      .select({ version: max(schemaVersion.version) })
+      .from(schemaVersion)
       .get()
     if (
-      schemaVersionRow === null ||
+      schemaVersionRow === undefined ||
       schemaVersionRow.version === null ||
       !Number.isSafeInteger(schemaVersionRow.version) ||
       schemaVersionRow.version < 1

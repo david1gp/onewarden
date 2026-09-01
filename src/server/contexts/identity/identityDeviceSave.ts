@@ -3,6 +3,7 @@ import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { devices, type DeviceInsert } from "../../database/schema/devices.js"
 import type { IdentityDevice } from "./identityDevice.js"
 
 export function identityDeviceSave(
@@ -14,33 +15,35 @@ export function identityDeviceSave(
   const op = "identityDeviceSave"
   try {
     const updatedAt = updateTime ? clock.now().toISOString() : device.updatedAt
-    database.run(
-      `INSERT INTO devices (
-         uuid, created_at, updated_at, user_uuid, name, atype, push_uuid,
-         push_token, refresh_token, twofactor_remember
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(uuid, user_uuid) DO UPDATE SET
-         created_at = excluded.created_at,
-         updated_at = excluded.updated_at,
-         name = excluded.name,
-         atype = excluded.atype,
-         push_uuid = excluded.push_uuid,
-         push_token = excluded.push_token,
-         refresh_token = excluded.refresh_token,
-         twofactor_remember = excluded.twofactor_remember`,
-      [
-        device.uuid,
-        device.createdAt,
-        updatedAt,
-        device.userUuid,
-        device.name,
-        device.type,
-        device.pushUuid,
-        device.pushToken,
-        device.refreshToken,
-        device.twoFactorRemember,
-      ],
-    )
+    const values: DeviceInsert = {
+      uuid: device.uuid,
+      createdAt: device.createdAt,
+      updatedAt,
+      userUuid: device.userUuid,
+      name: device.name,
+      atype: device.type,
+      pushUuid: device.pushUuid,
+      pushToken: device.pushToken,
+      refreshToken: device.refreshToken,
+      twofactorRemember: device.twoFactorRemember,
+    }
+    database.drizzle
+      .insert(devices)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [devices.uuid, devices.userUuid],
+        set: {
+          createdAt: values.createdAt,
+          updatedAt: values.updatedAt,
+          name: values.name,
+          atype: values.atype,
+          pushUuid: values.pushUuid,
+          pushToken: values.pushToken,
+          refreshToken: values.refreshToken,
+          twofactorRemember: values.twofactorRemember,
+        },
+      })
+      .run()
     if (updateTime) device.updatedAt = updatedAt
     return resultCreate(undefined)
   } catch {

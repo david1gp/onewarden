@@ -1,7 +1,10 @@
-import { type Result } from "#result"
+import { and, eq } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { folders } from "../../database/schema/folders.js"
+import { foldersCiphers } from "../../database/schema/foldersCiphers.js"
 
 export function cipherFolderFindByUser(
   database: DatabaseConnection,
@@ -10,14 +13,14 @@ export function cipherFolderFindByUser(
 ): Result<string | null> {
   const op = "cipherFolderFindByUser"
   try {
-    const row = database
-      .query<{ folder_uuid: string }, [string, string]>(
-        `SELECT fc.folder_uuid FROM folders_ciphers fc
-         INNER JOIN folders f ON f.uuid = fc.folder_uuid
-         WHERE fc.cipher_uuid = ? AND f.user_uuid = ? LIMIT 1`,
-      )
-      .get(cipherUuid, userUuid)
-    return resultCreate(row === null ? null : row.folder_uuid)
+    const row = database.drizzle
+      .select({ folderUuid: foldersCiphers.folderUuid })
+      .from(foldersCiphers)
+      .innerJoin(folders, eq(folders.uuid, foldersCiphers.folderUuid))
+      .where(and(eq(foldersCiphers.cipherUuid, cipherUuid), eq(folders.userUuid, userUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row?.folderUuid ?? null)
   } catch {
     return resultErrorCreate(op, "Cipher folder lookup failed.")
   }

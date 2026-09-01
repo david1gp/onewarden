@@ -1,6 +1,7 @@
 import type { Context, Hono } from "hono"
 import * as v from "valibot"
 import { type Result, type ResultErr } from "#result"
+import { and, asc, count, eq, inArray, max, sum } from "drizzle-orm"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
@@ -9,15 +10,32 @@ import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js
 import { requestValidationParse } from "../../../shared/validation/requestValidationParse.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { archives } from "../../database/schema/archives.js"
+import { attachments } from "../../database/schema/attachments.js"
+import { ciphers } from "../../database/schema/ciphers.js"
+import { devices } from "../../database/schema/devices.js"
+import { event } from "../../database/schema/event.js"
+import { favorites } from "../../database/schema/favorites.js"
+import { folders } from "../../database/schema/folders.js"
+import { foldersCiphers } from "../../database/schema/foldersCiphers.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { invitations } from "../../database/schema/invitations.js"
+import { organizationApiKey } from "../../database/schema/organizationApiKey.js"
+import { organizations as organizationsTable } from "../../database/schema/organizations.js"
+import { schemaVersion } from "../../database/schema/schemaVersion.js"
+import { ssoUsers } from "../../database/schema/ssoUsers.js"
+import { users as usersTable } from "../../database/schema/users.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import { identityDeviceDeleteAllByUser } from "../identity/identityDeviceDeleteAllByUser.js"
 import { identityDeviceFindByUser } from "../identity/identityDeviceFindByUser.js"
 import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserFromRow } from "../identity/identityUserFromRow.js"
-import type { IdentityUserRow } from "../identity/identityUserRow.js"
 import { identityUserSave } from "../identity/identityUserSave.js"
-import type { Organization } from "../organizations/organization.js"
-import { organizationSelect } from "../organizations/organizationSelect.js"
 import { twoFactorRecordDeleteAllByUser } from "../twoFactor/twoFactorRecordDeleteAllByUser.js"
 import { twoFactorRecoveryCodeClear } from "../twoFactor/twoFactorRecoveryCodeClear.js"
 import type { AdminBackupAdapter } from "./adminBackupAdapter.js"
@@ -144,7 +162,11 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
       if (!saveResult.success) return apiErrorResponseCreate(saveResult)
     } else {
       const saveResult = databaseTransaction(databaseResult.data, () => {
-        databaseResult.data.run("INSERT OR REPLACE INTO invitations (email) VALUES (?)", [email])
+        databaseResult.data.drizzle
+          .insert(invitations)
+          .values({ email })
+          .onConflictDoUpdate({ target: invitations.email, set: { email } })
+          .run()
         return identityUserSave(databaseResult.data, userResult.data)
       })
       if (!saveResult.success) return apiErrorResponseCreate(saveResult)
@@ -252,7 +274,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     if (userId === undefined) return apiErrorResponseCreate(adminNotFoundError("adminDeleteSsoUser"))
     const memberships = adminMembershipsFind(databaseResult.data, userId)
     try {
-      databaseResult.data.run("DELETE FROM sso_users WHERE user_uuid = ?", [userId])
+      databaseResult.data.drizzle.delete(ssoUsers).where(eq(ssoUsers.userUuid, userId)).run()
       for (const membership of memberships)
         options.event?.organizationEventCreate(
           eventType.organizationUserUnlinkedSso,
@@ -359,30 +381,43 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     if (membershipType === undefined)
       return apiErrorResponseCreate(adminError("adminUpdateMembershipType", "Invalid type"))
     try {
-      const membership = databaseResult.data
-        .query<{ uuid: string; atype: number }, [string, string]>(
-          "SELECT uuid, atype FROM users_organizations WHERE user_uuid = ? AND org_uuid = ? LIMIT 1",
+      const membership = databaseResult.data.drizzle
+        .select({ atype: usersOrganizations.atype, uuid: usersOrganizations.uuid })
+        .from(usersOrganizations)
+        .where(
+          and(
+            eq(usersOrganizations.userUuid, bodyResult.data.user_uuid),
+            eq(usersOrganizations.orgUuid, bodyResult.data.org_uuid),
+          ),
         )
-        .get(bodyResult.data.user_uuid, bodyResult.data.org_uuid)
-      if (membership === null)
+        .limit(1)
+        .get()
+      if (membership === undefined)
         return apiErrorResponseCreate(
           adminError("adminUpdateMembershipType", "The specified user isn't member of the organization"),
         )
       if (membership.atype === 0 && membershipType !== 0) {
-        const ownerCount = databaseResult.data
-          .query<{ count: number }, [string]>(
-            "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = 2 AND atype = 0",
+        const ownerCount = databaseResult.data.drizzle
+          .select({ count: count() })
+          .from(usersOrganizations)
+          .where(
+            and(
+              eq(usersOrganizations.orgUuid, bodyResult.data.org_uuid),
+              eq(usersOrganizations.status, 2),
+              eq(usersOrganizations.atype, 0),
+            ),
           )
-          .get(bodyResult.data.org_uuid)?.count
+          .get()?.count
         if ((ownerCount ?? 0) <= 1)
           return apiErrorResponseCreate(
             adminError("adminUpdateMembershipType", "Can't change the type of the last owner"),
           )
       }
-      databaseResult.data.run("UPDATE users_organizations SET atype = ? WHERE uuid = ?", [
-        membershipType,
-        membership.uuid,
-      ])
+      databaseResult.data.drizzle
+        .update(usersOrganizations)
+        .set({ atype: membershipType })
+        .where(eq(usersOrganizations.uuid, membership.uuid))
+        .run()
       options.event?.organizationEventCreate(
         eventType.organizationUserUpdated,
         membership.uuid,
@@ -402,7 +437,7 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     const databaseResult = adminDatabaseRequire(context, options)
     if (!databaseResult.success) return apiErrorResponseCreate(databaseResult)
     try {
-      databaseResult.data.run("UPDATE users SET updated_at = ?", [options.clock.now().toISOString()])
+      databaseResult.data.drizzle.update(usersTable).set({ updatedAt: options.clock.now().toISOString() }).run()
       return adminEmptyResponse()
     } catch {
       return apiErrorResponseCreate(
@@ -415,8 +450,17 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     const databaseResult = adminDatabaseRequire(context, options)
     if (!databaseResult.success) return apiErrorResponseCreate(databaseResult)
     try {
-      const organizations = databaseResult.data
-        .query<Organization, []>(`SELECT ${organizationSelect} FROM organizations ORDER BY uuid`)
+      const organizations = databaseResult.data.drizzle
+        .select({
+          billingEmail: organizationsTable.billingEmail,
+          identifier: organizationsTable.identifier,
+          name: organizationsTable.name,
+          privateKey: organizationsTable.privateKey,
+          publicKey: organizationsTable.publicKey,
+          uuid: organizationsTable.uuid,
+        })
+        .from(organizationsTable)
+        .orderBy(asc(organizationsTable.uuid))
         .all()
         .map((organization) => ({
           ...adminOrganizationJsonCreate(organization, options.identityConfig.MAIL_ENABLED),
@@ -458,8 +502,10 @@ export function adminRoutesRegister(app: Hono<any>, suppliedOptions: AdminRouteO
     if (database !== undefined) {
       try {
         dbVersion =
-          database.query<{ version: number | null }, []>("SELECT MAX(version) AS version FROM schema_version").get()
-            ?.version ?? null
+          database.drizzle
+            .select({ version: max(schemaVersion.version) })
+            .from(schemaVersion)
+            .get()?.version ?? null
       } catch {
         dbVersion = null
       }
@@ -661,22 +707,16 @@ function adminDatabaseRequire(context: Context<any>, options: AdminRouteOptions)
   return resultCreate(database)
 }
 
-function adminUserRowSelect(): string {
-  return `SELECT uuid, enabled, created_at, updated_at, verified_at, last_verifying_at,
-    login_verify_count, email, email_new, email_new_token, name, password_hash,
-    salt, password_iterations, password_hint, akey, private_key, public_key,
-    security_stamp, stamp_exception, equivalent_domains, excluded_globals, totp_recover,
-    client_kdf_type, client_kdf_iter, client_kdf_memory, client_kdf_parallelism,
-    api_key, avatar_color, external_id FROM users`
-}
-
 function adminUserFindByEmail(database: DatabaseConnection, email: string): Result<IdentityUser | null> {
   const op = "adminUserFindByEmail"
   try {
-    const row = database
-      .query<IdentityUserRow, [string]>(`${adminUserRowSelect()} WHERE email = ? LIMIT 1`)
-      .get(email.toLowerCase())
-    return resultCreate(row === null ? null : identityUserFromRow(row))
+    const row = database.drizzle
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase()))
+      .limit(1)
+      .get()
+    return resultCreate(row === undefined ? null : identityUserFromRow(row))
   } catch {
     return resultErrorCreate(op, "User lookup failed.", { code: "platform.internal" })
   }
@@ -685,8 +725,8 @@ function adminUserFindByEmail(database: DatabaseConnection, email: string): Resu
 function adminUserFindByUuid(database: DatabaseConnection, uuid: string): Result<IdentityUser | null> {
   const op = "adminUserFindByUuid"
   try {
-    const row = database.query<IdentityUserRow, [string]>(`${adminUserRowSelect()} WHERE uuid = ? LIMIT 1`).get(uuid)
-    return resultCreate(row === null ? null : identityUserFromRow(row))
+    const row = database.drizzle.select().from(usersTable).where(eq(usersTable.uuid, uuid)).limit(1).get()
+    return resultCreate(row === undefined ? null : identityUserFromRow(row))
   } catch {
     return resultErrorCreate(op, "User lookup failed.", { code: "platform.internal" })
   }
@@ -695,7 +735,7 @@ function adminUserFindByUuid(database: DatabaseConnection, uuid: string): Result
 function adminUsersFindAll(database: DatabaseConnection): Result<IdentityUser[]> {
   const op = "adminUsersFindAll"
   try {
-    const rows = database.query<IdentityUserRow, []>(`${adminUserRowSelect()} ORDER BY email, uuid`).all()
+    const rows = database.drizzle.select().from(usersTable).orderBy(asc(usersTable.email), asc(usersTable.uuid)).all()
     return resultCreate(rows.map(identityUserFromRow))
   } catch {
     return resultErrorCreate(op, "User lookup failed.", { code: "platform.internal" })
@@ -742,41 +782,61 @@ function adminPendingUserCreate(email: string, options: AdminRouteOptions): Resu
 function adminUserDelete(database: DatabaseConnection, user: IdentityUser): Result<void> {
   const op = "adminDeleteUser"
   try {
-    const lastOwner = database
-      .query<{ uuid: string }, [string]>(
-        `SELECT member.uuid FROM users_organizations AS member
-         WHERE member.user_uuid = ? AND member.status = 2 AND member.atype = 0
-         AND (SELECT COUNT(*) FROM users_organizations AS owner
-              WHERE owner.org_uuid = member.org_uuid AND owner.status = 2 AND owner.atype = 0) <= 1 LIMIT 1`,
+    const ownerMemberships = database.drizzle
+      .select({ orgUuid: usersOrganizations.orgUuid, uuid: usersOrganizations.uuid })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.userUuid, user.uuid),
+          eq(usersOrganizations.status, 2),
+          eq(usersOrganizations.atype, 0),
+        ),
       )
-      .get(user.uuid)
-    if (lastOwner !== null) return adminError(op, "Can't delete last owner")
+      .all()
+    for (const ownerMembership of ownerMemberships) {
+      const ownerCount =
+        database.drizzle
+          .select({ count: count() })
+          .from(usersOrganizations)
+          .where(
+            and(
+              eq(usersOrganizations.orgUuid, ownerMembership.orgUuid),
+              eq(usersOrganizations.status, 2),
+              eq(usersOrganizations.atype, 0),
+            ),
+          )
+          .get()?.count ?? 0
+      if (ownerCount <= 1) return adminError(op, "Can't delete last owner")
+    }
   } catch {
     return resultErrorCreate(op, "User deletion failed.", { code: "platform.internal" })
   }
   return databaseTransaction(database, () => {
     try {
-      database.run("DELETE FROM favorites WHERE cipher_uuid IN (SELECT uuid FROM ciphers WHERE user_uuid = ?)", [
-        user.uuid,
-      ])
-      database.run("DELETE FROM archives WHERE cipher_uuid IN (SELECT uuid FROM ciphers WHERE user_uuid = ?)", [
-        user.uuid,
-      ])
-      database.run("DELETE FROM ciphers WHERE user_uuid = ?", [user.uuid])
-      database.run(
-        "DELETE FROM groups_users WHERE users_organizations_uuid IN (SELECT uuid FROM users_organizations WHERE user_uuid = ?)",
-        [user.uuid],
-      )
-      database.run("DELETE FROM users_collections WHERE user_uuid = ?", [user.uuid])
-      database.run("DELETE FROM folders_ciphers WHERE folder_uuid IN (SELECT uuid FROM folders WHERE user_uuid = ?)", [
-        user.uuid,
-      ])
-      database.run("DELETE FROM folders WHERE user_uuid = ?", [user.uuid])
-      database.run("DELETE FROM sso_users WHERE user_uuid = ?", [user.uuid])
-      database.run("DELETE FROM users_organizations WHERE user_uuid = ?", [user.uuid])
-      database.run("DELETE FROM invitations WHERE email = ?", [user.email])
-      database.run("DELETE FROM devices WHERE user_uuid = ?", [user.uuid])
-      database.run("DELETE FROM users WHERE uuid = ?", [user.uuid])
+      const cipherUuids = database.drizzle
+        .select({ uuid: ciphers.uuid })
+        .from(ciphers)
+        .where(eq(ciphers.userUuid, user.uuid))
+      database.drizzle.delete(favorites).where(inArray(favorites.cipherUuid, cipherUuids)).run()
+      database.drizzle.delete(archives).where(inArray(archives.cipherUuid, cipherUuids)).run()
+      database.drizzle.delete(ciphers).where(eq(ciphers.userUuid, user.uuid)).run()
+      const membershipUuids = database.drizzle
+        .select({ uuid: usersOrganizations.uuid })
+        .from(usersOrganizations)
+        .where(eq(usersOrganizations.userUuid, user.uuid))
+      database.drizzle.delete(groupsUsers).where(inArray(groupsUsers.usersOrganizationsUuid, membershipUuids)).run()
+      database.drizzle.delete(usersCollections).where(eq(usersCollections.userUuid, user.uuid)).run()
+      const folderUuids = database.drizzle
+        .select({ uuid: folders.uuid })
+        .from(folders)
+        .where(eq(folders.userUuid, user.uuid))
+      database.drizzle.delete(foldersCiphers).where(inArray(foldersCiphers.folderUuid, folderUuids)).run()
+      database.drizzle.delete(folders).where(eq(folders.userUuid, user.uuid)).run()
+      database.drizzle.delete(ssoUsers).where(eq(ssoUsers.userUuid, user.uuid)).run()
+      database.drizzle.delete(usersOrganizations).where(eq(usersOrganizations.userUuid, user.uuid)).run()
+      database.drizzle.delete(invitations).where(eq(invitations.email, user.email)).run()
+      database.drizzle.delete(devices).where(eq(devices.userUuid, user.uuid)).run()
+      database.drizzle.delete(usersTable).where(eq(usersTable.uuid, user.uuid)).run()
       return resultCreate(undefined)
     } catch {
       return resultErrorCreate(op, "User deletion failed.", { code: "platform.internal" })
@@ -790,9 +850,7 @@ function identityUserJsonForOverview(user: IdentityUser, database: DatabaseConne
   let cipherCount = 0
   try {
     cipherCount =
-      database
-        .query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM ciphers WHERE user_uuid = ?")
-        .get(user.uuid)?.count ?? 0
+      database.drizzle.select({ count: count() }).from(ciphers).where(eq(ciphers.userUuid, user.uuid)).get()?.count ?? 0
   } catch {
     cipherCount = 0
   }
@@ -810,40 +868,62 @@ function identityUserJsonForOverview(user: IdentityUser, database: DatabaseConne
 function adminOrganizationDelete(database: DatabaseConnection, organizationUuid: string): Result<void> {
   const op = "adminDeleteOrganization"
   try {
-    const organization = database
-      .query<{ uuid: string }, [string]>("SELECT uuid FROM organizations WHERE uuid = ? LIMIT 1")
-      .get(organizationUuid)
-    if (organization === null) return adminError(op, "Organization doesn't exist", "platform.not-found")
+    const organization = database.drizzle
+      .select({ uuid: organizationsTable.uuid })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.uuid, organizationUuid))
+      .limit(1)
+      .get()
+    if (organization === undefined) return adminError(op, "Organization doesn't exist", "platform.not-found")
   } catch {
     return resultErrorCreate(op, "Organization lookup failed.", { code: "platform.internal" })
   }
   return databaseTransaction(database, () => {
     try {
-      database.run(
-        "DELETE FROM groups_users WHERE groups_uuid IN (SELECT uuid FROM groups WHERE organizations_uuid = ?)",
-        [organizationUuid],
-      )
-      database.run(
-        "DELETE FROM collections_groups WHERE collections_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)",
-        [organizationUuid],
-      )
-      database.run(
-        "DELETE FROM users_collections WHERE collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)",
-        [organizationUuid],
-      )
-      database.run(
-        "DELETE FROM favorites WHERE cipher_uuid IN (SELECT uuid FROM ciphers WHERE organization_uuid = ?)",
-        [organizationUuid],
-      )
-      database.run("DELETE FROM archives WHERE cipher_uuid IN (SELECT uuid FROM ciphers WHERE organization_uuid = ?)", [
-        organizationUuid,
-      ])
-      database.run("DELETE FROM ciphers WHERE organization_uuid = ?", [organizationUuid])
-      database.run("DELETE FROM collections WHERE org_uuid = ?", [organizationUuid])
-      database.run("DELETE FROM groups WHERE organizations_uuid = ?", [organizationUuid])
-      database.run("DELETE FROM users_organizations WHERE org_uuid = ?", [organizationUuid])
-      database.run("DELETE FROM organization_api_key WHERE org_uuid = ?", [organizationUuid])
-      database.run("DELETE FROM organizations WHERE uuid = ?", [organizationUuid])
+      const groupUuids = database.drizzle
+        .select({ uuid: groups.uuid })
+        .from(groups)
+        .where(eq(groups.organizationsUuid, organizationUuid))
+      database.drizzle.delete(groupsUsers).where(inArray(groupsUsers.groupsUuid, groupUuids)).run()
+      const collectionUuids = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(eq(collections.orgUuid, organizationUuid))
+      database.drizzle.delete(usersCollections).where(inArray(usersCollections.collectionUuid, collectionUuids)).run()
+      database.drizzle
+        .delete(favorites)
+        .where(
+          inArray(
+            favorites.cipherUuid,
+            database.drizzle
+              .select({ uuid: ciphers.uuid })
+              .from(ciphers)
+              .where(eq(ciphers.organizationUuid, organizationUuid)),
+          ),
+        )
+        .run()
+      database.drizzle
+        .delete(archives)
+        .where(
+          inArray(
+            archives.cipherUuid,
+            database.drizzle
+              .select({ uuid: ciphers.uuid })
+              .from(ciphers)
+              .where(eq(ciphers.organizationUuid, organizationUuid)),
+          ),
+        )
+        .run()
+      database.drizzle
+        .delete(collectionsGroups)
+        .where(inArray(collectionsGroups.collectionsUuid, collectionUuids))
+        .run()
+      database.drizzle.delete(ciphers).where(eq(ciphers.organizationUuid, organizationUuid)).run()
+      database.drizzle.delete(collections).where(eq(collections.orgUuid, organizationUuid)).run()
+      database.drizzle.delete(groups).where(eq(groups.organizationsUuid, organizationUuid)).run()
+      database.drizzle.delete(usersOrganizations).where(eq(usersOrganizations.orgUuid, organizationUuid)).run()
+      database.drizzle.delete(organizationApiKey).where(eq(organizationApiKey.orgUuid, organizationUuid)).run()
+      database.drizzle.delete(organizationsTable).where(eq(organizationsTable.uuid, organizationUuid)).run()
       return resultCreate(undefined)
     } catch {
       return resultErrorCreate(op, "Organization deletion failed.", { code: "platform.internal" })
@@ -867,18 +947,37 @@ function adminInviteOrganizationId(config: IdentityConfig): string {
 function adminCount(database: DatabaseConnection, table: string, column: string, value: string): number {
   const safeTables = new Set(["users_organizations", "ciphers", "collections", "groups"])
   if (!safeTables.has(table)) return 0
-  return (
-    database.query<{ count: number }, [string]>(`SELECT COUNT(*) AS count FROM ${table} WHERE ${column} = ?`).get(value)
-      ?.count ?? 0
-  )
+  if (table === "users_organizations" && column === "org_uuid")
+    return (
+      database.drizzle
+        .select({ count: count() })
+        .from(usersOrganizations)
+        .where(eq(usersOrganizations.orgUuid, value))
+        .get()?.count ?? 0
+    )
+  if (table === "ciphers" && column === "organization_uuid")
+    return (
+      database.drizzle.select({ count: count() }).from(ciphers).where(eq(ciphers.organizationUuid, value)).get()
+        ?.count ?? 0
+    )
+  if (table === "collections" && column === "org_uuid")
+    return (
+      database.drizzle.select({ count: count() }).from(collections).where(eq(collections.orgUuid, value)).get()
+        ?.count ?? 0
+    )
+  if (table === "groups" && column === "organizations_uuid")
+    return (
+      database.drizzle.select({ count: count() }).from(groups).where(eq(groups.organizationsUuid, value)).get()
+        ?.count ?? 0
+    )
+  return 0
 }
 
 function adminOrganizationEventCount(database: DatabaseConnection, organizationUuid: string): number {
   try {
     return (
-      database
-        .query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM event WHERE org_uuid = ?")
-        .get(organizationUuid)?.count ?? 0
+      database.drizzle.select({ count: count() }).from(event).where(eq(event.orgUuid, organizationUuid)).get()?.count ??
+      0
     )
   } catch {
     return 0
@@ -890,17 +989,15 @@ function adminOrganizationAttachmentMetricsFind(
   organizationUuid: string,
 ): { attachment_count: number; attachment_size: string } {
   try {
-    const metrics = database
-      .query<{ count: number; size: number | null }, [string]>(
-        `SELECT COUNT(*) AS count, COALESCE(SUM(attachment.file_size), 0) AS size
-         FROM attachments AS attachment
-         JOIN ciphers AS cipher ON cipher.uuid = attachment.cipher_uuid
-         WHERE cipher.organization_uuid = ?`,
-      )
-      .get(organizationUuid)
+    const metrics = database.drizzle
+      .select({ count: count(), size: sum(attachments.fileSize) })
+      .from(attachments)
+      .innerJoin(ciphers, eq(ciphers.uuid, attachments.cipherUuid))
+      .where(eq(ciphers.organizationUuid, organizationUuid))
+      .get()
     return {
       attachment_count: metrics?.count ?? 0,
-      attachment_size: adminDisplaySize(metrics?.size ?? 0),
+      attachment_size: adminDisplaySize(Number(metrics?.size ?? 0)),
     }
   } catch {
     return { attachment_count: 0, attachment_size: adminDisplaySize(0) }
@@ -912,17 +1009,15 @@ function adminUserAttachmentMetricsFind(
   userUuid: string,
 ): { attachment_count: number; attachment_size: string } {
   try {
-    const metrics = database
-      .query<{ count: number; size: number | null }, [string]>(
-        `SELECT COUNT(*) AS count, COALESCE(SUM(attachment.file_size), 0) AS size
-         FROM attachments AS attachment
-         JOIN ciphers AS cipher ON cipher.uuid = attachment.cipher_uuid
-         WHERE cipher.user_uuid = ?`,
-      )
-      .get(userUuid)
+    const metrics = database.drizzle
+      .select({ count: count(), size: sum(attachments.fileSize) })
+      .from(attachments)
+      .innerJoin(ciphers, eq(ciphers.uuid, attachments.cipherUuid))
+      .where(eq(ciphers.userUuid, userUuid))
+      .get()
     return {
       attachment_count: metrics?.count ?? 0,
-      attachment_size: adminDisplaySize(metrics?.size ?? 0),
+      attachment_size: adminDisplaySize(Number(metrics?.size ?? 0)),
     }
   } catch {
     return { attachment_count: 0, attachment_size: adminDisplaySize(0) }
@@ -945,12 +1040,11 @@ function adminMembershipsFind(
   userUuid: string,
 ): Array<{ orgUuid: string; uuid: string }> {
   try {
-    return database
-      .query<{ org_uuid: string; uuid: string }, [string]>(
-        "SELECT org_uuid, uuid FROM users_organizations WHERE user_uuid = ?",
-      )
-      .all(userUuid)
-      .map((membership) => ({ orgUuid: membership.org_uuid, uuid: membership.uuid }))
+    return database.drizzle
+      .select({ orgUuid: usersOrganizations.orgUuid, uuid: usersOrganizations.uuid })
+      .from(usersOrganizations)
+      .where(eq(usersOrganizations.userUuid, userUuid))
+      .all()
   } catch {
     return []
   }

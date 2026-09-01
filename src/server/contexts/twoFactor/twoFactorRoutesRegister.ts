@@ -10,7 +10,10 @@ import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestValidationParse } from "../../../shared/validation/requestValidationParse.js"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { devices } from "../../database/schema/devices.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
@@ -221,11 +224,18 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
       }
       if (type === twoFactorProviderType.webauthn) {
         try {
-          request.data.database.run("DELETE FROM twofactor WHERE user_uuid = ? AND atype IN (?, ?)", [
-            request.data.authentication.user.uuid,
-            twoFactorProviderType.webauthnRegisterChallenge,
-            twoFactorProviderType.webauthnLoginChallenge,
-          ])
+          request.data.database.drizzle
+            .delete(twoFactor)
+            .where(
+              and(
+                eq(twoFactor.userUuid, request.data.authentication.user.uuid),
+                inArray(twoFactor.atype, [
+                  twoFactorProviderType.webauthnRegisterChallenge,
+                  twoFactorProviderType.webauthnLoginChallenge,
+                ]),
+              ),
+            )
+            .run()
         } catch {
           return resultErrorCreate("twoFactorDisable", "Webauthn challenge cleanup failed.")
         }
@@ -826,11 +836,18 @@ export function twoFactorRoutesRegister(app: Hono<AuthenticationEnvironment>, op
         if (!providerSaveResult.success) return providerSaveResult
       }
       try {
-        request.data.database.run("DELETE FROM twofactor WHERE user_uuid = ? AND atype IN (?, ?)", [
-          request.data.authentication.user.uuid,
-          twoFactorProviderType.webauthnRegisterChallenge,
-          twoFactorProviderType.webauthnLoginChallenge,
-        ])
+        request.data.database.drizzle
+          .delete(twoFactor)
+          .where(
+            and(
+              eq(twoFactor.userUuid, request.data.authentication.user.uuid),
+              inArray(twoFactor.atype, [
+                twoFactorProviderType.webauthnRegisterChallenge,
+                twoFactorProviderType.webauthnLoginChallenge,
+              ]),
+            ),
+          )
+          .run()
       } catch {
         return resultErrorCreate("deleteWebAuthn", "Webauthn challenge cleanup failed.")
       }
@@ -1031,13 +1048,15 @@ function twoFactorUserFindByDevice(
   if (database === undefined) return resultErrorCreate("twoFactorUserFindByDevice", "Identity database is unavailable.")
   if (deviceIdentifier === undefined || deviceIdentifier === null || deviceIdentifier === "") return resultCreate(null)
   try {
-    const row = database
-      .query<{ user_uuid: string }, [string]>(
-        "SELECT user_uuid FROM devices WHERE uuid = ? ORDER BY updated_at DESC LIMIT 1",
-      )
-      .get(deviceIdentifier)
-    if (row === null) return resultCreate(null)
-    return identityUserFindByUuid(database, row.user_uuid)
+    const row = database.drizzle
+      .select({ userUuid: devices.userUuid })
+      .from(devices)
+      .where(eq(devices.uuid, deviceIdentifier))
+      .orderBy(desc(devices.updatedAt))
+      .limit(1)
+      .get()
+    if (row === undefined) return resultCreate(null)
+    return identityUserFindByUuid(database, row.userUuid)
   } catch {
     return resultErrorCreate("twoFactorUserFindByDevice", "User lookup failed.")
   }

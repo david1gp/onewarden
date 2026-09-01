@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite"
 import { expect, test } from "bun:test"
+import { sql } from "drizzle-orm"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -20,8 +21,8 @@ test("restore CLI restores a validated backup and reports its quarantine", async
     const databaseResult = databaseOpen(databasePath)
     expect(databaseResult.success).toBe(true)
     if (!databaseResult.success) return
-    databaseResult.data.exec("CREATE TABLE restore_cli_entries (value TEXT NOT NULL)")
-    databaseResult.data.run("INSERT INTO restore_cli_entries (value) VALUES (?)", ["backup"])
+    databaseResult.data.drizzle.run(sql.raw("CREATE TABLE restore_cli_entries (value TEXT NOT NULL)"))
+    databaseResult.data.drizzle.run(sql`INSERT INTO restore_cli_entries (value) VALUES (${"backup"})`)
     expect(databaseMigrate(databaseResult.data).success).toBe(true)
     databaseClose(databaseResult.data)
 
@@ -37,7 +38,7 @@ test("restore CLI restores a validated backup and reports its quarantine", async
     const currentDatabaseResult = databaseOpen(databasePath)
     expect(currentDatabaseResult.success).toBe(true)
     if (!currentDatabaseResult.success) return
-    currentDatabaseResult.data.run("INSERT INTO restore_cli_entries (value) VALUES (?)", ["current"])
+    currentDatabaseResult.data.drizzle.run(sql`INSERT INTO restore_cli_entries (value) VALUES (${"current"})`)
     databaseClose(currentDatabaseResult.data)
 
     const projectRoot = resolve(import.meta.dir, "../../..")

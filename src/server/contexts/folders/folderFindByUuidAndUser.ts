@@ -1,9 +1,10 @@
-import { type Result } from "#result"
+import { and, eq } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { folders } from "../../database/schema/folders.js"
 import type { Folder } from "./folder.js"
-import { folderSelect } from "./folderSelect.js"
 
 export function folderFindByUuidAndUser(
   database: DatabaseConnection,
@@ -12,10 +13,13 @@ export function folderFindByUuidAndUser(
 ): Result<Folder | null> {
   const op = "folderFindByUuidAndUser"
   try {
-    const row = database
-      .query<Folder, [string, string]>(`SELECT ${folderSelect} FROM folders WHERE uuid = ? AND user_uuid = ? LIMIT 1`)
-      .get(uuid, userUuid)
-    return resultCreate(row)
+    const row = database.drizzle
+      .select()
+      .from(folders)
+      .where(and(eq(folders.uuid, uuid), eq(folders.userUuid, userUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row ?? null)
   } catch {
     return resultErrorCreate(op, "Folder lookup failed.")
   }

@@ -2,41 +2,44 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { ssoAuth, type SsoAuthInsert } from "../../database/schema/ssoAuth.js"
 import type { IdentitySsoAuth } from "./identitySsoAuth.js"
 
 export function identitySsoAuthSave(database: DatabaseConnection, auth: IdentitySsoAuth): Result<void> {
   const op = "identitySsoAuthSave"
   try {
-    database.run(
-      `INSERT INTO sso_auth (
-         state, client_challenge, nonce, redirect_uri, code_response,
-         code_response_error, auth_response, created_at, updated_at, binding_hash, organization_uuid
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(state) DO UPDATE SET
-         client_challenge = excluded.client_challenge,
-         nonce = excluded.nonce,
-         redirect_uri = excluded.redirect_uri,
-         code_response = excluded.code_response,
-         code_response_error = excluded.code_response_error,
-         auth_response = excluded.auth_response,
-          created_at = excluded.created_at,
-          updated_at = excluded.updated_at,
-          binding_hash = excluded.binding_hash,
-          organization_uuid = excluded.organization_uuid`,
-      [
-        auth.state,
-        auth.clientChallenge,
-        auth.nonce,
-        auth.redirectUri,
-        auth.codeResponse,
-        auth.codeResponseError === null ? null : JSON.stringify(auth.codeResponseError),
-        auth.authResponse === null ? null : JSON.stringify(auth.authResponse),
-        auth.createdAt,
-        auth.updatedAt,
-        auth.bindingHash,
-        auth.organizationUuid ?? null,
-      ],
-    )
+    const values: SsoAuthInsert = {
+      state: auth.state,
+      clientChallenge: auth.clientChallenge,
+      nonce: auth.nonce,
+      redirectUri: auth.redirectUri,
+      codeResponse: auth.codeResponse,
+      codeResponseError: auth.codeResponseError === null ? null : JSON.stringify(auth.codeResponseError),
+      authResponse: auth.authResponse === null ? null : JSON.stringify(auth.authResponse),
+      createdAt: auth.createdAt,
+      updatedAt: auth.updatedAt,
+      bindingHash: auth.bindingHash,
+      organizationUuid: auth.organizationUuid ?? null,
+    }
+    database.drizzle
+      .insert(ssoAuth)
+      .values(values)
+      .onConflictDoUpdate({
+        target: ssoAuth.state,
+        set: {
+          clientChallenge: values.clientChallenge,
+          nonce: values.nonce,
+          redirectUri: values.redirectUri,
+          codeResponse: values.codeResponse,
+          codeResponseError: values.codeResponseError,
+          authResponse: values.authResponse,
+          createdAt: values.createdAt,
+          updatedAt: values.updatedAt,
+          bindingHash: values.bindingHash,
+          organizationUuid: values.organizationUuid,
+        },
+      })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "SSO auth save failed.")

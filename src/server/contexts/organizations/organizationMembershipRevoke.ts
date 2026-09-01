@@ -2,6 +2,8 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, count, eq } from "drizzle-orm"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipFindByUuidAndOrganization } from "./organizationMembershipFindByUuidAndOrganization.js"
 import { organizationMembershipSave } from "./organizationMembershipSave.js"
@@ -41,10 +43,16 @@ export function organizationMembershipRevoke(
 
 function organizationMembershipConfirmedOwnerCount(database: DatabaseConnection, organizationUuid: string): number {
   return (
-    database
-      .query<{ count: number }, [string, number, number]>(
-        "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = ? AND atype = ?",
+    database.drizzle
+      .select({ count: count() })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.orgUuid, organizationUuid),
+          eq(usersOrganizations.status, organizationMembershipStatus.confirmed),
+          eq(usersOrganizations.atype, organizationMembershipType.owner),
+        ),
       )
-      .get(organizationUuid, organizationMembershipStatus.confirmed, organizationMembershipType.owner)?.count ?? 0
+      .get()?.count ?? 0
   )
 }

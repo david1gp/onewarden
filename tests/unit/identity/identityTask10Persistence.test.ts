@@ -219,3 +219,32 @@ test("account deletion blocks the final owner before mutation and deletes curren
     database.query("SELECT COUNT(*) AS count FROM users_organizations WHERE user_uuid = ?").get(user.uuid),
   ).toEqual({ count: 0 })
 })
+
+test("account deletion checks every organization owned by the user", () => {
+  const database = databaseCreate()
+  const user = userCreate({ uuid: "task10-multi-org-user", email: "multi-org@example.com" })
+  const otherOwner = userCreate({ uuid: "task10-other-owner", email: "other-owner@example.com" })
+  expect(identityUserSave(database, user)).toEqual({ success: true, data: undefined })
+  expect(identityUserSave(database, otherOwner)).toEqual({ success: true, data: undefined })
+  for (const organization of [
+    ["multi-owner-org", "Multi-owner org", "multi-owner@example.com"],
+    ["final-owner-org", "Final owner org", "final-owner@example.com"],
+  ]) {
+    database.run("INSERT INTO organizations (uuid, name, billing_email) VALUES (?, ?, ?)", organization)
+  }
+  database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?)",
+    ["multi-owner-membership", user.uuid, "multi-owner-org", "key", 2, 0],
+  )
+  database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?)",
+    ["other-owner-membership", otherOwner.uuid, "multi-owner-org", "key", 2, 0],
+  )
+  database.run(
+    "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, akey, status, atype) VALUES (?, ?, ?, ?, ?, ?)",
+    ["final-owner-membership", user.uuid, "final-owner-org", "key", 2, 0],
+  )
+
+  expect(identityUserDelete(database, user)).toMatchObject({ success: false, errorMessage: "Can't delete last owner" })
+  expect(database.query("SELECT COUNT(*) AS count FROM users WHERE uuid = ?").get(user.uuid)).toEqual({ count: 1 })
+})

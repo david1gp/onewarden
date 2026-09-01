@@ -8,6 +8,10 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffCreateRequest } from "../../../shared/sessionHandoff/sessionHandoffCreateRequestSchema.js"
 import type { SessionHandoffCreateResponse } from "../../../shared/sessionHandoff/sessionHandoffCreateResponseSchema.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import {
+  extensionSessionHandoffs,
+  type ExtensionSessionHandoffInsert,
+} from "../../database/schema/extensionSessionHandoffs.js"
 
 const sessionHandoffLifetimeMilliseconds = 45_000
 
@@ -27,23 +31,18 @@ export async function sessionHandoffCreate(
   const createdAt = clock.now()
   const expiresAt = new Date(createdAt.getTime() + sessionHandoffLifetimeMilliseconds)
   try {
-    database.run(
-      `INSERT INTO extension_session_handoffs (
-         token_hash, user_uuid, source_device_uuid, operation, cipher_uuid,
-         user_key_iv, user_key_ciphertext, created_at, expires_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        tokenHashResult.data,
-        userUuid,
-        sourceDeviceUuid,
-        request.operation,
-        request.cipherId,
-        request.encryptedUserKey.iv,
-        request.encryptedUserKey.ciphertext,
-        createdAt.toISOString(),
-        expiresAt.toISOString(),
-      ],
-    )
+    const values: ExtensionSessionHandoffInsert = {
+      tokenHash: tokenHashResult.data,
+      userUuid,
+      sourceDeviceUuid,
+      operation: request.operation,
+      cipherUuid: request.cipherId,
+      userKeyIv: request.encryptedUserKey.iv,
+      userKeyCiphertext: request.encryptedUserKey.ciphertext,
+      createdAt: createdAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    }
+    database.drizzle.insert(extensionSessionHandoffs).values(values).run()
     return resultCreate({ token, expiresAt: expiresAt.toISOString() })
   } catch {
     return resultErrorCreate(op, "Session handoff could not be created.", {

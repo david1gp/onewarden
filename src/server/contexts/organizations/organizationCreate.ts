@@ -5,6 +5,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import { organizationCollectionCreate } from "./organizationCollectionCreate.js"
 import type { Organization } from "./organization.js"
 import type { OrganizationCreateData } from "./organizationCreateDataSchema.js"
@@ -32,12 +33,18 @@ export function organizationCreate(
     const saveResult = organizationSave(database, organization, now)
     if (!saveResult.success) return saveResult
     try {
-      database.run(
-        `INSERT INTO users_organizations (
-           uuid, user_uuid, org_uuid, access_all, akey, status, atype
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [membershipUuid, userUuid, organization.uuid, 1, data.key, 2, 0],
-      )
+      database.drizzle
+        .insert(usersOrganizations)
+        .values({
+          uuid: membershipUuid,
+          userUuid,
+          orgUuid: organization.uuid,
+          accessAll: true,
+          akey: data.key,
+          status: 2,
+          atype: 0,
+        })
+        .run()
       const collectionResult = organizationCollectionCreate(
         database,
         organization.uuid,

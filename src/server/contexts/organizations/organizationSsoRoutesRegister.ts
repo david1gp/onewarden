@@ -1,4 +1,5 @@
 import type { Context, Hono } from "hono"
+import { and, count, eq, ne } from "drizzle-orm"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
@@ -14,6 +15,7 @@ import { organizationSsoConfigSave } from "./organizationSsoConfigSave.js"
 import { organizationSsoRequestSchema } from "./organizationSsoRequestSchema.js"
 import { organizationSsoToJson } from "./organizationSsoToJson.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { organizations } from "../../database/schema/organizations.js"
 
 export function organizationSsoRoutesRegister(
   app: Hono<AuthenticationEnvironment>,
@@ -66,11 +68,11 @@ export function organizationSsoRoutesRegister(
       return apiErrorResponseCreate(organizationErrorCreate("organizationSsoRoutesPost", "Organization not found", 404))
     const identifier = bodyResult.data.identifier?.trim() ?? ""
     if (identifier !== "") {
-      const duplicate = database
-        .query<{ count: number }, [string, string]>(
-          "SELECT COUNT(*) AS count FROM organizations WHERE identifier = ? AND uuid <> ?",
-        )
-        .get(identifier, organizationUuid)
+      const duplicate = database.drizzle
+        .select({ count: count() })
+        .from(organizations)
+        .where(and(eq(organizations.identifier, identifier), ne(organizations.uuid, organizationUuid)))
+        .get()
       if ((duplicate?.count ?? 0) > 0)
         return apiErrorResponseCreate(
           organizationErrorCreate(

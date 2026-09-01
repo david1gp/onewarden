@@ -3,6 +3,10 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, eq } from "drizzle-orm"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
 import type { OrganizationGroup } from "./organizationGroup.js"
 import { organizationCollectionRevisionUpdate } from "./organizationCollectionRevisionUpdate.js"
 import { organizationGroupAffectedUserUuidsFind } from "./organizationGroupAffectedUserUuidsFind.js"
@@ -17,9 +21,12 @@ export function organizationGroupDelete(
   const result = databaseTransaction(database, () => {
     const op = "organizationGroupDelete"
     try {
-      database.run("DELETE FROM collections_groups WHERE groups_uuid = ?", [group.uuid])
-      database.run("DELETE FROM groups_users WHERE groups_uuid = ?", [group.uuid])
-      database.run("DELETE FROM groups WHERE uuid = ? AND organizations_uuid = ?", [group.uuid, group.organizationUuid])
+      database.drizzle.delete(collectionsGroups).where(eq(collectionsGroups.groupsUuid, group.uuid)).run()
+      database.drizzle.delete(groupsUsers).where(eq(groupsUsers.groupsUuid, group.uuid)).run()
+      database.drizzle
+        .delete(groups)
+        .where(and(eq(groups.uuid, group.uuid), eq(groups.organizationsUuid, group.organizationUuid)))
+        .run()
     } catch {
       return resultErrorCreate(op, "Group deletion failed.")
     }

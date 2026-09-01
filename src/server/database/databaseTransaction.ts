@@ -9,7 +9,7 @@ export function databaseTransaction<T>(database: DatabaseConnection, operation: 
   let operationError: ResultErr | undefined
 
   try {
-    const transaction = database.transaction(() => {
+    return database.drizzle.transaction(() => {
       const result = operation()
       if (!result.success) {
         operationError = result
@@ -17,7 +17,6 @@ export function databaseTransaction<T>(database: DatabaseConnection, operation: 
       }
       return result
     })
-    return transaction()
   } catch {
     if (operationError !== undefined) return operationError
     return resultErrorCreate(op, "Database transaction failed.")

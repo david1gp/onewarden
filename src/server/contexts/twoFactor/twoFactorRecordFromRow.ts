@@ -1,13 +1,13 @@
 import type { TwoFactorRecord } from "./twoFactorRecord.js"
-import type { TwoFactorRecordRow } from "./twoFactorRecordRow.js"
+import type { TwoFactorRow } from "../../database/schema/twoFactor.js"
 
-export function twoFactorRecordFromRow(row: TwoFactorRecordRow): TwoFactorRecord {
+export function twoFactorRecordFromRow(row: TwoFactorRow): TwoFactorRecord {
   return {
     uuid: row.uuid,
-    userUuid: row.user_uuid,
+    userUuid: row.userUuid,
     type: row.atype,
-    enabled: row.enabled === 1,
+    enabled: row.enabled,
     data: row.data,
-    lastUsed: row.last_used,
+    lastUsed: row.lastUsed,
   }
 }

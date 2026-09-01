@@ -10,6 +10,7 @@ import { webFilePathResolve } from "./webFilePathResolve.js"
 import { webNotFoundResponseCreate } from "./webNotFoundResponseCreate.js"
 import type { WebRouteOptions } from "./webRouteOptions.js"
 import { webTimestampCreate } from "./webTimestampCreate.js"
+import { schemaVersion } from "../../database/schema/schemaVersion.js"
 
 const defaultWebVaultFolder = "build/web"
 const defaultSourceWebFolder = "src/web"
@@ -316,7 +317,7 @@ function webPathIsSend(path: string): boolean {
 function webDatabaseHealthy(database: WebRouteOptions["database"]): boolean {
   if (database === undefined) return true
   try {
-    database.query("SELECT 1").get()
+    database.drizzle.select({ version: schemaVersion.version }).from(schemaVersion).limit(1).get()
     return true
   } catch {
     return false

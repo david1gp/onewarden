@@ -1,14 +1,14 @@
 import type { OrganizationGroup } from "./organizationGroup.js"
-import type { OrganizationGroupRow } from "./organizationGroupRow.js"
+import type { GroupRow } from "../../database/schema/groups.js"
 
-export function organizationGroupFromRow(row: OrganizationGroupRow): OrganizationGroup {
+export function organizationGroupFromRow(row: GroupRow): OrganizationGroup {
   return {
-    accessAll: row.access_all === 1,
-    createdAt: row.creation_date,
-    externalId: row.external_id,
+    accessAll: row.accessAll,
+    createdAt: row.creationDate,
+    externalId: row.externalId,
     name: row.name,
-    organizationUuid: row.organizations_uuid,
-    revisionDate: row.revision_date,
+    organizationUuid: row.organizationsUuid,
+    revisionDate: row.revisionDate,
     uuid: row.uuid,
   }
 }

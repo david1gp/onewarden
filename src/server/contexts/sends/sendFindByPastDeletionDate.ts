@@ -1,23 +1,17 @@
-import { type Result } from "#result"
+import { lt } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { sends } from "../../database/schema/sends.js"
 import type { Send } from "./send.js"
 import { sendFromRow } from "./sendFromRow.js"
-import type { SendRow } from "./sendRow.js"
 
 export function sendFindByPastDeletionDate(database: DatabaseConnection, clock: Clock): Result<Send[]> {
   const op = "sendFindByPastDeletionDate"
   try {
-    const rows = database
-      .query<SendRow, [string]>(
-        `SELECT uuid, user_uuid, organization_uuid, name, notes, atype, data, key,
-           password_hash, password_salt, password_iter, max_access_count, access_count,
-           creation_date, revision_date, expiration_date, deletion_date, disabled, hide_email, emails
-         FROM sends WHERE deletion_date < ?`,
-      )
-      .all(clock.now().toISOString())
+    const rows = database.drizzle.select().from(sends).where(lt(sends.deletionDate, clock.now().toISOString())).all()
     return resultCreate(rows.map(sendFromRow))
   } catch {
     return resultErrorCreate(op, "Send lookup failed.")

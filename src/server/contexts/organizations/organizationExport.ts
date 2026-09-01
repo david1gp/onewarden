@@ -1,20 +1,20 @@
+import { and, asc, eq, isNull } from "drizzle-orm"
 import type { KeyInput } from "jose"
 import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { ciphers } from "../../database/schema/ciphers.js"
+import { collections } from "../../database/schema/collections.js"
 import type { Cipher } from "../ciphers/cipher.js"
-import { cipherSelect } from "../ciphers/cipherSelect.js"
-import { cipherToJson } from "../ciphers/cipherToJson.js"
+import { cipherOrganizationToJson } from "../ciphers/cipherOrganizationToJson.js"
 import type { OrganizationCollection } from "./organizationCollection.js"
-import { organizationCollectionSelect } from "./organizationCollectionSelect.js"
 
 type OrganizationExportOptions = {
   clock: Clock
   origin: string
   privateKey: KeyInput | undefined
-  userUuid: string
 }
 
 export async function organizationExport(
@@ -24,34 +24,50 @@ export async function organizationExport(
 ): Promise<Result<{ collections: Record<string, unknown>[]; ciphers: Record<string, unknown>[] }>> {
   const op = "organizationExport"
   try {
-    const collections = database
-      .query<OrganizationCollection, [string]>(
-        `SELECT ${organizationCollectionSelect}
-         FROM collections AS c
-         WHERE org_uuid = ?
-         ORDER BY uuid`,
-      )
-      .all(organizationUuid)
-      .map(organizationExportCollectionToJson)
-    const cipherRows = database
-      .query<Cipher, [string]>(
-        `SELECT ${cipherSelect}
-         FROM ciphers
-         WHERE organization_uuid = ?
-         ORDER BY created_at, uuid`,
-      )
-      .all(organizationUuid)
-    const ciphers: Record<string, unknown>[] = []
+    const collectionRows: OrganizationCollection[] = database.drizzle
+      .select({
+        externalId: collections.externalId,
+        name: collections.name,
+        organizationUuid: collections.orgUuid,
+        uuid: collections.uuid,
+      })
+      .from(collections)
+      .where(eq(collections.orgUuid, organizationUuid))
+      .orderBy(asc(collections.uuid))
+      .all()
+    const collectionJson = collectionRows.map(organizationExportCollectionToJson)
+    const cipherRows: Cipher[] = database.drizzle
+      .select({
+        createdAt: ciphers.createdAt,
+        data: ciphers.data,
+        deletedAt: ciphers.deletedAt,
+        fields: ciphers.fields,
+        key: ciphers.key,
+        name: ciphers.name,
+        notes: ciphers.notes,
+        organizationUuid: ciphers.organizationUuid,
+        passwordHistory: ciphers.passwordHistory,
+        reprompt: ciphers.reprompt,
+        type: ciphers.atype,
+        updatedAt: ciphers.updatedAt,
+        userUuid: ciphers.userUuid,
+        uuid: ciphers.uuid,
+      })
+      .from(ciphers)
+      .where(and(eq(ciphers.organizationUuid, organizationUuid), isNull(ciphers.deletedAt)))
+      .orderBy(asc(ciphers.createdAt), asc(ciphers.uuid))
+      .all()
+    const exportedCiphers: Record<string, unknown>[] = []
     for (const cipher of cipherRows) {
-      const cipherResult = await cipherToJson(database, cipher, options.userUuid, {
+      const cipherResult = await cipherOrganizationToJson(database, cipher, organizationUuid, {
         clock: options.clock,
         origin: options.origin,
         privateKey: options.privateKey,
       })
       if (!cipherResult.success) return cipherResult
-      ciphers.push(organizationExportCipherToJson(cipherResult.data))
+      exportedCiphers.push(organizationExportCipherToJson(cipherResult.data))
     }
-    return resultCreate({ ciphers, collections })
+    return resultCreate({ ciphers: exportedCiphers, collections: collectionJson })
   } catch {
     return resultErrorCreate(op, "Organization export failed.")
   }

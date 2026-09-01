@@ -7,12 +7,14 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
 import { twoFactorRecordFindByUserAndType } from "./twoFactorRecordFindByUserAndType.js"
 import { twoFactorRecordSave } from "./twoFactorRecordSave.js"
 import { twoFactorWebAuthnRegistrationsRead } from "./twoFactorWebAuthnRegistrationsRead.js"
 import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorWebAuthnU2fDataSchema } from "./twoFactorWebAuthnU2fDataSchema.js"
+import { eq } from "drizzle-orm"
 
 type LegacyU2fRegistration = {
   counter: number
@@ -29,19 +31,14 @@ type LegacyU2fRegistration = {
 export function twoFactorWebAuthnU2fMigrate(database: DatabaseConnection): Result<void> {
   const op = "twoFactorWebAuthnU2fMigrate"
   try {
-    const rows = database
-      .query<
-        { uuid: string; user_uuid: string; atype: number; enabled: number; data: string; last_used: number },
-        [number]
-      >("SELECT uuid, user_uuid, atype, enabled, data, last_used FROM twofactor WHERE atype = ?")
-      .all(twoFactorProviderType.u2f)
+    const rows = database.drizzle.select().from(twoFactor).where(eq(twoFactor.atype, twoFactorProviderType.u2f)).all()
     for (const row of rows) {
       const registrationsResult = legacyU2fRegistrationsRead(row.data)
       if (!registrationsResult.success) return registrationsResult
       const registrations = registrationsResult.data
       if (registrations.length === 0 || registrations[0]?.migrated === true) continue
 
-      const webauthnResult = twoFactorRecordFindByUserAndType(database, row.user_uuid, twoFactorProviderType.webauthn)
+      const webauthnResult = twoFactorRecordFindByUserAndType(database, row.userUuid, twoFactorProviderType.webauthn)
       if (!webauthnResult.success) return webauthnResult
       if (webauthnResult.data !== null) {
         const existingRegistrationsResult = twoFactorWebAuthnRegistrationsRead(webauthnResult.data.data)
@@ -66,16 +63,16 @@ export function twoFactorWebAuthnU2fMigrate(database: DatabaseConnection): Resul
       const saveResult = databaseTransaction(database, () => {
         const u2fSaveResult = twoFactorRecordSave(database, {
           uuid: row.uuid,
-          userUuid: row.user_uuid,
+          userUuid: row.userUuid,
           type: twoFactorProviderType.u2f,
-          enabled: row.enabled === 1,
+          enabled: row.enabled,
           data: migratedData,
-          lastUsed: row.last_used,
+          lastUsed: row.lastUsed,
         })
         if (!u2fSaveResult.success) return u2fSaveResult
         return twoFactorRecordSave(database, {
           uuid: webauthnResult.data?.uuid ?? randomUUID(),
-          userUuid: row.user_uuid,
+          userUuid: row.userUuid,
           type: twoFactorProviderType.webauthn,
           enabled: true,
           data: JSON.stringify(webauthnRegistrations),

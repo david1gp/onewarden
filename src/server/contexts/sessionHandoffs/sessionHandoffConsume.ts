@@ -9,20 +9,13 @@ import type { SessionHandoffConsumeRequest } from "../../../shared/sessionHandof
 import type { SessionHandoffConsumeResponse } from "../../../shared/sessionHandoff/sessionHandoffConsumeResponseSchema.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { extensionSessionHandoffs } from "../../database/schema/extensionSessionHandoffs.js"
 import { identityDeviceCreate } from "../identity/identityDeviceCreate.js"
 import { identityDeviceSave } from "../identity/identityDeviceSave.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import { identityTokenBundleCreate } from "../identity/identityTokenBundleCreate.js"
 import { identityUserFindByUuid } from "../identity/identityUserFindByUuid.js"
-
-type SessionHandoffRow = {
-  cipher_uuid: string | null
-  operation: "create" | "edit"
-  source_device_uuid: string
-  user_key_ciphertext: string
-  user_key_iv: string
-  user_uuid: string
-}
+import { and, eq, gt, ne, isNull } from "drizzle-orm"
 
 type SessionHandoffConsumeOptions = {
   clock: Clock
@@ -49,28 +42,27 @@ export async function sessionHandoffConsume(
   if (!/^[A-Za-z0-9_-]{43}$/u.test(token)) return authenticationErrorCreate()
   const tokenHashResult = await sha256Hex(token)
   if (!tokenHashResult.success) return tokenHashResult
-  let row: SessionHandoffRow | null
+  let row: typeof extensionSessionHandoffs.$inferSelect | null
   try {
-    row = options.database
-      .query<SessionHandoffRow, [string, string, string, string | null, string | null, string]>(
-        `SELECT user_uuid, source_device_uuid, operation, cipher_uuid,
-                user_key_iv, user_key_ciphertext
-         FROM extension_session_handoffs
-         WHERE token_hash = ?
-           AND expires_at > ?
-           AND operation = ?
-           AND ((cipher_uuid IS NULL AND ? IS NULL) OR cipher_uuid = ?)
-           AND source_device_uuid <> ?
-         LIMIT 1`,
-      )
-      .get(
-        tokenHashResult.data,
-        options.clock.now().toISOString(),
-        request.operation,
-        request.cipherId,
-        request.cipherId,
-        request.deviceIdentifier,
-      )
+    const cipherCondition =
+      request.cipherId === null
+        ? isNull(extensionSessionHandoffs.cipherUuid)
+        : eq(extensionSessionHandoffs.cipherUuid, request.cipherId)
+    row =
+      options.database.drizzle
+        .select()
+        .from(extensionSessionHandoffs)
+        .where(
+          and(
+            eq(extensionSessionHandoffs.tokenHash, tokenHashResult.data),
+            gt(extensionSessionHandoffs.expiresAt, options.clock.now().toISOString()),
+            eq(extensionSessionHandoffs.operation, request.operation),
+            cipherCondition,
+            ne(extensionSessionHandoffs.sourceDeviceUuid, request.deviceIdentifier),
+          ),
+        )
+        .limit(1)
+        .get() ?? null
   } catch {
     return resultErrorCreate(op, "Session handoff lookup failed.", {
       code: "platform.internal",
@@ -78,7 +70,7 @@ export async function sessionHandoffConsume(
     })
   }
   if (row === null) return authenticationErrorCreate()
-  const userResult = identityUserFindByUuid(options.database, row.user_uuid)
+  const userResult = identityUserFindByUuid(options.database, row.userUuid)
   if (!userResult.success) return userResult
   if (userResult.data === null || !userResult.data.enabled || userResult.data.akey === "") {
     return authenticationErrorCreate()
@@ -104,25 +96,22 @@ export async function sessionHandoffConsume(
   if (!bundleResult.success) return bundleResult
   const consumeResult = databaseTransaction(options.database, () => {
     try {
-      const deleted = options.database
-        .query<{ token_hash: string }, [string, string, string, string | null, string | null, string]>(
-          `DELETE FROM extension_session_handoffs
-           WHERE token_hash = ?
-             AND expires_at > ?
-             AND operation = ?
-             AND ((cipher_uuid IS NULL AND ? IS NULL) OR cipher_uuid = ?)
-             AND source_device_uuid <> ?
-           RETURNING token_hash`,
+      const deleted = options.database.drizzle
+        .delete(extensionSessionHandoffs)
+        .where(
+          and(
+            eq(extensionSessionHandoffs.tokenHash, tokenHashResult.data),
+            gt(extensionSessionHandoffs.expiresAt, options.clock.now().toISOString()),
+            eq(extensionSessionHandoffs.operation, request.operation),
+            request.cipherId === null
+              ? isNull(extensionSessionHandoffs.cipherUuid)
+              : eq(extensionSessionHandoffs.cipherUuid, request.cipherId),
+            ne(extensionSessionHandoffs.sourceDeviceUuid, request.deviceIdentifier),
+          ),
         )
-        .get(
-          tokenHashResult.data,
-          options.clock.now().toISOString(),
-          request.operation,
-          request.cipherId,
-          request.cipherId,
-          request.deviceIdentifier,
-        )
-      if (deleted === null) return authenticationErrorCreate()
+        .returning({ tokenHash: extensionSessionHandoffs.tokenHash })
+        .get()
+      if (deleted === undefined) return authenticationErrorCreate()
       return identityDeviceSave(options.database, deviceResult.data, options.clock, false)
     } catch {
       return resultErrorCreate(op, "Session handoff consumption failed.", {
@@ -145,11 +134,11 @@ export async function sessionHandoffConsume(
     encryptedUserKey: userResult.data.akey,
     userKeyTransfer: {
       algorithm: "AES-GCM" as const,
-      iv: row.user_key_iv,
-      ciphertext: row.user_key_ciphertext,
+      iv: row.userKeyIv,
+      ciphertext: row.userKeyCiphertext,
     },
     operation: row.operation,
-    cipherId: row.cipher_uuid,
+    cipherId: row.cipherUuid,
   }
   return resultCreate(response as SessionHandoffConsumeResponse)
 }

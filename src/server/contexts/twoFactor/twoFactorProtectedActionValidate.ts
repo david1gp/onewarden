@@ -4,10 +4,12 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStringsEqual.js"
 import type { Clock } from "../../../shared/clock/clock.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProtectedActionDataSchema } from "./twoFactorProtectedActionDataSchema.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
+import { and, eq } from "drizzle-orm"
 
 export function twoFactorProtectedActionValidate(
   database: DatabaseConnection,
@@ -20,13 +22,14 @@ export function twoFactorProtectedActionValidate(
   const op = "twoFactorProtectedActionValidate"
   let validationResult: Result<void> | undefined
   try {
-    const transaction = database.transaction(() => {
-      const row = database
-        .query<{ uuid: string; data: string }, [string, number]>(
-          "SELECT uuid, data FROM twofactor WHERE user_uuid = ? AND atype = ? LIMIT 1",
-        )
-        .get(userUuid, twoFactorProviderType.protectedActions)
-      if (row === null) {
+    database.drizzle.transaction((transaction) => {
+      const row = transaction
+        .select({ uuid: twoFactor.uuid, data: twoFactor.data })
+        .from(twoFactor)
+        .where(and(eq(twoFactor.userUuid, userUuid), eq(twoFactor.atype, twoFactorProviderType.protectedActions)))
+        .limit(1)
+        .get()
+      if (row === undefined) {
         validationResult = resultErrorCreate(
           op,
           "Protected action token not found, try sending the code again or restart the process",
@@ -41,7 +44,7 @@ export function twoFactorProtectedActionValidate(
         "Protected action token is invalid",
       )
       if (!dataResult.success) {
-        database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
+        transaction.delete(twoFactor).where(eq(twoFactor.uuid, row.uuid)).run()
         validationResult = resultErrorCreate(op, "Protected action token is invalid", {
           code: "platform.invalid-request",
           statusCode: 400,
@@ -52,7 +55,11 @@ export function twoFactorProtectedActionValidate(
       const limit = config.EMAIL_ATTEMPTS_LIMIT ?? 3
       const attempts = Math.min(Number.MAX_SAFE_INTEGER, data.attempts + 1)
       if (attempts >= limit) {
-        database.run("UPDATE twofactor SET data = ? WHERE uuid = ?", [JSON.stringify({ ...data, attempts }), row.uuid])
+        transaction
+          .update(twoFactor)
+          .set({ data: JSON.stringify({ ...data, attempts }) })
+          .where(eq(twoFactor.uuid, row.uuid))
+          .run()
         validationResult = resultErrorCreate(op, "Token has expired", {
           code: "platform.invalid-request",
           statusCode: 400,
@@ -61,7 +68,7 @@ export function twoFactorProtectedActionValidate(
       }
       const age = Math.floor(clock.now().getTime() / 1_000) - data.token_sent
       if (age < 0 || age > (config.EMAIL_EXPIRATION_TIME ?? 600)) {
-        database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
+        transaction.delete(twoFactor).where(eq(twoFactor.uuid, row.uuid)).run()
         validationResult = resultErrorCreate(op, "Token has expired", {
           code: "platform.invalid-request",
           statusCode: 400,
@@ -69,7 +76,11 @@ export function twoFactorProtectedActionValidate(
         return
       }
       if (!constantTimeStringsEqual(data.token, token)) {
-        database.run("UPDATE twofactor SET data = ? WHERE uuid = ?", [JSON.stringify({ ...data, attempts }), row.uuid])
+        transaction
+          .update(twoFactor)
+          .set({ data: JSON.stringify({ ...data, attempts }) })
+          .where(eq(twoFactor.uuid, row.uuid))
+          .run()
         validationResult = resultErrorCreate(op, "Token is invalid", {
           code: "platform.invalid-request",
           statusCode: 400,
@@ -81,10 +92,9 @@ export function twoFactorProtectedActionValidate(
           })
         return
       }
-      if (deleteIfValid) database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
+      if (deleteIfValid) transaction.delete(twoFactor).where(eq(twoFactor.uuid, row.uuid)).run()
       validationResult = resultCreate(undefined)
     })
-    transaction()
     return validationResult ?? resultErrorCreate(op, "Protected action token validation failed.")
   } catch {
     return resultErrorCreate(op, "Protected action token is invalid", {

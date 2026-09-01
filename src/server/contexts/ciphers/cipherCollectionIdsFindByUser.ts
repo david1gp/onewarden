@@ -1,7 +1,16 @@
-import { type Result } from "#result"
+import { and, asc, eq, exists, isNotNull, lte, or } from "drizzle-orm"
+import { alias } from "drizzle-orm/sqlite-core"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { ciphersCollections } from "../../database/schema/ciphersCollections.js"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { Cipher } from "./cipher.js"
 
 export function cipherCollectionIdsFindByUser(
@@ -14,42 +23,68 @@ export function cipherCollectionIdsFindByUser(
   const op = "cipherCollectionIdsFindByUser"
   if (cipher.organizationUuid === null) return resultCreate([])
   try {
-    const rows = database
-      .query<CipherCollectionIdRow, [string, string, string, string, number, number]>(
-        `SELECT DISTINCT cc.collection_uuid
-         FROM ciphers_collections AS cc
-         JOIN collections AS c ON c.uuid = cc.collection_uuid AND c.org_uuid = ?
-         JOIN users_organizations AS uo
-           ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ? AND uo.status = 2
-         LEFT JOIN users_collections AS uc
-           ON uc.collection_uuid = cc.collection_uuid AND uc.user_uuid = ?
-         WHERE cc.cipher_uuid = ?
-           AND (
-             uo.access_all = 1
-             OR (? = 1 AND uo.atype <= 1)
-             OR (uc.user_uuid IS NOT NULL AND uc.read_only = 0)
-             OR (
-               ? = 1
-               AND EXISTS (
-                 SELECT 1
-                 FROM groups_users AS gu
-                 JOIN groups AS g ON g.uuid = gu.groups_uuid AND g.organizations_uuid = c.org_uuid
-                 LEFT JOIN collections_groups AS cg
-                   ON cg.groups_uuid = g.uuid AND cg.collections_uuid = cc.collection_uuid
-                 WHERE gu.users_organizations_uuid = uo.uuid
-                   AND (g.access_all = 1 OR (cg.collections_uuid IS NOT NULL AND cg.read_only = 0))
-               )
-             )
-           )
-         ORDER BY cc.collection_uuid`,
+    const groupUser = alias(groupsUsers, "collection_group_user")
+    const group = alias(groups, "collection_group")
+    const collectionGroup = alias(collectionsGroups, "collection_group_access")
+    const groupAccess = exists(
+      database.drizzle
+        .select({ groupsUuid: groupUser.groupsUuid })
+        .from(groupUser)
+        .innerJoin(group, and(eq(group.uuid, groupUser.groupsUuid), eq(group.organizationsUuid, collections.orgUuid)))
+        .leftJoin(
+          collectionGroup,
+          and(
+            eq(collectionGroup.groupsUuid, group.uuid),
+            eq(collectionGroup.collectionsUuid, ciphersCollections.collectionUuid),
+          ),
+        )
+        .where(
+          and(
+            eq(groupUser.usersOrganizationsUuid, usersOrganizations.uuid),
+            or(
+              eq(group.accessAll, true),
+              and(isNotNull(collectionGroup.collectionsUuid), eq(collectionGroup.readOnly, false)),
+            ),
+          ),
+        ),
+    )
+    const rows = database.drizzle
+      .selectDistinct({ collectionUuid: ciphersCollections.collectionUuid })
+      .from(ciphersCollections)
+      .innerJoin(
+        collections,
+        and(eq(collections.uuid, ciphersCollections.collectionUuid), eq(collections.orgUuid, cipher.organizationUuid)),
       )
-      .all(cipher.organizationUuid, userUuid, userUuid, cipher.uuid, adminCollections ? 1 : 0, groupsEnabled ? 1 : 0)
-    return resultCreate(rows.map((row) => row.collection_uuid))
+      .innerJoin(
+        usersOrganizations,
+        and(
+          eq(usersOrganizations.orgUuid, collections.orgUuid),
+          eq(usersOrganizations.userUuid, userUuid),
+          eq(usersOrganizations.status, 2),
+        ),
+      )
+      .leftJoin(
+        usersCollections,
+        and(
+          eq(usersCollections.collectionUuid, ciphersCollections.collectionUuid),
+          eq(usersCollections.userUuid, userUuid),
+        ),
+      )
+      .where(
+        and(
+          eq(ciphersCollections.cipherUuid, cipher.uuid),
+          or(
+            eq(usersOrganizations.accessAll, true),
+            adminCollections ? lte(usersOrganizations.atype, 1) : undefined,
+            and(isNotNull(usersCollections.userUuid), eq(usersCollections.readOnly, false)),
+            groupsEnabled ? groupAccess : undefined,
+          ),
+        ),
+      )
+      .orderBy(asc(ciphersCollections.collectionUuid))
+      .all()
+    return resultCreate(rows.map((row) => row.collectionUuid))
   } catch {
     return resultErrorCreate(op, "Cipher collection lookup failed.")
   }
-}
-
-type CipherCollectionIdRow = {
-  collection_uuid: string
 }

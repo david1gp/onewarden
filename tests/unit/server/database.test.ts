@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
+import { sql } from "drizzle-orm"
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -31,8 +32,18 @@ test("databaseOpen configures an isolated in-memory SQLite connection", () => {
   expect(result.success).toBe(true)
   if (!result.success) return
 
-  expect(result.data.query("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 })
-  expect(result.data.query("PRAGMA busy_timeout").get()).toEqual({ timeout: 5_000 })
+  expect(result.data.drizzle.all(sql`PRAGMA foreign_keys`)[0]).toEqual({ foreign_keys: 1 })
+  expect(result.data.drizzle.all(sql`PRAGMA busy_timeout`)[0]).toEqual({ timeout: 5_000 })
+  expect(databaseClose(result.data).success).toBe(true)
+})
+
+test("databaseOpen exposes Drizzle over its Bun SQLite transport", () => {
+  const result = databaseOpen()
+  expect(result.success).toBe(true)
+  if (!result.success) return
+
+  expect("$client" in result.data.drizzle).toBe(false)
+  expect(result.data.drizzle.all<{ value: number }>(sql`SELECT 1 AS value`)).toEqual([{ value: 1 }])
   expect(databaseClose(result.data).success).toBe(true)
 })
 
@@ -44,9 +55,9 @@ test("databaseOpen creates parent directories and enables WAL for file databases
   if (!result.success) return
 
   expect(existsSync(dirname(databasePath))).toBe(true)
-  expect(result.data.query("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 })
-  expect(result.data.query("PRAGMA busy_timeout").get()).toEqual({ timeout: 5_000 })
-  expect(result.data.query("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" })
+  expect(result.data.drizzle.all(sql`PRAGMA foreign_keys`)[0]).toEqual({ foreign_keys: 1 })
+  expect(result.data.drizzle.all(sql`PRAGMA busy_timeout`)[0]).toEqual({ timeout: 5_000 })
+  expect(result.data.drizzle.all(sql`PRAGMA journal_mode`)[0]).toEqual({ journal_mode: "wal" })
   expect(databaseClose(result.data).success).toBe(true)
   expect(existsSync(databasePath)).toBe(true)
 })
@@ -133,7 +144,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
 
   expect(databaseMigrate(result.data)).toEqual({ success: true, data: undefined })
   expect(databaseMigrate(result.data)).toEqual({ success: true, data: undefined })
-  expect(result.data.query("SELECT version FROM schema_version ORDER BY version").all()).toEqual([
+  expect(result.data.drizzle.all(sql`SELECT version FROM schema_version ORDER BY version`)).toEqual([
     { version: 1 },
     { version: 2 },
     { version: 3 },
@@ -155,16 +166,14 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { version: 20 },
   ])
   expect(
-    result.data
-      .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_version'")
-      .get(),
+    result.data.drizzle.all<{ name: string }>(
+      sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_version'`,
+    )[0],
   ).toEqual({ name: "schema_version" })
   expect(
-    result.data
-      .query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'org_policies', 'organization_domains', 'organization_sso_configs', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'ciphers_collections', 'favorites', 'archives', 'sends', 'send_recipient_verifications', 'extension_session_handoffs', 'emergency_access', 'attachments', 'event', 'auth_requests') ORDER BY name",
-      )
-      .all(),
+    result.data.drizzle.all<{ name: string }>(
+      sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'invitations', 'identity_signing_keys', 'devices', 'organization_api_key', 'sso_auth', 'sso_users', 'organizations', 'org_policies', 'organization_domains', 'organization_sso_configs', 'users_organizations', 'collections', 'users_collections', 'groups', 'groups_users', 'collections_groups', 'folders', 'folders_ciphers', 'ciphers', 'ciphers_collections', 'favorites', 'archives', 'sends', 'send_recipient_verifications', 'extension_session_handoffs', 'emergency_access', 'attachments', 'event', 'auth_requests') ORDER BY name`,
+    ),
   ).toEqual([
     { name: "archives" },
     { name: "attachments" },
@@ -197,9 +206,8 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { name: "users_collections" },
     { name: "users_organizations" },
   ])
-  const deviceColumns = result.data
-    .query<{ name: string; type: string; notnull: number; pk: number }, []>("PRAGMA table_info(devices)")
-    .all()
+  const deviceColumns = result.data.drizzle
+    .all<{ name: string; type: string; notnull: number; pk: number }>(sql`PRAGMA table_info(devices)`)
     .map(({ name, type, notnull, pk }) => ({ name, type, notnull, pk }))
   expect(deviceColumns).toEqual([
     { name: "uuid", type: "TEXT", notnull: 1, pk: 1 },
@@ -213,7 +221,7 @@ test("databaseMigrate applies the initial schema-version migration and is idempo
     { name: "refresh_token", type: "TEXT", notnull: 1, pk: 0 },
     { name: "twofactor_remember", type: "TEXT", notnull: 0, pk: 0 },
   ])
-  expect(result.data.query("PRAGMA foreign_key_list(devices)").all()).toEqual([
+  expect(result.data.drizzle.all(sql`PRAGMA foreign_key_list(devices)`)).toEqual([
     {
       id: 0,
       seq: 0,
@@ -315,11 +323,11 @@ test("databaseMigrate applies custom migrations in numeric order and ignores unr
   if (!databaseResult.success) return
 
   expect(databaseMigrate(databaseResult.data, directory)).toEqual({ success: true, data: undefined })
-  expect(databaseResult.data.query("SELECT value FROM migration_order ORDER BY rowid").all()).toEqual([
+  expect(databaseResult.data.drizzle.all(sql`SELECT value FROM migration_order ORDER BY rowid`)).toEqual([
     { value: "second" },
     { value: "third" },
   ])
-  expect(databaseResult.data.query("SELECT version FROM schema_version ORDER BY version").all()).toEqual([
+  expect(databaseResult.data.drizzle.all(sql`SELECT version FROM schema_version ORDER BY version`)).toEqual([
     { version: 1 },
     { version: 2 },
     { version: 10 },
@@ -342,8 +350,8 @@ test("databaseMigrate rejects duplicate migration versions without applying eith
     op: "databaseMigrate",
     errorMessage: "Database migration versions must be unique.",
   })
-  expect(databaseResult.data.query("SELECT version FROM schema_version").all()).toEqual([])
-  expect(databaseResult.data.query("SELECT name FROM sqlite_master WHERE name LIKE '%_migration'").all()).toEqual([])
+  expect(databaseResult.data.drizzle.all(sql`SELECT version FROM schema_version`)).toEqual([])
+  expect(databaseResult.data.drizzle.all(sql`SELECT name FROM sqlite_master WHERE name LIKE '%_migration'`)).toEqual([])
   databaseClose(databaseResult.data)
 })
 
@@ -363,13 +371,17 @@ test("databaseMigrate rolls back a failed migration and keeps earlier migrations
     op: "databaseMigrate",
     errorMessage: "Database migration failed.",
   })
-  expect(databaseResult.data.query("SELECT version FROM schema_version ORDER BY version").all()).toEqual([
+  expect(databaseResult.data.drizzle.all(sql`SELECT version FROM schema_version ORDER BY version`)).toEqual([
     { version: 1 },
   ])
-  expect(databaseResult.data.query("SELECT name FROM sqlite_master WHERE name = 'first_migration'").get()).toEqual({
+  expect(
+    databaseResult.data.drizzle.all(sql`SELECT name FROM sqlite_master WHERE name = 'first_migration'`)[0],
+  ).toEqual({
     name: "first_migration",
   })
-  expect(databaseResult.data.query("SELECT name FROM sqlite_master WHERE name = 'second_migration'").get()).toBeNull()
+  expect(
+    databaseResult.data.drizzle.all(sql`SELECT name FROM sqlite_master WHERE name = 'second_migration'`)[0],
+  ).toBeUndefined()
   databaseClose(databaseResult.data)
 })
 

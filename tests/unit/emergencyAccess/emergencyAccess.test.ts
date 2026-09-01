@@ -1,17 +1,21 @@
 import { afterEach, expect, test } from "bun:test"
-import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
-import { identityMailAdapterCreate } from "../../../src/server/contexts/identity/identityMailAdapterCreate.js"
-import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
-import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
-import { databaseClose } from "../../../src/server/database/databaseClose.js"
-import type { DatabaseConnection } from "../../../src/server/database/database.js"
-import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import type { EmergencyAccess } from "../../../src/server/contexts/emergencyAccess/emergencyAccess.js"
+import { emergencyAccessFindByUuidAndGrantor } from "../../../src/server/contexts/emergencyAccess/emergencyAccessFindByUuidAndGrantor.js"
 import { emergencyAccessInviteTokenCreate } from "../../../src/server/contexts/emergencyAccess/emergencyAccessInviteTokenCreate.js"
 import { emergencyAccessInviteTokenDecode } from "../../../src/server/contexts/emergencyAccess/emergencyAccessInviteTokenDecode.js"
-import type { EmergencyAccess } from "../../../src/server/contexts/emergencyAccess/emergencyAccess.js"
-import { emergencyAccessSave } from "../../../src/server/contexts/emergencyAccess/emergencyAccessSave.js"
-import { emergencyAccessTimeoutRun } from "../../../src/server/contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
+import { emergencyAccessNotificationDateUpdate } from "../../../src/server/contexts/emergencyAccess/emergencyAccessNotificationDateUpdate.js"
 import { emergencyAccessReminderRun } from "../../../src/server/contexts/emergencyAccess/emergencyAccessReminderRun.js"
+import { emergencyAccessSave } from "../../../src/server/contexts/emergencyAccess/emergencyAccessSave.js"
+import { emergencyAccessStatusUpdate } from "../../../src/server/contexts/emergencyAccess/emergencyAccessStatusUpdate.js"
+import { emergencyAccessTimeoutRun } from "../../../src/server/contexts/emergencyAccess/emergencyAccessTimeoutRun.js"
+import { identityConfigCreate } from "../../../src/server/contexts/identity/identityConfigCreate.js"
+import { identityMailAdapterCreate } from "../../../src/server/contexts/identity/identityMailAdapterCreate.js"
+import type { IdentityUser } from "../../../src/server/contexts/identity/identityUser.js"
+import { identityUserSave } from "../../../src/server/contexts/identity/identityUserSave.js"
+import type { DatabaseConnection } from "../../../src/server/database/database.js"
+import { databaseClose } from "../../../src/server/database/databaseClose.js"
+import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { emergencyAccess } from "../../../src/server/database/schema/emergencyAccess.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { rsaKeyPairGenerate } from "../../../src/shared/crypto/rsaKeyPairGenerate.js"
 
@@ -140,6 +144,52 @@ test("timeout runs before reminder eligibility and mail/notification adapters ar
     "emergencyAccessRecoveryApproved",
   ])
   expect(notifications).toEqual(["timedOut"])
-  const row = database.query<{ status: number }, []>("SELECT status FROM emergency_access").get()
+  const row = database.drizzle.select({ status: emergencyAccess.status }).from(emergencyAccess).limit(1).get()
   expect(row).toEqual({ status: 4 })
+})
+
+test("emergency access persistence preserves null projections and compare-and-set updates", () => {
+  const database = databaseCreate()
+  const grantor = userCreate("grantor-persistence", "grantor-persistence@example.com")
+  expect(identityUserSave(database, grantor).success).toBe(true)
+  const access: EmergencyAccess = {
+    uuid: "emergency-persistence",
+    grantorUuid: grantor.uuid,
+    granteeUuid: null,
+    email: "invitee@example.com",
+    keyEncrypted: null,
+    type: 0,
+    status: 0,
+    waitTimeDays: 7,
+    recoveryInitiatedAt: null,
+    lastNotificationAt: null,
+    updatedAt: "2026-08-28T00:00:00.000Z",
+    createdAt: "2026-08-27T00:00:00.000Z",
+  }
+
+  expect(emergencyAccessSave(database, access, access.updatedAt)).toEqual({ success: true, data: undefined })
+  expect(emergencyAccessFindByUuidAndGrantor(database, access.uuid, grantor.uuid)).toEqual({
+    success: true,
+    data: access,
+  })
+
+  const nextNotificationAt = "2026-08-28T01:00:00.000Z"
+  expect(emergencyAccessNotificationDateUpdate(database, access, nextNotificationAt)).toEqual({
+    success: true,
+    data: true,
+  })
+  const staleNotificationAccess = { ...access, lastNotificationAt: null }
+  expect(emergencyAccessNotificationDateUpdate(database, staleNotificationAccess, "2026-08-28T02:00:00.000Z")).toEqual({
+    success: true,
+    data: false,
+  })
+
+  expect(emergencyAccessStatusUpdate(database, access, 1, "2026-08-28T03:00:00.000Z")).toEqual({
+    success: true,
+    data: true,
+  })
+  expect(emergencyAccessStatusUpdate(database, { ...access, status: 0 }, 2, "2026-08-28T04:00:00.000Z")).toEqual({
+    success: true,
+    data: false,
+  })
 })

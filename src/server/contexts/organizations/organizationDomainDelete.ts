@@ -2,6 +2,8 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq } from "drizzle-orm"
+import { organizationDomains } from "../../database/schema/organizationDomains.js"
 
 export function organizationDomainDelete(
   database: DatabaseConnection,
@@ -10,7 +12,10 @@ export function organizationDomainDelete(
 ): Result<void> {
   const op = "organizationDomainDelete"
   try {
-    database.run("DELETE FROM organization_domains WHERE uuid = ? AND org_uuid = ?", [uuid, organizationUuid])
+    database.drizzle
+      .delete(organizationDomains)
+      .where(and(eq(organizationDomains.uuid, uuid), eq(organizationDomains.orgUuid, organizationUuid)))
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Organization domain deletion failed.")

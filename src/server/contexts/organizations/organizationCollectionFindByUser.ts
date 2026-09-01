@@ -2,8 +2,14 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq, or } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationCollection } from "./organizationCollection.js"
-import { organizationCollectionSelect } from "./organizationCollectionSelect.js"
 
 export function organizationCollectionFindByUser(
   database: DatabaseConnection,
@@ -13,45 +19,75 @@ export function organizationCollectionFindByUser(
   const op = "organizationCollectionFindByUser"
   try {
     if (!groupsEnabled) {
-      const rows = database
-        .query<OrganizationCollection, [string, string]>(
-          `SELECT DISTINCT ${organizationCollectionSelect}
-           FROM collections AS c
-           JOIN users_organizations AS uo
-             ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ?
-           LEFT JOIN users_collections AS uc
-             ON uc.collection_uuid = c.uuid AND uc.user_uuid = ?
-           WHERE uo.status = 2
-             AND (uc.user_uuid IS NOT NULL OR uo.access_all = 1 OR uo.atype <= 1)`,
+      const rows = database.drizzle
+        .selectDistinct({
+          externalId: collections.externalId,
+          name: collections.name,
+          organizationUuid: collections.orgUuid,
+          uuid: collections.uuid,
+        })
+        .from(collections)
+        .innerJoin(
+          usersOrganizations,
+          and(eq(usersOrganizations.orgUuid, collections.orgUuid), eq(usersOrganizations.userUuid, userUuid)),
         )
-        .all(userUuid, userUuid)
+        .leftJoin(
+          usersCollections,
+          and(eq(usersCollections.collectionUuid, collections.uuid), eq(usersCollections.userUuid, userUuid)),
+        )
+        .where(
+          and(
+            eq(usersOrganizations.status, 2),
+            or(
+              // A non-null user collection assignment is enough for access.
+              eq(usersCollections.userUuid, userUuid),
+              eq(usersOrganizations.accessAll, true),
+              // Owners and admins have unrestricted collection access.
+              eq(usersOrganizations.atype, 0),
+              eq(usersOrganizations.atype, 1),
+            ),
+          ),
+        )
+        .all()
       return resultCreate(rows)
     }
 
-    const rows = database
-      .query<OrganizationCollection, [string, string]>(
-        `SELECT DISTINCT ${organizationCollectionSelect}
-         FROM collections AS c
-         JOIN users_organizations AS uo
-           ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ?
-         LEFT JOIN users_collections AS uc
-           ON uc.collection_uuid = c.uuid AND uc.user_uuid = ?
-         LEFT JOIN groups_users AS gu
-           ON gu.users_organizations_uuid = uo.uuid
-         LEFT JOIN groups AS g
-           ON g.uuid = gu.groups_uuid AND g.organizations_uuid = c.org_uuid
-         LEFT JOIN collections_groups AS cg
-           ON cg.groups_uuid = g.uuid AND cg.collections_uuid = c.uuid
-         WHERE uo.status = 2
-           AND (
-             uc.user_uuid IS NOT NULL
-             OR uo.access_all = 1
-             OR uo.atype <= 1
-             OR g.access_all = 1
-             OR cg.collections_uuid IS NOT NULL
-           )`,
+    const rows = database.drizzle
+      .selectDistinct({
+        externalId: collections.externalId,
+        name: collections.name,
+        organizationUuid: collections.orgUuid,
+        uuid: collections.uuid,
+      })
+      .from(collections)
+      .innerJoin(
+        usersOrganizations,
+        and(eq(usersOrganizations.orgUuid, collections.orgUuid), eq(usersOrganizations.userUuid, userUuid)),
       )
-      .all(userUuid, userUuid)
+      .leftJoin(
+        usersCollections,
+        and(eq(usersCollections.collectionUuid, collections.uuid), eq(usersCollections.userUuid, userUuid)),
+      )
+      .leftJoin(groupsUsers, eq(groupsUsers.usersOrganizationsUuid, usersOrganizations.uuid))
+      .leftJoin(groups, and(eq(groups.uuid, groupsUsers.groupsUuid), eq(groups.organizationsUuid, collections.orgUuid)))
+      .leftJoin(
+        collectionsGroups,
+        and(eq(collectionsGroups.groupsUuid, groups.uuid), eq(collectionsGroups.collectionsUuid, collections.uuid)),
+      )
+      .where(
+        and(
+          eq(usersOrganizations.status, 2),
+          or(
+            eq(usersCollections.userUuid, userUuid),
+            eq(usersOrganizations.accessAll, true),
+            eq(usersOrganizations.atype, 0),
+            eq(usersOrganizations.atype, 1),
+            eq(groups.accessAll, true),
+            eq(collectionsGroups.collectionsUuid, collections.uuid),
+          ),
+        ),
+      )
+      .all()
     return resultCreate(rows)
   } catch {
     return resultErrorCreate(op, "Collection lookup failed.")

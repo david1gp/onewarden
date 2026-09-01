@@ -1,9 +1,11 @@
-import { type Result } from "#result"
+import { and, eq } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
-import type { DatabaseConnection } from "../../database/database.js"
-import { databaseTransaction } from "../../database/databaseTransaction.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
+import type { DatabaseConnection } from "../../database/database.js"
+import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { sends } from "../../database/schema/sends.js"
 import type { Send } from "./send.js"
 import type { SendFileStorageAdapter } from "./sendFileStorageAdapter.js"
 import { sendFindByUuidAndUser } from "./sendFindByUuidAndUser.js"
@@ -31,7 +33,10 @@ export async function sendDelete(
     const verificationDeleteResult = sendRecipientVerificationDelete(database, uuid)
     if (!verificationDeleteResult.success) return verificationDeleteResult
     try {
-      database.run("DELETE FROM sends WHERE uuid = ? AND user_uuid = ?", [uuid, userUuid])
+      database.drizzle
+        .delete(sends)
+        .where(and(eq(sends.uuid, uuid), eq(sends.userUuid, userUuid)))
+        .run()
       return resultCreate(send)
     } catch {
       return resultErrorCreate("sendDelete", "Send delete failed.")

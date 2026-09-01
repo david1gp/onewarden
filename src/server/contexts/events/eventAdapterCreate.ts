@@ -8,6 +8,8 @@ import type { EventAdapter } from "./eventAdapter.js"
 import type { EventCreateData } from "./eventCreateDataSchema.js"
 import type { EventLogContext } from "./eventLogContext.js"
 import type { EventNotificationAdapter } from "./eventNotificationAdapter.js"
+import { and, eq } from "drizzle-orm"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 
 type EventAdapterCreateOptions = {
   clock: Clock
@@ -51,13 +53,13 @@ export function eventAdapterCreate(options: EventAdapterCreateOptions): EventAda
 
   const userEventCreate = (eventType: number, userUuid: string, context: EventLogContext): void => {
     if (!options.enabled) return
-    let memberships: Array<{ uuid: string; org_uuid: string }>
+    let memberships: Array<{ orgUuid: string; uuid: string }>
     try {
-      memberships = options.database
-        .query<{ uuid: string; org_uuid: string }, [string]>(
-          "SELECT uuid, org_uuid FROM users_organizations WHERE user_uuid = ? AND status = 2",
-        )
-        .all(userUuid)
+      memberships = options.database.drizzle
+        .select({ orgUuid: usersOrganizations.orgUuid, uuid: usersOrganizations.uuid })
+        .from(usersOrganizations)
+        .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.status, 2)))
+        .all()
     } catch {
       return
     }
@@ -72,7 +74,7 @@ export function eventAdapterCreate(options: EventAdapterCreateOptions): EventAda
     }
     create(commonData)
     for (const membership of memberships)
-      create({ ...commonData, organizationUserUuid: membership.uuid, organizationUuid: membership.org_uuid })
+      create({ ...commonData, organizationUserUuid: membership.uuid, organizationUuid: membership.orgUuid })
   }
 
   const cipherEventCreate = (

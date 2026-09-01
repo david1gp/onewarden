@@ -1,17 +1,17 @@
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
-import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
+import type { UserOrganizationRow } from "../../database/schema/usersOrganizations.js"
 
-export function organizationMembershipFromRow(row: OrganizationMembershipRow): OrganizationMembership {
+export function organizationMembershipFromRow(row: UserOrganizationRow): OrganizationMembership {
   return {
-    accessAll: row.access_all === 1,
+    accessAll: row.accessAll,
     akey: row.akey,
-    externalId: row.external_id,
-    invitedByEmail: row.invited_by_email,
-    organizationUuid: row.org_uuid,
-    resetPasswordKey: row.reset_password_key,
+    externalId: row.externalId,
+    invitedByEmail: row.invitedByEmail,
+    organizationUuid: row.orgUuid,
+    resetPasswordKey: row.resetPasswordKey,
     status: row.status,
     type: row.atype,
-    userUuid: row.user_uuid,
+    userUuid: row.userUuid,
     uuid: row.uuid,
   }
 }

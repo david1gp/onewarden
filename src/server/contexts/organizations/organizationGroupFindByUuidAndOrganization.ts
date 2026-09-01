@@ -2,9 +2,10 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq } from "drizzle-orm"
+import { groups, type GroupRow } from "../../database/schema/groups.js"
 import type { OrganizationGroup } from "./organizationGroup.js"
 import { organizationGroupFromRow } from "./organizationGroupFromRow.js"
-import type { OrganizationGroupRow } from "./organizationGroupRow.js"
 
 export function organizationGroupFindByUuidAndOrganization(
   database: DatabaseConnection,
@@ -13,15 +14,13 @@ export function organizationGroupFindByUuidAndOrganization(
 ): Result<OrganizationGroup | null> {
   const op = "organizationGroupFindByUuidAndOrganization"
   try {
-    const row = database
-      .query<OrganizationGroupRow, [string, string]>(
-        `SELECT uuid, organizations_uuid, name, access_all, external_id, creation_date, revision_date
-         FROM groups
-         WHERE uuid = ? AND organizations_uuid = ?
-         LIMIT 1`,
-      )
-      .get(groupUuid, organizationUuid)
-    return resultCreate(row === null ? null : organizationGroupFromRow(row))
+    const row: GroupRow | undefined = database.drizzle
+      .select()
+      .from(groups)
+      .where(and(eq(groups.uuid, groupUuid), eq(groups.organizationsUuid, organizationUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row === undefined ? null : organizationGroupFromRow(row))
   } catch {
     return resultErrorCreate(op, "Group lookup failed.")
   }

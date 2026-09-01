@@ -1,6 +1,7 @@
 import type { Context, Hono } from "hono"
 import type { Result } from "#result"
 import * as v from "valibot"
+import { and, eq } from "drizzle-orm"
 import { apiErrorResponseCreate } from "../../../shared/api/apiErrorResponseCreate.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
@@ -33,6 +34,7 @@ import { organizationGroupSave } from "./organizationGroupSave.js"
 import { organizationGroupToJson } from "./organizationGroupToJson.js"
 import { organizationGroupIdsDataSchema } from "./organizationGroupIdsDataSchema.js"
 import { groupIdResolve } from "./groupIdResolve.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import type { OrganizationRouteOptions } from "./organizationRouteOptions.js"
 import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
@@ -534,12 +536,13 @@ function organizationGroupMembershipExists(
 ): Result<boolean> {
   const op = "organizationGroupMembershipExists"
   try {
-    const row = database
-      .query<{ uuid: string }, [string, string]>(
-        "SELECT uuid FROM users_organizations WHERE uuid = ? AND org_uuid = ? LIMIT 1",
-      )
-      .get(membershipUuid, organizationUuid)
-    return resultCreate(row !== null)
+    const row = database.drizzle
+      .select({ uuid: usersOrganizations.uuid })
+      .from(usersOrganizations)
+      .where(and(eq(usersOrganizations.uuid, membershipUuid), eq(usersOrganizations.orgUuid, organizationUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row !== undefined)
   } catch {
     return organizationErrorCreate(op, "Organization membership lookup failed.")
   }

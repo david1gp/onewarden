@@ -1,16 +1,16 @@
 import type { OrganizationDomain } from "./organizationDomain.js"
-import type { OrganizationDomainRow } from "./organizationDomainRow.js"
+import type { OrganizationDomainRow } from "../../database/schema/organizationDomains.js"
 
 export function organizationDomainFromRow(row: OrganizationDomainRow): OrganizationDomain {
   return {
-    creationDate: row.creation_date,
-    domainName: row.domain_name,
-    jobRunCount: row.job_run_count,
-    lastCheckedDate: row.last_checked_date,
-    nextRunDate: row.next_run_date,
-    organizationUuid: row.org_uuid,
+    creationDate: row.creationDate,
+    domainName: row.domainName,
+    jobRunCount: row.jobRunCount,
+    lastCheckedDate: row.lastCheckedDate,
+    nextRunDate: row.nextRunDate,
+    organizationUuid: row.orgUuid,
     txt: row.txt,
     uuid: row.uuid,
-    verifiedDate: row.verified_date,
+    verifiedDate: row.verifiedDate,
   }
 }

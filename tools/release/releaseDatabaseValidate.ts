@@ -1,10 +1,12 @@
 import { Database } from "bun:sqlite"
 import { constants } from "node:fs"
 import { lstat, open } from "node:fs/promises"
+import { drizzle } from "drizzle-orm/bun-sqlite"
 import { type Result } from "#result"
 import { resultCreate } from "../../src/shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../src/shared/result/resultErrorCreate.js"
 import { databaseSchemaTablesValidate } from "../../src/server/database/databaseSchemaTablesValidate.js"
+import { databaseSchema } from "../../src/server/database/schema/databaseSchema.js"
 
 export async function releaseDatabaseValidate(
   databasePath: string,
@@ -48,7 +50,9 @@ export async function releaseDatabaseValidate(
     if (schemaVersion > latestSchemaVersion)
       return resultErrorCreate(op, "Existing SQLite schema is newer than the release.")
     if (schemaVersion === latestSchemaVersion) {
-      const tablesResult = databaseSchemaTablesValidate(database)
+      const tablesResult = databaseSchemaTablesValidate({
+        drizzle: drizzle({ client: database, schema: databaseSchema }),
+      })
       if (!tablesResult.success) return resultErrorCreate(op, "Existing SQLite schema is incomplete.")
     }
     return resultCreate({ exists: true, schemaVersion })

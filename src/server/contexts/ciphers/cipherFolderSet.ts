@@ -1,7 +1,9 @@
-import { type Result } from "#result"
+import { eq } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { type FolderCipherInsert, foldersCiphers } from "../../database/schema/foldersCiphers.js"
 
 export function cipherFolderSet(
   database: DatabaseConnection,
@@ -10,9 +12,11 @@ export function cipherFolderSet(
 ): Result<void> {
   const op = "cipherFolderSet"
   try {
-    database.run("DELETE FROM folders_ciphers WHERE cipher_uuid = ?", [cipherUuid])
-    if (folderUuid !== null)
-      database.run("INSERT INTO folders_ciphers (cipher_uuid, folder_uuid) VALUES (?, ?)", [cipherUuid, folderUuid])
+    database.drizzle.delete(foldersCiphers).where(eq(foldersCiphers.cipherUuid, cipherUuid)).run()
+    if (folderUuid !== null) {
+      const values: FolderCipherInsert = { cipherUuid, folderUuid }
+      database.drizzle.insert(foldersCiphers).values(values).run()
+    }
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Cipher folder update failed.")

@@ -2,9 +2,10 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, between, desc, eq } from "drizzle-orm"
+import { event as eventTable, type EventRow } from "../../database/schema/event.js"
 import type { Event } from "./event.js"
 import { eventFromRow } from "./eventFromRow.js"
-import type { EventRow } from "./eventRow.js"
 
 export function eventFindByOrganization(
   database: DatabaseConnection,
@@ -14,17 +15,13 @@ export function eventFindByOrganization(
 ): Result<Event[]> {
   const op = "eventFindByOrganization"
   try {
-    const rows = database
-      .query<EventRow, [string, string, string]>(
-        `SELECT uuid, event_type, user_uuid, org_uuid, cipher_uuid, collection_uuid,
-           group_uuid, org_user_uuid, act_user_uuid, device_type, ip_address,
-           event_date, policy_uuid, provider_uuid, provider_user_uuid, provider_org_uuid
-         FROM event
-         WHERE org_uuid = ? AND event_date BETWEEN ? AND ?
-           ORDER BY event_date DESC
-         LIMIT 30`,
-      )
-      .all(organizationUuid, startDate, endDate)
+    const rows: EventRow[] = database.drizzle
+      .select()
+      .from(eventTable)
+      .where(and(eq(eventTable.orgUuid, organizationUuid), between(eventTable.eventDate, startDate, endDate)))
+      .orderBy(desc(eventTable.eventDate))
+      .limit(30)
+      .all()
     return resultCreate(rows.map(eventFromRow))
   } catch {
     return resultErrorCreate(op, "Organization event lookup failed.")

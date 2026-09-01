@@ -2,6 +2,13 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq, exists, isNotNull, lte, or } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 
 export function organizationCollectionManageableByUser(
   database: DatabaseConnection,
@@ -12,32 +19,51 @@ export function organizationCollectionManageableByUser(
 ): Result<boolean> {
   const op = "organizationCollectionManageableByUser"
   try {
-    const row = database
-      .query<{ manageable: number }, [string, string, string, string, number]>(
-        `SELECT CASE WHEN EXISTS (
-           SELECT 1
-           FROM collections AS c
-           LEFT JOIN users_collections AS uc
-             ON uc.collection_uuid = c.uuid AND uc.user_uuid = ?
-           LEFT JOIN users_organizations AS uo
-             ON uo.org_uuid = c.org_uuid AND uo.user_uuid = ?
-           LEFT JOIN groups_users AS gu
-             ON gu.users_organizations_uuid = uo.uuid
-           LEFT JOIN groups AS g
-             ON g.uuid = gu.groups_uuid AND g.organizations_uuid = c.org_uuid
-           LEFT JOIN collections_groups AS cg
-             ON cg.groups_uuid = g.uuid AND cg.collections_uuid = c.uuid
-           WHERE c.uuid = ? AND c.org_uuid = ? AND (
-             (uc.collection_uuid = c.uuid AND uc.manage = 1)
-             OR uo.access_all = 1
-             OR uo.atype <= 1
-             OR (? = 1 AND (g.access_all = 1 OR (cg.collections_uuid = c.uuid AND cg.manage = 1)))
-           )
-         ) THEN 1 ELSE 0 END AS manageable`,
+    const groupAccess = exists(
+      database.drizzle
+        .select({ one: groupsUsers.groupsUuid })
+        .from(groupsUsers)
+        .innerJoin(
+          groups,
+          and(eq(groups.uuid, groupsUsers.groupsUuid), eq(groups.organizationsUuid, collections.orgUuid)),
+        )
+        .leftJoin(
+          collectionsGroups,
+          and(eq(collectionsGroups.groupsUuid, groups.uuid), eq(collectionsGroups.collectionsUuid, collections.uuid)),
+        )
+        .where(
+          and(
+            eq(groupsUsers.usersOrganizationsUuid, usersOrganizations.uuid),
+            or(
+              eq(groups.accessAll, true),
+              and(isNotNull(collectionsGroups.collectionsUuid), eq(collectionsGroups.manage, true)),
+            ),
+          ),
+        ),
+    )
+    const accessConditions = [
+      and(eq(usersCollections.collectionUuid, collections.uuid), eq(usersCollections.manage, true)),
+      eq(usersOrganizations.accessAll, true),
+      lte(usersOrganizations.atype, 1),
+      ...(groupsEnabled ? [groupAccess] : []),
+    ]
+    const row = database.drizzle
+      .select({ uuid: collections.uuid })
+      .from(collections)
+      .leftJoin(
+        usersCollections,
+        and(eq(usersCollections.collectionUuid, collections.uuid), eq(usersCollections.userUuid, userUuid)),
       )
-      .get(userUuid, userUuid, collectionUuid, organizationUuid, groupsEnabled ? 1 : 0)
-    if (row === null) return resultCreate(false)
-    return resultCreate(row.manageable === 1)
+      .leftJoin(
+        usersOrganizations,
+        and(eq(usersOrganizations.orgUuid, collections.orgUuid), eq(usersOrganizations.userUuid, userUuid)),
+      )
+      .where(
+        and(eq(collections.uuid, collectionUuid), eq(collections.orgUuid, organizationUuid), or(...accessConditions)),
+      )
+      .limit(1)
+      .get()
+    return resultCreate(row !== undefined)
   } catch {
     return resultErrorCreate(op, "Collection manageability lookup failed.")
   }

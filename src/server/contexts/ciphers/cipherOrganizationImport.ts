@@ -1,14 +1,15 @@
-import { type Result } from "#result"
-import type { Clock } from "../../../shared/clock/clock.js"
+import type { Result } from "#result"
 import { apiErrorCreate } from "../../../shared/api/apiErrorCreate.js"
+import type { Clock } from "../../../shared/clock/clock.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import type { OrganizationCollection } from "../organizations/organizationCollection.js"
 import { organizationCollectionCreate } from "../organizations/organizationCollectionCreate.js"
 import { organizationCollectionFindByOrganization } from "../organizations/organizationCollectionFindByOrganization.js"
+import { organizationCollectionFindByUuid } from "../organizations/organizationCollectionFindByUuid.js"
 import { organizationCollectionWritableByUser } from "../organizations/organizationCollectionWritableByUser.js"
-import type { OrganizationCollection } from "../organizations/organizationCollection.js"
 import { organizationErrorCreate } from "../organizations/organizationErrorCreate.js"
 import { organizationMembershipFindByUserAndOrganization } from "../organizations/organizationMembershipFindByUserAndOrganization.js"
 import { organizationMembershipHasFullAccess } from "../organizations/organizationMembershipHasFullAccess.js"
@@ -37,7 +38,37 @@ export function cipherOrganizationImport(
   createdCollections: OrganizationCollection[]
   revisionDate: string
 }> {
+  const membershipResult = organizationMembershipFindByUserAndOrganization(database, userUuid, organizationUuid)
+  if (!membershipResult.success) return membershipResult
+  if (membershipResult.data === null)
+    return organizationErrorCreate("cipherOrganizationImport", "The current user isn't member of the organization", 401)
+  const membership = membershipResult.data
+  if (membership.status !== organizationMembershipStatus.confirmed)
+    return organizationErrorCreate("cipherOrganizationImport", "You don't have permission to add item to organization")
+
+  const sourceOrganizationIds = new Set<string>()
+  for (const cipherData of data.ciphers) {
+    for (const sourceOrganizationId of [cipherData.organizationId, cipherData.organizationID])
+      if (sourceOrganizationId !== undefined && sourceOrganizationId !== null)
+        sourceOrganizationIds.add(sourceOrganizationId)
+  }
+  if (sourceOrganizationIds.size > 1)
+    return organizationErrorCreate("cipherOrganizationImport", "Organization data contains mismatched organization ids")
+
+  const collectionIds = new Set<string>()
+  for (const collectionData of data.collections) {
+    if (collectionData.id === undefined || collectionData.id === null) continue
+    if (collectionIds.has(collectionData.id))
+      return organizationErrorCreate("cipherOrganizationImport", "Duplicate collection id")
+    collectionIds.add(collectionData.id)
+  }
+
   for (const [cipherIndex, cipherData] of data.ciphers.entries()) {
+    if (cipherData.deletedDate !== undefined && cipherData.deletedDate !== null)
+      return organizationErrorCreate(
+        "cipherOrganizationImport",
+        `Organization item at index ${cipherIndex} is trashed and cannot be imported`,
+      )
     const preparedResult = cipherDataPrepare({ ...cipherData, folderId: null, organizationId: organizationUuid })
     if (!preparedResult.success) return preparedResult
     if (
@@ -53,15 +84,22 @@ export function cipherOrganizationImport(
     const passwordHistoryResult = cipherPasswordHistoryValidate(cipherData.passwordHistory, cipherIndex)
     if (!passwordHistoryResult.success) return passwordHistoryResult
   }
-  for (const relation of data.collectionRelationships)
-    if (relation.key >= data.ciphers.length || relation.value >= data.collections.length)
+  const relationshipKeys = new Set<string>()
+  for (const relation of data.collectionRelationships) {
+    if (
+      !Number.isInteger(relation.key) ||
+      !Number.isInteger(relation.value) ||
+      relation.key < 0 ||
+      relation.value < 0 ||
+      relation.key >= data.ciphers.length ||
+      relation.value >= data.collections.length
+    )
       return organizationErrorCreate("cipherOrganizationImport", "Invalid collection relationship")
-
-  const membershipResult = organizationMembershipFindByUserAndOrganization(database, userUuid, organizationUuid)
-  if (!membershipResult.success) return membershipResult
-  if (membershipResult.data === null)
-    return organizationErrorCreate("cipherOrganizationImport", "The current user isn't member of the organization", 401)
-  const membership = membershipResult.data
+    const relationshipKey = `${relation.key}:${relation.value}`
+    if (relationshipKeys.has(relationshipKey))
+      return organizationErrorCreate("cipherOrganizationImport", "Duplicate collection relationship")
+    relationshipKeys.add(relationshipKey)
+  }
   const now = clock.now().toISOString()
 
   return databaseTransaction(database, () => {
@@ -73,6 +111,12 @@ export function cipherOrganizationImport(
     const collectionIds: string[] = []
     const createdCollections: OrganizationCollection[] = []
     for (const collectionData of data.collections) {
+      if (collectionData.id !== undefined && collectionData.id !== null) {
+        const collectionByUuidResult = organizationCollectionFindByUuid(database, collectionData.id)
+        if (!collectionByUuidResult.success) return collectionByUuidResult
+        if (collectionByUuidResult.data !== null && collectionByUuidResult.data.organizationUuid !== organizationUuid)
+          return organizationErrorCreate("cipherOrganizationImport", "Collection does not belong to organization")
+      }
       const existingCollection =
         collectionData.id === undefined || collectionData.id === null
           ? undefined
@@ -85,7 +129,7 @@ export function cipherOrganizationImport(
             userUuid,
             organizationUuid,
             groupsEnabled,
-            false,
+            true,
           )
           if (!writableResult.success) return writableResult
           if (!writableResult.data)
@@ -115,20 +159,6 @@ export function cipherOrganizationImport(
       createdCollections.push(collectionResult.data)
     }
 
-    const targetCollectionIds = [...new Set(collectionIds)]
-    if (data.ciphers.length > 0) {
-      if (membership.status !== organizationMembershipStatus.confirmed)
-        return organizationErrorCreate(
-          "cipherOrganizationImport",
-          "You don't have permission to add item to organization",
-        )
-      if (targetCollectionIds.length === 0 && !organizationMembershipHasFullAccess(membership))
-        return organizationErrorCreate(
-          "cipherOrganizationImport",
-          "You don't have permission to add cipher directly to organization",
-        )
-    }
-
     const relationshipCollectionIds = new Map<number, string[]>()
     for (const relation of data.collectionRelationships) {
       const collectionId = collectionIds[relation.value]
@@ -138,6 +168,13 @@ export function cipherOrganizationImport(
       if (!relationIds.includes(collectionId)) relationIds.push(collectionId)
       relationshipCollectionIds.set(relation.key, relationIds)
     }
+    if (!organizationMembershipHasFullAccess(membership))
+      for (const [cipherIndex] of data.ciphers.entries())
+        if ((relationshipCollectionIds.get(cipherIndex) ?? []).length === 0)
+          return organizationErrorCreate(
+            "cipherOrganizationImport",
+            "You don't have permission to add cipher directly to organization",
+          )
 
     const importedCiphers: Array<{ cipher: Cipher; collectionIds: string[]; userUuids: string[] }> = []
     for (const [cipherIndex, cipherData] of data.ciphers.entries()) {

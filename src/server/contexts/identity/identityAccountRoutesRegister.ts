@@ -6,7 +6,10 @@ import { passwordHashVerify } from "../../../shared/crypto/passwordHashVerify.js
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import { requestBodyParse } from "../../../shared/validation/requestBodyParse.js"
+import { and, eq, isNotNull } from "drizzle-orm"
 import type { DatabaseConnection } from "../../database/database.js"
+import { organizations } from "../../database/schema/organizations.js"
+import { usersOrganizations, type UserOrganizationRow } from "../../database/schema/usersOrganizations.js"
 import type { AuthenticationContext } from "../authentication/authenticationContext.js"
 import { authenticationContextGet } from "../authentication/authenticationContextGet.js"
 import type { AuthenticationEnvironment } from "../authentication/authenticationEnvironment.js"
@@ -15,8 +18,6 @@ import { eventLogContextCreate } from "../events/eventLogContextCreate.js"
 import { eventType } from "../events/eventType.js"
 import { folderFindByUser } from "../folders/folderFindByUser.js"
 import { folderUpdate } from "../folders/folderUpdate.js"
-import { organizationMembershipFromRow } from "../organizations/organizationMembershipFromRow.js"
-import type { OrganizationMembershipRow } from "../organizations/organizationMembershipRow.js"
 import { organizationPolicyCheckUserAllowed } from "../organizations/organizationPolicyCheckUserAllowed.js"
 import { twoFactorPasswordOrOtpValidate } from "../twoFactor/twoFactorPasswordOrOtpValidate.js"
 import { identityAccountAvatarDataSchema } from "./identityAccountAvatarDataSchema.js"
@@ -202,10 +203,11 @@ export function identityAccountRoutesRegister(
     if (!organizationResult.success) return apiErrorResponseCreate(organizationResult)
     if (!options.config.MAIL_ENABLED) {
       try {
-        requestContext.data.database.run(
-          "UPDATE users_organizations SET status = 1 WHERE user_uuid = ? AND status = 0",
-          [user.uuid],
-        )
+        requestContext.data.database.drizzle
+          .update(usersOrganizations)
+          .set({ status: 1 })
+          .where(and(eq(usersOrganizations.userUuid, user.uuid), eq(usersOrganizations.status, 0)))
+          .run()
       } catch {
         return apiErrorResponseCreate(
           identityDomainErrorCreate("identityAccountSetPassword", "Invitation acceptance failed"),
@@ -410,13 +412,13 @@ export function identityAccountRoutesRegister(
           ),
         )
     }
-    let memberships: Array<{ org_uuid: string }>
+    let memberships: Array<{ orgUuid: string }>
     try {
-      memberships = requestContext.data.database
-        .query<{ org_uuid: string }, [string]>(
-          "SELECT org_uuid FROM users_organizations WHERE user_uuid = ? AND reset_password_key IS NOT NULL",
-        )
-        .all(user.uuid)
+      memberships = requestContext.data.database.drizzle
+        .select({ orgUuid: usersOrganizations.orgUuid })
+        .from(usersOrganizations)
+        .where(and(eq(usersOrganizations.userUuid, user.uuid), isNotNull(usersOrganizations.resetPasswordKey)))
+        .all()
     } catch {
       return apiErrorResponseCreate(
         identityDomainErrorCreate("identityAccountRotateKeys", "Reset password lookup failed"),
@@ -426,7 +428,7 @@ export function identityAccountRoutesRegister(
       bodyResult.data.accountUnlockData.organizationAccountRecoveryUnlockData.map((item) => item.organizationId),
     )
     for (const membership of memberships) {
-      if (!providedOrganizationIds.has(membership.org_uuid))
+      if (!providedOrganizationIds.has(membership.orgUuid))
         return apiErrorResponseCreate(
           identityDomainErrorCreate(
             "identityAccountRotateKeys",
@@ -442,15 +444,16 @@ export function identityAccountRoutesRegister(
     }
     try {
       for (const item of bodyResult.data.accountUnlockData.organizationAccountRecoveryUnlockData) {
-        const membership = memberships.find((candidate) => candidate.org_uuid === item.organizationId)
+        const membership = memberships.find((candidate) => candidate.orgUuid === item.organizationId)
         if (membership === undefined)
           return apiErrorResponseCreate(
             identityDomainErrorCreate("identityAccountRotateKeys", "Reset password doesn't exist"),
           )
-        requestContext.data.database.run(
-          "UPDATE users_organizations SET reset_password_key = ? WHERE user_uuid = ? AND org_uuid = ?",
-          [item.resetPasswordKey, user.uuid, item.organizationId],
-        )
+        requestContext.data.database.drizzle
+          .update(usersOrganizations)
+          .set({ resetPasswordKey: item.resetPasswordKey })
+          .where(and(eq(usersOrganizations.userUuid, user.uuid), eq(usersOrganizations.orgUuid, item.organizationId)))
+          .run()
       }
     } catch {
       return apiErrorResponseCreate(
@@ -912,34 +915,52 @@ function identityAccountOrganizationInviteAccept(
   )
     return resultCreate(undefined)
   try {
-    const organization = database
-      .query<{ uuid: string }, [string]>("SELECT uuid FROM organizations WHERE uuid = ? LIMIT 1")
-      .get(organizationIdentifier)
-    if (organization === null)
+    const organization = database.drizzle
+      .select({ uuid: organizations.uuid })
+      .from(organizations)
+      .where(eq(organizations.uuid, organizationIdentifier))
+      .limit(1)
+      .get()
+    if (organization === undefined)
       return identityDomainErrorCreate("identityAccountSetPassword", "Failed to retrieve the associated organization")
-    const membership = database
-      .query<OrganizationMembershipRow, [string, string]>(
-        `SELECT uuid, user_uuid, org_uuid, invited_by_email, access_all, akey,
-                status, atype, reset_password_key, external_id
-         FROM users_organizations WHERE user_uuid = ? AND org_uuid = ? LIMIT 1`,
-      )
-      .get(userUuid, organizationIdentifier)
-    if (membership === null)
+    const membership = database.drizzle
+      .select()
+      .from(usersOrganizations)
+      .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.orgUuid, organizationIdentifier)))
+      .limit(1)
+      .get()
+    if (membership === undefined)
       return identityDomainErrorCreate("identityAccountSetPassword", "Failed to retrieve the invitation")
     if (membership.status !== 0)
       return identityDomainErrorCreate("identityAccountSetPassword", "User already accepted the invitation")
     const policyResult = organizationPolicyCheckUserAllowed(
       database,
-      { ...organizationMembershipFromRow(membership), status: 1 },
+      { ...identityAccountOrganizationMembershipCreate(membership), status: 1 },
       "accept",
     )
     if (!policyResult.success) return policyResult
-    database.run(
-      "UPDATE users_organizations SET status = 1, reset_password_key = NULL WHERE user_uuid = ? AND org_uuid = ?",
-      [userUuid, organizationIdentifier],
-    )
+    database.drizzle
+      .update(usersOrganizations)
+      .set({ status: 1, resetPasswordKey: null })
+      .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.orgUuid, organizationIdentifier)))
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate("identityAccountSetPassword", "Invitation acceptance failed")
+  }
+}
+
+function identityAccountOrganizationMembershipCreate(row: UserOrganizationRow) {
+  return {
+    accessAll: row.accessAll,
+    akey: row.akey,
+    externalId: row.externalId,
+    invitedByEmail: row.invitedByEmail,
+    organizationUuid: row.orgUuid,
+    resetPasswordKey: row.resetPasswordKey,
+    status: row.status,
+    type: row.atype,
+    userUuid: row.userUuid,
+    uuid: row.uuid,
   }
 }

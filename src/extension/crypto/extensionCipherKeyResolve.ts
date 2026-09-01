@@ -1,4 +1,4 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEncryptedLoginCipherSchema.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
@@ -23,6 +23,7 @@ export async function extensionCipherKeyResolve(
   const cipherKeyResult = await extensionEncStringDecrypt(cipher.key, wrappingKey)
   if (!cipherKeyResult.success) return cipherKeyResult
   if (cipherKeyResult.data.byteLength !== 64) {
+    cipherKeyResult.data.fill(0)
     return resultErrorCreate(op, "Decrypted cipher key is invalid.", {
       code: "platform.invalid-request",
       statusCode: 400,

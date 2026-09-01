@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto"
 import { constants, type Dirent } from "node:fs"
 import { lstat, mkdir, open, readdir, realpath, rename, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve, sep } from "node:path"
-import { type Result } from "#result"
+import { max, sql } from "drizzle-orm"
+import type { Result } from "#result"
 import { sha256Hex } from "../../shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
@@ -12,7 +13,8 @@ import { databaseMigrationsLatestVersionRead } from "../database/databaseMigrati
 import { databaseOpen } from "../database/databaseOpen.js"
 import { databasePathIsMemory } from "../database/databasePathIsMemory.js"
 import { databaseSchemaTablesValidate } from "../database/databaseSchemaTablesValidate.js"
-import { type BackupManifest } from "./backupManifestSchema.js"
+import { schemaVersion } from "../database/schema/schemaVersion.js"
+import type { BackupManifest } from "./backupManifestSchema.js"
 import { backupManifestValidate } from "./backupManifestValidate.js"
 
 const backupDatabaseFile = "database.sqlite3"
@@ -57,6 +59,8 @@ export async function backupBundleRestore(options: {
   attachmentsFolder: string
 }): Promise<Result<string>> {
   const op = "backupBundleRestore"
+  if (options.attachmentsFolder.startsWith("s3://"))
+    return resultErrorCreate(op, "S3 attachment objects must be restored independently.")
   const targetsResult = await backupRestoreTargetsPrepare(options)
   if (!targetsResult.success) return targetsResult
   const targets = targetsResult.data
@@ -275,11 +279,13 @@ async function backupRestoreDatabasePrepare(databasePath: string): Promise<Resul
     if (!migrationResult.success) {
       prepareResult = resultErrorCreate(op, "Restored database schema could not be migrated.")
     } else {
-      const integrityRow = databaseResult.data.query<{ integrity_check: string }, []>("PRAGMA integrity_check").get()
-      const schemaRow = databaseResult.data
-        .query<{ version: number | null }, []>("SELECT MAX(version) AS version FROM schema_version")
+      // SQLite integrity validation and WAL checkpointing are maintenance operations.
+      const integrityRow = databaseResult.data.drizzle.values<[string]>(sql`PRAGMA integrity_check`)[0]
+      const schemaRow = databaseResult.data.drizzle
+        .select({ version: max(schemaVersion.version) })
+        .from(schemaVersion)
         .get()
-      if (integrityRow?.integrity_check !== "ok") {
+      if (integrityRow?.[0] !== "ok") {
         prepareResult = resultErrorCreate(op, "Staged database failed SQLite integrity validation.")
       } else if (schemaRow?.version !== latestVersionResult.data) {
         prepareResult = resultErrorCreate(op, "Restored database schema is incompatible with this runtime.")
@@ -289,7 +295,7 @@ async function backupRestoreDatabasePrepare(databasePath: string): Promise<Resul
           prepareResult = resultErrorCreate(op, "Restored database schema is incomplete.")
         } else {
           try {
-            databaseResult.data.run("PRAGMA wal_checkpoint(TRUNCATE)")
+            databaseResult.data.drizzle.run(sql`PRAGMA wal_checkpoint(TRUNCATE)`)
             prepareResult = resultCreate(undefined)
           } catch {
             prepareResult = resultErrorCreate(op, "Staged database could not be checkpointed.")

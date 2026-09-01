@@ -24,6 +24,7 @@ import { releasePackageValidate } from "../../../tools/release/releasePackageVal
 import { releasePostdeployVerify } from "../../../tools/release/releasePostdeployVerify.js"
 import { releasePredeployVerify } from "../../../tools/release/releasePredeployVerify.js"
 import { releaseRequiredCommandsValidate } from "../../../tools/release/releaseRequiredCommandsValidate.js"
+import { releaseRuntimeProtectedPathsRead } from "../../../tools/release/releaseRuntimeProtectedPathsRead.js"
 import { releaseRuntimeSnapshotCreate } from "../../../tools/release/releaseRuntimeSnapshotCreate.js"
 import { releaseRuntimeSnapshotRestore } from "../../../tools/release/releaseRuntimeSnapshotRestore.js"
 import { releaseVerify } from "../../../tools/release/releaseVerify.js"
@@ -250,6 +251,20 @@ test("predeploy creates and validates a backup before an existing database can b
       "database.sqlite3",
       "sends/send.txt",
     ])
+  }
+
+  writeFileSync(
+    join(runtimeDirectory, ".env"),
+    "HOST=127.0.0.1\nPORT=3041\nDATABASE_PATH=./data/database.sqlite3\nATTACHMENTS_FOLDER=s3://onewarden-attachments/production\nPUBLIC_ORIGIN=https://vault.example.com\n",
+  )
+  const s3Result = await releasePredeployVerify({ packageDirectory, port: 3041, runtimeDirectory, unitFile })
+  expect(s3Result.success).toBe(true)
+  if (s3Result.success) {
+    expect(s3Result.data.attachmentsPath).toBe("s3://onewarden-attachments/production")
+    const backupManifest = JSON.parse(readFileSync(join(s3Result.data.backupPath ?? "", "manifest.json"), "utf8")) as {
+      files: Array<{ path: string }>
+    }
+    expect(backupManifest.files.map((file) => file.path)).toEqual(["database.sqlite3", "sends/send.txt"])
   }
 })
 
@@ -633,6 +648,19 @@ test("nested configured storage stays protected without hiding neighboring packa
   expect(readFileSync(join(runtimeDirectory, "storage", "onewarden.sqlite3"), "utf8")).toBe("database")
   expect(readFileSync(join(runtimeDirectory, "storage", "sends", "send.txt"), "utf8")).toBe("send")
   expect(readFileSync(join(runtimeDirectory, "storage", "attachments", "attachment.txt"), "utf8")).toBe("attachment")
+})
+
+test("runtime protection does not treat an S3 attachment location as a filesystem path", async () => {
+  const root = testDirectoryCreate()
+  const runtimeDirectory = join(root, "runtime")
+  mkdirSync(runtimeDirectory, { recursive: true })
+  writeFileSync(join(runtimeDirectory, ".env"), "ATTACHMENTS_FOLDER=s3://onewarden-attachments/production\n")
+
+  const result = await releaseRuntimeProtectedPathsRead(runtimeDirectory)
+
+  expect(result.success).toBe(true)
+  if (!result.success) return
+  expect([...result.data]).not.toContain("s3:/onewarden-attachments/production")
 })
 
 test("runtime rollback validates the complete package before changing the runtime", async () => {

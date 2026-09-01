@@ -2,6 +2,9 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { eq } from "drizzle-orm"
+import { users } from "../../database/schema/users.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 
 export function organizationMembershipSave(
@@ -11,35 +14,36 @@ export function organizationMembershipSave(
 ): Result<void> {
   const op = "organizationMembershipSave"
   try {
-    database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", [revisionDate, membership.userUuid])
-    database.run(
-      `INSERT INTO users_organizations (
-         uuid, user_uuid, org_uuid, invited_by_email, access_all, akey, status, atype,
-         reset_password_key, external_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(uuid) DO UPDATE SET
-         user_uuid = excluded.user_uuid,
-         org_uuid = excluded.org_uuid,
-         invited_by_email = excluded.invited_by_email,
-         access_all = excluded.access_all,
-         akey = excluded.akey,
-         status = excluded.status,
-         atype = excluded.atype,
-         reset_password_key = excluded.reset_password_key,
-         external_id = excluded.external_id`,
-      [
-        membership.uuid,
-        membership.userUuid,
-        membership.organizationUuid,
-        membership.invitedByEmail,
-        membership.accessAll ? 1 : 0,
-        membership.akey,
-        membership.status,
-        membership.type,
-        membership.resetPasswordKey,
-        membership.externalId,
-      ],
-    )
+    database.drizzle.update(users).set({ updatedAt: revisionDate }).where(eq(users.uuid, membership.userUuid)).run()
+    database.drizzle
+      .insert(usersOrganizations)
+      .values({
+        uuid: membership.uuid,
+        userUuid: membership.userUuid,
+        orgUuid: membership.organizationUuid,
+        invitedByEmail: membership.invitedByEmail,
+        accessAll: membership.accessAll,
+        akey: membership.akey,
+        status: membership.status,
+        atype: membership.type,
+        resetPasswordKey: membership.resetPasswordKey,
+        externalId: membership.externalId,
+      })
+      .onConflictDoUpdate({
+        target: usersOrganizations.uuid,
+        set: {
+          userUuid: membership.userUuid,
+          orgUuid: membership.organizationUuid,
+          invitedByEmail: membership.invitedByEmail,
+          accessAll: membership.accessAll,
+          akey: membership.akey,
+          status: membership.status,
+          atype: membership.type,
+          resetPasswordKey: membership.resetPasswordKey,
+          externalId: membership.externalId,
+        },
+      })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Organization membership save failed.")

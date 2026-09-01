@@ -1,7 +1,15 @@
-import { type Result } from "#result"
+import { and, count, eq } from "drizzle-orm"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { ciphersCollections } from "../../database/schema/ciphersCollections.js"
+import { collections } from "../../database/schema/collections.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { Cipher } from "./cipher.js"
 
 const unrestrictedCipherAccess = { hidePasswords: false, manage: true, readOnly: false } as const
@@ -17,39 +25,58 @@ export function cipherAccessFindByUser(
   if (cipher.organizationUuid === null) return resultCreate(null)
 
   try {
-    const membership = database
-      .query<OrganizationMembershipAccessRow, [string, string]>(
-        `SELECT uuid, access_all, atype
-         FROM users_organizations
-         WHERE org_uuid = ? AND user_uuid = ? AND status = 2
-         LIMIT 1`,
+    const membership = database.drizzle
+      .select({
+        uuid: usersOrganizations.uuid,
+        accessAll: usersOrganizations.accessAll,
+        atype: usersOrganizations.atype,
+      })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.orgUuid, cipher.organizationUuid),
+          eq(usersOrganizations.userUuid, userUuid),
+          eq(usersOrganizations.status, 2),
+        ),
       )
-      .get(cipher.organizationUuid, userUuid)
-    if (membership === null) return resultCreate(null)
-    if (membership.access_all === 1 || membership.atype <= 1) return resultCreate(unrestrictedCipherAccess)
+      .limit(1)
+      .get()
+    if (membership === undefined) return resultCreate(null)
+    if (membership.accessAll || membership.atype <= 1) return resultCreate(unrestrictedCipherAccess)
 
     if (groupsEnabled) {
-      const fullGroup = database
-        .query<{ count: number }, [string, string]>(
-          `SELECT COUNT(*) AS count
-           FROM groups_users AS gu
-           JOIN groups AS g ON g.uuid = gu.groups_uuid AND g.organizations_uuid = ?
-           WHERE gu.users_organizations_uuid = ? AND g.access_all = 1`,
+      const fullGroup = database.drizzle
+        .select({ count: count() })
+        .from(groupsUsers)
+        .innerJoin(
+          groups,
+          and(eq(groups.uuid, groupsUsers.groupsUuid), eq(groups.organizationsUuid, cipher.organizationUuid)),
         )
-        .get(cipher.organizationUuid, membership.uuid)
+        .where(and(eq(groupsUsers.usersOrganizationsUuid, membership.uuid), eq(groups.accessAll, true)))
+        .get()
       if ((fullGroup?.count ?? 0) > 0) return resultCreate(unrestrictedCipherAccess)
     }
 
-    const directRows = database
-      .query<CipherAccessRow, [string, string, string]>(
-        `SELECT uc.read_only, uc.hide_passwords, uc.manage
-         FROM ciphers_collections AS cc
-         JOIN collections AS c ON c.uuid = cc.collection_uuid AND c.org_uuid = ?
-         JOIN users_collections AS uc
-           ON uc.collection_uuid = cc.collection_uuid AND uc.user_uuid = ?
-         WHERE cc.cipher_uuid = ?`,
+    const directRows = database.drizzle
+      .select({
+        readOnly: usersCollections.readOnly,
+        hidePasswords: usersCollections.hidePasswords,
+        manage: usersCollections.manage,
+      })
+      .from(ciphersCollections)
+      .innerJoin(
+        collections,
+        and(eq(collections.uuid, ciphersCollections.collectionUuid), eq(collections.orgUuid, cipher.organizationUuid)),
       )
-      .all(cipher.organizationUuid, userUuid, cipher.uuid)
+      .innerJoin(
+        usersCollections,
+        and(
+          eq(usersCollections.collectionUuid, ciphersCollections.collectionUuid),
+          eq(usersCollections.userUuid, userUuid),
+        ),
+      )
+      .where(eq(ciphersCollections.cipherUuid, cipher.uuid))
+      .all()
     const rows =
       directRows.length > 0 || !groupsEnabled ? directRows : cipherGroupAccessRowsFind(database, cipher, userUuid)
     if (rows.length === 0) return resultCreate(null)
@@ -61,19 +88,30 @@ export function cipherAccessFindByUser(
 
 function cipherGroupAccessRowsFind(database: DatabaseConnection, cipher: Cipher, userUuid: string): CipherAccessRow[] {
   if (cipher.organizationUuid === null) return []
-  return database
-    .query<CipherAccessRow, [string, string, string]>(
-      `SELECT cg.read_only, cg.hide_passwords, cg.manage
-       FROM ciphers_collections AS cc
-       JOIN collections AS c ON c.uuid = cc.collection_uuid AND c.org_uuid = ?
-       JOIN collections_groups AS cg ON cg.collections_uuid = cc.collection_uuid
-       JOIN groups_users AS gu ON gu.groups_uuid = cg.groups_uuid
-       JOIN users_organizations AS uo
-         ON uo.uuid = gu.users_organizations_uuid AND uo.user_uuid = ? AND uo.status = 2
-       JOIN groups AS g ON g.uuid = gu.groups_uuid AND g.organizations_uuid = c.org_uuid
-       WHERE cc.cipher_uuid = ?`,
+  return database.drizzle
+    .select({
+      readOnly: collectionsGroups.readOnly,
+      hidePasswords: collectionsGroups.hidePasswords,
+      manage: collectionsGroups.manage,
+    })
+    .from(ciphersCollections)
+    .innerJoin(
+      collections,
+      and(eq(collections.uuid, ciphersCollections.collectionUuid), eq(collections.orgUuid, cipher.organizationUuid)),
     )
-    .all(cipher.organizationUuid, userUuid, cipher.uuid)
+    .innerJoin(collectionsGroups, eq(collectionsGroups.collectionsUuid, ciphersCollections.collectionUuid))
+    .innerJoin(groupsUsers, eq(groupsUsers.groupsUuid, collectionsGroups.groupsUuid))
+    .innerJoin(
+      usersOrganizations,
+      and(
+        eq(usersOrganizations.uuid, groupsUsers.usersOrganizationsUuid),
+        eq(usersOrganizations.userUuid, userUuid),
+        eq(usersOrganizations.status, 2),
+      ),
+    )
+    .innerJoin(groups, and(eq(groups.uuid, groupsUsers.groupsUuid), eq(groups.organizationsUuid, collections.orgUuid)))
+    .where(eq(ciphersCollections.cipherUuid, cipher.uuid))
+    .all()
 }
 
 function cipherAccessAggregate(rows: readonly CipherAccessRow[]): {
@@ -85,21 +123,15 @@ function cipherAccessAggregate(rows: readonly CipherAccessRow[]): {
   let hidePasswords = true
   let manage = false
   for (const row of rows) {
-    readOnly = readOnly && row.read_only === 1
-    hidePasswords = hidePasswords && row.hide_passwords === 1
-    manage = manage || row.manage === 1
+    readOnly = readOnly && row.readOnly
+    hidePasswords = hidePasswords && row.hidePasswords
+    manage = manage || row.manage
   }
   return { hidePasswords, manage, readOnly }
 }
 
 type CipherAccessRow = {
-  hide_passwords: number
-  manage: number
-  read_only: number
-}
-
-type OrganizationMembershipAccessRow = {
-  access_all: number
-  atype: number
-  uuid: string
+  hidePasswords: boolean
+  manage: boolean
+  readOnly: boolean
 }

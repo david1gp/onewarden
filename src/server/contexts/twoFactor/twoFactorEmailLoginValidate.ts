@@ -4,11 +4,13 @@ import { constantTimeStringsEqual } from "../../../shared/crypto/constantTimeStr
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { TwoFactorEmailData } from "./twoFactorEmailData.js"
 import { twoFactorEmailDataSchema } from "./twoFactorEmailDataSchema.js"
 import { twoFactorPersistedJsonParse } from "./twoFactorPersistedJsonParse.js"
 import { twoFactorProviderType } from "./twoFactorProviderType.js"
+import { and, eq } from "drizzle-orm"
 
 export function twoFactorEmailLoginValidate(
   database: DatabaseConnection,
@@ -21,13 +23,14 @@ export function twoFactorEmailLoginValidate(
   const op = "twoFactorEmailLoginValidate"
   let validationResult: Result<undefined> | undefined
   try {
-    const transaction = database.transaction(() => {
-      const row = database
-        .query<{ uuid: string; data: string }, [string, number]>(
-          "SELECT uuid, data FROM twofactor WHERE user_uuid = ? AND atype = ? LIMIT 1",
-        )
-        .get(userUuid, providerType)
-      if (row === null) {
+    database.drizzle.transaction((transaction) => {
+      const row = transaction
+        .select({ uuid: twoFactor.uuid, data: twoFactor.data })
+        .from(twoFactor)
+        .where(and(eq(twoFactor.userUuid, userUuid), eq(twoFactor.atype, providerType)))
+        .limit(1)
+        .get()
+      if (row === undefined) {
         validationResult = twoFactorEmailValidationError(op, "Two factor not found")
         return
       }
@@ -39,7 +42,7 @@ export function twoFactorEmailLoginValidate(
         "Could not decode EmailTokenData from string",
       )
       if (!emailDataResult.success) {
-        database.run("DELETE FROM twofactor WHERE uuid = ?", [row.uuid])
+        transaction.delete(twoFactor).where(eq(twoFactor.uuid, row.uuid)).run()
         validationResult = twoFactorEmailValidationError(op, "Could not decode EmailTokenData from string")
         return
       }
@@ -57,15 +60,20 @@ export function twoFactorEmailLoginValidate(
           attempts,
           last_token: attempts >= limit ? null : emailData.last_token,
         }
-        database.run("UPDATE twofactor SET data = ? WHERE uuid = ?", [JSON.stringify(nextData), row.uuid])
+        transaction
+          .update(twoFactor)
+          .set({ data: JSON.stringify(nextData) })
+          .where(eq(twoFactor.uuid, row.uuid))
+          .run()
         validationResult = twoFactorEmailValidationError(op, "Token is invalid")
         return
       }
 
-      database.run("UPDATE twofactor SET data = ? WHERE uuid = ?", [
-        JSON.stringify({ ...emailData, last_token: null, attempts: 0 }),
-        row.uuid,
-      ])
+      transaction
+        .update(twoFactor)
+        .set({ data: JSON.stringify({ ...emailData, last_token: null, attempts: 0 }) })
+        .where(eq(twoFactor.uuid, row.uuid))
+        .run()
       const age = Math.floor(clock.now().getTime() / 1_000) - emailData.token_sent
       if (age < 0 || age > (config.EMAIL_EXPIRATION_TIME ?? 600)) {
         validationResult = twoFactorEmailValidationError(op, "Token has expired")
@@ -73,7 +81,6 @@ export function twoFactorEmailLoginValidate(
       }
       validationResult = resultCreate(undefined)
     })
-    transaction()
     return validationResult ?? resultErrorCreate(op, "Email token validation failed.")
   } catch {
     return twoFactorEmailValidationError(op, "Email token validation failed.")

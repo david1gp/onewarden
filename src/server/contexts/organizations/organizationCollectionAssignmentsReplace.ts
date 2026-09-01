@@ -2,6 +2,9 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { collectionsGroups } from "../../database/schema/collectionsGroups.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { eq } from "drizzle-orm"
 import type { OrganizationCollectionAccessData } from "./organizationCollectionAccessDataSchema.js"
 import { organizationCollectionAffectedUserUuidsFind } from "./organizationCollectionAffectedUserUuidsFind.js"
 import { organizationCollectionAssignmentsResolve } from "./organizationCollectionAssignmentsResolve.js"
@@ -22,24 +25,34 @@ export function organizationCollectionAssignmentsReplace(
   if (!beforeResult.success) return beforeResult
 
   try {
-    database.run("DELETE FROM users_collections WHERE collection_uuid = ?", [collectionUuid])
-    database.run("DELETE FROM collections_groups WHERE collections_uuid = ?", [collectionUuid])
+    database.drizzle.delete(usersCollections).where(eq(usersCollections.collectionUuid, collectionUuid)).run()
+    database.drizzle.delete(collectionsGroups).where(eq(collectionsGroups.collectionsUuid, collectionUuid)).run()
     for (const group of groups) {
-      database.run(
-        `INSERT INTO collections_groups (collections_uuid, groups_uuid, read_only, hide_passwords, manage)
-         VALUES (?, ?, ?, ?, ?)`,
-        [collectionUuid, group.id, group.readOnly ? 1 : 0, group.hidePasswords ? 1 : 0, group.manage ? 1 : 0],
-      )
+      database.drizzle
+        .insert(collectionsGroups)
+        .values({
+          collectionsUuid: collectionUuid,
+          groupsUuid: group.id,
+          readOnly: group.readOnly,
+          hidePasswords: group.hidePasswords,
+          manage: group.manage,
+        })
+        .run()
     }
     const userTargets = new Map(targetsResult.data.userTargets.map((target) => [target.membershipUuid, target]))
     for (const user of users) {
       const target = userTargets.get(user.id)
       if (target === undefined || target.accessAll) continue
-      database.run(
-        `INSERT INTO users_collections (user_uuid, collection_uuid, read_only, hide_passwords, manage)
-         VALUES (?, ?, ?, ?, ?)`,
-        [target.userUuid, collectionUuid, user.readOnly ? 1 : 0, user.hidePasswords ? 1 : 0, user.manage ? 1 : 0],
-      )
+      database.drizzle
+        .insert(usersCollections)
+        .values({
+          userUuid: target.userUuid,
+          collectionUuid,
+          readOnly: user.readOnly,
+          hidePasswords: user.hidePasswords,
+          manage: user.manage,
+        })
+        .run()
     }
   } catch {
     return resultErrorCreate("organizationCollectionAssignmentsReplace", "Collection access update failed.")

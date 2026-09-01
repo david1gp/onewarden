@@ -11,7 +11,6 @@ import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
 import { organizationMembershipType } from "./organizationMembershipType.js"
 import { organizationPolicyCheckUserAllowed } from "./organizationPolicyCheckUserAllowed.js"
-import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
 import type { Organization } from "./organization.js"
 import type { OrganizationPublicImportData } from "./organizationPublicImportDataSchema.js"
 import type { OrganizationPublicImportOptions } from "./organizationPublicImportOptions.js"
@@ -21,6 +20,15 @@ import { organizationGroupFindByUuidAndOrganization } from "./organizationGroupF
 import { organizationGroupExternalIdNormalize } from "./organizationGroupExternalIdNormalize.js"
 import { organizationGroupMembersReplace } from "./organizationGroupMembersReplace.js"
 import { organizationMemberUserUuidsFind } from "./organizationMemberUserUuidsFind.js"
+import { and, count, eq, inArray } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { invitations } from "../../database/schema/invitations.js"
+import { organizations } from "../../database/schema/organizations.js"
+import { users } from "../../database/schema/users.js"
+import { usersOrganizations, type UserOrganizationRow } from "../../database/schema/usersOrganizations.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
 
 type OrganizationImportOrganization = Pick<Organization, "billingEmail" | "name">
 
@@ -110,7 +118,7 @@ async function organizationPublicImportMember(
     userCreated = true
     if (!options.config.MAIL_ENABLED) {
       try {
-        database.run("INSERT INTO invitations (email) VALUES (?) ON CONFLICT(email) DO NOTHING", [user.email])
+        database.drizzle.insert(invitations).values({ email: user.email }).onConflictDoNothing().run()
       } catch {
         return resultErrorCreate("organizationPublicImport", "Invitation save failed.")
       }
@@ -289,8 +297,8 @@ function organizationPublicImportInviteFailure(
   if (!rollbackResult.success) return rollbackResult
   if (userCreated) {
     try {
-      database.run("DELETE FROM invitations WHERE email = ?", [user.email])
-      database.run("DELETE FROM users WHERE uuid = ?", [user.uuid])
+      database.drizzle.delete(invitations).where(eq(invitations.email, user.email)).run()
+      database.drizzle.delete(users).where(eq(users.uuid, user.uuid)).run()
     } catch {
       return resultErrorCreate("organizationPublicImport", "User rollback failed.")
     }
@@ -303,13 +311,13 @@ function organizationPublicOrganizationFind(
   organizationUuid: string,
 ): Result<OrganizationImportOrganization | null> {
   try {
-    return resultCreate(
-      database
-        .query<OrganizationImportOrganization, [string]>(
-          "SELECT name, billing_email AS billingEmail FROM organizations WHERE uuid = ? LIMIT 1",
-        )
-        .get(organizationUuid),
-    )
+    const row = database.drizzle
+      .select({ billingEmail: organizations.billingEmail, name: organizations.name })
+      .from(organizations)
+      .where(eq(organizations.uuid, organizationUuid))
+      .limit(1)
+      .get()
+    return resultCreate(row ?? null)
   } catch {
     return resultErrorCreate("organizationPublicOrganizationFind", "Organization lookup failed.")
   }
@@ -321,17 +329,25 @@ function organizationPublicMembershipFindByEmail(
   organizationUuid: string,
 ): Result<OrganizationMembership | null> {
   try {
-    const row = database
-      .query<OrganizationMembershipRow, [string, string]>(
-        `SELECT member.uuid, member.user_uuid, member.org_uuid, member.invited_by_email,
-           member.access_all, member.akey, member.status, member.atype,
-           member.reset_password_key, member.external_id
-         FROM users_organizations AS member
-         JOIN users AS user ON user.uuid = member.user_uuid
-         WHERE user.email = ? AND member.org_uuid = ? LIMIT 1`,
-      )
-      .get(email.toLowerCase(), organizationUuid)
-    return resultCreate(row === null ? null : organizationMembershipFromRow(row))
+    const row: UserOrganizationRow | undefined = database.drizzle
+      .select({
+        accessAll: usersOrganizations.accessAll,
+        akey: usersOrganizations.akey,
+        atype: usersOrganizations.atype,
+        externalId: usersOrganizations.externalId,
+        invitedByEmail: usersOrganizations.invitedByEmail,
+        orgUuid: usersOrganizations.orgUuid,
+        resetPasswordKey: usersOrganizations.resetPasswordKey,
+        status: usersOrganizations.status,
+        userUuid: usersOrganizations.userUuid,
+        uuid: usersOrganizations.uuid,
+      })
+      .from(usersOrganizations)
+      .innerJoin(users, eq(users.uuid, usersOrganizations.userUuid))
+      .where(and(eq(users.email, email.toLowerCase()), eq(usersOrganizations.orgUuid, organizationUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row === undefined ? null : organizationMembershipFromRow(row))
   } catch {
     return resultErrorCreate("organizationPublicMembershipFindByEmail", "Membership lookup failed.")
   }
@@ -343,14 +359,13 @@ function organizationPublicMembershipFindByExternalId(
   organizationUuid: string,
 ): Result<OrganizationMembership | null> {
   try {
-    const row = database
-      .query<OrganizationMembershipRow, [string, string]>(
-        `SELECT uuid, user_uuid, org_uuid, invited_by_email, access_all, akey,
-           status, atype, reset_password_key, external_id
-         FROM users_organizations WHERE external_id = ? AND org_uuid = ? LIMIT 1`,
-      )
-      .get(externalId, organizationUuid)
-    return resultCreate(row === null ? null : organizationMembershipFromRow(row))
+    const row: UserOrganizationRow | undefined = database.drizzle
+      .select()
+      .from(usersOrganizations)
+      .where(and(eq(usersOrganizations.externalId, externalId), eq(usersOrganizations.orgUuid, organizationUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row === undefined ? null : organizationMembershipFromRow(row))
   } catch {
     return resultErrorCreate("organizationPublicMembershipFindByExternalId", "Membership lookup failed.")
   }
@@ -361,13 +376,11 @@ function organizationPublicMembershipFindAll(
   organizationUuid: string,
 ): Result<OrganizationMembership[]> {
   try {
-    const rows = database
-      .query<OrganizationMembershipRow, [string]>(
-        `SELECT uuid, user_uuid, org_uuid, invited_by_email, access_all, akey,
-           status, atype, reset_password_key, external_id
-         FROM users_organizations WHERE org_uuid = ?`,
-      )
-      .all(organizationUuid)
+    const rows: UserOrganizationRow[] = database.drizzle
+      .select()
+      .from(usersOrganizations)
+      .where(eq(usersOrganizations.orgUuid, organizationUuid))
+      .all()
     return resultCreate(rows.map(organizationMembershipFromRow))
   } catch {
     return resultErrorCreate("organizationPublicMembershipFindAll", "Membership lookup failed.")
@@ -381,11 +394,12 @@ function organizationPublicGroupFindByExternalId(
 ): Result<{ uuid: string } | null> {
   try {
     return resultCreate(
-      database
-        .query<{ uuid: string }, [string, string]>(
-          "SELECT uuid FROM groups WHERE external_id = ? AND organizations_uuid = ? LIMIT 1",
-        )
-        .get(externalId, organizationUuid),
+      database.drizzle
+        .select({ uuid: groups.uuid })
+        .from(groups)
+        .where(and(eq(groups.externalId, externalId), eq(groups.organizationsUuid, organizationUuid)))
+        .limit(1)
+        .get() ?? null,
     )
   } catch {
     return resultErrorCreate("organizationPublicGroupFindByExternalId", "Group lookup failed.")
@@ -399,35 +413,40 @@ function organizationPublicMembershipSave(
   userUuid: string,
 ): Result<void> {
   try {
-    database.run(
-      `INSERT INTO users_organizations (
-         uuid, user_uuid, org_uuid, invited_by_email, access_all, akey, status, atype,
-         reset_password_key, external_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(uuid) DO UPDATE SET
-         user_uuid = excluded.user_uuid,
-         org_uuid = excluded.org_uuid,
-         invited_by_email = excluded.invited_by_email,
-         access_all = excluded.access_all,
-         akey = excluded.akey,
-         status = excluded.status,
-         atype = excluded.atype,
-         reset_password_key = excluded.reset_password_key,
-         external_id = excluded.external_id`,
-      [
-        member.uuid,
-        member.userUuid,
-        member.organizationUuid,
-        member.invitedByEmail,
-        member.accessAll ? 1 : 0,
-        member.akey,
-        member.status,
-        member.type,
-        member.resetPasswordKey,
-        member.externalId,
-      ],
-    )
-    database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", [options.clock.now().toISOString(), userUuid])
+    database.drizzle
+      .insert(usersOrganizations)
+      .values({
+        uuid: member.uuid,
+        userUuid: member.userUuid,
+        orgUuid: member.organizationUuid,
+        invitedByEmail: member.invitedByEmail,
+        accessAll: member.accessAll,
+        akey: member.akey,
+        status: member.status,
+        atype: member.type,
+        resetPasswordKey: member.resetPasswordKey,
+        externalId: member.externalId,
+      })
+      .onConflictDoUpdate({
+        target: usersOrganizations.uuid,
+        set: {
+          userUuid: member.userUuid,
+          orgUuid: member.organizationUuid,
+          invitedByEmail: member.invitedByEmail,
+          accessAll: member.accessAll,
+          akey: member.akey,
+          status: member.status,
+          atype: member.type,
+          resetPasswordKey: member.resetPasswordKey,
+          externalId: member.externalId,
+        },
+      })
+      .run()
+    database.drizzle
+      .update(users)
+      .set({ updatedAt: options.clock.now().toISOString() })
+      .where(eq(users.uuid, userUuid))
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate("organizationPublicMembershipSave", "Membership save failed.")
@@ -436,17 +455,29 @@ function organizationPublicMembershipSave(
 
 function organizationPublicMembershipDelete(database: DatabaseConnection, membershipUuid: string): Result<void> {
   try {
-    database.run(
-      `DELETE FROM users_collections
-       WHERE user_uuid = (SELECT user_uuid FROM users_organizations WHERE uuid = ?)
-         AND collection_uuid IN (
-           SELECT uuid FROM collections
-           WHERE org_uuid = (SELECT org_uuid FROM users_organizations WHERE uuid = ?)
-         )`,
-      [membershipUuid, membershipUuid],
-    )
-    database.run("DELETE FROM groups_users WHERE users_organizations_uuid = ?", [membershipUuid])
-    database.run("DELETE FROM users_organizations WHERE uuid = ?", [membershipUuid])
+    const membership = database.drizzle
+      .select({ orgUuid: usersOrganizations.orgUuid, userUuid: usersOrganizations.userUuid })
+      .from(usersOrganizations)
+      .where(eq(usersOrganizations.uuid, membershipUuid))
+      .limit(1)
+      .get()
+    if (membership !== undefined) {
+      const collectionUuids = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(eq(collections.orgUuid, membership.orgUuid))
+      database.drizzle
+        .delete(usersCollections)
+        .where(
+          and(
+            eq(usersCollections.userUuid, membership.userUuid),
+            inArray(usersCollections.collectionUuid, collectionUuids),
+          ),
+        )
+        .run()
+    }
+    database.drizzle.delete(groupsUsers).where(eq(groupsUsers.usersOrganizationsUuid, membershipUuid)).run()
+    database.drizzle.delete(usersOrganizations).where(eq(usersOrganizations.uuid, membershipUuid)).run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate("organizationPublicMembershipDelete", "Membership deletion failed.")
@@ -454,11 +485,17 @@ function organizationPublicMembershipDelete(database: DatabaseConnection, member
 }
 
 function organizationPublicConfirmedOwnerCount(database: DatabaseConnection, organizationUuid: string): number {
-  const row = database
-    .query<{ count: number }, [string]>(
-      "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = 2 AND atype = 0",
+  const row = database.drizzle
+    .select({ count: count() })
+    .from(usersOrganizations)
+    .where(
+      and(
+        eq(usersOrganizations.orgUuid, organizationUuid),
+        eq(usersOrganizations.status, organizationMembershipStatus.confirmed),
+        eq(usersOrganizations.atype, organizationMembershipType.owner),
+      ),
     )
-    .get(organizationUuid)
+    .get()
   return row?.count ?? 0
 }
 

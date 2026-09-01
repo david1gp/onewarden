@@ -183,6 +183,43 @@ test("provider updates preserve the persisted provider UUID", () => {
   })
 })
 
+test("provider updates by UUID replace the provider identity", () => {
+  const database = databaseCreate()
+  const firstUser = userCreate({ uuid: "first-provider-user", email: "first-provider@example.com" })
+  const secondUser = userCreate({ uuid: "second-provider-user", email: "second-provider@example.com" })
+  expect(identityUserSave(database, firstUser)).toEqual({ success: true, data: undefined })
+  expect(identityUserSave(database, secondUser)).toEqual({ success: true, data: undefined })
+  expect(
+    twoFactorRecordSave(database, {
+      uuid: "shared-provider-uuid",
+      userUuid: firstUser.uuid,
+      type: twoFactorProviderType.authenticator,
+      enabled: true,
+      data: "OLD",
+      lastUsed: 0,
+    }),
+  ).toEqual({ success: true, data: undefined })
+  expect(
+    twoFactorRecordSave(database, {
+      uuid: "shared-provider-uuid",
+      userUuid: secondUser.uuid,
+      type: twoFactorProviderType.email,
+      enabled: false,
+      data: "NEW",
+      lastUsed: 1,
+    }),
+  ).toEqual({ success: true, data: undefined })
+
+  expect(twoFactorRecordFindByUserAndType(database, firstUser.uuid, twoFactorProviderType.authenticator)).toEqual({
+    success: true,
+    data: null,
+  })
+  expect(twoFactorRecordFindByUserAndType(database, secondUser.uuid, twoFactorProviderType.email)).toMatchObject({
+    success: true,
+    data: { uuid: "shared-provider-uuid", enabled: false, data: "NEW", lastUsed: 1 },
+  })
+})
+
 test("recovery codes persist on the user and can be cleared", () => {
   const database = databaseCreate()
   const user = userCreate()

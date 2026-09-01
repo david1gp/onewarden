@@ -1,48 +1,51 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { type CipherInsert, ciphers } from "../../database/schema/ciphers.js"
 import type { Cipher } from "./cipher.js"
 
 export function cipherSave(database: DatabaseConnection, cipher: Cipher): Result<void> {
   const op = "cipherSave"
   try {
-    database.run(
-      `INSERT INTO ciphers (
-        uuid, created_at, updated_at, user_uuid, organization_uuid, key, atype,
-        name, notes, fields, data, password_history, deleted_at, reprompt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(uuid) DO UPDATE SET
-        created_at = excluded.created_at,
-        updated_at = excluded.updated_at,
-        user_uuid = excluded.user_uuid,
-        organization_uuid = excluded.organization_uuid,
-        key = excluded.key,
-        atype = excluded.atype,
-        name = excluded.name,
-        notes = excluded.notes,
-        fields = excluded.fields,
-        data = excluded.data,
-        password_history = excluded.password_history,
-        deleted_at = excluded.deleted_at,
-        reprompt = excluded.reprompt`,
-      [
-        cipher.uuid,
-        cipher.createdAt,
-        cipher.updatedAt,
-        cipher.userUuid,
-        cipher.organizationUuid,
-        cipher.key,
-        cipher.type,
-        cipher.name,
-        cipher.notes,
-        cipher.fields,
-        cipher.data,
-        cipher.passwordHistory,
-        cipher.deletedAt,
-        cipher.reprompt,
-      ],
-    )
+    const values: CipherInsert = {
+      uuid: cipher.uuid,
+      createdAt: cipher.createdAt,
+      updatedAt: cipher.updatedAt,
+      userUuid: cipher.userUuid,
+      organizationUuid: cipher.organizationUuid,
+      key: cipher.key,
+      atype: cipher.type,
+      name: cipher.name,
+      notes: cipher.notes,
+      fields: cipher.fields,
+      data: cipher.data,
+      passwordHistory: cipher.passwordHistory,
+      deletedAt: cipher.deletedAt,
+      reprompt: cipher.reprompt,
+    }
+    database.drizzle
+      .insert(ciphers)
+      .values(values)
+      .onConflictDoUpdate({
+        target: ciphers.uuid,
+        set: {
+          createdAt: values.createdAt,
+          updatedAt: values.updatedAt,
+          userUuid: values.userUuid,
+          organizationUuid: values.organizationUuid,
+          key: values.key,
+          atype: values.atype,
+          name: values.name,
+          notes: values.notes,
+          fields: values.fields,
+          data: values.data,
+          passwordHistory: values.passwordHistory,
+          deletedAt: values.deletedAt,
+          reprompt: values.reprompt,
+        },
+      })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Cipher save failed.")

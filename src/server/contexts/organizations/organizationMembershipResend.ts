@@ -5,6 +5,7 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { invitations } from "../../database/schema/invitations.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import { identityInvitationTake } from "../identity/identityInvitationTake.js"
@@ -111,7 +112,7 @@ async function organizationMembershipResendMailSend(
 
 function identityInvitationSave(database: DatabaseConnection, email: string): Result<void> {
   try {
-    database.run("INSERT INTO invitations (email) VALUES (?) ON CONFLICT(email) DO NOTHING", [email.toLowerCase()])
+    database.drizzle.insert(invitations).values({ email: email.toLowerCase() }).onConflictDoNothing().run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate("identityInvitationSave", "Invitation save failed.")

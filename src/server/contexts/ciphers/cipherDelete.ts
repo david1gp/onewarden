@@ -1,15 +1,17 @@
-import { type Result } from "#result"
+import { eq } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { ciphers } from "../../database/schema/ciphers.js"
 import type { Cipher } from "./cipher.js"
 import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
 import { cipherDeleteDependencies } from "./cipherDeleteDependencies.js"
 import { cipherErrorCreate } from "./cipherErrorCreate.js"
 import { cipherFindByUuid } from "./cipherFindByUuid.js"
-import { cipherSave } from "./cipherSave.js"
 import { cipherRevisionUpdate } from "./cipherRevisionUpdate.js"
+import { cipherSave } from "./cipherSave.js"
 
 export function cipherDelete(
   database: DatabaseConnection,
@@ -44,7 +46,7 @@ export function cipherDelete(
     const dependencyResult = cipherDeleteDependencies(database, cipher.uuid)
     if (!dependencyResult.success) return dependencyResult
     try {
-      database.run("DELETE FROM ciphers WHERE uuid = ?", [cipher.uuid])
+      database.drizzle.delete(ciphers).where(eq(ciphers.uuid, cipher.uuid)).run()
       return resultCreate(cipher)
     } catch {
       return cipherErrorCreate("cipherDelete", "Cipher delete failed.")

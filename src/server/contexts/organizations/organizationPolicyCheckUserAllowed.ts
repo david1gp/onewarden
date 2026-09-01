@@ -1,6 +1,9 @@
 import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, count, eq, ne, inArray } from "drizzle-orm"
+import { twoFactor } from "../../database/schema/twoFactor.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
@@ -49,12 +52,17 @@ export function organizationPolicyCheckUserAllowed(
   )
   if (!singleOrganizationResult.success) return singleOrganizationResult
   if (singleOrganizationResult.data?.enabled) {
-    const otherMembership = database
-      .query<{ count: number }, [string, string]>(
-        `SELECT COUNT(*) AS count FROM users_organizations
-         WHERE user_uuid = ? AND org_uuid <> ? AND status IN (1, 2)`,
+    const otherMembership = database.drizzle
+      .select({ count: count() })
+      .from(usersOrganizations)
+      .where(
+        and(
+          eq(usersOrganizations.userUuid, membership.userUuid),
+          ne(usersOrganizations.orgUuid, membership.organizationUuid),
+          inArray(usersOrganizations.status, [1, 2]),
+        ),
       )
-      .get(membership.userUuid, membership.organizationUuid)
+      .get()
     if ((otherMembership?.count ?? 0) > 0)
       return organizationErrorCreate(
         "organizationPolicyCheckUserAllowed",
@@ -66,8 +74,10 @@ export function organizationPolicyCheckUserAllowed(
 
 function organizationPolicyUserHasTwoFactor(database: DatabaseConnection, userUuid: string): boolean {
   return (
-    (database
-      .query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM twofactor WHERE user_uuid = ? AND enabled = 1")
-      .get(userUuid)?.count ?? 0) > 0
+    (database.drizzle
+      .select({ count: count() })
+      .from(twoFactor)
+      .where(and(eq(twoFactor.userUuid, userUuid), eq(twoFactor.enabled, true)))
+      .get()?.count ?? 0) > 0
   )
 }

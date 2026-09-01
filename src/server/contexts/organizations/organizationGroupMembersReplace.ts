@@ -2,6 +2,9 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq, inArray } from "drizzle-orm"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import { organizationCollectionRevisionUpdate } from "./organizationCollectionRevisionUpdate.js"
 import { organizationGroupAffectedUserUuidsFind } from "./organizationGroupAffectedUserUuidsFind.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
@@ -16,14 +19,12 @@ export function organizationGroupMembersReplace(
   const op = "organizationGroupMembersReplace"
   const memberIds = [...new Set(membershipUuids)]
   if (memberIds.length > 0) {
-    const placeholders = memberIds.map(() => "?").join(", ")
     try {
-      const rows = database
-        .query<{ uuid: string }, string[]>(
-          `SELECT uuid FROM users_organizations
-           WHERE org_uuid = ? AND uuid IN (${placeholders})`,
-        )
-        .all(organizationUuid, ...memberIds)
+      const rows = database.drizzle
+        .select({ uuid: usersOrganizations.uuid })
+        .from(usersOrganizations)
+        .where(and(eq(usersOrganizations.orgUuid, organizationUuid), inArray(usersOrganizations.uuid, memberIds)))
+        .all()
       const existingIds = new Set(rows.map((row) => row.uuid))
       const invalidId = memberIds.find((memberId) => !existingIds.has(memberId))
       if (invalidId !== undefined)
@@ -36,14 +37,13 @@ export function organizationGroupMembersReplace(
   const beforeResult = organizationGroupAffectedUserUuidsFind(database, organizationUuid, groupUuid)
   if (!beforeResult.success) return beforeResult
   try {
-    database.run("DELETE FROM groups_users WHERE groups_uuid = ?", [groupUuid])
+    database.drizzle.delete(groupsUsers).where(eq(groupsUsers.groupsUuid, groupUuid)).run()
     for (const membershipUuid of memberIds) {
-      database.run(
-        `INSERT INTO groups_users (groups_uuid, users_organizations_uuid)
-         VALUES (?, ?)
-         ON CONFLICT(groups_uuid, users_organizations_uuid) DO NOTHING`,
-        [groupUuid, membershipUuid],
-      )
+      database.drizzle
+        .insert(groupsUsers)
+        .values({ groupsUuid: groupUuid, usersOrganizationsUuid: membershipUuid })
+        .onConflictDoNothing()
+        .run()
     }
   } catch {
     return resultErrorCreate(op, "Group member update failed.")

@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
+import { eq } from "drizzle-orm"
 import { folderCreate } from "../../../src/server/contexts/folders/folderCreate.js"
 import { folderDelete } from "../../../src/server/contexts/folders/folderDelete.js"
 import { folderFindByUser } from "../../../src/server/contexts/folders/folderFindByUser.js"
@@ -7,6 +8,8 @@ import { folderUpdate } from "../../../src/server/contexts/folders/folderUpdate.
 import type { DatabaseConnection } from "../../../src/server/database/database.js"
 import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
+import { foldersCiphers } from "../../../src/server/database/schema/foldersCiphers.js"
+import { type UserInsert, users } from "../../../src/server/database/schema/users.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
 import { identifierTestCreate } from "../../../src/shared/identifier/identifierTestCreate.js"
 
@@ -20,22 +23,19 @@ function databaseCreate(): DatabaseConnection {
 }
 
 function userCreate(database: DatabaseConnection, uuid: string): void {
-  database.run(
-    `INSERT INTO users (uuid, created_at, updated_at, email, name, password_hash, salt, password_iterations, akey, security_stamp)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      uuid,
-      "2026-08-28T00:00:00.000Z",
-      "2026-08-28T00:00:00.000Z",
-      `${uuid}@example.com`,
-      uuid,
-      new Uint8Array(),
-      new Uint8Array(),
-      600_000,
-      "akey",
-      `${uuid}-stamp`,
-    ],
-  )
+  const values: UserInsert = {
+    uuid,
+    createdAt: "2026-08-28T00:00:00.000Z",
+    updatedAt: "2026-08-28T00:00:00.000Z",
+    email: `${uuid}@example.com`,
+    name: uuid,
+    passwordHash: Buffer.from([]),
+    salt: Buffer.from([]),
+    passwordIterations: 600_000,
+    akey: "akey",
+    securityStamp: `${uuid}-stamp`,
+  }
+  database.drizzle.insert(users).values(values).run()
 }
 
 afterEach(() => {
@@ -77,8 +77,10 @@ test("folder persistence scopes CRUD by user, preserves database ordering, advan
     success: true,
     data: [first.data, second.data],
   })
-  expect(database.query("SELECT updated_at FROM users WHERE uuid = ?").get("folder-user")).toEqual({
-    updated_at: "2026-08-28T00:00:02.000Z",
+  expect(
+    database.drizzle.select({ updatedAt: users.updatedAt }).from(users).where(eq(users.uuid, "folder-user")).get(),
+  ).toEqual({
+    updatedAt: "2026-08-28T00:00:02.000Z",
   })
 
   const update = folderUpdate(
@@ -92,25 +94,32 @@ test("folder persistence scopes CRUD by user, preserves database ordering, advan
     success: true,
     data: { ...first.data, name: "Renamed", updatedAt: "2026-08-28T00:00:04.000Z" },
   })
-  expect(database.query("SELECT updated_at FROM users WHERE uuid = ?").get("folder-user")).toEqual({
-    updated_at: "2026-08-28T00:00:04.000Z",
+  expect(
+    database.drizzle.select({ updatedAt: users.updatedAt }).from(users).where(eq(users.uuid, "folder-user")).get(),
+  ).toEqual({
+    updatedAt: "2026-08-28T00:00:04.000Z",
   })
 
-  database.run("INSERT INTO folders_ciphers (cipher_uuid, folder_uuid) VALUES (?, ?), (?, ?)", [
-    "cipher-one",
-    first.data.uuid,
-    "cipher-two",
-    first.data.uuid,
-  ])
+  database.drizzle
+    .insert(foldersCiphers)
+    .values([
+      { cipherUuid: "cipher-one", folderUuid: first.data.uuid },
+      { cipherUuid: "cipher-two", folderUuid: first.data.uuid },
+    ])
+    .run()
   const deleted = folderDelete(database, first.data.uuid, "folder-user", clockTestCreate("2026-08-28T00:00:05.000Z"))
   expect(deleted).toEqual({
     success: true,
     data: { ...first.data, name: "Renamed", updatedAt: "2026-08-28T00:00:04.000Z" },
   })
-  expect(database.query("SELECT * FROM folders_ciphers WHERE folder_uuid = ?").all(first.data.uuid)).toEqual([])
+  expect(
+    database.drizzle.select().from(foldersCiphers).where(eq(foldersCiphers.folderUuid, first.data.uuid)).all(),
+  ).toEqual([])
   expect(folderFindByUuidAndUser(database, first.data.uuid, "folder-user")).toEqual({ success: true, data: null })
-  expect(database.query("SELECT updated_at FROM users WHERE uuid = ?").get("folder-user")).toEqual({
-    updated_at: "2026-08-28T00:00:05.000Z",
+  expect(
+    database.drizzle.select({ updatedAt: users.updatedAt }).from(users).where(eq(users.uuid, "folder-user")).get(),
+  ).toEqual({
+    updatedAt: "2026-08-28T00:00:05.000Z",
   })
 
   expect(

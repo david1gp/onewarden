@@ -1,7 +1,8 @@
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { type ArchiveInsert, archives } from "../../database/schema/archives.js"
 import { cipherUserRevisionUpdate } from "./cipherUserRevisionUpdate.js"
 
 export function cipherArchiveSet(
@@ -15,11 +16,12 @@ export function cipherArchiveSet(
   const revisionResult = cipherUserRevisionUpdate(database, userUuid, revisionDate)
   if (!revisionResult.success) return revisionResult
   try {
-    database.run(
-      `INSERT INTO archives (user_uuid, cipher_uuid, archived_at) VALUES (?, ?, ?)
-       ON CONFLICT(user_uuid, cipher_uuid) DO UPDATE SET archived_at = excluded.archived_at`,
-      [userUuid, cipherUuid, archivedAt],
-    )
+    const values: ArchiveInsert = { userUuid, cipherUuid, archivedAt }
+    database.drizzle
+      .insert(archives)
+      .values(values)
+      .onConflictDoUpdate({ target: [archives.userUuid, archives.cipherUuid], set: { archivedAt: values.archivedAt } })
+      .run()
     return resultCreate(undefined)
   } catch {
     return resultErrorCreate(op, "Cipher archive update failed.")

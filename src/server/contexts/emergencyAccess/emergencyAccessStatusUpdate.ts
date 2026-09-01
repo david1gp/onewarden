@@ -1,8 +1,11 @@
+import { and, eq } from "drizzle-orm"
 import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { emergencyAccess } from "../../database/schema/emergencyAccess.js"
+import { users } from "../../database/schema/users.js"
 import type { EmergencyAccess } from "./emergencyAccess.js"
 
 export function emergencyAccessStatusUpdate(
@@ -14,15 +17,15 @@ export function emergencyAccessStatusUpdate(
   const op = "emergencyAccessStatusUpdate"
   const updateResult = databaseTransaction(database, () => {
     try {
-      const update = database.run(
-        `UPDATE emergency_access
-         SET status = ?, updated_at = ?
-         WHERE uuid = ? AND status = ?`,
-        [status, updatedAt, access.uuid, access.status],
-      )
-      if (update.changes === 0) return resultCreate(false)
+      const update = database.drizzle
+        .update(emergencyAccess)
+        .set({ status, updatedAt })
+        .where(and(eq(emergencyAccess.uuid, access.uuid), eq(emergencyAccess.status, access.status)))
+        .returning({ uuid: emergencyAccess.uuid })
+        .all()
+      if (update.length === 0) return resultCreate(false)
       if (access.granteeUuid !== null)
-        database.run("UPDATE users SET updated_at = ? WHERE uuid = ?", [updatedAt, access.granteeUuid])
+        database.drizzle.update(users).set({ updatedAt }).where(eq(users.uuid, access.granteeUuid)).run()
       return resultCreate(true)
     } catch {
       return resultErrorCreate(op, "Emergency access status update failed.")

@@ -6,6 +6,14 @@ import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { Identifier } from "../../../shared/identifier/identifier.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, eq, inArray } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { groups } from "../../database/schema/groups.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
+import { invitations } from "../../database/schema/invitations.js"
+import { users } from "../../database/schema/users.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityMailAdapter } from "../identity/identityMailAdapter.js"
 import { identityEmailDomainAllowed } from "../identity/identityEmailDomainAllowed.js"
@@ -163,7 +171,7 @@ async function organizationMembershipInviteOne(
     }
     if (!options.config.MAIL_ENABLED && user.passwordHash.byteLength === 0) {
       try {
-        database.run("INSERT INTO invitations (email) VALUES (?) ON CONFLICT(email) DO NOTHING", [email])
+        database.drizzle.insert(invitations).values({ email }).onConflictDoNothing().run()
       } catch {
         return resultErrorCreate("organizationMembershipInvite", "Invitation save failed.")
       }
@@ -216,15 +224,17 @@ function organizationMembershipInviteCleanup(
 ): Result<void> {
   return databaseTransaction(database, () => {
     try {
-      database.run(
-        `DELETE FROM users_collections
-         WHERE user_uuid = ?
-           AND collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)`,
-        [user.uuid, membership.organizationUuid],
-      )
-      database.run("DELETE FROM groups_users WHERE users_organizations_uuid = ?", [membership.uuid])
-      database.run("DELETE FROM users_organizations WHERE uuid = ?", [membership.uuid])
-      if (userCreated) database.run("DELETE FROM users WHERE uuid = ?", [user.uuid])
+      const collectionUuids = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(eq(collections.orgUuid, membership.organizationUuid))
+      database.drizzle
+        .delete(usersCollections)
+        .where(and(eq(usersCollections.userUuid, user.uuid), inArray(usersCollections.collectionUuid, collectionUuids)))
+        .run()
+      database.drizzle.delete(groupsUsers).where(eq(groupsUsers.usersOrganizationsUuid, membership.uuid)).run()
+      database.drizzle.delete(usersOrganizations).where(eq(usersOrganizations.uuid, membership.uuid)).run()
+      if (userCreated) database.drizzle.delete(users).where(eq(users.uuid, user.uuid)).run()
       return resultCreate(undefined)
     } catch {
       return resultErrorCreate("organizationMembershipInviteCleanup", "Organization invitation rollback failed.")
@@ -239,20 +249,22 @@ function organizationMembershipInviteDataValidate(
 ): Result<void> {
   try {
     for (const collection of data.collections ?? []) {
-      const row = database
-        .query<{ uuid: string }, [string, string]>(
-          "SELECT uuid FROM collections WHERE uuid = ? AND org_uuid = ? LIMIT 1",
-        )
-        .get(collection.id, organizationUuid)
-      if (row === null) return resultErrorCreate("organizationMembershipInvite", "Invalid collection")
+      const row = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(and(eq(collections.uuid, collection.id), eq(collections.orgUuid, organizationUuid)))
+        .limit(1)
+        .get()
+      if (row === undefined) return resultErrorCreate("organizationMembershipInvite", "Invalid collection")
     }
     for (const groupUuid of data.groups ?? []) {
-      const row = database
-        .query<{ uuid: string }, [string, string]>(
-          "SELECT uuid FROM groups WHERE uuid = ? AND organizations_uuid = ? LIMIT 1",
-        )
-        .get(groupUuid, organizationUuid)
-      if (row === null) return resultErrorCreate("organizationMembershipInvite", "Invalid group")
+      const row = database.drizzle
+        .select({ uuid: groups.uuid })
+        .from(groups)
+        .where(and(eq(groups.uuid, groupUuid), eq(groups.organizationsUuid, organizationUuid)))
+        .limit(1)
+        .get()
+      if (row === undefined) return resultErrorCreate("organizationMembershipInvite", "Invalid group")
     }
     return resultCreate(undefined)
   } catch {
@@ -269,30 +281,32 @@ function organizationMembershipInviteAssignmentsSave(
   try {
     if (!accessAll) {
       for (const collection of data.collections ?? []) {
-        database.run(
-          `INSERT INTO users_collections (user_uuid, collection_uuid, read_only, hide_passwords, manage)
-           VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(user_uuid, collection_uuid) DO UPDATE SET
-             read_only = excluded.read_only,
-             hide_passwords = excluded.hide_passwords,
-             manage = excluded.manage`,
-          [
-            membership.userUuid,
-            collection.id,
-            collection.readOnly ? 1 : 0,
-            collection.hidePasswords ? 1 : 0,
-            collection.manage ? 1 : 0,
-          ],
-        )
+        database.drizzle
+          .insert(usersCollections)
+          .values({
+            userUuid: membership.userUuid,
+            collectionUuid: collection.id,
+            readOnly: collection.readOnly,
+            hidePasswords: collection.hidePasswords,
+            manage: collection.manage,
+          })
+          .onConflictDoUpdate({
+            target: [usersCollections.userUuid, usersCollections.collectionUuid],
+            set: {
+              readOnly: collection.readOnly,
+              hidePasswords: collection.hidePasswords,
+              manage: collection.manage,
+            },
+          })
+          .run()
       }
     }
     for (const groupUuid of data.groups ?? []) {
-      database.run(
-        `INSERT INTO groups_users (groups_uuid, users_organizations_uuid)
-         VALUES (?, ?)
-         ON CONFLICT(groups_uuid, users_organizations_uuid) DO NOTHING`,
-        [groupUuid, membership.uuid],
-      )
+      database.drizzle
+        .insert(groupsUsers)
+        .values({ groupsUuid: groupUuid, usersOrganizationsUuid: membership.uuid })
+        .onConflictDoNothing()
+        .run()
     }
     return resultCreate(undefined)
   } catch {

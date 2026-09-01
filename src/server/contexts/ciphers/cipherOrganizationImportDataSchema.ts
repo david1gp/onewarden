@@ -7,8 +7,13 @@ const cipherOrganizationImportRelationSchema = v.object({
   value: v.pipe(v.number(), v.integer(), v.minValue(0)),
 })
 
+const cipherOrganizationImportCipherSchema = v.intersect([
+  cipherDataSchema,
+  v.object({ deletedDate: v.optional(v.nullable(v.string())) }),
+])
+
 export const cipherOrganizationImportDataSchema = v.object({
-  ciphers: v.array(cipherDataSchema),
+  ciphers: v.array(cipherOrganizationImportCipherSchema),
   collections: v.array(organizationCollectionDataSchema),
   collectionRelationships: v.array(cipherOrganizationImportRelationSchema),
 })

@@ -1,14 +1,16 @@
-import { type Result } from "#result"
+import { eq, lt } from "drizzle-orm"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { ciphers } from "../../database/schema/ciphers.js"
 import type { AttachmentFileStorageAdapter } from "../attachments/attachmentFileStorageAdapter.js"
 import type { Cipher } from "./cipher.js"
 import { cipherDeleteDependencies } from "./cipherDeleteDependencies.js"
+import { cipherProjection } from "./cipherProjection.js"
 import { cipherRevisionUpdate } from "./cipherRevisionUpdate.js"
-import { cipherSelect } from "./cipherSelect.js"
 
 const CIPHER_TRASH_RETENTION_DAYS = 30
 const CIPHER_TRASH_PURGE_BATCH_SIZE = 100
@@ -26,17 +28,15 @@ export async function cipherTrashPurge(
   if (Number.isNaN(cutoff.getTime())) return resultErrorCreate(op, "Trash purge time is invalid.")
   const cutoffDate = cutoff.toISOString()
 
-  let ciphers: Cipher[]
+  let trashCiphers: Cipher[]
   try {
-    ciphers = database
-      .query<Cipher, [string, number]>(
-        `SELECT ${cipherSelect}
-         FROM ciphers
-         WHERE deleted_at < ?
-         ORDER BY deleted_at, uuid
-         LIMIT ?`,
-      )
-      .all(cutoffDate, CIPHER_TRASH_PURGE_BATCH_SIZE)
+    trashCiphers = database.drizzle
+      .select(cipherProjection)
+      .from(ciphers)
+      .where(lt(ciphers.deletedAt, cutoffDate))
+      .orderBy(ciphers.deletedAt, ciphers.uuid)
+      .limit(CIPHER_TRASH_PURGE_BATCH_SIZE)
+      .all()
   } catch {
     return resultErrorCreate(op, "Trash purge lookup failed.")
   }
@@ -44,7 +44,7 @@ export async function cipherTrashPurge(
   const revisionDate = new Date(now).toISOString()
   let deleted = 0
   let failed = false
-  for (const cipher of ciphers) {
+  for (const cipher of trashCiphers) {
     const result = await cipherTrashPurgeOne(database, cipher, cutoffDate, revisionDate, storage)
     if (!result.success) {
       failed = true
@@ -74,9 +74,13 @@ async function cipherTrashPurgeOne(
   return databaseTransaction(database, () => {
     let current: Cipher | null
     try {
-      current = database
-        .query<Cipher, [string]>(`SELECT ${cipherSelect} FROM ciphers WHERE uuid = ? LIMIT 1`)
-        .get(cipher.uuid)
+      const row = database.drizzle
+        .select(cipherProjection)
+        .from(ciphers)
+        .where(eq(ciphers.uuid, cipher.uuid))
+        .limit(1)
+        .get()
+      current = row ?? null
     } catch {
       return resultErrorCreate("cipherTrashPurge", "Trash cipher lookup failed.")
     }
@@ -88,7 +92,7 @@ async function cipherTrashPurgeOne(
     const dependencyResult = cipherDeleteDependencies(database, cipher.uuid)
     if (!dependencyResult.success) return dependencyResult
     try {
-      database.run("DELETE FROM ciphers WHERE uuid = ?", [cipher.uuid])
+      database.drizzle.delete(ciphers).where(eq(ciphers.uuid, cipher.uuid)).run()
       return resultCreate(true)
     } catch {
       return resultErrorCreate("cipherTrashPurge", "Trash cipher deletion failed.")

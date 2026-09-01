@@ -3,8 +3,10 @@ import { constants, type Dirent } from "node:fs"
 import { lstat, mkdtemp, open, readdir, realpath, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { isAbsolute, join, resolve } from "node:path"
+import { max } from "drizzle-orm"
+import { drizzle } from "drizzle-orm/bun-sqlite"
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { sha256Hex } from "../../shared/crypto/sha256Hex.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
@@ -12,6 +14,8 @@ import { databaseMigrationsLatestVersionRead } from "../database/databaseMigrati
 import { databaseMigrationVersionSupported } from "../database/databaseMigrationVersionSupported.js"
 import { databasePathIsMemory } from "../database/databasePathIsMemory.js"
 import { databaseSchemaTablesValidate } from "../database/databaseSchemaTablesValidate.js"
+import { databaseSchema } from "../database/schema/databaseSchema.js"
+import { schemaVersion as schemaVersionTable } from "../database/schema/schemaVersion.js"
 import { type BackupManifest, backupManifestSchema } from "./backupManifestSchema.js"
 
 const backupDatabaseFile = "database.sqlite3"
@@ -211,15 +215,19 @@ async function backupManifestDatabaseValidate(databasePath: string, schemaVersio
     const temporaryDatabasePath = join(temporaryDirectory, backupDatabaseFile)
     await writeFile(temporaryDatabasePath, bytes, { mode: 0o600 })
     database = new Database(temporaryDatabasePath, { readonly: true })
+    const databaseDrizzle = drizzle({ client: database, schema: databaseSchema })
+    // Bun SQLite is retained here for integrity and sqlite_master/schema inspection only.
     const integrityRow = database.query<{ integrity_check: string }, []>("PRAGMA integrity_check").get()
     if (integrityRow?.integrity_check !== "ok") {
       validationResult = resultErrorCreate(op, "Backup database failed SQLite integrity validation.")
     } else {
+      // sqlite_master inspection is retained for schema compatibility validation.
       const schemaTable = database
         .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_version'")
         .get()
-      const schemaRow = database
-        .query<{ version: number | null }, []>("SELECT MAX(version) AS version FROM schema_version")
+      const schemaRow = databaseDrizzle
+        .select({ version: max(schemaVersionTable.version) })
+        .from(schemaVersionTable)
         .get()
       if (
         schemaTable?.name !== "schema_version" ||
@@ -242,7 +250,7 @@ async function backupManifestDatabaseValidate(databasePath: string, schemaVersio
           } else if (!supportedVersionResult.data) {
             validationResult = resultErrorCreate(op, "Backup database schema version is not supported by this runtime.")
           } else if (schemaVersion === latestVersionResult.data) {
-            validationResult = databaseSchemaTablesValidate(database)
+            validationResult = databaseSchemaTablesValidate({ drizzle: databaseDrizzle })
           } else {
             validationResult = resultCreate(undefined)
           }

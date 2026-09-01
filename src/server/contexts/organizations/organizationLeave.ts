@@ -3,6 +3,12 @@ import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
 import { databaseTransaction } from "../../database/databaseTransaction.js"
+import { and, count, eq, inArray } from "drizzle-orm"
+import { collections } from "../../database/schema/collections.js"
+import { users } from "../../database/schema/users.js"
+import { usersCollections } from "../../database/schema/usersCollections.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
+import { groupsUsers } from "../../database/schema/groupsUsers.js"
 import { organizationErrorCreate } from "./organizationErrorCreate.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipStatus } from "./organizationMembershipStatus.js"
@@ -22,33 +28,37 @@ export function organizationLeave(
 
     try {
       if (membership.type === organizationMembershipType.owner) {
-        const ownerCount = database
-          .query<{ count: number }, [string, number, number]>(
-            "SELECT COUNT(*) AS count FROM users_organizations WHERE org_uuid = ? AND status = ? AND atype = ?",
+        const ownerCount = database.drizzle
+          .select({ count: count() })
+          .from(usersOrganizations)
+          .where(
+            and(
+              eq(usersOrganizations.orgUuid, membership.organizationUuid),
+              eq(usersOrganizations.status, organizationMembershipStatus.confirmed),
+              eq(usersOrganizations.atype, organizationMembershipType.owner),
+            ),
           )
-          .get(
-            membership.organizationUuid,
-            organizationMembershipStatus.confirmed,
-            organizationMembershipType.owner,
-          )?.count
+          .get()?.count
         if (ownerCount === undefined || ownerCount <= 1)
           return organizationErrorCreate("organizationLeave", "The last owner can't leave")
       }
 
-      database.run(
-        `UPDATE users
-         SET updated_at = ?
-         WHERE uuid = ?`,
-        [revisionDate, membership.userUuid],
-      )
-      database.run(
-        `DELETE FROM users_collections
-         WHERE user_uuid = ?
-           AND collection_uuid IN (SELECT uuid FROM collections WHERE org_uuid = ?)`,
-        [membership.userUuid, membership.organizationUuid],
-      )
-      database.run("DELETE FROM groups_users WHERE users_organizations_uuid = ?", [membership.uuid])
-      database.run("DELETE FROM users_organizations WHERE uuid = ?", [membership.uuid])
+      database.drizzle.update(users).set({ updatedAt: revisionDate }).where(eq(users.uuid, membership.userUuid)).run()
+      const collectionUuids = database.drizzle
+        .select({ uuid: collections.uuid })
+        .from(collections)
+        .where(eq(collections.orgUuid, membership.organizationUuid))
+      database.drizzle
+        .delete(usersCollections)
+        .where(
+          and(
+            eq(usersCollections.userUuid, membership.userUuid),
+            inArray(usersCollections.collectionUuid, collectionUuids),
+          ),
+        )
+        .run()
+      database.drizzle.delete(groupsUsers).where(eq(groupsUsers.usersOrganizationsUuid, membership.uuid)).run()
+      database.drizzle.delete(usersOrganizations).where(eq(usersOrganizations.uuid, membership.uuid)).run()
       return resultCreate(undefined)
     } catch {
       return resultErrorCreate("organizationLeave", "Organization leave failed.")

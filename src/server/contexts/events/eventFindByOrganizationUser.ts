@@ -2,9 +2,11 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, between, desc, eq, or } from "drizzle-orm"
+import { event as eventTable, type EventRow } from "../../database/schema/event.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 import type { Event } from "./event.js"
 import { eventFromRow } from "./eventFromRow.js"
-import type { EventRow } from "./eventRow.js"
 
 export function eventFindByOrganizationUser(
   database: DatabaseConnection,
@@ -15,26 +17,44 @@ export function eventFindByOrganizationUser(
 ): Result<Event[]> {
   const op = "eventFindByOrganizationUser"
   try {
-    const rows = database
-      .query<EventRow, [string, string, string, string, string, string]>(
-        `SELECT event.uuid, event.event_type, event.user_uuid, event.org_uuid, event.cipher_uuid,
-           event.collection_uuid, event.group_uuid, event.org_user_uuid, event.act_user_uuid,
-           event.device_type, event.ip_address, event.event_date, event.policy_uuid,
-           event.provider_uuid, event.provider_user_uuid, event.provider_org_uuid
-         FROM event
-         INNER JOIN users_organizations AS member
-           ON member.uuid = ? AND member.org_uuid = ?
-         WHERE event.org_uuid = ?
-           AND event.event_date BETWEEN ? AND ?
-           AND (
-             event.org_user_uuid = ?
-             OR event.user_uuid = member.user_uuid
-             OR event.act_user_uuid = member.user_uuid
-           )
-           ORDER BY event.event_date DESC
-         LIMIT 30`,
+    const rows: EventRow[] = database.drizzle
+      .select({
+        actUserUuid: eventTable.actUserUuid,
+        cipherUuid: eventTable.cipherUuid,
+        collectionUuid: eventTable.collectionUuid,
+        deviceType: eventTable.deviceType,
+        eventDate: eventTable.eventDate,
+        eventType: eventTable.eventType,
+        groupUuid: eventTable.groupUuid,
+        ipAddress: eventTable.ipAddress,
+        orgUuid: eventTable.orgUuid,
+        orgUserUuid: eventTable.orgUserUuid,
+        policyUuid: eventTable.policyUuid,
+        providerOrgUuid: eventTable.providerOrgUuid,
+        providerUserUuid: eventTable.providerUserUuid,
+        providerUuid: eventTable.providerUuid,
+        userUuid: eventTable.userUuid,
+        uuid: eventTable.uuid,
+      })
+      .from(eventTable)
+      .innerJoin(
+        usersOrganizations,
+        and(eq(usersOrganizations.uuid, organizationUserUuid), eq(usersOrganizations.orgUuid, organizationUuid)),
       )
-      .all(organizationUserUuid, organizationUuid, organizationUuid, startDate, endDate, organizationUserUuid)
+      .where(
+        and(
+          eq(eventTable.orgUuid, organizationUuid),
+          between(eventTable.eventDate, startDate, endDate),
+          or(
+            eq(eventTable.orgUserUuid, organizationUserUuid),
+            eq(eventTable.userUuid, usersOrganizations.userUuid),
+            eq(eventTable.actUserUuid, usersOrganizations.userUuid),
+          ),
+        ),
+      )
+      .orderBy(desc(eventTable.eventDate))
+      .limit(30)
+      .all()
     return resultCreate(rows.map(eventFromRow))
   } catch {
     return resultErrorCreate(op, "Organization user event lookup failed.")

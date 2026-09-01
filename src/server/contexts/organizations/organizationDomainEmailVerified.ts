@@ -2,6 +2,8 @@ import type { Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, count, eq, isNotNull, sql } from "drizzle-orm"
+import { organizationDomains } from "../../database/schema/organizationDomains.js"
 
 export function organizationDomainEmailVerified(
   database: DatabaseConnection,
@@ -10,15 +12,17 @@ export function organizationDomainEmailVerified(
 ): Result<boolean> {
   const op = "organizationDomainEmailVerified"
   try {
-    const row = database
-      .query<{ count: number }, [string, string]>(
-        `SELECT COUNT(*) AS count
-         FROM organization_domains
-         WHERE org_uuid = ?
-           AND verified_date IS NOT NULL
-           AND lower(?) LIKE '%@' || lower(domain_name)`,
+    const row = database.drizzle
+      .select({ count: count() })
+      .from(organizationDomains)
+      .where(
+        and(
+          eq(organizationDomains.orgUuid, organizationUuid),
+          isNotNull(organizationDomains.verifiedDate),
+          sql`lower(${email.toLowerCase()}) LIKE '%' || '@' || lower(${organizationDomains.domainName})`,
+        ),
       )
-      .get(organizationUuid, email.toLowerCase())
+      .get()
     return resultCreate((row?.count ?? 0) > 0)
   } catch {
     return resultErrorCreate(op, "Organization domain lookup failed.")

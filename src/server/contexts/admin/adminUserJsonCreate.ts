@@ -5,6 +5,11 @@ import type { DatabaseConnection } from "../../database/database.js"
 import type { IdentityConfig } from "../identity/identityConfigSchema.js"
 import type { IdentityUser } from "../identity/identityUser.js"
 import { identityUserProfileToJson } from "../identity/identityUserProfileToJson.js"
+import { and, count, eq, max } from "drizzle-orm"
+import { devices } from "../../database/schema/devices.js"
+import { organizations } from "../../database/schema/organizations.js"
+import { twoFactor } from "../../database/schema/twoFactor.js"
+import { usersOrganizations } from "../../database/schema/usersOrganizations.js"
 
 export function adminUserJsonCreate(
   database: DatabaseConnection,
@@ -16,12 +21,12 @@ export function adminUserJsonCreate(
   let lastActive: string | null = null
   if (includeLastActive) {
     try {
-      const row = database
-        .query<{ updated_at: string | null }, [string]>(
-          "SELECT MAX(updated_at) AS updated_at FROM devices WHERE user_uuid = ?",
-        )
-        .get(user.uuid)
-      lastActive = row?.updated_at === null || row?.updated_at === undefined ? null : adminDateFormat(row.updated_at)
+      const row = database.drizzle
+        .select({ updatedAt: max(devices.updatedAt) })
+        .from(devices)
+        .where(eq(devices.userUuid, user.uuid))
+        .get()
+      lastActive = row?.updatedAt === null || row?.updatedAt === undefined ? null : adminDateFormat(row.updatedAt)
     } catch {
       return resultErrorCreate(op, "User activity lookup failed.", { code: "platform.internal" })
     }
@@ -41,16 +46,16 @@ export function adminUserJsonCreate(
 }
 
 type AdminUserOrganizationRow = {
-  membership_uuid: string
-  organization_uuid: string
-  organization_name: string
-  organization_private_key: string | null
-  organization_public_key: string | null
-  access_all: number
-  status: number
-  atype: number
-  reset_password_key: string | null
+  accessAll: boolean
   akey: string
+  atype: number
+  membershipUuid: string
+  organizationName: string
+  organizationPrivateKey: string | null
+  organizationPublicKey: string | null
+  organizationUuid: string
+  resetPasswordKey: string | null
+  status: number
 }
 
 function adminUserOrganizationsFind(
@@ -60,18 +65,24 @@ function adminUserOrganizationsFind(
 ): Result<Record<string, unknown>[]> {
   const op = "adminUserOrganizationsFind"
   try {
-    const memberships = database
-      .query<AdminUserOrganizationRow, [string]>(
-        `SELECT member.uuid AS membership_uuid, member.org_uuid AS organization_uuid,
-                organization.name AS organization_name, organization.private_key AS organization_private_key,
-                organization.public_key AS organization_public_key, member.access_all, member.status,
-                member.atype, member.reset_password_key, member.akey
-         FROM users_organizations AS member
-         JOIN organizations AS organization ON organization.uuid = member.org_uuid
-         WHERE member.user_uuid = ? AND member.status = 2
-         ORDER BY member.org_uuid`,
-      )
-      .all(userUuid)
+    const memberships: AdminUserOrganizationRow[] = database.drizzle
+      .select({
+        accessAll: usersOrganizations.accessAll,
+        akey: usersOrganizations.akey,
+        atype: usersOrganizations.atype,
+        membershipUuid: usersOrganizations.uuid,
+        organizationName: organizations.name,
+        organizationPrivateKey: organizations.privateKey,
+        organizationPublicKey: organizations.publicKey,
+        organizationUuid: usersOrganizations.orgUuid,
+        resetPasswordKey: usersOrganizations.resetPasswordKey,
+        status: usersOrganizations.status,
+      })
+      .from(usersOrganizations)
+      .innerJoin(organizations, eq(organizations.uuid, usersOrganizations.orgUuid))
+      .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.status, 2)))
+      .orderBy(usersOrganizations.orgUuid)
+      .all()
     return resultCreate(memberships.map((membership) => adminUserOrganizationJsonCreate(membership, userUuid, config)))
   } catch {
     return resultErrorCreate(op, "User organization lookup failed.", { code: "platform.internal" })
@@ -84,11 +95,11 @@ function adminUserOrganizationJsonCreate(
   config: IdentityConfig,
 ): Record<string, unknown> {
   const type = membership.atype === 3 ? 4 : membership.atype
-  const customWithAllAccess = type === 4 && membership.access_all === 1
+  const customWithAllAccess = type === 4 && membership.accessAll
   return {
-    id: membership.organization_uuid,
+    id: membership.organizationUuid,
     identifier: null,
-    name: membership.organization_name,
+    name: membership.organizationName,
     seats: 20,
     maxCollections: null,
     usersGetPremium: true,
@@ -101,9 +112,8 @@ function adminUserOrganizationJsonCreate(
     usePolicies: true,
     useApi: true,
     selfHost: true,
-    hasPublicAndPrivateKeys:
-      membership.organization_private_key !== null && membership.organization_public_key !== null,
-    resetPasswordEnrolled: membership.reset_password_key !== null,
+    hasPublicAndPrivateKeys: membership.organizationPrivateKey !== null && membership.organizationPublicKey !== null,
+    resetPasswordEnrolled: membership.resetPasswordKey !== null,
     useResetPassword: config.MAIL_ENABLED,
     ssoBound: false,
     useSso: false,
@@ -120,7 +130,7 @@ function adminUserOrganizationJsonCreate(
     useOrganizationDomains: false,
     usePam: false,
     usePhishingBlocker: false,
-    organizationUserId: membership.membership_uuid,
+    organizationUserId: membership.membershipUuid,
     providerId: null,
     providerName: null,
     providerType: null,
@@ -133,7 +143,7 @@ function adminUserOrganizationJsonCreate(
     familySponsorshipValidUntil: null,
     familySponsorshipToDelete: null,
     accessSecretsManager: false,
-    limitCollectionCreation: membership.atype < 3 || membership.access_all !== 1,
+    limitCollectionCreation: membership.atype < 3 || !membership.accessAll,
     limitCollectionDeletion: true,
     limitItemDeletion: false,
     allowAdminAccessToAllCollectionItems: true,
@@ -166,11 +176,11 @@ function adminUserOrganizationJsonCreate(
 function adminTwoFactorEnabledFind(database: DatabaseConnection, userUuid: string): boolean {
   try {
     return (
-      (database
-        .query<{ count: number }, [string]>(
-          "SELECT COUNT(*) AS count FROM twofactor WHERE user_uuid = ? AND enabled = 1",
-        )
-        .get(userUuid)?.count ?? 0) > 0
+      (database.drizzle
+        .select({ count: count() })
+        .from(twoFactor)
+        .where(and(eq(twoFactor.userUuid, userUuid), eq(twoFactor.enabled, true)))
+        .get()?.count ?? 0) > 0
     )
   } catch {
     return false

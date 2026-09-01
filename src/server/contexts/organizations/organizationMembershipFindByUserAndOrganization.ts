@@ -2,9 +2,10 @@ import { type Result } from "#result"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { DatabaseConnection } from "../../database/database.js"
+import { and, eq } from "drizzle-orm"
+import { usersOrganizations, type UserOrganizationRow } from "../../database/schema/usersOrganizations.js"
 import type { OrganizationMembership } from "./organizationMembershipSchema.js"
 import { organizationMembershipFromRow } from "./organizationMembershipFromRow.js"
-import type { OrganizationMembershipRow } from "./organizationMembershipRow.js"
 
 export function organizationMembershipFindByUserAndOrganization(
   database: DatabaseConnection,
@@ -13,16 +14,13 @@ export function organizationMembershipFindByUserAndOrganization(
 ): Result<OrganizationMembership | null> {
   const op = "organizationMembershipFindByUserAndOrganization"
   try {
-    const row = database
-      .query<OrganizationMembershipRow, [string, string]>(
-        `SELECT uuid, user_uuid, org_uuid, invited_by_email, access_all, akey,
-           status, atype, reset_password_key, external_id
-         FROM users_organizations
-         WHERE user_uuid = ? AND org_uuid = ?
-         LIMIT 1`,
-      )
-      .get(userUuid, organizationUuid)
-    return resultCreate(row === null ? null : organizationMembershipFromRow(row))
+    const row: UserOrganizationRow | undefined = database.drizzle
+      .select()
+      .from(usersOrganizations)
+      .where(and(eq(usersOrganizations.userUuid, userUuid), eq(usersOrganizations.orgUuid, organizationUuid)))
+      .limit(1)
+      .get()
+    return resultCreate(row === undefined ? null : organizationMembershipFromRow(row))
   } catch {
     return resultErrorCreate(op, "Organization membership lookup failed.")
   }

@@ -1,50 +1,23 @@
-import type { Database } from "bun:sqlite"
-import { type Result } from "#result"
+import type { Result } from "#result"
+import { sql } from "drizzle-orm"
+import { getTableConfig, type SQLiteTable } from "drizzle-orm/sqlite-core"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import type { DatabaseConnection } from "./database.js"
+import { databaseSchema } from "./schema/databaseSchema.js"
 
-const databaseCurrentSchemaTables = [
-  "schema_version",
-  "users",
-  "invitations",
-  "identity_signing_keys",
-  "devices",
-  "organization_api_key",
-  "sso_auth",
-  "sso_users",
-  "organizations",
-  "org_policies",
-  "organization_domains",
-  "organization_sso_configs",
-  "users_organizations",
-  "collections",
-  "users_collections",
-  "groups",
-  "groups_users",
-  "collections_groups",
-  "folders",
-  "folders_ciphers",
-  "ciphers",
-  "ciphers_collections",
-  "favorites",
-  "archives",
-  "sends",
-  "send_recipient_verifications",
-  "extension_session_handoffs",
-  "emergency_access",
-  "attachments",
-  "event",
-  "auth_requests",
-]
+const databaseCurrentSchemaTables = Object.values(databaseSchema).map(
+  (table) => getTableConfig(table as SQLiteTable).name,
+)
 
-export function databaseSchemaTablesValidate(database: Database): Result<void> {
+export function databaseSchemaTablesValidate(database: Pick<DatabaseConnection, "drizzle">): Result<void> {
   const op = "databaseSchemaTablesValidate"
   try {
     const tableNames = new Set(
-      database
-        .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type = 'table'")
-        .all()
-        .map((row) => row.name),
+      database.drizzle
+        .values<[string]>(sql`SELECT name FROM sqlite_master WHERE type = 'table'`)
+        .map((row) => row[0])
+        .filter((name): name is string => name !== undefined),
     )
     if (databaseCurrentSchemaTables.some((tableName) => !tableNames.has(tableName)))
       return resultErrorCreate(op, "Database schema is incomplete.")

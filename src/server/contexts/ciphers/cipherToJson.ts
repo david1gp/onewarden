@@ -7,8 +7,8 @@ import type { DatabaseConnection } from "../../database/database.js"
 import { attachmentFindByCipher } from "../attachments/attachmentFindByCipher.js"
 import { attachmentToJson } from "../attachments/attachmentToJson.js"
 import type { Cipher } from "./cipher.js"
-import { cipherArchiveFind } from "./cipherArchiveFind.js"
 import { cipherAccessFindByUser } from "./cipherAccessFindByUser.js"
+import { cipherArchiveFind } from "./cipherArchiveFind.js"
 import { cipherCollectionIdsFindByUser } from "./cipherCollectionIdsFindByUser.js"
 import { cipherFavoriteFind } from "./cipherFavoriteFind.js"
 import { cipherFolderFindByUser } from "./cipherFolderFindByUser.js"
@@ -86,12 +86,13 @@ async function cipherToJsonAsync(
   if (!attachmentsResult.success) return attachmentsResult
   let attachments: unknown[] | null = null
   if (attachmentsResult.data.length > 0) {
-    if (options === undefined) return resultErrorCreate("cipherToJson", "Attachment URL signing is unavailable.")
-    attachments = []
-    for (const attachment of attachmentsResult.data) {
-      const attachmentResult = await attachmentToJson(attachment, options)
-      if (!attachmentResult.success) return attachmentResult
-      attachments.push(attachmentResult.data)
+    if (options?.privateKey !== undefined) {
+      attachments = []
+      for (const attachment of attachmentsResult.data) {
+        const attachmentResult = await attachmentToJson(attachment, options)
+        if (!attachmentResult.success) return attachmentResult
+        attachments.push(attachmentResult.data)
+      }
     }
   }
 
