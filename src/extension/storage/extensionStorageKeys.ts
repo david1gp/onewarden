@@ -4,5 +4,6 @@ export const extensionStorageKeys = {
   sessionState: "onewarden.session-state",
   syncCache: "onewarden.sync-cache",
   lockPolicy: "onewarden.lock-policy",
+  generatorPreferences: "onewarden.generator-preferences",
   createDrafts: "onewarden.create-drafts",
 } as const

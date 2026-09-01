@@ -1,5 +1,5 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import type { ExtensionEnvironmentSource } from "../api/extensionEnvironmentSourceSchema.js"
 import { type ExtensionAuthSession, extensionAuthSessionStorageSchema } from "./extensionAuthSessionStorageSchema.js"
 import { type ExtensionCreateDraft, extensionCreateDraftStorageSchema } from "./extensionCreateDraftStorageSchema.js"
@@ -7,6 +7,10 @@ import {
   type ExtensionEnvironmentStorage,
   extensionEnvironmentStorageSchema,
 } from "./extensionEnvironmentStorageSchema.js"
+import {
+  type ExtensionGeneratorPreferences,
+  extensionGeneratorPreferencesSchema,
+} from "./extensionGeneratorPreferencesSchema.js"
 import { extensionLockPolicySchema, type ExtensionLockPolicy } from "./extensionLockPolicySchema.js"
 import { extensionSessionStateStorageSchema, type ExtensionSessionState } from "./extensionSessionStateStorageSchema.js"
 import type { ExtensionStorageAdapter } from "./extensionStorageAdapter.js"
@@ -219,6 +223,29 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
   const lockPolicyClear = (): Promise<Result<void>> =>
     storageRemove(adapter.local, extensionStorageKeys.lockPolicy, "extensionStorage.lockPolicyClear")
 
+  const generatorPreferencesLoad = async (): Promise<Result<ExtensionGeneratorPreferences | null>> => {
+    const op = "extensionStorage.generatorPreferencesLoad"
+    const result = await storageRead(
+      adapter.local,
+      extensionStorageKeys.generatorPreferences,
+      extensionGeneratorPreferencesSchema,
+      op,
+    )
+    if (!result.success) return result
+    if (result.data === null) return resultCreate(null)
+    const { schemaVersion: _schemaVersion, ...generatorPreferences } = result.data
+    return resultCreate(generatorPreferences)
+  }
+
+  const generatorPreferencesSave = (generatorPreferences: ExtensionGeneratorPreferences): Promise<Result<void>> =>
+    storageWrite(
+      adapter.local,
+      extensionStorageKeys.generatorPreferences,
+      extensionGeneratorPreferencesSchema,
+      storageVersionedCreate<ExtensionGeneratorPreferences>(generatorPreferences),
+      "extensionStorage.generatorPreferencesSave",
+    )
+
   const createDraftsLoad = async (): Promise<Result<ExtensionCreateDraft[]>> => {
     const op = "extensionStorage.createDraftsLoad"
     const result = await storageRead(
@@ -302,6 +329,8 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
     lockPolicyLoad,
     lockPolicySave,
     lockPolicyClear,
+    generatorPreferencesLoad,
+    generatorPreferencesSave,
     createDraftsLoad,
     createDraftSave,
     createDraftDelete,

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
-import { type ExtensionAuthSession } from "../../../src/extension/storage/extensionAuthSessionStorageSchema.js"
-import { type ExtensionCreateDraft } from "../../../src/extension/storage/extensionCreateDraftStorageSchema.js"
+import type { ExtensionAuthSession } from "../../../src/extension/storage/extensionAuthSessionStorageSchema.js"
+import type { ExtensionCreateDraft } from "../../../src/extension/storage/extensionCreateDraftStorageSchema.js"
+import type { ExtensionGeneratorPreferences } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
 import type { ExtensionStorageAdapter } from "../../../src/extension/storage/extensionStorageAdapter.js"
 import { extensionStorageAdapterCreate } from "../../../src/extension/storage/extensionStorageAdapterCreate.js"
 import type { ExtensionStorageArea } from "../../../src/extension/storage/extensionStorageArea.js"
@@ -70,6 +71,24 @@ const createDraft: ExtensionCreateDraft = {
   id: "draft-id",
   updatedAt: 1_756_368_000_002,
   payload: encryptedPayload,
+}
+
+const generatorPreferences: ExtensionGeneratorPreferences = {
+  mode: "password",
+  password: {
+    length: 32,
+    characterPolicy: {
+      lowercase: true,
+      uppercase: false,
+      numbers: true,
+      symbols: false,
+    },
+  },
+  passphrase: {
+    numWords: 5,
+    wordSeparator: "_",
+    includeNumber: false,
+  },
 }
 
 test("extensionStorageCreate keeps settings/cache durable and auth/session state in session storage", async () => {
@@ -171,6 +190,71 @@ test("extensionStorageCreate loads and saves both lock actions, including the Ne
     expect(await storage.lockPolicySave(policy)).toEqual({ success: true, data: undefined })
     expect(await storage.lockPolicyLoad()).toEqual({ success: true, data: policy })
   }
+})
+
+test("extensionStorageCreate loads absent and valid generator preferences from local storage", async () => {
+  const { local, storage } = storageCreate()
+
+  expect(await storage.generatorPreferencesLoad()).toEqual({ success: true, data: null })
+  expect(await storage.generatorPreferencesSave(generatorPreferences)).toEqual({ success: true, data: undefined })
+  expect(local.values.get(extensionStorageKeys.generatorPreferences)).toEqual({
+    schemaVersion: 1,
+    ...generatorPreferences,
+  })
+  expect(await storage.generatorPreferencesLoad()).toEqual({ success: true, data: generatorPreferences })
+})
+
+test("extensionStorageCreate validates generator preferences before saving and while loading", async () => {
+  const { local, storage } = storageCreate()
+  const invalidPreferences = {
+    ...generatorPreferences,
+    password: {
+      ...generatorPreferences.password,
+      length: 4,
+      characterPolicy: {
+        lowercase: false,
+        uppercase: false,
+        numbers: false,
+        symbols: false,
+      },
+    },
+    passphrase: {
+      ...generatorPreferences.passphrase,
+      numWords: 21,
+      wordSeparator: "--",
+    },
+  } as unknown as ExtensionGeneratorPreferences
+
+  expect(await storage.generatorPreferencesSave(invalidPreferences)).toMatchObject({
+    success: false,
+    code: "platform.invalid-request",
+    statusCode: 400,
+  })
+  expect(local.values.has(extensionStorageKeys.generatorPreferences)).toBe(false)
+
+  local.values.set(extensionStorageKeys.generatorPreferences, {
+    schemaVersion: 1,
+    ...invalidPreferences,
+  })
+  expect(await storage.generatorPreferencesLoad()).toMatchObject({
+    success: false,
+    code: "platform.internal",
+    statusCode: 500,
+  })
+})
+
+test("extensionStorageCreate keeps generator preferences across lock and logout", async () => {
+  const { local, storage } = storageCreate()
+  await storage.generatorPreferencesSave(generatorPreferences)
+  await storage.sessionStateSave({ status: "unlocked", unlockedAt: 1_756_368_000_003 })
+
+  expect(await storage.lock()).toEqual({ success: true, data: undefined })
+  expect(local.values.has(extensionStorageKeys.generatorPreferences)).toBe(true)
+  expect(await storage.generatorPreferencesLoad()).toEqual({ success: true, data: generatorPreferences })
+
+  expect(await storage.logout()).toEqual({ success: true, data: undefined })
+  expect(local.values.has(extensionStorageKeys.generatorPreferences)).toBe(true)
+  expect(await storage.generatorPreferencesLoad()).toEqual({ success: true, data: generatorPreferences })
 })
 
 test("extensionStorageCreate converts storage failures into Results", async () => {
