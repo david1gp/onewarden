@@ -3,11 +3,19 @@ set -euo pipefail
 
 ports_file="$HOME/.config/onewarden/prodctl-ports.env"
 environment_file="$HOME/.config/onewarden/.env.production"
+bun_path="$HOME/.bun/bin/bun"
 
 export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
-command -v bun >/dev/null 2>&1 || {
-	printf 'onewarden install: bun is required\n' >&2
+if [[ ! -x "$bun_path" ]]; then
+	command -v curl >/dev/null 2>&1 || {
+		printf 'onewarden install: bun is required and curl is unavailable\n' >&2
+		exit 1
+	}
+	curl -fsSL https://bun.sh/install | bash -s -- bun-v1.4.0
+fi
+[[ -x "$bun_path" ]] || {
+	printf 'onewarden install: Bun installation did not provide %s\n' "$bun_path" >&2
 	exit 1
 }
 command -v stat >/dev/null 2>&1 || {
@@ -36,6 +44,6 @@ install -d -m 700 "$HOME/.local/share/onewarden"
 
 # prodctl deploys a source archive. Build the bundled runtime package in the
 # release so the service does not depend on release-local node_modules.
-bun install --frozen-lockfile
-bun run build:vault
-bun run backend:package
+"$bun_path" install --frozen-lockfile
+"$bun_path" run build:vault
+"$bun_path" run backend:package
