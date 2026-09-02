@@ -77,11 +77,11 @@ test("VaultWorkspace passes demo collection names and selected IDs to Manage Col
 
   fireEvent.click(screen.getByTitle("Manage Collections"))
   const dialog = await within(document.body).findByRole("dialog", { name: "Manage Collections" })
-  const engineering = within(dialog).getByRole("button", { name: "Engineering" })
+  const engineering = within(dialog).getByRole("option", { name: "Engineering" })
 
-  expect(engineering.getAttribute("aria-pressed")).toBe("true")
-  expect(within(dialog).getByRole("button", { name: "Infrastructure" })).toBeDefined()
-  expect(within(dialog).getByRole("button", { name: "Finance" })).toBeDefined()
+  expect(engineering.getAttribute("aria-selected")).toBe("true")
+  expect(within(dialog).getByRole("option", { name: "Infrastructure" })).toBeDefined()
+  expect(within(dialog).getByRole("option", { name: "Finance" })).toBeDefined()
 
   screen.unmount()
 })

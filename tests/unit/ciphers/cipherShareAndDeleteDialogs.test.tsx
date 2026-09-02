@@ -45,12 +45,12 @@ describe("CipherShareDialog and CipherDeleteDialog", () => {
     orgInput.value = "org-abc-123"
     orgInput.dispatchEvent(new Event("input", { bubbles: true }))
 
-    const engineering = body.getByRole("button", { name: "Engineering" })
-    const finance = body.getByRole("button", { name: "Finance" })
-    expect(engineering.getAttribute("aria-pressed")).toBe("false")
+    const engineering = body.getByRole("option", { name: "Engineering" })
+    const finance = body.getByRole("option", { name: "Finance" })
+    expect(engineering.getAttribute("aria-selected")).toBe("false")
     engineering.click()
     finance.click()
-    expect(engineering.getAttribute("aria-pressed")).toBe("true")
+    expect(engineering.getAttribute("aria-selected")).toBe("true")
 
     const submitBtn = body.getByText("Share Item")
     submitBtn.click()

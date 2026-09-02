@@ -29,8 +29,8 @@ describe("CipherDialog component", () => {
     expect(body.getAllByText("AWS Root Console").length).toBeGreaterThanOrEqual(1)
     expect(body.getByText("root@aws.com")).toBeDefined()
 
-    // Switch to edit mode by clicking Edit
-    const editBtn = body.getByText("Edit")
+    // Switch to edit mode by clicking the action toolbar button.
+    const editBtn = body.getByRole("button", { name: "Edit" })
     editBtn.click()
 
     expect(body.getAllByText(/Edit AWS Root Console/).length).toBeGreaterThanOrEqual(1)

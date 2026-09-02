@@ -56,7 +56,7 @@ test("AuthTwoFactorChallengeCard renders accessible challenge form, method selec
   fireEvent.input(tokenInput, { target: { value: "654321" } })
   expect(tokenInput.value).toBe("654321")
 
-  const rememberCheckbox = screen.getByLabelText("Remember this device for 30 days")
+  const rememberCheckbox = screen.getAllByRole("checkbox", { name: "Remember this device for 30 days" })[0]
   expect(rememberCheckbox).toBeDefined()
 
   const cancelButton = screen.getByRole("button", { name: "Back to Login" })
