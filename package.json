@@ -61,16 +61,20 @@
     "assets:doctor": "bun run assets doctor --environment development --json"
   },
   "dependencies": {
+    "@adaptive-ds/assets-service": "^0.6.0",
     "@adaptive-ds/mdi": "^0.1.2",
     "@adaptive-ds/result": "0.6.0",
+    "@adaptive-ds/utils": "^0.13.0",
     "@aws-sdk/client-s3": "^3.1121.0",
     "@corvu/dialog": "^0.2.4",
     "@corvu/popover": "^0.2.0",
     "@simplewebauthn/server": "^13.3.3",
     "@solid-primitives/keyed": "^1.5.3",
-    "@tanstack/solid-router": "^1.170.30",
+    "@solid-primitives/scheduled": "^1.5.3",
+    "@solidjs/router": "^1.0.0",
     "clsx": "^2.1.1",
     "corvu": "^0.7.2",
+    "dayjs": "^1.11.20",
     "drizzle-orm": "^0.45.2",
     "hash-wasm": "^4.12.0",
     "hono": "4.13.2",
@@ -79,13 +83,7 @@
     "solid-js": "^1.9.15",
     "tailwind-merge": "^3.6.0",
     "tldts": "^7.4.11",
-    "valibot": "^1.4.2",
-    "@adaptive-ds/assets-service": "^0.6.0",
-    "@adaptive-ds/utils": "^0.13.0",
-    "@solid-primitives/scheduled": "^1.5.3",
-    "@tanstack/solid-start": "^1.168.47",
-    "dayjs": "^1.11.20",
-    "marked": "^18.0.11"
+    "valibot": "^1.4.2"
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
