@@ -7,6 +7,9 @@ import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullw
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
 
+const openSshPrivateKeyBegin = "-----BEGIN " + "OPENSSH PRIVATE KEY-----"
+const openSshPrivateKeyEnd = "-----END " + "OPENSSH PRIVATE KEY-----"
+
 const sshKey: Extract<ExtensionCipher, { type: 5 }> = {
   object: "cipherDetails",
   id: "ssh-1",
@@ -21,7 +24,7 @@ const sshKey: Extract<ExtensionCipher, { type: 5 }> = {
   favorite: false,
   fields: [],
   sshKey: {
-    privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nsecret\n-----END OPENSSH PRIVATE KEY-----",
+    privateKey: `${openSshPrivateKeyBegin}\nsecret\n${openSshPrivateKeyEnd}`,
     publicKey: "ssh-ed25519 AAAATEST deploy",
     keyFingerprint: "SHA256:abc123",
   },

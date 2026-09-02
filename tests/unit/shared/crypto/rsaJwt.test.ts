@@ -8,12 +8,14 @@ import { rsaPublicKeyDerive } from "../../../../src/shared/crypto/rsaPublicKeyDe
 import { rsaPublicKeyLoad } from "../../../../src/shared/crypto/rsaPublicKeyLoad.js"
 import fixtures from "../../../fixtures/cryptoFixtures.json"
 
+const rsaPrivateKeyBegin = "-----BEGIN " + "RSA PRIVATE KEY-----"
+
 test("RSA generation returns target-compatible PEM boundaries", () => {
   const result = rsaKeyPairGenerate()
 
   expect(result.success).toBe(true)
   if (!result.success) return
-  expect(result.data.privateKeyPem).toStartWith("-----BEGIN RSA PRIVATE KEY-----")
+  expect(result.data.privateKeyPem).toStartWith(rsaPrivateKeyBegin)
   expect(result.data.publicKeyPem).toStartWith("-----BEGIN PUBLIC KEY-----")
   expect(result.data.privateKey.type).toBe("private")
   expect(result.data.publicKey.type).toBe("public")
