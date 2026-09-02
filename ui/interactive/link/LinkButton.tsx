@@ -1,4 +1,3 @@
-import { createLink } from "@tanstack/solid-router"
 import { splitProps } from "solid-js"
 import { buttonCva2 } from "#ui/interactive/button/buttonCva.js"
 import { buttonIconCva } from "#ui/interactive/button/buttonIconCva.js"
@@ -38,9 +37,6 @@ function ButtonAnchor(p: ButtonAnchorProps) {
     </a>
   )
 }
-
-/** Internal button link — typed `to`, client-side nav + preload. Needs a RouterProvider. */
-export const LinkButtonInternal = createLink(ButtonAnchor)
 
 /** External button link — plain `<a>` for external/runtime URLs. */
 export function LinkButtonExternal(p: ButtonAnchorProps & { href: string }) {
