@@ -14,7 +14,6 @@ const releasePackageRequiredFiles = [
   "tools/backup/backupCli.js",
   "tools/backup/restoreCli.js",
   "package.json",
-  "bun.lock",
 ]
 
 type ReleasePackageValidateOptions = {

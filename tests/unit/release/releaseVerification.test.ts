@@ -62,7 +62,6 @@ function releasePackageFixtureCreate(root: string): string {
     join(packageDirectory, "package.json"),
     JSON.stringify({ engines: { bun: ">=1.4.0" }, name: "onewarden", version: "0.0.0" }),
   )
-  writeFileSync(join(packageDirectory, "bun.lock"), "{}")
   return packageDirectory
 }
 
