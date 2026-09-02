@@ -90,7 +90,12 @@ export function AuthLoginView(props: AuthLoginViewProps): JSX.Element {
             </div>
 
             <div class="flex items-center justify-between pt-1">
-              <Checkbox id="remember-email" checked={state.rememberEmail()} onChange={state.setRememberEmail}>
+              <Checkbox
+                id="remember-email"
+                checked={state.rememberEmail()}
+                onChange={state.setRememberEmail}
+                aria-describedby={undefined}
+              >
                 <span class="select-none text-sm text-slate-600 dark:text-slate-400">Remember email</span>
               </Checkbox>
             </div>

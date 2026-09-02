@@ -115,6 +115,29 @@ test("prelogin and token contracts preserve OneWarden casing and Vaultwarden req
   ).toBe(true)
 })
 
+test("refresh token response contract rejects empty tokens and invalid expiration values", () => {
+  const response = {
+    refresh_token: "new-refresh-token",
+    access_token: "new-access-token",
+    expires_in: 3600,
+    token_type: "Bearer" as const,
+    scope: "api offline_access",
+  }
+  const malformedResponses = [
+    { ...response, access_token: "" },
+    { ...response, refresh_token: "" },
+    { ...response, expires_in: Number.NaN },
+    { ...response, expires_in: Number.POSITIVE_INFINITY },
+    { ...response, expires_in: 0 },
+    { ...response, expires_in: -1 },
+    { ...response, expires_in: Number.MAX_SAFE_INTEGER + 1 },
+  ]
+
+  for (const malformedResponse of malformedResponses) {
+    expect(v.safeParse(bitwardenRefreshTokenResponseSchema, malformedResponse).success).toBe(false)
+  }
+})
+
 test("cipher, sync, and revision contracts accept encrypted login data and custom fields", () => {
   expect(v.safeParse(bitwardenRevisionDateResponseSchema, 1_756_368_000_000).success).toBe(true)
   expect(v.safeParse(bitwardenEncryptedLoginCipherSchema, cipher).success).toBe(true)
@@ -141,7 +164,10 @@ test("cipher, sync, and revision contracts accept encrypted login data and custo
       folders: [],
       collections: [],
       policies: [],
-      ciphers: [cipher, { id: "note-id", type: 2, name: "encrypted note", notes: null, login: null, fields: [] }],
+      ciphers: [
+        cipher,
+        { id: "note-id", type: 2, name: "encrypted note", notes: null, login: null, secureNote: { type: 0 }, fields: [] },
+      ],
       domains: null,
       sends: [],
       userDecryption: {},

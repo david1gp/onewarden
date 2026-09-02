@@ -649,3 +649,18 @@ test("refresh grant returns the exact invalid_grant contract for missing, expire
     .sign(keyPair.privateKey)
   await expectInvalidGrant(await requestForm(context.app, { grant_type: "refresh_token", refresh_token: wrongIssuer }))
 })
+
+test("refresh grant returns platform unavailability when the identity database becomes unavailable", async () => {
+  const context = await identityTestContext()
+  const login = await requestForm(context.app, passwordForm())
+  const loginBody = (await login.json()) as { refresh_token: string }
+  expect(databaseClose(context.database).success).toBe(true)
+
+  const response = await requestForm(context.app, {
+    grant_type: "refresh_token",
+    refresh_token: loginBody.refresh_token,
+  })
+
+  expect(response.status).toBe(503)
+  expect(await response.json()).toMatchObject({ message: "Identity database is unavailable." })
+})

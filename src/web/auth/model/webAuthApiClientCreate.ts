@@ -8,6 +8,14 @@ import {
   type BitwardenPreloginResponse,
   bitwardenPreloginResponseSchema,
 } from "../../../shared/api/bitwardenPreloginResponseSchema.js"
+import {
+  type BitwardenRefreshTokenRequest,
+  bitwardenRefreshTokenRequestSchema,
+} from "../../../shared/api/bitwardenRefreshTokenRequestSchema.js"
+import {
+  type BitwardenRefreshTokenResponse,
+  bitwardenRefreshTokenResponseSchema,
+} from "../../../shared/api/bitwardenRefreshTokenResponseSchema.js"
 import { webApiResponseParse } from "../../../shared/api/webApiResponseParse.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
@@ -198,6 +206,35 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
       return responseJsonParse(op, response, bitwardenPasswordTokenResponseSchema)
     } catch {
       return resultErrorCreate(op, "Login request failed.", { code: "platform.unavailable", statusCode: 503 })
+    }
+  }
+
+  const refreshToken = async (
+    request: BitwardenRefreshTokenRequest,
+  ): Promise<Result<BitwardenRefreshTokenResponse>> => {
+    const op = "webAuthApiClient.refreshToken"
+    const requestResult = requestValidationParse(op, request, bitwardenRefreshTokenRequestSchema)
+    if (!requestResult.success) return requestResult
+    const form = new URLSearchParams()
+    for (const [key, value] of Object.entries(requestResult.data)) {
+      if (typeof value === "string") form.set(key, value)
+    }
+
+    try {
+      const response = await fetchFn(`${baseUrl}/identity/connect/token`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          accept: "application/json",
+        },
+        body: form.toString(),
+      })
+      return responseJsonParse(op, response, bitwardenRefreshTokenResponseSchema)
+    } catch {
+      return resultErrorCreate(op, "Token refresh request failed.", {
+        code: "platform.unavailable",
+        statusCode: 503,
+      })
     }
   }
 
@@ -759,6 +796,7 @@ export function webAuthApiClientCreate(options: { baseUrl?: string; fetch?: Fetc
   return {
     prelogin,
     login,
+    refreshToken,
     ssoLogin,
     register,
     setPassword,

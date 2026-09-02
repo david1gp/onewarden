@@ -54,7 +54,7 @@ export function identityRoutesRegister(app: Hono<AuthenticationEnvironment>, opt
         publicKey: options.publicKey,
         sso,
       })
-      if (!result.success) return identityInvalidGrantResponse()
+      if (!result.success) return identityRefreshErrorResponse(result)
       return context.json(result.data)
     }
     if (data.grantType === "send_access") {
@@ -363,6 +363,16 @@ function identityInvalidGrantResponse(): Response {
     headers: { "content-type": "application/json" },
     status: 400,
   })
+}
+
+function identityRefreshErrorResponse(error: ResultErr): Response {
+  const transient =
+    error.code === "platform.rate-limited" ||
+    error.code === "platform.unavailable" ||
+    error.statusCode === 429 ||
+    error.statusCode === 503
+  if (transient) return apiErrorResponseCreate(error)
+  return identityInvalidGrantResponse()
 }
 
 function identitySendAccessResultErrorResponse(error: ResultErr): Response {

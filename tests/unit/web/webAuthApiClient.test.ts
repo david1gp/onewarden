@@ -166,3 +166,73 @@ test("webAuthApiClient rejects invalid request inputs before making requests", a
   expect(invalidVerification).toMatchObject({ success: false, code: "platform.invalid-request", statusCode: 400 })
   expect(requestCount).toBe(0)
 })
+
+test("webAuthApiClient refreshes an access token with the persisted refresh token", async () => {
+  let requestBody = ""
+  const client = webAuthApiClientCreate({
+    fetch: async (_input, init) => {
+      requestBody = String(init?.body ?? "")
+      return new Response(
+        JSON.stringify({
+          refresh_token: "refreshed-token",
+          access_token: "refreshed-access-token",
+          expires_in: 3600,
+          token_type: "Bearer",
+          scope: "api offline_access",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )
+    },
+  })
+
+  const result = await client.refreshToken({
+    grant_type: "refresh_token",
+    refresh_token: "persisted-refresh-token",
+    client_id: "web",
+  })
+
+  expect(result.success).toBe(true)
+  expect(Object.fromEntries(new URLSearchParams(requestBody))).toEqual({
+    grant_type: "refresh_token",
+    refresh_token: "persisted-refresh-token",
+    client_id: "web",
+  })
+})
+
+test("webAuthApiClient rejects malformed refresh-token responses", async () => {
+  let responseBody: Record<string, unknown> = {
+    refresh_token: "refreshed-token",
+    access_token: "refreshed-access-token",
+    expires_in: 3600,
+    token_type: "Bearer",
+    scope: "api offline_access",
+  }
+  const client = webAuthApiClientCreate({
+    fetch: async () => new Response(JSON.stringify(responseBody), { status: 200 }),
+  })
+  const malformedResponses = [
+    { access_token: "" },
+    { refresh_token: "" },
+    { expires_in: 0 },
+    { expires_in: -1 },
+    { expires_in: Number.MAX_SAFE_INTEGER + 1 },
+  ]
+
+  for (const malformedResponse of malformedResponses) {
+    responseBody = {
+      refresh_token: "refreshed-token",
+      access_token: "refreshed-access-token",
+      expires_in: 3600,
+      token_type: "Bearer",
+      scope: "api offline_access",
+      ...malformedResponse,
+    }
+    const result = await client.refreshToken({
+      grant_type: "refresh_token",
+      refresh_token: "persisted-refresh-token",
+      client_id: "web",
+    })
+
+    expect(result).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+  }
+})

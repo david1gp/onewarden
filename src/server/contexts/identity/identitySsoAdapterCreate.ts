@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify as joseJwtVerify } from "jose"
-import type { Result } from "#result"
 import * as v from "valibot"
+import type { Result } from "#result"
 import type { Clock } from "../../../shared/clock/clock.js"
 import { base64Encode } from "../../../shared/crypto/base64Encode.js"
 import { base64UrlEncode } from "../../../shared/crypto/base64UrlEncode.js"
@@ -8,20 +8,20 @@ import { secureRandomBytes } from "../../../shared/crypto/secureRandomBytes.js"
 import { sha256Digest } from "../../../shared/crypto/sha256Digest.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
-import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import type { IdentityConfig } from "./identityConfigSchema.js"
+import { identityDomainErrorCreate } from "./identityDomainErrorCreate.js"
 import type { IdentitySsoAdapter } from "./identitySsoAdapter.js"
-import { identitySsoIdentityClaimsSchema } from "./identitySsoIdentityClaimsSchema.js"
-import type { IdentitySsoIdentityClaims } from "./identitySsoIdentityClaimsSchema.js"
-import { identitySsoRefreshTokenResponseSchema } from "./identitySsoRefreshTokenResponseSchema.js"
 import type { IdentitySsoAuthenticatedUser } from "./identitySsoAuthenticatedUserSchema.js"
+import type { IdentitySsoIdentityClaims } from "./identitySsoIdentityClaimsSchema.js"
+import { identitySsoIdentityClaimsSchema } from "./identitySsoIdentityClaimsSchema.js"
 import {
-  identitySsoProviderConfigurationSchema,
   type IdentitySsoProviderConfiguration,
+  identitySsoProviderConfigurationSchema,
 } from "./identitySsoProviderConfigurationSchema.js"
-import { identitySsoTokenResponseSchema, type IdentitySsoTokenResponse } from "./identitySsoTokenResponseSchema.js"
-import { identitySsoUserInfoSchema, type IdentitySsoUserInfo } from "./identitySsoUserInfoSchema.js"
 import { identitySsoRedirectUriResolve } from "./identitySsoRedirectUriResolve.js"
+import { identitySsoRefreshTokenResponseSchema } from "./identitySsoRefreshTokenResponseSchema.js"
+import { type IdentitySsoTokenResponse, identitySsoTokenResponseSchema } from "./identitySsoTokenResponseSchema.js"
+import { type IdentitySsoUserInfo, identitySsoUserInfoSchema } from "./identitySsoUserInfoSchema.js"
 
 function identitySsoProviderUrlResolve(authority: string): string {
   return `${authority.replace(/\/+$/, "")}/.well-known/openid-configuration`
@@ -173,7 +173,12 @@ async function identitySsoProviderRefreshExchange(
         headers: { ...headers, authorization: `Basic ${credentials}` },
         method: "POST",
       })
-      if (!response.ok) return identityDomainErrorCreate(op, `Failed to contact token endpoint: ${response.status}`)
+      if (!response.ok)
+        return identitySsoProviderResponseErrorCreate(
+          op,
+          `Failed to contact token endpoint: ${response.status}`,
+          response.status,
+        )
       const parsed = v.safeParse(identitySsoRefreshTokenResponseSchema, await response.json())
       if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an access_token")
       return resultCreate({
@@ -182,14 +187,19 @@ async function identitySsoProviderRefreshExchange(
         expires_in: parsed.output.expires_in ?? null,
       })
     } catch {
-      return identityDomainErrorCreate(op, "Failed to contact token endpoint")
+      return identitySsoProviderUnavailableErrorCreate(op, "Failed to contact token endpoint")
     }
   }
   body.set("client_id", config.SSO_CLIENT_ID)
   body.set("client_secret", config.SSO_CLIENT_SECRET)
   try {
     const response = await fetch(endpoint, { body, headers, method: "POST" })
-    if (!response.ok) return identityDomainErrorCreate(op, `Failed to contact token endpoint: ${response.status}`)
+    if (!response.ok)
+      return identitySsoProviderResponseErrorCreate(
+        op,
+        `Failed to contact token endpoint: ${response.status}`,
+        response.status,
+      )
     const parsed = v.safeParse(identitySsoRefreshTokenResponseSchema, await response.json())
     if (!parsed.success) return identityDomainErrorCreate(op, "Token response did not contain an access_token")
     return resultCreate({
@@ -198,7 +208,7 @@ async function identitySsoProviderRefreshExchange(
       expires_in: parsed.output.expires_in ?? null,
     })
   } catch {
-    return identityDomainErrorCreate(op, "Failed to contact token endpoint")
+    return identitySsoProviderUnavailableErrorCreate(op, "Failed to contact token endpoint")
   }
 }
 

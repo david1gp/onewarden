@@ -1,7 +1,8 @@
 import * as v from "valibot"
-import type { Result } from "#result"
+import type { Result, ResultErr } from "#result"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { BitwardenPasswordTokenResponse } from "../../../shared/api/bitwardenPasswordTokenResponseSchema.js"
+import { bitwardenRefreshTokenResponseSchema } from "../../../shared/api/bitwardenRefreshTokenResponseSchema.js"
 import { resultCreate } from "../../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffConsumeResponse } from "../../../shared/sessionHandoff/sessionHandoffConsumeResponseSchema.js"
@@ -71,6 +72,8 @@ export interface PendingTwoFactorContext {
   challenge: TwoFactorChallenge
 }
 
+const WEB_AUTH_TOKEN_REFRESH_THRESHOLD_MS = 5 * 60 * 1_000
+
 export function webAuthSessionCreate(
   options: {
     storage?: ReturnType<typeof webAuthStorageCreate>
@@ -91,6 +94,11 @@ export function webAuthSessionCreate(
   const pendingTwoFactor = createSignalObject<PendingTwoFactorContext | null>(null)
 
   let inMemoryUserKey: Uint8Array | null = null
+  let refreshInFlight: {
+    session: WebAuthSession
+    refreshToken: string
+    promise: Promise<Result<WebAuthSession | null>>
+  } | null = null
 
   const clearUserKey = (): void => {
     inMemoryUserKey?.fill(0)
@@ -118,6 +126,118 @@ export function webAuthSessionCreate(
     status.set("unauthenticated")
     storage.sessionClear()
     return resultCreate(undefined)
+  }
+
+  const sessionIdentityMatches = (candidate: WebAuthSession | null, expected: WebAuthSession): boolean =>
+    candidate !== null && candidate === expected && candidate.refreshToken === expected.refreshToken
+
+  const refreshCredentialsRejected = (result: ResultErr): boolean => {
+    if (result.code === "platform.unauthorized" || result.statusCode === 401) return true
+    if (result.statusCode !== 400 || result.errorData === undefined || result.errorData === null) return false
+    const parsed = v.safeParse(v.pipe(v.string(), v.parseJson()), result.errorData)
+    if (!parsed.success || typeof parsed.output !== "object" || parsed.output === null) return false
+    return "error" in parsed.output && parsed.output.error === "invalid_grant"
+  }
+
+  const sessionInvalidateIfCurrent = (expectedSession: WebAuthSession): Result<boolean> => {
+    if (!sessionIdentityMatches(session.get(), expectedSession)) return resultCreate(false)
+    const storedSessionResult = storage.sessionLoad()
+    if (!storedSessionResult.success) return storedSessionResult
+    if (storedSessionResult.data !== null && storedSessionResult.data.refreshToken !== expectedSession.refreshToken) {
+      return resultCreate(false)
+    }
+    const clearResult = storage.sessionClear()
+    if (!clearResult.success) return clearResult
+    clearUserKey()
+    session.set(null)
+    pendingTwoFactor.set(null)
+    status.set("unauthenticated")
+    return resultCreate(true)
+  }
+
+  const sessionRefresh = async (currentSession: WebAuthSession): Promise<Result<WebAuthSession | null>> => {
+    const op = "webAuthSession.restore"
+    const refreshResult = await apiClient.refreshToken({
+      grant_type: "refresh_token",
+      refresh_token: currentSession.refreshToken,
+      client_id: "web",
+    })
+    if (!refreshResult.success) {
+      if (!sessionIdentityMatches(session.get(), currentSession)) return resultCreate(session.get())
+      if (!refreshCredentialsRejected(refreshResult)) return refreshResult
+      const invalidateResult = sessionInvalidateIfCurrent(currentSession)
+      if (!invalidateResult.success) return invalidateResult
+      if (!invalidateResult.data) return resultCreate(session.get())
+      return refreshResult
+    }
+
+    const responseValidation = v.safeParse(bitwardenRefreshTokenResponseSchema, refreshResult.data)
+    if (!responseValidation.success) {
+      return resultErrorCreate(op, "Token refresh response is invalid.", {
+        code: "platform.internal",
+        statusCode: 500,
+        errorData: v.summarize(responseValidation.issues),
+      })
+    }
+    const expiresAt = Date.now() + responseValidation.output.expires_in * 1_000
+    if (!Number.isSafeInteger(expiresAt) || expiresAt < 0) {
+      return resultErrorCreate(op, "Token expiration is invalid.", {
+        code: "platform.internal",
+        statusCode: 500,
+      })
+    }
+    const refreshedSession: WebAuthSession = {
+      ...currentSession,
+      accessToken: responseValidation.output.access_token,
+      refreshToken: responseValidation.output.refresh_token,
+      expiresAt,
+    }
+    if (!sessionIdentityMatches(session.get(), currentSession)) return resultCreate(session.get())
+    const storedSessionResult = storage.sessionLoad()
+    if (!storedSessionResult.success) return storedSessionResult
+    if (storedSessionResult.data === null || storedSessionResult.data.refreshToken !== currentSession.refreshToken) {
+      return resultCreate(session.get())
+    }
+    const saveResult = storage.sessionSave(refreshedSession)
+    if (!saveResult.success) {
+      return resultErrorCreate(op, "Failed to persist refreshed session.", {
+        code: "platform.internal",
+        statusCode: 500,
+      })
+    }
+    session.set(refreshedSession)
+    return resultCreate(refreshedSession)
+  }
+
+  const refreshCoordinated = (currentSession: WebAuthSession): Promise<Result<WebAuthSession | null>> => {
+    if (
+      refreshInFlight !== null &&
+      refreshInFlight.session === currentSession &&
+      refreshInFlight.refreshToken === currentSession.refreshToken
+    ) {
+      return refreshInFlight.promise
+    }
+    const refreshPromise = sessionRefresh(currentSession)
+    const inFlight = { session: currentSession, refreshToken: currentSession.refreshToken, promise: refreshPromise }
+    refreshInFlight = inFlight
+    void refreshPromise.then(
+      () => {
+        if (refreshInFlight === inFlight) refreshInFlight = null
+      },
+      () => {
+        if (refreshInFlight === inFlight) refreshInFlight = null
+      },
+    )
+    return refreshPromise
+  }
+
+  const restore = async (): Promise<Result<WebAuthSession | null>> => {
+    const currentSession = session.get()
+    if (currentSession === null) return resultCreate(null)
+    if (currentSession.expiresAt > Date.now() + WEB_AUTH_TOKEN_REFRESH_THRESHOLD_MS) {
+      return resultCreate(currentSession)
+    }
+    return refreshCoordinated(currentSession)
   }
 
   const sessionHandoffAccept = (
@@ -321,7 +441,8 @@ export function webAuthSessionCreate(
               kdfParallelism: token.KdfParallelism,
               encryptedUserKey,
             }
-            storage.sessionSave(newSession)
+            const saveResult = storage.sessionSave(newSession)
+            if (!saveResult.success) return saveResult
             if (loginOptions.rememberEmail) {
               storage.rememberedEmailSave(email)
               rememberedEmail.set(email)
@@ -398,7 +519,8 @@ export function webAuthSessionCreate(
       encryptedUserKey,
     }
 
-    storage.sessionSave(newSession)
+    const saveResult = storage.sessionSave(newSession)
+    if (!saveResult.success) return saveResult
     if (loginOptions.rememberEmail) {
       storage.rememberedEmailSave(email)
       rememberedEmail.set(email)
@@ -485,7 +607,8 @@ export function webAuthSessionCreate(
       encryptedUserKey,
     }
 
-    storage.sessionSave(newSession)
+    const saveResult = storage.sessionSave(newSession)
+    if (!saveResult.success) return saveResult
     if (twoFactorOptions.remember && token.TwoFactorToken) {
       storage.rememberTokenSave(email, token.TwoFactorToken)
     }
@@ -936,6 +1059,7 @@ export function webAuthSessionCreate(
     isUnauthenticated,
     lock,
     logout,
+    restore,
     sessionHandoffAccept,
     ssoSessionAccept,
     ssoMasterPasswordSetup,
