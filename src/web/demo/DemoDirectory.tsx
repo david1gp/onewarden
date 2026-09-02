@@ -3,7 +3,6 @@ import { LinkButtonExternal } from "#ui/interactive/link/LinkButton.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
-import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
 import { demoDirectoryStateCreate } from "./demoDirectoryStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
@@ -11,9 +10,7 @@ export function DemoDirectory(props: { readonly navigate?: (path: string) => voi
   const state = demoDirectoryStateCreate(props)
 
   return (
-    <div
-      class={`h-full overflow-y-auto ${classesScrollbar} bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100`}
-    >
+    <div class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* biome-ignore lint/a11y/useValidAnchor: skip link shifts programmatic focus to main content */}
       <a
         href="#main-content"
