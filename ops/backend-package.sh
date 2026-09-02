@@ -60,7 +60,6 @@ bun build "$source_dir/tools/backup/restoreCli.ts" \
 cp -a "$source_dir/migrations/." "$package_dir/migrations/"
 cp -a "$source_dir/build/web" "$package_dir/build/web"
 cp "$source_dir/package.json" "$package_dir/package.json"
-cp "$source_dir/bun.lock" "$package_dir/bun.lock"
 
 if [[ -n "$release_git_head" ]]; then
   ONEWARDEN_RELEASE_GIT_HEAD="$release_git_head" \
