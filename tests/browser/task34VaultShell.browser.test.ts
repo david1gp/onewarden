@@ -157,18 +157,25 @@ test.describe("task 34 vault shell and navigation UI", () => {
 
   test("bounds the desktop workspace and scrolls each vault column independently", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 700 })
+    for (const path of ["/demo/login", "/demo/all", "/demo/trash", "/demo/locked"]) {
+      await page.goto(path)
+
+      const documentSize = await page.evaluate(() => ({
+        clientHeight: document.documentElement.clientHeight,
+        scrollHeight: document.documentElement.scrollHeight,
+      }))
+      expect(documentSize.scrollHeight, `${path} should not scroll the document`).toBeLessThanOrEqual(
+        documentSize.clientHeight,
+      )
+    }
+
     await page.goto("/demo/login")
-
-    const documentSize = await page.evaluate(() => ({
-      clientHeight: document.documentElement.clientHeight,
-      scrollHeight: document.documentElement.scrollHeight,
-    }))
-    expect(documentSize.scrollHeight).toBeLessThanOrEqual(documentSize.clientHeight)
-
     for (const columnId of ["vault-navigation-column", "vault-items-column", "vault-detail-column"]) {
       const scrollOwner = page.locator(`#${columnId} .overflow-y-auto`)
       await expect(scrollOwner).toHaveCount(1)
-      await expect.poll(() => scrollOwner.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+      await expect
+        .poll(() => scrollOwner.evaluate((element) => element.scrollHeight > element.clientHeight))
+        .toBe(true)
 
       await scrollOwner.hover()
       await page.mouse.wheel(0, 500)
