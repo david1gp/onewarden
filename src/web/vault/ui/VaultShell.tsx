@@ -135,6 +135,10 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
             profile={state.profile}
             apiBacked
             enableUrlSync={state.enableUrlSync}
+            pathname={props.pathname}
+            search={props.search}
+            hash={props.hash}
+            navigateReplace={props.navigateReplace}
             enableKeyboardWorkflows={true}
           />
         </Show>

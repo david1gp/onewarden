@@ -7,8 +7,8 @@ import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
 import { demoDirectoryStateCreate } from "./demoDirectoryStateCreate.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
-export function DemoDirectory(): JSX.Element {
-  const state = demoDirectoryStateCreate()
+export function DemoDirectory(props: { readonly navigate?: (path: string) => void } = {}): JSX.Element {
+  const state = demoDirectoryStateCreate(props)
 
   return (
     <div
@@ -59,6 +59,7 @@ export function DemoDirectory(): JSX.Element {
             {(demo) => (
               <LinkButtonExternal
                 href={demo.path}
+                onClick={state.navigateTo(demo.path)}
                 variant="none"
                 size="none"
                 class="group block text-left font-normal transition-transform duration-150 hover:-translate-y-0.5 focus:outline-hidden"

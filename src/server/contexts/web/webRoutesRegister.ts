@@ -238,6 +238,7 @@ function webPathIsSpaRoute(path: string): boolean {
     "/demo/settings/danger",
     "/demo/settings/delete-account",
     "/demo/admin",
+    "/demo/admin/login",
     "/demo/all",
     "/demo/all-items",
     "/demo/vault",

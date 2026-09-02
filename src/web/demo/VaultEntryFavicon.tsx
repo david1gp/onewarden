@@ -1,6 +1,5 @@
 import { type JSX, Show } from "solid-js"
 import { Icon } from "#ui/static/icon/Icon.jsx"
-import { Img } from "#ui/static/img/Img.jsx"
 import { classMerge } from "#ui/utils/classMerge.js"
 import { type VaultEntryFaviconStateProps, vaultEntryFaviconStateCreate } from "./vaultEntryFaviconStateCreate.js"
 
@@ -21,15 +20,20 @@ export function VaultEntryFavicon(props: VaultEntryFaviconStateProps): JSX.Eleme
       />
       <Show when={state.faviconPath()} keyed>
         {(path) => {
-          const image = state.faviconImage()!
+          const image = state.faviconImage()
+          if (image === null) return null
 
           return (
-            <Img
+            <img
               src={path}
               alt=""
+              aria-hidden="true"
               width={16}
               height={16}
               class="absolute size-4 object-contain"
+              loading="lazy"
+              decoding="async"
+              draggable={false}
               onLoad={() => state.markLoaded(image)}
               onError={() => state.markFailed(image)}
             />

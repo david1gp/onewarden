@@ -1,28 +1,37 @@
-import { onCleanup, onMount } from "solid-js"
+import { createEffect } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { adminDemoStateCreate } from "./adminDemoStateCreate.js"
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
+import { urlDemo } from "./demo_url/urlDemo.js"
 
-function demoAdminLoginPathCheck() {
-  if (typeof window === "undefined") return false
-  return window.location.pathname.replace(/\/+$/, "").toLowerCase() === "/demo/admin/login"
+type DemoAdminStateProps = Readonly<{
+  readonly pathname?: () => string
+  readonly search?: () => string
+  readonly hash?: () => string
+  readonly navigate?: (path: string) => void
+  readonly navigateReplace?: (path: string) => void
+}>
+
+function demoAdminLoginPathCheck(pathname: string) {
+  return pathname.replace(/\/+$/, "").toLowerCase() === `${urlDemo(pageNameDemo.admin)}/login`
 }
 
-export function demoAdminStateCreate() {
+export function demoAdminStateCreate(props: DemoAdminStateProps = {}) {
   const adminState = adminDemoStateCreate()
-  const loginVisible = createSignalObject(demoAdminLoginPathCheck())
+  const pathname = props.pathname ?? (() => urlDemo(pageNameDemo.admin))
+  const loginVisible = createSignalObject(demoAdminLoginPathCheck(pathname()))
 
-  const routeSync = () => loginVisible.set(demoAdminLoginPathCheck())
+  createEffect(() => loginVisible.set(demoAdminLoginPathCheck(pathname())))
   const loginShow = () => {
     loginVisible.set(true)
-    window.history.pushState(null, "", "/demo/admin/login")
+    props.navigate?.(`${urlDemo(pageNameDemo.admin)}/login${props.search?.() ?? ""}${props.hash?.() ?? ""}`)
   }
   const loginComplete = () => {
     loginVisible.set(false)
-    window.history.replaceState(null, "", "/demo/admin")
+    const path = `${urlDemo(pageNameDemo.admin)}${props.search?.() ?? ""}${props.hash?.() ?? ""}`
+    const navigateReplace = props.navigateReplace ?? props.navigate
+    navigateReplace?.(path)
   }
-
-  onMount(() => window.addEventListener("popstate", routeSync))
-  onCleanup(() => window.removeEventListener("popstate", routeSync))
 
   return {
     adminState,

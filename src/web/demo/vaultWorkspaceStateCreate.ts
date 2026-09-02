@@ -38,6 +38,10 @@ export interface VaultWorkspaceProps {
   defaultFolder?: string | null
   defaultCollection?: string | null
   enableUrlSync?: boolean
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
+  navigateReplace?: (path: string) => void
   enableKeyboardWorkflows?: boolean
   apiBacked?: boolean
   onSelectItem?: (id: string | null) => void
@@ -84,7 +88,9 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   const isApiBacked = props.apiBacked ?? false
   let apiListRequested = false
   const urlState =
-    props.enableUrlSync && typeof window !== "undefined" ? vaultUrlStateParse(window.location.search) : {}
+    props.enableUrlSync && (props.search !== undefined || typeof window !== "undefined")
+      ? vaultUrlStateParse(props.search?.() ?? window.location.search)
+      : {}
 
   const localItems =
     props.items === undefined && props.initialItems !== undefined
@@ -166,7 +172,13 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   })
 
   const syncUrlIfEnabled = () => {
-    if (props.enableUrlSync) vaultUrlStateSync(currentFilter())
+    if (!props.enableUrlSync) return
+    vaultUrlStateSync(currentFilter(), {
+      hash: props.hash,
+      navigateReplace: props.navigateReplace,
+      pathname: props.pathname,
+      search: props.search,
+    })
   }
 
   const selectVault = (vault: string) => {

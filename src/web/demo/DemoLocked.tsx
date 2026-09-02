@@ -4,16 +4,18 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { AuthUnlockCard } from "../auth/ui/AuthUnlockCard.jsx"
 import { demoLockedStateCreate } from "./demoLockedStateCreate.js"
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
 import { VaultDemoHeader } from "./VaultDemoHeader.jsx"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 import { VaultWorkspace } from "./VaultWorkspace.jsx"
+import type { VaultDemoHeaderProps } from "./vaultDemoHeaderStateCreate.js"
 
-export function DemoLocked(): JSX.Element {
+export function DemoLocked(props: Pick<VaultDemoHeaderProps, "navigate"> = {}): JSX.Element {
   const state = demoLockedStateCreate()
 
   return (
     <div class="flex h-full w-full flex-col overflow-hidden bg-slate-100 dark:bg-slate-950">
-      <VaultDemoHeader currentDemo="locked" title="Locked Vault State" />
+      <VaultDemoHeader currentDemo={pageNameDemo.locked} title="Locked Vault State" navigate={props.navigate} />
 
       <main id="main-content" tabindex="-1" class="flex flex-1 flex-col overflow-hidden focus:outline-none">
         <Show

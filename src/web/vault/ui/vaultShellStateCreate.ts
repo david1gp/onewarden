@@ -15,6 +15,10 @@ export interface VaultShellProps {
   token?: string
   baseUrl?: string
   enableUrlSync?: boolean
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
+  navigateReplace?: (path: string) => void
   autoSync?: boolean
   onOpenOrganizations?: () => void
   onOpenSends?: () => void

@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from "solid-js"
+import { createEffect } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { webAuthSessionCreate } from "../../auth/model/webAuthSessionCreate.js"
 import type { SettingsTabName } from "./settingsNavStateCreate.js"
@@ -8,18 +8,14 @@ export interface SettingsViewProps {
   onNavigateToVault?: () => void
   onNavigateToTwoFactor?: () => void
   onLoggedOut?: () => void
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
+  navigateReplace?: (path: string) => void
 }
 
-function resolveInitialTab(): SettingsTabName {
-  if (typeof window === "undefined") return "profile"
-  const path = window.location.pathname.replace(/\/+$/, "").toLowerCase()
-  if (path === "/settings/security") return "security"
-  if (path === "/settings/email") return "email"
-  if (path === "/settings/devices" || path === "/settings/sessions") return "devices"
-  if (path === "/settings/tools" || path === "/settings/import" || path === "/settings/export") return "tools"
-  if (path === "/settings/danger" || path === "/settings/delete-account") return "danger"
-  if (path === "/settings/profile" || path === "/settings/account") return "profile"
-  const params = new URLSearchParams(window.location.search)
+function resolveInitialTab(pathname: string, search: string): SettingsTabName {
+  const params = new URLSearchParams(search)
   const tab = params.get("tab")
   if (
     tab === "security" ||
@@ -27,43 +23,40 @@ function resolveInitialTab(): SettingsTabName {
     tab === "devices" ||
     tab === "emergency" ||
     tab === "tools" ||
-    tab === "danger"
+    tab === "danger" ||
+    tab === "profile"
   ) {
     return tab
   }
+
+  const path = pathname.replace(/\/+$/, "").toLowerCase()
+  if (path === "/settings/security") return "security"
+  if (path === "/settings/email") return "email"
+  if (path === "/settings/devices" || path === "/settings/sessions") return "devices"
+  if (path === "/settings/tools" || path === "/settings/import" || path === "/settings/export") return "tools"
+  if (path === "/settings/danger" || path === "/settings/delete-account") return "danger"
+  if (path === "/settings/profile" || path === "/settings/account") return "profile"
   return "profile"
 }
 
 export function settingsViewStateCreate(props: SettingsViewProps) {
-  const currentTab = createSignalObject<SettingsTabName>(resolveInitialTab())
+  const pathname = props.pathname ?? (() => (typeof window === "undefined" ? "/settings" : window.location.pathname))
+  const search = props.search ?? (() => (typeof window === "undefined" ? "" : window.location.search))
+  const hash = props.hash ?? (() => (typeof window === "undefined" ? "" : window.location.hash))
+  const currentTab = createSignalObject<SettingsTabName>(resolveInitialTab(pathname(), search()))
   const successMessage = createSignalObject<string | null>(null)
   const errorMessage = createSignalObject<string | null>(null)
 
-  const handlePopState = () => {
-    if (typeof window !== "undefined") {
-      currentTab.set(resolveInitialTab())
-    }
-  }
-
-  onMount(() => {
-    if (typeof window !== "undefined") {
-      window.addEventListener("popstate", handlePopState)
-    }
-  })
-
-  onCleanup(() => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("popstate", handlePopState)
-    }
-  })
+  createEffect(() => currentTab.set(resolveInitialTab(pathname(), search())))
 
   const setTab = (tab: SettingsTabName) => {
     currentTab.set(tab)
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href)
-      url.searchParams.set("tab", tab)
-      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`)
-    }
+    const url = new URL(
+      `${pathname()}${search()}${hash()}`,
+      typeof window === "undefined" ? "http://localhost" : window.location.origin,
+    )
+    url.searchParams.set("tab", tab)
+    props.navigateReplace?.(`${url.pathname}${url.search}${url.hash}`)
   }
 
   const notifySuccess = (message: string) => {

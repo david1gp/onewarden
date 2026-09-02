@@ -180,6 +180,11 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           cipherId={state.cipherDialogId}
           onSaved={state.handleCipherSaved}
           onDeleted={state.handleCipherDeleted}
+          syncUrl={props.enableUrlSync}
+          pathname={props.pathname}
+          search={props.search}
+          hash={props.hash}
+          navigateReplace={props.navigateReplace}
         />
       </Show>
     </div>

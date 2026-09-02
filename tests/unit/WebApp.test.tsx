@@ -1,5 +1,6 @@
-import { fireEvent, render } from "@solidjs/testing-library"
 import { expect, test } from "bun:test"
+import { Route, Router } from "@solidjs/router"
+import { fireEvent, render, waitFor } from "@solidjs/testing-library"
 import { AuthUnlockCard } from "../../src/web/auth/ui/AuthUnlockCard.jsx"
 import { DemoAllItems } from "../../src/web/demo/DemoAllItems.jsx"
 import { DemoDirectory } from "../../src/web/demo/DemoDirectory.jsx"
@@ -8,13 +9,67 @@ import { DemoSelectedLogin } from "../../src/web/demo/DemoSelectedLogin.jsx"
 import { WebApp } from "../../src/web/ui/WebApp.jsx"
 import { badgeCva1 } from "../../ui/static/badge/badgeCva.jsx"
 
-test("WebApp renders the OneWarden app shell landmarks", () => {
-  const screen = render(() => <WebApp />)
+test("WebApp routes /unlock to login when startup rejects the persisted refresh token", async () => {
+  window.happyDOM.setURL("http://localhost/unlock")
+  window.history.replaceState(null, "", "/unlock")
+  window.localStorage.setItem(
+    "onewarden_web_auth_session",
+    JSON.stringify({
+      email: "user@example.com",
+      accessToken: "expired-access-token",
+      refreshToken: "invalid-refresh-token",
+      tokenType: "Bearer",
+      expiresAt: Date.now() - 1,
+      userId: "user-id",
+      kdf: 0,
+      kdfIterations: 1,
+      kdfMemory: null,
+      kdfParallelism: null,
+      encryptedUserKey: "wrapped-key",
+    }),
+  )
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "invalid_grant" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    })
 
-  expect(screen.getByRole("banner")).toBeDefined()
-  expect(screen.getByRole("main")).toBeDefined()
-  expect(screen.getByRole("contentinfo")).toBeDefined()
-  expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("OneWarden")
+  try {
+    const screen = render(() => (
+      <Router>
+        <Route path="/*" component={WebApp} />
+      </Router>
+    ))
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/login")
+      expect(screen.getByRole("heading", { name: "Log In to OneWarden" })).toBeDefined()
+      expect(screen.queryByRole("button", { name: "Unlock Vault" })).toBeNull()
+    })
+    expect(window.localStorage.getItem("onewarden_web_auth_session")).toBeNull()
+
+    screen.unmount()
+  } finally {
+    globalThis.fetch = originalFetch
+    window.localStorage.removeItem("onewarden_web_auth_session")
+    window.happyDOM.setURL("http://localhost/")
+  }
+})
+
+test("WebApp renders the OneWarden app shell landmarks", async () => {
+  const screen = render(() => (
+    <Router>
+      <Route path="/*" component={WebApp} />
+    </Router>
+  ))
+
+  await waitFor(() => {
+    expect(screen.getByRole("banner")).toBeDefined()
+    expect(screen.getByRole("main")).toBeDefined()
+    expect(screen.getByRole("contentinfo")).toBeDefined()
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("OneWarden")
+  })
 
   screen.unmount()
 })
@@ -75,27 +130,24 @@ test("Skip-link click moves focus to main-content", () => {
   screen.unmount()
 })
 
-test("Badge variant filledGreen uses accessible green-700 contrast classes", () => {
+test("Badge variant filledGreen uses the shared filled green classes", () => {
   const classes = badgeCva1("filledGreen")
-  expect(classes).toContain("bg-green-700")
+  expect(classes).toContain("bg-green-500")
   expect(classes).toContain("text-white")
-  expect(classes).toContain("border-green-700")
-  expect(classes).toContain("dark:bg-green-700")
+  expect(classes).toContain("border-green-500")
 })
 
-test("Badge variant filledRed uses accessible red-700 contrast classes", () => {
+test("Badge variant filledRed uses the shared filled red classes", () => {
   const classes = badgeCva1("filledRed")
-  expect(classes).toContain("bg-red-700")
+  expect(classes).toContain("bg-red-600")
   expect(classes).toContain("text-white")
-  expect(classes).toContain("border-red-700")
-  expect(classes).toContain("dark:bg-red-700")
+  expect(classes).toContain("border-red-600")
 })
 
-test("Badge variant subtle uses explicit border and text contrast classes", () => {
+test("Badge variant subtle uses the shared muted classes", () => {
   const classes = badgeCva1("subtle")
   expect(classes).toContain("bg-slate-100")
   expect(classes).toContain("text-slate-900")
-  expect(classes).toContain("border-slate-200")
   expect(classes).toContain("dark:bg-slate-700")
   expect(classes).toContain("dark:text-slate-100")
 })

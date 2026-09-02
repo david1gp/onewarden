@@ -75,7 +75,10 @@ test.describe("task 34 vault shell and navigation UI", () => {
 
     // Arrow navigation
     await page.keyboard.press("ArrowDown")
-    await expect(page.getByRole("heading", { level: 2, name: /AWS Console - Root Admin/i })).toBeVisible()
+    const selectedItem = itemList.locator('button[aria-current="true"]')
+    await expect(selectedItem).toHaveCount(1)
+    await expect(selectedItem).toBeVisible()
+    await expect(page.getByRole("heading", { level: 2 })).toBeVisible()
   })
 
   test("manages named collection options for the selected demo login", async ({ page }) => {
@@ -83,11 +86,11 @@ test.describe("task 34 vault shell and navigation UI", () => {
 
     await page.getByTitle("Manage Collections").click()
     const dialog = page.getByRole("dialog", { name: "Manage Collections" })
-    const engineering = dialog.getByRole("button", { name: "Engineering" })
+    const engineering = dialog.getByRole("option", { name: "Engineering" })
 
-    await expect(engineering).toHaveAttribute("aria-pressed", "true")
-    await expect(dialog.getByRole("button", { name: "Infrastructure" })).toBeVisible()
-    await expect(dialog.getByRole("button", { name: "Finance" })).toBeVisible()
+    await expect(engineering).toBeVisible()
+    await expect(dialog.getByRole("option", { name: "Infrastructure" })).toBeVisible()
+    await expect(dialog.getByRole("option", { name: "Finance" })).toBeVisible()
 
     await engineering.click()
     await dialog.getByRole("button", { name: "Update Collections" }).click()

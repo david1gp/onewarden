@@ -1,26 +1,35 @@
+import type { PageNameDemo } from "./demo_url/pageNameDemo.js"
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
+import { urlDemo } from "./demo_url/urlDemo.js"
+import { demoNavigationClickHandleCreate } from "./demoNavigationClickHandleCreate.js"
+
 export interface VaultDemoHeaderProps {
-  currentDemo: string
+  currentDemo: PageNameDemo
   title?: string
   showTitle?: boolean
+  navigate?: (path: string) => void
 }
 
 export function vaultDemoHeaderStateCreate(props: VaultDemoHeaderProps) {
   const demoLinks = [
-    { id: "all-items", path: "/demo/all-items", label: "All Items" },
-    { id: "login", path: "/demo/login", label: "Login" },
-    { id: "secure-note", path: "/demo/secure-note", label: "Secure Note" },
-    { id: "credit-card", path: "/demo/credit-card", label: "Credit Card" },
-    { id: "identity", path: "/demo/identity", label: "Identity" },
-    { id: "ssh-key", path: "/demo/ssh-key", label: "SSH Key" },
-    { id: "empty-state", path: "/demo/empty-state", label: "Empty State" },
-    { id: "trash", path: "/demo/trash", label: "Trash" },
-    { id: "locked", path: "/demo/locked", label: "Locked" },
-    { id: "admin", path: "/demo/admin", label: "Admin" },
-    { id: "settings", path: "/demo/settings", label: "Settings" },
+    { id: pageNameDemo.allItems, path: urlDemo(pageNameDemo.allItems), label: "All Items" },
+    { id: pageNameDemo.login, path: urlDemo(pageNameDemo.login), label: "Login" },
+    { id: pageNameDemo.secureNote, path: urlDemo(pageNameDemo.secureNote), label: "Secure Note" },
+    { id: pageNameDemo.creditCard, path: urlDemo(pageNameDemo.creditCard), label: "Credit Card" },
+    { id: pageNameDemo.identity, path: urlDemo(pageNameDemo.identity), label: "Identity" },
+    { id: pageNameDemo.sshKey, path: urlDemo(pageNameDemo.sshKey), label: "SSH Key" },
+    { id: pageNameDemo.emptyState, path: urlDemo(pageNameDemo.emptyState), label: "Empty State" },
+    { id: pageNameDemo.trash, path: urlDemo(pageNameDemo.trash), label: "Trash" },
+    { id: pageNameDemo.locked, path: urlDemo(pageNameDemo.locked), label: "Locked" },
+    { id: pageNameDemo.admin, path: urlDemo(pageNameDemo.admin), label: "Admin" },
+    { id: "settings", path: urlDemo(pageNameDemo.demoSettings), label: "Settings" },
   ]
+  const navigateTo = demoNavigationClickHandleCreate(props.navigate)
 
   return {
     demoLinks,
+    directoryPath: urlDemo(pageNameDemo.directory),
+    navigateTo,
     currentDemo: () => props.currentDemo,
     title: () => props.title ?? "OneWarden Demo",
     showTitle: () => props.showTitle ?? true,

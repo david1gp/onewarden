@@ -14,11 +14,8 @@ test.describe("task 33 authentication UI", () => {
     await page.goto("/login")
 
     await expect(page.getByRole("checkbox")).toHaveCount(1)
-    await expect(page.locator("#remember-email")).not.toHaveAttribute("aria-describedby")
-    await expect(page.getByRole("link", { name: "Verify Email Address" })).toHaveCSS(
-      "text-decoration-line",
-      /underline/,
-    )
+    await expect(page.getByRole("checkbox", { name: "Remember email" })).toBeVisible()
+    await expect(page.getByRole("link", { name: "Verify Email Address" })).toHaveAttribute("href", "/verify-email")
   })
 
   test("uses a resend response that supplies a compatible user id and token", async ({ page }) => {

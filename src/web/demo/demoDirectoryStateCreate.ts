@@ -1,3 +1,7 @@
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
+import { urlDemo } from "./demo_url/urlDemo.js"
+import { demoNavigationClickHandleCreate } from "./demoNavigationClickHandleCreate.js"
+
 export interface DemoDirectoryItem {
   id: string
   path: string
@@ -8,11 +12,11 @@ export interface DemoDirectoryItem {
   badgeVariant?: "subtle" | "outline" | "contrast" | "filledGreen" | "filledYellow" | "filledBlue" | "filledRed"
 }
 
-export function demoDirectoryStateCreate() {
+export function demoDirectoryStateCreate(props: Readonly<{ readonly navigate?: (path: string) => void }> = {}) {
   const demos: readonly DemoDirectoryItem[] = [
     {
       id: "admin",
-      path: "/demo/admin",
+      path: urlDemo(pageNameDemo.admin),
       title: "Administration Workspace",
       category: "Administration",
       description: "Backend-free server administration workspace for settings, users, organizations, and diagnostics.",
@@ -21,7 +25,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "settings",
-      path: "/demo/settings",
+      path: urlDemo(pageNameDemo.demoSettings),
       title: "Account Settings",
       category: "Settings",
       description: "Interactive account settings for profile, security, email, devices, emergency access, and tools.",
@@ -30,7 +34,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "extension",
-      path: "/demo/extension",
+      path: urlDemo(pageNameDemo.extensionDemo),
       title: "Extension Surfaces",
       category: "Extension",
       description: "Popup, full-window vault, generator, settings, and passkey consent visual states.",
@@ -39,7 +43,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "all-items",
-      path: "/demo/all-items",
+      path: urlDemo(pageNameDemo.allItems),
       title: "All Items & Multi-Vault Workspace",
       category: "Full Vault",
       description:
@@ -49,7 +53,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "login",
-      path: "/demo/login",
+      path: urlDemo(pageNameDemo.login),
       title: "Selected Login Credential",
       category: "Logins",
       description:
@@ -59,7 +63,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "secure-note",
-      path: "/demo/secure-note",
+      path: urlDemo(pageNameDemo.secureNote),
       title: "Selected Secure Note",
       category: "Notes",
       description:
@@ -69,7 +73,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "credit-card",
-      path: "/demo/credit-card",
+      path: urlDemo(pageNameDemo.creditCard),
       title: "Selected Credit Card",
       category: "Cards",
       description:
@@ -79,7 +83,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "identity",
-      path: "/demo/identity",
+      path: urlDemo(pageNameDemo.identity),
       title: "Selected Identity Profile",
       category: "Identities",
       description:
@@ -89,7 +93,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "ssh-key",
-      path: "/demo/ssh-key",
+      path: urlDemo(pageNameDemo.sshKey),
       title: "Selected SSH Key",
       category: "SSH Keys",
       description: "Production Deploy Key (Ed25519) with public key, fingerprint, and concealed passphrase.",
@@ -98,7 +102,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "empty-state",
-      path: "/demo/empty-state",
+      path: urlDemo(pageNameDemo.emptyState),
       title: "Empty Vault State",
       category: "Empty",
       description:
@@ -108,7 +112,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "trash",
-      path: "/demo/trash",
+      path: urlDemo(pageNameDemo.trash),
       title: "Trash & Deleted Items",
       category: "Trash",
       description:
@@ -118,7 +122,7 @@ export function demoDirectoryStateCreate() {
     },
     {
       id: "locked",
-      path: "/demo/locked",
+      path: urlDemo(pageNameDemo.locked),
       title: "Locked Vault State",
       category: "Security",
       description:
@@ -130,5 +134,6 @@ export function demoDirectoryStateCreate() {
 
   return {
     demos,
+    navigateTo: demoNavigationClickHandleCreate(props.navigate),
   }
 }

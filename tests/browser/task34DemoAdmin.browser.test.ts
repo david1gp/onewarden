@@ -4,16 +4,50 @@ test.describe("task 34 demo admin", () => {
   test("renders the admin route from a direct URL and switches local sections", async ({ page }) => {
     const response = await page.goto("/demo/admin")
 
-    expect(response?.status()).not.toBe(404)
-    await expect(page).toHaveURL(/\/demo\/admin\/?$/)
+    expect(response?.status(), "/demo/admin should serve the demo admin SPA").toBe(200)
+    expect(new URL(page.url()).pathname).toBe("/demo/admin")
     await expect(page.getByRole("heading", { name: "OneWarden Administration" })).toBeVisible()
     await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible()
     await expect(page.getByRole("heading", { name: "Settings", level: 2 })).toBeVisible()
+
+    const loginResponse = await page.goto("/demo/admin/login")
+
+    expect(loginResponse?.status(), "/demo/admin/login should serve the demo admin SPA").toBe(200)
+    expect(new URL(page.url()).pathname).toBe("/demo/admin/login")
+    await expect(page.getByRole("heading", { name: "Log in to demo administration" })).toBeVisible()
+    await expect(page.getByLabel("Demo admin token")).toBeVisible()
+
+    await page.goto("/demo/admin")
 
     await page.getByRole("button", { name: "Diagnostics" }).click()
     await expect(page.getByRole("heading", { name: "Diagnostics", level: 2 })).toBeVisible()
     await page.locator("summary").filter({ hasText: "Database" }).click()
     await expect(page.getByText("Last query completed in 4 ms.", { exact: true })).toBeVisible()
+  })
+
+  test("uses router history for demo admin login and replace navigation", async ({ page }) => {
+    await page.goto("/demo")
+    await page.getByRole("link").filter({ hasText: "Administration Workspace" }).click()
+    await expect(page).toHaveURL(/\/demo\/admin$/)
+
+    await page.getByRole("button", { name: "Preview admin login" }).click()
+    await expect(page).toHaveURL(/\/demo\/admin\/login$/)
+    await expect(page.getByRole("heading", { name: "Log in to demo administration" })).toBeVisible()
+
+    await page.goBack()
+    await expect(page).toHaveURL(/\/demo\/admin$/)
+    await expect(page.getByRole("heading", { name: "OneWarden Administration" })).toBeVisible()
+
+    await page.goForward()
+    await expect(page).toHaveURL(/\/demo\/admin\/login$/)
+    await page.getByLabel("Demo admin token").fill("history-test-token")
+    await page.getByRole("button", { name: "Enter admin workspace" }).click()
+    await expect(page).toHaveURL(/\/demo\/admin$/)
+
+    await page.goBack()
+    await expect(page).toHaveURL(/\/demo\/admin$/)
+    await page.goBack()
+    await expect(page).toHaveURL(/\/demo$/)
   })
 
   test("filters users and completes invite and confirmation feedback flows", async ({ page }) => {

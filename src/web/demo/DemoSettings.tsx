@@ -4,18 +4,28 @@ import { Input } from "#ui/input/input/Input.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { Textarea } from "#ui/input/textarea/Textarea.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { LinkTextExternal } from "#ui/interactive/link/LinkText.jsx"
 import { ThemeButton } from "#ui/interactive/theme/ThemeButton.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { CodeBlock } from "#ui/static/code/CodeBlock.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { demoSettingsStateCreate } from "./demoSettingsStateCreate.js"
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
+import { urlDemo } from "./demo_url/urlDemo.js"
 import { vaultSvgIcons } from "./vaultSvgIcons.js"
 
 type DemoSettingsState = ReturnType<typeof demoSettingsStateCreate>
 
-export function DemoSettings(): JSX.Element {
-  const state = demoSettingsStateCreate()
+type DemoSettingsProps = Readonly<{
+  readonly pathname?: () => string
+  readonly search?: () => string
+  readonly hash?: () => string
+  readonly navigate?: (path: string) => void
+}>
+
+export function DemoSettings(props: DemoSettingsProps = {}): JSX.Element {
+  const state = demoSettingsStateCreate(props)
 
   return (
     <main
@@ -26,9 +36,13 @@ export function DemoSettings(): JSX.Element {
       <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <a href="/demo/vault" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+            <LinkTextExternal
+              href={urlDemo(pageNameDemo.allItems)}
+              onClick={state.navigateTo(urlDemo(pageNameDemo.allItems))}
+              class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+            >
               ← Back to Demo Vault
-            </a>
+            </LinkTextExternal>
             <h1 class="mt-3 font-bold text-2xl tracking-tight sm:text-3xl">Account &amp; Security Settings</h1>
             <p class="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
               Explore account preferences safely. Every action stays in this browser and no API requests are made.

@@ -13,6 +13,7 @@ export interface SendListViewProps {
   apiClient?: ReturnType<typeof webSendApiClientCreate>
   onNavigateToVault?: () => void
   onNavigateToSendAccess?: (accessId: string) => void
+  navigate?: (path: string) => void
 }
 
 export function sendListViewStateCreate(props: SendListViewProps) {
@@ -142,9 +143,9 @@ export function sendListViewStateCreate(props: SendListViewProps) {
     if (path === null) return
     if (props.onNavigateToSendAccess) {
       props.onNavigateToSendAccess(path.slice("/send/".length))
-    } else {
-      window.location.href = path
+      return
     }
+    props.navigate?.(path)
   }
 
   return {

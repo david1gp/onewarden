@@ -16,6 +16,10 @@ export interface CipherDialogStateProps {
   onDeleted?: (id: string, hard: boolean) => Promise<void> | void
   onClosed?: () => void
   syncUrl?: boolean
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
+  navigateReplace?: (path: string) => void
 }
 
 export function cipherDialogStateCreate(props: CipherDialogStateProps) {
@@ -74,7 +78,9 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   // URL sync handling
   const syncUrlState = (isOpen: boolean, currentMode: CipherDialogMode, id: string | null) => {
     if (!props.syncUrl || typeof window === "undefined") return
-    const url = new URL(window.location.href)
+    const currentUrl = `${props.pathname?.() ?? window.location.pathname}${props.search?.() ?? window.location.search}${props.hash?.() ?? window.location.hash}`
+    const url = new URL(currentUrl, window.location.origin)
+    const currentLocation = `${url.pathname}${url.search}${url.hash}`
     if (isOpen) {
       url.searchParams.set("dialog", currentMode === "create" ? "cipherCreate" : "cipher")
       if (id) {
@@ -86,7 +92,9 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
       url.searchParams.delete("dialog")
       url.searchParams.delete("cipherId")
     }
-    window.history.replaceState(null, "", url.toString())
+    const newUrl = `${url.pathname}${url.search}${url.hash}`
+    if (newUrl === currentLocation) return
+    props.navigateReplace?.(newUrl)
   }
 
   createEffect(() => {

@@ -5,6 +5,7 @@ import { databaseClose } from "../../../src/server/database/databaseClose.js"
 import { databaseTestCreate } from "../../../src/server/database/databaseTestCreate.js"
 import { serverAppCreate } from "../../../src/server/serverAppCreate.js"
 import { clockTestCreate } from "../../../src/shared/clock/clockTestCreate.js"
+import { demoRouteAliases } from "../../../src/web/demo/demo_url/demoRouteAliases.js"
 
 const temporaryFolders: string[] = []
 
@@ -38,7 +39,7 @@ test("web routes serve the vault, static files, aliases, health, and protocol me
   expect(indexResponse.headers.get("cache-control")).toBe("public, max-age=600")
   expect(await indexResponse.text()).toContain("Test vault")
 
-  for (const path of [
+  for (const path of new Set([
     "/login",
     "/unlock",
     "/demo",
@@ -77,7 +78,9 @@ test("web routes serve the vault, static files, aliases, health, and protocol me
     "/sends/access/access-id",
     "/emergency-access",
     "/admin-ui/users",
-  ]) {
+    "/demo/admin/login",
+    ...demoRouteAliases.flatMap(({ paths }) => paths),
+  ])) {
     const spaResponse = await app.request(`http://localhost${path}`)
     expect(spaResponse.status).toBe(200)
     expect(await spaResponse.text()).toContain("Test vault")

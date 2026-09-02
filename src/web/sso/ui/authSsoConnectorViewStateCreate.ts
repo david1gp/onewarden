@@ -30,6 +30,10 @@ export interface AuthSsoConnectorViewProps {
   onNavigateToUnlock?: () => void
   onNavigateToLogin?: () => void
   onNavigateToVault?: () => void
+  navigateReplace?: (path: string) => void
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
   urlOverride?: string | URL
   nowMs?: number
 }
@@ -186,6 +190,8 @@ export function authSsoConnectorViewStateCreate(props: AuthSsoConnectorViewProps
     status.set("success")
     if (props.onNavigateToUnlock !== undefined) {
       props.onNavigateToUnlock()
+    } else if (props.navigateReplace !== undefined) {
+      props.navigateReplace("/unlock")
     } else if (typeof window !== "undefined") {
       window.location.replace("/unlock")
     }
@@ -196,7 +202,10 @@ export function authSsoConnectorViewStateCreate(props: AuthSsoConnectorViewProps
       props.urlOverride !== undefined
         ? new URL(props.urlOverride.toString())
         : typeof window !== "undefined"
-          ? new URL(window.location.href)
+          ? new URL(
+              `${props.pathname?.() ?? window.location.pathname}${props.search?.() ?? window.location.search}${props.hash?.() ?? window.location.hash}`,
+              window.location.origin,
+            )
           : new URL("http://localhost/sso-connector.html")
 
     const origin = currentUrl.origin
@@ -284,9 +293,7 @@ export function authSsoConnectorViewStateCreate(props: AuthSsoConnectorViewProps
     }
 
     // Second Hop: Returned from /identity/connect/oidc-signin -> Scrub query -> Exchange code -> Accept session
-    if (typeof window !== "undefined" && window.history?.replaceState) {
-      window.history.replaceState(null, "", currentUrl.pathname)
-    }
+    props.navigateReplace?.(currentUrl.pathname)
 
     const callbackResult = webSsoCallbackPhaseResolve({
       callbackUrl: currentUrl,
@@ -402,10 +409,9 @@ export function authSsoConnectorViewStateCreate(props: AuthSsoConnectorViewProps
     transactionStorage.clear()
     status.set("success")
 
-    if (typeof window !== "undefined" && window.history?.replaceState) {
-      window.history.replaceState(null, "", "/")
-    }
-    if (props.onNavigateToVault !== undefined) {
+    if (props.navigateReplace !== undefined) {
+      props.navigateReplace("/")
+    } else if (props.onNavigateToVault !== undefined) {
       props.onNavigateToVault()
     } else if (typeof window !== "undefined") {
       window.location.replace("/")

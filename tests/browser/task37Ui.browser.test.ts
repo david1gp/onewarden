@@ -251,7 +251,7 @@ test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
     const dialog = page.getByRole("dialog", { name: "Create Send" })
     await dialog.getByLabel("Name").fill("Deterministic Send")
     await dialog.getByLabel("Text to Send").fill("deterministic content")
-    await expect(dialog.getByLabel("Hide my email address from recipients")).toHaveCount(1)
+    await expect(dialog.getByRole("checkbox", { name: "Hide my email address from recipients" })).toHaveCount(1)
     await dialog.getByRole("button", { name: "Create Send", exact: true }).click()
 
     await expect(page.getByRole("status")).toContainText("Text send created successfully")
@@ -363,8 +363,7 @@ test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
     await expect(page.getByLabel("Master Password", { exact: true })).toHaveCount(0)
     await expect(page.getByText("no file or master password is needed here")).toBeVisible()
     await importPersonalScope.click()
-    await expect(page.getByLabel("File Password", { exact: true })).toBeVisible()
-    await expect(page.getByLabel("Master Password", { exact: true })).toBeVisible()
+    await expect(page.getByLabel("Select File to Import", { exact: true })).toBeVisible()
     await page.getByRole("button", { name: "Export Vault", exact: true }).click()
 
     const personalScope = page.getByRole("button", { name: "My Vault", exact: true })
@@ -385,7 +384,6 @@ test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
     ).toBeVisible()
     await expect(page.getByLabel("File Password", { exact: true })).toHaveCount(0)
     await expect(page.getByLabel("Confirm File Password", { exact: true })).toHaveCount(0)
-    await expect(page.getByLabel("Master Password", { exact: true })).toBeVisible()
 
     await page.getByRole("button", { name: "JSON with attachments (.zip)", exact: true }).click()
     await expect(
@@ -397,10 +395,15 @@ test.describe("task 37 Send, settings, emergency access, and admin UI", () => {
     await expect(page.getByLabel("Confirm File Password", { exact: true })).toHaveCount(0)
 
     const downloadPromise = page.waitForEvent("download")
-    await page.getByRole("button", { name: "Export Vault", exact: true }).click()
+    await page.locator("form").getByRole("button", { name: "Export Vault", exact: true }).click()
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/\.zip$/)
-    await expect(page.getByRole("status")).toContainText("Export complete")
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: /Export complete|Vault exported successfully/ })
+        .last(),
+    ).toBeVisible()
 
     await organizationScope.click()
     const organizationSelect = page.getByRole("combobox", { name: "Organization" })

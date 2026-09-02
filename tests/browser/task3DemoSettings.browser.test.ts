@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { demoRouteAliases } from "../../src/web/demo/demo_url/demoRouteAliases.js"
 import { demoBrowserSessionReset } from "./helpers/demoBrowserSessionReset.js"
 
 const demoSettingsRoutes = [
@@ -36,18 +37,31 @@ test.describe("task 3 demo settings", () => {
       expect(page.url()).not.toMatch(/\/login\/?$/)
     }
 
-    await page.goto("/demo/settings")
+    await page.goto("/demo/settings?from=demo#settings")
     const desktopNavigation = page.locator('nav[aria-label="Settings sections"]').nth(1)
 
     await desktopNavigation.getByRole("button", { name: /^Security/ }).click()
-    await expect(page).toHaveURL(/\/demo\/settings\/security$/)
+    await expect(page).toHaveURL(/\/demo\/settings\/security\?from=demo#settings$/)
     await expect(page.getByRole("heading", { level: 2, name: "Security & KDF" })).toBeVisible()
 
     await desktopNavigation.getByRole("button", { name: /^Email/ }).click()
-    await expect(page).toHaveURL(/\/demo\/settings\/email$/)
+    await expect(page).toHaveURL(/\/demo\/settings\/email\?from=demo#settings$/)
     await page.goBack()
-    await expect(page).toHaveURL(/\/demo\/settings\/security$/)
+    await expect(page).toHaveURL(/\/demo\/settings\/security\?from=demo#settings$/)
     await expect(page.getByRole("heading", { level: 2, name: "Security & KDF" })).toBeVisible()
+    await page.goForward()
+    await expect(page).toHaveURL(/\/demo\/settings\/email\?from=demo#settings$/)
+    await expect(page.getByRole("heading", { level: 2, name: "Email Address" })).toBeVisible()
+  })
+
+  test("serves every demo alias as a direct SPA entry", async ({ page }) => {
+    for (const path of demoRouteAliases.flatMap(({ paths }) => paths)) {
+      const response = await page.goto(path)
+
+      expect(response?.status(), `${path} should serve the demo SPA`).toBe(200)
+      await expect(page.locator("#root")).not.toBeEmpty()
+      await expect(page.getByText("Page not found!", { exact: true })).toHaveCount(0)
+    }
   })
 
   test("keeps representative settings interactions local", async ({ page }) => {

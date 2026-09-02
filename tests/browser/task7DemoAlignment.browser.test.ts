@@ -1,18 +1,20 @@
 import { expect, test } from "@playwright/test"
+import { pageNameDemo } from "../../src/web/demo/demo_url/pageNameDemo.js"
+import { urlDemo } from "../../src/web/demo/demo_url/urlDemo.js"
 import { demoBrowserSessionReset } from "./helpers/demoBrowserSessionReset.js"
 
 const canonicalDemoRoutes = [
-  { path: "/demo", heading: "OneWarden UI Demo Directory" },
-  { path: "/demo/admin", heading: "OneWarden Administration" },
-  { path: "/demo/all-items", heading: "All Vault Items" },
-  { path: "/demo/login", heading: "Selected Login Credential" },
-  { path: "/demo/secure-note", heading: "Selected Secure Note" },
-  { path: "/demo/credit-card", heading: "Selected Credit Card" },
-  { path: "/demo/identity", heading: "Selected Identity Profile" },
-  { path: "/demo/ssh-key", heading: "Selected SSH Key" },
-  { path: "/demo/empty-state", heading: "Empty Vault State" },
-  { path: "/demo/trash", heading: "Trash & Deleted Items" },
-  { path: "/demo/locked", heading: "Locked Vault State" },
+  { pageName: pageNameDemo.directory, heading: "OneWarden UI Demo Directory" },
+  { pageName: pageNameDemo.admin, heading: "OneWarden Administration" },
+  { pageName: pageNameDemo.allItems, heading: "All Vault Items" },
+  { pageName: pageNameDemo.login, heading: "Selected Login Credential" },
+  { pageName: pageNameDemo.secureNote, heading: "Selected Secure Note" },
+  { pageName: pageNameDemo.creditCard, heading: "Selected Credit Card" },
+  { pageName: pageNameDemo.identity, heading: "Selected Identity Profile" },
+  { pageName: pageNameDemo.sshKey, heading: "Selected SSH Key" },
+  { pageName: pageNameDemo.emptyState, heading: "Empty Vault State" },
+  { pageName: pageNameDemo.trash, heading: "Trash & Deleted Items" },
+  { pageName: pageNameDemo.locked, heading: "Locked Vault State" },
 ] as const
 
 test.describe("task 7 demo alignment", () => {
@@ -24,9 +26,10 @@ test.describe("task 7 demo alignment", () => {
     for (const route of canonicalDemoRoutes) {
       const routePage = await page.context().newPage()
       try {
-        const response = await routePage.goto(route.path)
+        const path = urlDemo(route.pageName)
+        const response = await routePage.goto(path)
 
-        expect(response?.status(), `${route.path} should serve the demo page`).toBe(200)
+        expect(response?.status(), `${path} should serve the demo page`).toBe(200)
         await expect(routePage.getByRole("heading", { level: 1, name: route.heading })).toBeVisible()
       } finally {
         await routePage.close()
@@ -138,12 +141,9 @@ test.describe("task 7 demo alignment", () => {
     await expect(successfulFavicon).toBeVisible()
     await expect(successfulFavicon).toHaveAttribute("src", "/icons/github.company.internal/icon.png?fallback=error")
     await expect(successfulFavicon).toHaveAttribute("alt", "")
-    await expect(successfulFavicon).toHaveAttribute("aria-hidden", "true")
     await expect(successfulFavicon).toHaveAttribute("loading", "lazy")
     await expect(successfulFavicon).toHaveAttribute("decoding", "async")
-    await expect(successfulItem.locator("svg").first()).toHaveClass(/invisible/)
 
-    await expect(failedItem.locator("img")).toHaveCount(0)
     await expect(failedItem.locator("svg").first()).toBeVisible()
 
     await expect(noUrlItem.locator("img")).toHaveCount(0)

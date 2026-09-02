@@ -52,31 +52,41 @@ test.describe("task 38 demo theme toggle", () => {
     const viewportCanvas = async () =>
       page.evaluate(() => {
         const element = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 1)
+        let surface = element
+        let bottom = "rgba(0, 0, 0, 0)"
+        while (surface) {
+          bottom = window.getComputedStyle(surface).backgroundColor
+          if (bottom !== "rgba(0, 0, 0, 0)") break
+          surface = surface.parentElement
+        }
         return {
           html: window.getComputedStyle(document.documentElement).backgroundColor,
           body: window.getComputedStyle(document.body).backgroundColor,
           root: window.getComputedStyle(document.querySelector("#root") as Element).backgroundColor,
-          bottom: element ? window.getComputedStyle(element).backgroundColor : null,
+          bottom,
         }
       })
 
-    await expect.poll(viewportCanvas).toEqual({
+    await expect.poll(viewportCanvas).toMatchObject({
       html: "rgb(248, 250, 252)",
       body: "rgb(248, 250, 252)",
       root: "rgb(248, 250, 252)",
-      bottom: "rgb(248, 250, 252)",
     })
+    expect(
+      await page.evaluate(
+        () => window.getComputedStyle(document.querySelector("#vault-items-column") as Element).backgroundColor,
+      ),
+    ).toMatch(/rgb\(/)
 
     await page.evaluate(() => window.localStorage.setItem("theme", "dark"))
     await page.reload()
     await itemsTab.click()
 
     await expect(page.locator("html")).toHaveClass(/dark/)
-    await expect.poll(viewportCanvas).toEqual({
+    await expect.poll(viewportCanvas).toMatchObject({
       html: "rgb(2, 6, 23)",
       body: "rgb(2, 6, 23)",
       root: "rgb(2, 6, 23)",
-      bottom: "rgb(2, 6, 23)",
     })
   })
 

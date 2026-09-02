@@ -281,10 +281,6 @@ describe("AuthSsoConnectorView", () => {
     })
 
     let replaceStateCalledWith: string | null = null
-    const originalReplaceState = window.history.replaceState
-    window.history.replaceState = (_data, _unused, url) => {
-      replaceStateCalledWith = String(url)
-    }
 
     let navigatedToUnlock = false
     const url = `https://vault.example/sso-connector.html?code=backend-code&state=${encodeURIComponent(transaction.state)}&scope=api+offline_access&iss=https%3A%2F%2Fvault.example`
@@ -297,6 +293,9 @@ describe("AuthSsoConnectorView", () => {
         transactionStorage={transactionStorage}
         urlOverride={url}
         nowMs={nowMs + 1000}
+        navigateReplace={(path) => {
+          replaceStateCalledWith = path
+        }}
         onNavigateToUnlock={() => {
           navigatedToUnlock = true
         }}
@@ -334,7 +333,6 @@ describe("AuthSsoConnectorView", () => {
     // Transaction was cleared
     expect(transactionStorage.load(nowMs + 1000).data).toBeNull()
 
-    window.history.replaceState = originalReplaceState
     screen.unmount()
   })
 

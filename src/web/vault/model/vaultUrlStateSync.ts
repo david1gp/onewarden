@@ -2,8 +2,18 @@ import type { VaultFilter } from "./vaultFilterSchema.js"
 
 let pendingUrlUpdateTimer: ReturnType<typeof setTimeout> | null = null
 
-export function vaultUrlStateSync(filter: VaultFilter): void {
+export function vaultUrlStateSync(
+  filter: VaultFilter,
+  options: Readonly<{
+    readonly pathname?: () => string
+    readonly search?: () => string
+    readonly hash?: () => string
+    readonly navigateReplace?: (path: string) => void
+  }> = {},
+): void {
   if (typeof window === "undefined") return
+  const navigateReplace = options.navigateReplace
+  if (navigateReplace === undefined) return
 
   const schedule = (callback: () => void) => {
     if (typeof requestIdleCallback !== "undefined") {
@@ -19,7 +29,9 @@ export function vaultUrlStateSync(filter: VaultFilter): void {
 
   pendingUrlUpdateTimer = setTimeout(() => {
     schedule(() => {
-      const url = new URL(window.location.href)
+      const currentUrl = `${options.pathname?.() ?? window.location.pathname}${options.search?.() ?? window.location.search}${options.hash?.() ?? window.location.hash}`
+      const url = new URL(currentUrl, window.location.origin)
+      const currentLocation = `${url.pathname}${url.search}${url.hash}`
       const params = url.searchParams
 
       if (filter.vault && filter.vault !== "all") {
@@ -61,9 +73,8 @@ export function vaultUrlStateSync(filter: VaultFilter): void {
 
       const newSearch = params.toString()
       const newUrl = `${url.pathname}${newSearch ? `?${newSearch}` : ""}${url.hash}`
-      if (newUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-        window.history.replaceState(null, "", newUrl)
-      }
+      if (newUrl === currentLocation) return
+      navigateReplace(newUrl)
     })
   }, 100)
 }

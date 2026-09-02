@@ -1,4 +1,5 @@
-import { createEffect, onCleanup, onMount } from "solid-js"
+import { useLocation, useNavigate } from "@solidjs/router"
+import { createEffect, onMount } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { sessionHandoffFragmentParse } from "../../shared/sessionHandoff/sessionHandoffFragmentParse.js"
 import { webAdminApiClientCreate } from "../admin/model/webAdminApiClientCreate.js"
@@ -7,108 +8,99 @@ import { webAuthStorageCreate } from "../auth/model/webAuthStorageCreate.js"
 import { webSendAccessIdResolve } from "../sends/model/webSendAccessIdResolve.js"
 import { webSessionHandoffApiClientCreate } from "../sessionHandoffs/model/webSessionHandoffApiClientCreate.js"
 import { webSessionHandoffConsume } from "../sessionHandoffs/model/webSessionHandoffConsume.js"
-import { webAppRouteResolve } from "./webAppRouteResolve.js"
+import { webAppRouteMatch } from "../web_url/webAppRouteMatch.js"
 
 export function webAppStateCreate() {
-  const pathname = createSignalObject(typeof window !== "undefined" ? window.location.pathname : "/")
-  const location = createSignalObject(
-    typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}${window.location.hash}` : "/",
-  )
+  const routerLocation = useLocation()
+  const routerNavigate = useNavigate()
   const routeRevision = createSignalObject(0)
   const session = webAuthSessionDefault()
+  const isAuthReady = createSignalObject(typeof window === "undefined" || session.session() === null)
   const isAdminLoggedIn = createSignalObject(false)
-  const isAdminSessionChecking = createSignalObject(
-    typeof window !== "undefined" && window.location.pathname.toLowerCase().startsWith("/admin-ui"),
-  )
+  const isAdminSessionChecking = createSignalObject(routerLocation.pathname.toLowerCase().startsWith("/admin-ui"))
 
-  const handlePopState = () => {
-    if (typeof window !== "undefined") {
-      pathname.set(window.location.pathname)
-      location.set(`${window.location.pathname}${window.location.search}${window.location.hash}`)
-    }
+  const navigationPathResolve = (path: string): string => {
+    const url = new URL(path, typeof window !== "undefined" ? window.location.origin : "http://localhost")
+    return `${url.pathname}${url.search}${url.hash}`
   }
 
   const navigate = (path: string) => {
-    if (typeof window !== "undefined") {
-      const url = new URL(path, window.location.origin)
-      window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`)
-      pathname.set(url.pathname)
-      location.set(`${url.pathname}${url.search}${url.hash}`)
-      return
-    }
-    const url = new URL(path, "http://localhost")
-    pathname.set(url.pathname)
-    location.set(`${url.pathname}${url.search}${url.hash}`)
+    routerNavigate(navigationPathResolve(path), { resolve: false })
   }
 
   const navigateReplace = (path: string) => {
-    if (typeof window === "undefined") return navigate(path)
-    const url = new URL(path, window.location.origin)
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`)
-    pathname.set(url.pathname)
-    location.set(`${url.pathname}${url.search}${url.hash}`)
-  }
-
-  const handleLinkClick = (event: MouseEvent) => {
-    const target = (event.target as HTMLElement).closest("a")
-    if (!target) return
-    const href = target.getAttribute("href")
-    if (!href || href.startsWith("http") || href.startsWith("#") || target.target === "_blank") {
-      return
-    }
-    if (href.startsWith("/")) {
-      event.preventDefault()
-      navigate(href)
-    }
+    routerNavigate(navigationPathResolve(path), { resolve: false, replace: true })
   }
 
   onMount(() => {
     if (typeof window !== "undefined") {
-      window.addEventListener("popstate", handlePopState)
-      document.addEventListener("click", handleLinkClick)
-      const fragmentResult = sessionHandoffFragmentParse(window.location.hash)
-      if (new URLSearchParams(window.location.hash.replace(/^#/u, "")).has("onewarden-handoff")) {
-        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
-        location.set(`${window.location.pathname}${window.location.search}`)
-      }
-      if (fragmentResult.success && fragmentResult.data !== null) {
-        void webSessionHandoffConsume({
-          apiClient: webSessionHandoffApiClientCreate(),
-          deviceIdentifier: webAuthStorageCreate().deviceIdentifierGet(),
-          fragment: fragmentResult.data,
-          session,
-        }).then((result) => {
-          if (!result.success) return
-          if (window.location.pathname !== result.data) return navigateReplace(result.data)
-          routeRevision.set(routeRevision.get() + 1)
-        })
-      }
+      const fragmentResult = sessionHandoffFragmentParse(routerLocation.hash)
+      const restorePromise = session.restore()
+      void restorePromise.then(() => {
+        if (
+          !(fragmentResult.success && fragmentResult.data !== null) &&
+          session.isUnauthenticated() &&
+          currentRoute() === "auth-unlock"
+        ) {
+          navigateReplace("/login")
+          return
+        }
+        if (new URLSearchParams(routerLocation.hash.replace(/^#/u, "")).has("onewarden-handoff")) {
+          navigateReplace(`${routerLocation.pathname}${routerLocation.search}`)
+        }
+        if (fragmentResult.success && fragmentResult.data !== null) {
+          void webSessionHandoffConsume({
+            apiClient: webSessionHandoffApiClientCreate(),
+            deviceIdentifier: webAuthStorageCreate().deviceIdentifierGet(),
+            fragment: fragmentResult.data,
+            session,
+          }).then((result) => {
+            if (!result.success) return
+            if (routerLocation.pathname !== result.data) return navigateReplace(result.data)
+            routeRevision.set(routeRevision.get() + 1)
+          })
+        }
+      })
+      void restorePromise.then(
+        () => isAuthReady.set(true),
+        () => isAuthReady.set(true),
+      )
     }
   })
 
-  onCleanup(() => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("popstate", handlePopState)
-      document.removeEventListener("click", handleLinkClick)
-    }
-  })
-
-  const currentRoute = () => {
+  const currentRouteMatch = () => {
     routeRevision.get()
-    return webAppRouteResolve(pathname.get())
+    return webAppRouteMatch(routerLocation.pathname)
+  }
+
+  const currentRoute = () => currentRouteMatch().pageName
+
+  const isAuthProtectedRoute = () => {
+    const route = currentRoute()
+    return (
+      route === "root" ||
+      route === "auth-unlock" ||
+      route === "auth-two-factor-setup" ||
+      route === "cipher-create" ||
+      route === "cipher-edit" ||
+      route === "cipher-view" ||
+      route === "settings" ||
+      route === "sends" ||
+      route === "emergency-access" ||
+      route === "organizations"
+    )
   }
 
   const routeCipherId = () => {
-    const p = pathname.get().replace(/\/+$/, "")
-    const match = p.match(/^\/(?:ciphers|vault)\/([^/]+?)(?:\/edit)?$/i)
-    if (!match) return null
-    const id = match[1] ? decodeURIComponent(match[1]) : null
+    const id = currentRouteMatch().params.cipherId
+    if (id === undefined) return null
     if (id === "new" || id === "create") return null
     return id
   }
-  const currentSendAccessId = () => webSendAccessIdResolve(location.get())
+  const currentSendAccessId = () =>
+    currentRouteMatch().params.sendAccessId ?? webSendAccessIdResolve(routerLocation.pathname + routerLocation.search)
   const currentCipherCreateUri = () => {
-    const rawUri = new URL(location.get(), "http://localhost").searchParams.get("uri")
+    const rawUri = new URL(routerLocation.pathname + routerLocation.search, "http://localhost").searchParams.get("uri")
     if (rawUri === null) return null
     try {
       const uri = new URL(rawUri)
@@ -126,7 +118,7 @@ export function webAppStateCreate() {
   })
 
   createEffect(() => {
-    const isAdminRoute = pathname.get().toLowerCase().startsWith("/admin-ui")
+    const isAdminRoute = routerLocation.pathname.toLowerCase().startsWith("/admin-ui")
     if (!isAdminRoute || typeof window === "undefined") {
       isAdminSessionChecking.set(false)
       return
@@ -143,7 +135,7 @@ export function webAppStateCreate() {
   }
 
   const handleVaultUnlocked = () => {
-    if (webAppRouteResolve(pathname.get()) === "auth-unlock") {
+    if (currentRoute() === "auth-unlock") {
       navigate("/")
       return
     }
@@ -171,13 +163,17 @@ export function webAppStateCreate() {
   }
 
   return {
-    pathname: pathname.get,
+    pathname: () => routerLocation.pathname,
+    search: () => routerLocation.search,
+    hash: () => routerLocation.hash,
     navigate,
     navigateReplace,
     currentRoute,
     routeCipherId,
     currentSendAccessId,
     currentCipherCreateUri,
+    isAuthProtectedRoute,
+    isAuthReady: isAuthReady.get,
     session,
     isAdminLoggedIn: isAdminLoggedIn.get,
     isAdminSessionChecking: isAdminSessionChecking.get,

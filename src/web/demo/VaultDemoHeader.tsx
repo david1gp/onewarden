@@ -20,7 +20,8 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
       <div class="flex items-center gap-3">
         <span class="sr-only">OneWarden</span>
         <LinkButtonExternal
-          href="/demo"
+          href={state.directoryPath}
+          onClick={state.navigateTo(state.directoryPath)}
           variant="subtle"
           size="none"
           icon={vaultSvgIcons.arrowLeft}
@@ -45,6 +46,7 @@ export function VaultDemoHeader(props: VaultDemoHeaderProps): JSX.Element {
             return (
               <LinkButtonExternal
                 href={link.path}
+                onClick={state.navigateTo(link.path)}
                 variant={isActive() ? "filledBlue" : "ghost"}
                 size="none"
                 class={`px-2 py-1 text-sm font-medium ${

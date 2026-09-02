@@ -1,8 +1,12 @@
-import { onCleanup, onMount } from "solid-js"
+import { createEffect, onCleanup, onMount } from "solid-js"
 import { themeInit } from "#ui/interactive/theme/themeSignal.js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
+import { demoNavigationClickHandleCreate } from "./demoNavigationClickHandleCreate.js"
 import { demoSettingsData } from "./demoSettingsData.js"
 import { demoSettingsSectionResolve } from "./demoSettingsSectionResolve.js"
+import { pageNameDemo } from "./demo_url/pageNameDemo.js"
+import { pageRouteDemo } from "./demo_url/pageRouteDemo.js"
+import { urlDemo } from "./demo_url/urlDemo.js"
 
 type DemoSettingsSection = (typeof demoSettingsData.navigation)[number]["id"]
 type DemoDevice = { id: string; name: string; detail: string; current: boolean }
@@ -23,13 +27,16 @@ type DemoEmergencyVault = {
 }
 type DemoFeedback = { tone: "success" | "error"; message: string }
 
-function sectionResolve(): DemoSettingsSection {
-  if (typeof window === "undefined") return "profile"
-  return demoSettingsSectionResolve(window.location.pathname)
-}
+type DemoSettingsStateProps = Readonly<{
+  readonly pathname?: () => string
+  readonly search?: () => string
+  readonly hash?: () => string
+  readonly navigate?: (path: string) => void
+}>
 
-export function demoSettingsStateCreate() {
-  const currentSection = createSignalObject<DemoSettingsSection>(sectionResolve())
+export function demoSettingsStateCreate(props: DemoSettingsStateProps = {}) {
+  const pathname = props.pathname ?? (() => pageRouteDemo.demoSettings)
+  const currentSection = createSignalObject<DemoSettingsSection>(demoSettingsSectionResolve(pathname()))
   const feedback = createSignalObject<DemoFeedback | null>(null)
   const name = createSignalObject<string>(demoSettingsData.profile.name)
   const currentEmail = createSignalObject<string>(demoSettingsData.profile.email)
@@ -92,24 +99,23 @@ export function demoSettingsStateCreate() {
     feedbackTimer = setTimeout(() => feedback.set(null), 5000)
   }
 
-  const handlePopState = () => currentSection.set(sectionResolve())
-
   onMount(() => {
     themeInit()
-    window.addEventListener("popstate", handlePopState)
   })
   onCleanup(() => {
-    window.removeEventListener("popstate", handlePopState)
     if (feedbackTimer) clearTimeout(feedbackTimer)
   })
+
+  createEffect(() => currentSection.set(demoSettingsSectionResolve(pathname())))
 
   const sectionSelect = (section: DemoSettingsSection) => {
     currentSection.set(section)
     feedback.set(null)
-    if (typeof window === "undefined") return
-    const path = section === "profile" ? "/demo/settings" : `/demo/settings/${section}`
-    window.history.pushState(null, "", path)
+    const path =
+      section === "profile" ? urlDemo(pageNameDemo.demoSettings) : `${urlDemo(pageNameDemo.demoSettings)}/${section}`
+    props.navigate?.(`${path}${props.search?.() ?? ""}${props.hash?.() ?? ""}`)
   }
+  const navigateTo = demoNavigationClickHandleCreate(props.navigate)
 
   const profileSave = (event: SubmitEvent) => {
     event.preventDefault()
@@ -406,6 +412,7 @@ export function demoSettingsStateCreate() {
     profile: demoSettingsData.profile,
     currentSection: currentSection.get,
     sectionSelect,
+    navigateTo,
     feedback: feedback.get,
     notify,
     name,

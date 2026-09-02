@@ -1,4 +1,4 @@
-import { createMemo, onCleanup, onMount } from "solid-js"
+import { createEffect, createMemo, onMount } from "solid-js"
 import * as v from "valibot"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { organizationApiClientCreate, type OrganizationApiClientOptions } from "../api/organizationApiClientCreate.js"
@@ -29,11 +29,19 @@ export interface OrganizationWorkspaceProps {
   initialOrgId?: string
   initialTab?: OrganizationWorkspaceTab
   useDemoFallback?: boolean
+  pathname?: () => string
+  search?: () => string
+  hash?: () => string
+  navigateReplace?: (path: string) => void
 }
 
 export function organizationWorkspaceStateCreate(props: OrganizationWorkspaceProps = {}) {
   const apiClient = organizationApiClientCreate(props.apiClientOptions)
   const useDemoFallback = props.useDemoFallback ?? true
+  const pathname =
+    props.pathname ?? (() => (typeof window === "undefined" ? "/organizations" : window.location.pathname))
+  const search = props.search ?? (() => (typeof window === "undefined" ? "" : window.location.search))
+  const hash = props.hash ?? (() => (typeof window === "undefined" ? "" : window.location.hash))
 
   // Signals
   const organizationsSignal = createSignalObject<Organization[]>(
@@ -139,10 +147,9 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
 
   // URL Sync
   const syncFromUrl = () => {
-    if (typeof window === "undefined") return
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(search())
     const tabResult = v.safeParse(organizationWorkspaceTabSchema, params.get("tab"))
-    if (tabResult.success) activeTabSignal.set(tabResult.output)
+    activeTabSignal.set(tabResult.success ? tabResult.output : (props.initialTab ?? "members"))
 
     const orgResult = v.safeParse(organizationWorkspaceIdentifierSchema, params.get("orgId"))
     if (orgResult.success) activeOrgIdSignal.set(orgResult.output)
@@ -154,6 +161,11 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
     if (groupResult.success) selectedGroupIdSignal.set(groupResult.output)
 
     const dialogResult = v.safeParse(organizationWorkspaceDialogSchema, params.get("dialog"))
+    isCreateOrgOpenSignal.set(false)
+    isInviteMemberOpenSignal.set(false)
+    isCreateCollectionOpenSignal.set(false)
+    isCreateGroupOpenSignal.set(false)
+    isCreateDomainOpenSignal.set(false)
     if (!dialogResult.success) return
     const dialogParam = dialogResult.output
     if (dialogParam === "create-org") isCreateOrgOpenSignal.set(true)
@@ -164,8 +176,11 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
   }
 
   const updateUrl = () => {
-    if (typeof window === "undefined") return
-    const params = new URLSearchParams(window.location.search)
+    const url = new URL(
+      `${pathname()}${search()}${hash()}`,
+      typeof window === "undefined" ? "http://localhost" : window.location.origin,
+    )
+    const params = url.searchParams
     params.set("tab", activeTabSignal.get())
     const org = activeOrg()
     if (org) params.set("orgId", org.id)
@@ -191,8 +206,8 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
     else if (isCreateDomainOpenSignal.get()) params.set("dialog", "create-domain")
     else params.delete("dialog")
 
-    const newUrl = `${window.location.pathname}?${params.toString()}`
-    window.history.replaceState(null, "", newUrl)
+    const newUrl = `${url.pathname}?${params.toString()}${url.hash}`
+    props.navigateReplace?.(newUrl)
   }
 
   // Data Refresh
@@ -328,18 +343,10 @@ export function organizationWorkspaceStateCreate(props: OrganizationWorkspacePro
   }
 
   syncFromUrl()
+  createEffect(syncFromUrl)
 
   onMount(() => {
     void loadOrganizations()
-    if (typeof window !== "undefined") {
-      window.addEventListener("popstate", syncFromUrl)
-    }
-  })
-
-  onCleanup(() => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("popstate", syncFromUrl)
-    }
   })
 
   // Tab & Org Handlers
