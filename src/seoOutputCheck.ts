@@ -5,11 +5,8 @@ const distClient = join(process.cwd(), "dist", "client")
 const siteUrl = "https://onewarden.com"
 const requiredFiles = [
   "index.html",
-  "impressum.html",
-  "agb.html",
   "404.html",
   "sitemap.xml",
-  "pages.json",
   "robots.txt",
   "_headers",
   "favicon.svg",
