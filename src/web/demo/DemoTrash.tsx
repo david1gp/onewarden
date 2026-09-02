@@ -11,7 +11,7 @@ export function DemoTrash(props: Pick<VaultDemoHeaderProps, "navigate"> = {}): J
   const state = demoTrashStateCreate()
 
   return (
-    <div class="flex h-full w-full flex-col overflow-hidden">
+    <div class="flex h-dvh min-h-0 w-full flex-col overflow-hidden">
       <VaultDemoHeader currentDemo={pageNameDemo.trash} title="Trash & Deleted Items" navigate={props.navigate} />
       <section
         aria-label="Trash archive notice"
@@ -23,8 +23,8 @@ export function DemoTrash(props: Pick<VaultDemoHeaderProps, "navigate"> = {}): J
           dialogs required for inspection.
         </span>
       </section>
-      <main id="main-content" tabindex="-1" class="flex flex-1 flex-col overflow-hidden focus:outline-none">
-        <div class="flex-1 overflow-hidden">
+      <main id="main-content" tabindex="-1" class="flex min-h-0 flex-1 flex-col overflow-hidden focus:outline-none">
+        <div class="min-h-0 flex-1 overflow-hidden">
           <VaultWorkspace
             items={() => state.allItems}
             defaultCategory="trash"

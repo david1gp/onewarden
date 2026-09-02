@@ -14,14 +14,14 @@ export function DemoLocked(props: Pick<VaultDemoHeaderProps, "navigate"> = {}): 
   const state = demoLockedStateCreate()
 
   return (
-    <div class="flex h-full w-full flex-col overflow-hidden bg-slate-100 dark:bg-slate-950">
+    <div class="flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-slate-100 dark:bg-slate-950">
       <VaultDemoHeader currentDemo={pageNameDemo.locked} title="Locked Vault State" navigate={props.navigate} />
 
-      <main id="main-content" tabindex="-1" class="flex flex-1 flex-col overflow-hidden focus:outline-none">
+      <main id="main-content" tabindex="-1" class="flex min-h-0 flex-1 flex-col overflow-hidden focus:outline-none">
         <Show
           when={!state.isUnlocked()}
           fallback={
-            <div class="flex flex-1 flex-col overflow-hidden">
+            <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div class="flex items-center justify-between border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                 <div class="flex items-center gap-2">
                   <Icon path={vaultSvgIcons.shieldCheck} class="size-4 text-emerald-600 dark:text-emerald-400" />
@@ -32,7 +32,7 @@ export function DemoLocked(props: Pick<VaultDemoHeaderProps, "navigate"> = {}): 
                   Re-lock Vault
                 </Button>
               </div>
-              <div class="flex-1 overflow-hidden">
+              <div class="min-h-0 flex-1 overflow-hidden">
                 <VaultWorkspace />
               </div>
             </div>
