@@ -17,7 +17,10 @@ import type { BitwardenEncryptedLoginCipher } from "../../shared/api/bitwardenEn
 import { bitwardenFolderListResponseSchema } from "../../shared/api/bitwardenFolderListResponseSchema.js"
 import type { BitwardenPasswordTokenResponse } from "../../shared/api/bitwardenPasswordTokenResponseSchema.js"
 import type { BitwardenPreloginResponse } from "../../shared/api/bitwardenPreloginResponseSchema.js"
-import type { BitwardenRefreshTokenResponse } from "../../shared/api/bitwardenRefreshTokenResponseSchema.js"
+import {
+  type BitwardenRefreshTokenResponse,
+  bitwardenRefreshTokenResponseSchema,
+} from "../../shared/api/bitwardenRefreshTokenResponseSchema.js"
 import type { BitwardenSyncEnvelope } from "../../shared/api/bitwardenSyncEnvelopeSchema.js"
 import { base64Decode } from "../../shared/crypto/base64Decode.js"
 import { base64Encode } from "../../shared/crypto/base64Encode.js"
@@ -28,22 +31,27 @@ import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import type { SessionHandoffOperation } from "../../shared/sessionHandoff/sessionHandoffOperationSchema.js"
 import { totpSecretParse } from "../../shared/totp/totpSecretParse.js"
+import { type TwoFactorChallenge, twoFactorChallengeSchema } from "../../web/auth/model/twoFactorChallengeSchema.js"
+import { twoFactorWebAuthnChallengeResponseSchema } from "../../web/auth/model/twoFactorWebAuthnChallengeResponseSchema.js"
 import type { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
 import { extensionAccountKeyMaterialCreate } from "../auth/extensionAccountKeyMaterialCreate.js"
 import { extensionAccountPasswordSetupRequestSchema } from "../auth/extensionAccountPasswordSetupRequestSchema.js"
 import { extensionAccountRegisterRequestSchema } from "../auth/extensionAccountRegisterRequestSchema.js"
 import { extensionAccountVerificationEmailSendRequestSchema } from "../auth/extensionAccountVerificationEmailSendRequestSchema.js"
 import { extensionAccountVerifyRequestSchema } from "../auth/extensionAccountVerifyRequestSchema.js"
-import type { ExtensionLoginChallenge } from "../auth/extensionLoginChallengeSchema.js"
 import { extensionLoginChallengeIdRequestSchema } from "../auth/extensionLoginChallengeIdRequestSchema.js"
+import type { ExtensionLoginChallenge } from "../auth/extensionLoginChallengeSchema.js"
 import { extensionLoginChallengeSubmitRequestSchema } from "../auth/extensionLoginChallengeSubmitRequestSchema.js"
-import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
 import { extensionLoginRequestSchema } from "../auth/extensionLoginRequestSchema.js"
+import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
 import { extensionLoginTwoFactorProvider } from "../auth/extensionLoginTwoFactorProvider.js"
 import { extensionUnlockRequestSchema } from "../auth/extensionUnlockRequestSchema.js"
 import { extensionCredentialCapturePlanCreate } from "../autofill/extensionCredentialCapturePlanCreate.js"
 import type { ExtensionCredentialCapturePrompt } from "../autofill/extensionCredentialCapturePromptSchema.js"
 import { extensionCredentialCaptureRequestSchema } from "../autofill/extensionCredentialCaptureRequestSchema.js"
+import type { extensionBiometricAdapterCreate } from "../biometric/extensionBiometricAdapterCreate.js"
+import type { ExtensionBiometricCapability } from "../biometric/extensionBiometricCapabilitySchema.js"
+import type { ExtensionBiometricStatus } from "../biometric/extensionBiometricStatusSchema.js"
 import { type ExtensionCipher, extensionCipherSchema } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionCollection } from "../crypto/extensionCollectionSchema.js"
 import { extensionCollectionSchema } from "../crypto/extensionCollectionSchema.js"
@@ -116,8 +124,6 @@ import {
   extensionVaultSearchRequestSchema,
 } from "./extensionVaultSearchRequestSchema.js"
 import type { ExtensionVaultSearchResult } from "./extensionVaultSearchResultSchema.js"
-import { type TwoFactorChallenge, twoFactorChallengeSchema } from "../../web/auth/model/twoFactorChallengeSchema.js"
-import { twoFactorWebAuthnChallengeResponseSchema } from "../../web/auth/model/twoFactorWebAuthnChallengeResponseSchema.js"
 
 type ExtensionApiClient = Pick<
   ReturnType<typeof extensionBitwardenApiClientCreate>,
@@ -159,10 +165,16 @@ type ExtensionApiClient = Pick<
 type ExtensionStorage = ReturnType<typeof extensionStorageCreate>
 type ExtensionVaultSession = ReturnType<typeof extensionVaultSessionCreate>
 
+type ExtensionBiometricAdapter = Pick<
+  ReturnType<typeof extensionBiometricAdapterCreate>,
+  "capabilityRead" | "enroll" | "unwrap" | "revoke"
+>
+
 type ExtensionBackgroundServiceOptions = {
   apiClient: ExtensionApiClient
   storage: ExtensionStorage
   vaultSession: ExtensionVaultSession
+  biometric?: ExtensionBiometricAdapter
   alarms: ExtensionAlarmsAdapter
   now?: () => number
 }
@@ -239,6 +251,19 @@ function timestampValid(timestamp: number): boolean {
   return Number.isSafeInteger(timestamp) && timestamp >= 0
 }
 
+function authSessionEncryptedPrivateKeyRead(
+  token: AuthTokenResponse,
+  previous: ExtensionAuthSession | null,
+): string | null | undefined {
+  if (!("UserDecryptionOptions" in token)) return previous?.encryptedPrivateKey
+  const passwordToken = token as BitwardenPasswordTokenResponse
+  const accountPrivateKey = passwordToken.AccountKeys?.publicKeyEncryptionKeyPair.wrappedPrivateKey
+  if (typeof accountPrivateKey === "string" && accountPrivateKey.length > 0) return accountPrivateKey
+  return typeof passwordToken.PrivateKey === "string" && passwordToken.PrivateKey.length > 0
+    ? passwordToken.PrivateKey
+    : undefined
+}
+
 function authSessionCreate(
   token: AuthTokenResponse,
   email: string | null,
@@ -251,6 +276,7 @@ function authSessionCreate(
   }
   const expiresAt = now() + token.expires_in * 1_000
   if (!timestampValid(expiresAt)) return invalidRequest(op, "Token expiration is invalid.")
+  const encryptedPrivateKey = authSessionEncryptedPrivateKeyRead(token, previous)
   return resultCreate({
     accessToken: token.access_token,
     refreshToken: token.refresh_token,
@@ -259,6 +285,7 @@ function authSessionCreate(
     scope: token.scope,
     accountId: previous?.accountId ?? null,
     email,
+    ...(encryptedPrivateKey === undefined ? {} : { encryptedPrivateKey }),
   })
 }
 
@@ -452,11 +479,19 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
       }
       return refreshResult
     }
+    const responseValidation = v.safeParse(bitwardenRefreshTokenResponseSchema, refreshResult.data)
+    if (!responseValidation.success) {
+      return resultErrorCreate(op, "Token refresh response is invalid.", {
+        code: "platform.internal",
+        statusCode: 500,
+        errorData: v.summarize(responseValidation.issues),
+      })
+    }
     const currentAuthResult = await options.storage.authSessionLoad()
     if (!currentAuthResult.success) return currentAuthResult
     if (currentAuthResult.data === null) return unauthorized(op)
     if (currentAuthResult.data.refreshToken !== authSession.refreshToken) return resultCreate(currentAuthResult.data)
-    const nextAuthResult = authSessionCreate(refreshResult.data, authSession.email, authSession, now)
+    const nextAuthResult = authSessionCreate(responseValidation.output, authSession.email, authSession, now)
     if (!nextAuthResult.success) return nextAuthResult
     const saveResult = await options.storage.authSessionSave(nextAuthResult.data)
     if (!saveResult.success) return saveResult
@@ -550,7 +585,7 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
 
   const loginChallengeRead = (result: Result<unknown>): Result<TwoFactorChallenge> => {
     const op = "extensionBackgroundService.loginChallengeRead"
-    if (result.success || result.code !== "auth.two-factor-required" || result.errorData === undefined) {
+    if (result.success || result.code !== "auth.two-factor-required" || result.errorData == null) {
       return invalidRequest(op, "Authentication challenge is unavailable.")
     }
     try {
@@ -1740,6 +1775,96 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     return timeoutReconcile()
   }
 
+  const biometricCapabilityReadRun = async (): Promise<Result<ExtensionBiometricCapability>> => {
+    if (options.biometric === undefined) return resultCreate({ status: "unsupported" })
+    return options.biometric.capabilityRead()
+  }
+
+  const biometricCapabilityRead = (): Promise<Result<ExtensionBiometricCapability>> =>
+    operationRun(biometricCapabilityReadRun)
+
+  const biometricUserContextRead = async (
+    op: string,
+  ): Promise<Result<{ userId: string; encryptedPrivateKey: string | undefined }>> => {
+    const authResult = await options.storage.authSessionLoad()
+    if (!authResult.success) return authResult
+    const email = authResult.data?.email
+    const parsedEmail = v.safeParse(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128)), email)
+    if (!parsedEmail.success) return unauthorized(op)
+    return resultCreate({
+      userId: parsedEmail.output.toLowerCase(),
+      encryptedPrivateKey: authResult.data?.encryptedPrivateKey ?? undefined,
+    })
+  }
+
+  const biometricStatusRead = (): Promise<Result<ExtensionBiometricStatus>> =>
+    operationRun(async () => {
+      const capabilityResult = await biometricCapabilityReadRun()
+      if (!capabilityResult.success) return capabilityResult
+      const authResult = await options.storage.authSessionLoad()
+      if (!authResult.success) return authResult
+      const email = authResult.data?.email
+      const parsedEmail = v.safeParse(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128)), email)
+      if (!parsedEmail.success) return resultCreate({ capability: capabilityResult.data, enrolled: false })
+      const enrollmentResult = await options.storage.biometricEnrollmentLoad(parsedEmail.output.toLowerCase())
+      if (!enrollmentResult.success) return enrollmentResult
+      return resultCreate({ capability: capabilityResult.data, enrolled: enrollmentResult.data !== null })
+    })
+
+  const biometricEnroll = (): Promise<Result<{ enrolled: true }>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.biometricEnroll"
+      const biometric = options.biometric
+      if (biometric === undefined) return unavailable(op, "Biometric unlock is unavailable.")
+      if (!options.vaultSession.isUnlocked()) {
+        return resultErrorCreate(op, "Vault is locked.", { code: "platform.unauthorized", statusCode: 401 })
+      }
+      const contextResult = await biometricUserContextRead(op)
+      if (!contextResult.success) return contextResult
+      const enrollResult = await options.vaultSession.userKeyUse((key) =>
+        biometric.enroll(contextResult.data.userId, key),
+      )
+      if (!enrollResult.success) return enrollResult
+      return resultCreate({ enrolled: true })
+    })
+
+  const biometricRevoke = (): Promise<Result<{ enrolled: false }>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.biometricRevoke"
+      if (options.biometric === undefined) return unavailable(op, "Biometric unlock is unavailable.")
+      const contextResult = await biometricUserContextRead(op)
+      if (!contextResult.success) return contextResult
+      const revokeResult = await options.biometric.revoke(contextResult.data.userId)
+      if (!revokeResult.success) return revokeResult
+      return resultCreate({ enrolled: false })
+    })
+
+  const biometricUnlock = (): Promise<Result<ExtensionLoginResult>> =>
+    operationRun(async () => {
+      const op = "extensionBackgroundService.biometricUnlock"
+      const biometric = options.biometric
+      if (biometric === undefined) return unavailable(op, "Biometric unlock is unavailable.")
+      if (refreshInFlight !== null) await refreshInFlight
+      const contextResult = await biometricUserContextRead(op)
+      if (!contextResult.success) return contextResult
+      if (options.vaultSession.isUnlocked()) return resultCreate({ status: "authenticated" })
+      const userKeyResult = await biometric.unwrap(contextResult.data.userId)
+      if (!userKeyResult.success) return userKeyResult
+      try {
+        const unlockResult = await options.vaultSession.unlockWithUserKey(
+          userKeyResult.data,
+          contextResult.data.encryptedPrivateKey,
+        )
+        if (!unlockResult.success) return unlockResult
+      } finally {
+        if (userKeyResult.data instanceof Uint8Array) userKeyResult.data.fill(0)
+      }
+      pendingLoginChallenge = null
+      const timeoutResult = await timeoutReconcile()
+      if (!timeoutResult.success) return timeoutResult
+      return resultCreate({ status: "authenticated" })
+    })
+
   const passwordLogin = (request: unknown): Promise<Result<ExtensionLoginResult>> =>
     operationRun(async () => {
       const op = "extensionBackgroundService.passwordLogin"
@@ -1924,8 +2049,14 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
   const logout = (): Promise<Result<void>> =>
     operationRun(async () => {
       if (refreshInFlight !== null) await refreshInFlight
+      const biometricContextResult =
+        options.biometric === undefined ? null : await biometricUserContextRead("extensionBackgroundService.logout")
       const logoutResult = await options.vaultSession.logout()
       if (!logoutResult.success) return logoutResult
+      if (options.biometric !== undefined && biometricContextResult?.success === true) {
+        const revokeResult = await options.biometric.revoke(biometricContextResult.data.userId)
+        if (!revokeResult.success) return revokeResult
+      }
       pendingLoginChallenge = null
       credentialCapturePendingClear()
       return alarmClear()
@@ -2605,6 +2736,11 @@ export function extensionBackgroundServiceCreate(options: ExtensionBackgroundSer
     syncSnapshotLoad,
     cipherDetailRead,
     vaultSearch,
+    biometricCapabilityRead,
+    biometricStatusRead,
+    biometricEnroll,
+    biometricRevoke,
+    biometricUnlock,
     unlock,
     lock,
     logout,

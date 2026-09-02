@@ -1,6 +1,7 @@
 import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { extensionBitwardenApiClientCreate } from "../api/extensionBitwardenApiClientCreate.js"
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 
@@ -47,7 +48,7 @@ export function extensionBackgroundApiClientCreate(storage: ExtensionStorage): E
   const clientLoad = async (): Promise<Result<ExtensionApiClient>> => {
     const sourceResult = await storage.environmentSettingsLoad()
     if (!sourceResult.success) return sourceResult
-    const environmentResult = extensionEnvironmentResolve(sourceResult.data ?? "us")
+    const environmentResult = extensionEnvironmentResolve(sourceResult.data ?? extensionEnvironmentDefaultSource)
     if (!environmentResult.success) return environmentResult
     return resultCreate(extensionBitwardenApiClientCreate(environmentResult.data))
   }

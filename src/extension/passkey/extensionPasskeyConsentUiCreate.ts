@@ -9,7 +9,7 @@ import type { ExtensionPasskeyConsentUiModel } from "./extensionPasskeyConsentUi
 import { extensionPasskeyCredentialIdDecode } from "./extensionPasskeyCredentialIdDecode.js"
 
 type ConsentService = {
-  unlock: (request: unknown) => Promise<Result<void>>
+  unlock: (request: unknown) => Promise<Result<unknown>>
   syncSnapshotLoad: () => Promise<Result<{ ciphers: ExtensionCipher[] } | null>>
 }
 

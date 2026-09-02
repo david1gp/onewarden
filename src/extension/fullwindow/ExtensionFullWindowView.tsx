@@ -11,6 +11,7 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
+import { SeparatorWithText } from "#ui/static/separator/SeparatorWithText.jsx"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import { ExtensionAccountAuthView } from "../auth/ExtensionAccountAuthView.jsx"
 import { ExtensionLoginChallengeView } from "../auth/ExtensionLoginChallengeView.jsx"
@@ -185,6 +186,12 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           autofillSaveStatus={state.autofillSaveStatus()}
           onAutofillSiteToggle={state.autofillSiteToggle}
           onAutofillSave={state.autofillPolicySave}
+          biometricCapability={state.biometricCapability()}
+          biometricEnrolled={state.biometricEnrolled()}
+          biometricSaveStatus={state.biometricSaveStatus()}
+          biometricErrorMessage={state.biometricErrorMessage()}
+          onBiometricEnroll={state.biometricEnroll}
+          onBiometricRevoke={state.biometricRevoke}
         />
       </Show>
 
@@ -260,17 +267,36 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           <Show
             when={state.authChallenge()}
             fallback={
-              <section class="flex max-w-md flex-col gap-2 py-6">
+              <section class="flex max-w-md flex-col gap-3 py-6" aria-label="Unlock vault">
                 <p class="text-sm">Your vault is locked.</p>
+                <Show when={state.biometricAvailable() && state.biometricEnrolled()}>
+                  <Button variant="filledBlue" disabled={state.busy()} onClick={state.biometricUnlock}>
+                    Unlock with biometrics
+                  </Button>
+                  <SeparatorWithText>
+                    <span class="text-xs text-slate-500 uppercase">or with password</span>
+                  </SeparatorWithText>
+                </Show>
                 <InputS
                   type="password"
                   aria-label="Master password"
                   placeholder="Master password"
                   valueSignal={state.masterPasswordSignal}
                 />
-                <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
+                <Button
+                  variant={state.biometricAvailable() && state.biometricEnrolled() ? "outline" : "filledBlue"}
+                  disabled={state.busy()}
+                  onClick={state.vaultUnlock}
+                >
                   Unlock
                 </Button>
+                <Show when={state.errorMessage()}>
+                  {(message) => (
+                    <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+                      {message()}
+                    </p>
+                  )}
+                </Show>
               </section>
             }
           >

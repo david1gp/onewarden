@@ -194,6 +194,14 @@ export function extensionFullWindowViewStateCreate(
   const securityActionOptions = () => actionOptions
   const securityActionLabel = (value: string) => actionLabels[value] ?? value
   const securityNeverSelected = createMemo(() => securityPolicy().timeoutMinutes === null)
+
+  const biometricStatus = createMemo(() => model().biometricStatus)
+  const biometricCapability = createMemo(() => model().biometricStatus?.capability.status ?? "unsupported")
+  const biometricEnrolled = createMemo(() => model().biometricStatus?.enrolled ?? false)
+  const biometricAvailable = createMemo(() => model().biometricStatus?.capability.status === "available")
+  const biometricSaveStatus = createMemo(() => model().biometricSaveStatus)
+  const biometricErrorMessage = createMemo(() => model().biometricErrorMessage)
+
   const autofillPageLoadSignal: SignalObject<string> = {
     get: () => (autofillPolicy().pageLoadEnabled ? "enabled" : "disabled"),
     set: (value) => {
@@ -278,6 +286,9 @@ export function extensionFullWindowViewStateCreate(
   const environmentSave = () => commands().environmentSave(environment())
   const lockPolicySave = () => commands().lockPolicySave(securityPolicy())
   const autofillPolicySave = () => commands().autofillPolicySave?.(autofillPolicy())
+  const biometricEnroll = () => commands().biometricEnroll()
+  const biometricRevoke = () => commands().biometricRevoke()
+  const biometricUnlock = () => commands().biometricUnlock()
 
   const vaultUnlock = () => {
     const masterPassword = masterPasswordSignal.get()
@@ -329,6 +340,15 @@ export function extensionFullWindowViewStateCreate(
     autofillSiteDisabled,
     autofillSiteToggle,
     autofillSaveStatus: () => model().autofillSaveStatus,
+    biometricStatus,
+    biometricCapability,
+    biometricEnrolled,
+    biometricAvailable,
+    biometricSaveStatus,
+    biometricErrorMessage,
+    biometricEnroll,
+    biometricRevoke,
+    biometricUnlock,
     isLoading,
     isLocked,
     isLoggedOut,

@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js"
+import { Show } from "solid-js"
 import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
@@ -10,15 +10,6 @@ import type { ExtensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWi
 import type { ExtensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
 
 type ExtensionFullWindowSettingsField = "webVault" | "api" | "identity" | "icons" | "notifications" | "events"
-
-const overrideFields: { field: ExtensionFullWindowSettingsField; label: string }[] = [
-  { field: "webVault", label: "Web vault URL" },
-  { field: "api", label: "API URL" },
-  { field: "identity", label: "Identity URL" },
-  { field: "icons", label: "Icons URL" },
-  { field: "notifications", label: "Notifications URL" },
-  { field: "events", label: "Events URL" },
-]
 
 export interface ExtensionFullWindowSettingsPaneProps {
   idPrefix?: string
@@ -52,6 +43,12 @@ export interface ExtensionFullWindowSettingsPaneProps {
   autofillSaveStatus: ExtensionFullWindowSecuritySaveStatus
   onAutofillSiteToggle: () => void
   onAutofillSave: () => void
+  biometricCapability?: "available" | "unavailable" | "unsupported"
+  biometricEnrolled?: boolean
+  biometricSaveStatus?: ExtensionFullWindowSecuritySaveStatus
+  biometricErrorMessage?: string | null
+  onBiometricEnroll?: () => void
+  onBiometricRevoke?: () => void
 }
 
 /** Security and server controls for the full-window settings pane. */
@@ -189,6 +186,54 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
       </CardWrapper>
 
       <CardWrapper
+        class="flex flex-col gap-4 border-blue-200 bg-white p-5 dark:border-blue-900 dark:bg-slate-900"
+        aria-label="Biometric settings"
+      >
+        <div class="flex flex-col gap-1">
+          <p class="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">Biometrics</p>
+          <h2 class="text-lg font-semibold">Unlock with biometrics</h2>
+          <p class="max-w-xl text-sm text-slate-600 dark:text-slate-300">
+            Use your device's biometric authenticator (such as fingerprint, Windows Hello, or Touch ID) to unlock your
+            vault.
+          </p>
+        </div>
+
+        <Show
+          when={p.biometricCapability === "available"}
+          fallback={
+            <p class="text-sm text-slate-600 dark:text-slate-300">
+              {p.biometricCapability === "unavailable"
+                ? "Biometric authentication is unavailable on this device."
+                : "Biometric unlock is not supported by your browser or platform."}
+            </p>
+          }
+        >
+          <div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <span class="text-sm">Biometric unlock is {p.biometricEnrolled ? "enabled" : "disabled"}</span>
+            <Button
+              variant={p.biometricEnrolled ? "outline" : "filledBlue"}
+              disabled={p.disabled || p.biometricSaveStatus === "saving"}
+              onClick={p.biometricEnrolled ? p.onBiometricRevoke : p.onBiometricEnroll}
+            >
+              {p.biometricEnrolled ? "Disable biometric unlock" : "Enable biometric unlock"}
+            </Button>
+          </div>
+
+          <Show when={p.biometricSaveStatus === "saved"}>
+            <p role="status" class="text-sm text-green-700 dark:text-green-400">
+              Biometric settings saved.
+            </p>
+          </Show>
+
+          <Show when={p.biometricSaveStatus === "error"}>
+            <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+              {p.biometricErrorMessage ?? "Biometric operation failed."}
+            </p>
+          </Show>
+        </Show>
+      </CardWrapper>
+
+      <CardWrapper
         class="flex flex-col gap-3 border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
         aria-label="Server settings"
       >
@@ -205,22 +250,16 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
           />
         </div>
 
-        <Show when={p.isSelfHosted}>
-          <div class="flex flex-col gap-1">
-            <Label for={`${p.idPrefix ?? ""}extension-base`}>Server base URL</Label>
-            <InputS
-              id={`${p.idPrefix ?? ""}extension-base`}
-              type="url"
-              placeholder="https://vault.example.com"
-              disabled={p.disabled}
-              valueSignal={p.fieldSignal("base")}
-            />
-          </div>
-        </Show>
-
-        <p class="text-xs text-slate-600 dark:text-slate-300">
-          Leave an override empty to derive it from the selected region or base URL.
-        </p>
+        <div class="flex flex-col gap-1">
+          <Label for={`${p.idPrefix ?? ""}extension-base`}>Server URL</Label>
+          <InputS
+            id={`${p.idPrefix ?? ""}extension-base`}
+            type="url"
+            placeholder="https://vault.example.com"
+            disabled={p.disabled}
+            valueSignal={p.fieldSignal("base")}
+          />
+        </div>
 
         <Show when={p.environmentSaveStatus === "saved"}>
           <p role="status" class="text-sm text-green-700 dark:text-green-400">
@@ -233,21 +272,6 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
             {p.errorMessage ?? "Settings could not be saved."}
           </p>
         </Show>
-
-        <For each={overrideFields}>
-          {(entry) => (
-            <div class="flex flex-col gap-1">
-              <Label for={`${p.idPrefix ?? ""}extension-${entry.field}`}>{entry.label}</Label>
-              <InputS
-                id={`${p.idPrefix ?? ""}extension-${entry.field}`}
-                type="url"
-                placeholder="Derived"
-                disabled={p.disabled}
-                valueSignal={p.fieldSignal(entry.field)}
-              />
-            </div>
-          )}
-        </For>
 
         <div>
           <Button variant="filledBlue" disabled={p.disabled} onClick={p.onSave}>

@@ -36,8 +36,8 @@ Bring the OneWarden browser extension to practical Bitwarden parity for synchron
 - [x] 12. Add save/update-login detection for submitted and changed credentials, comparison logic, dismissal policy, and secure save/update prompts.
 - [x] 13. Add TOTP field detection and inline filling plus TOTP capture into login create/update flows, with expiry-safe generation and tests.
 - [x] 14. Audit the requested feature list against the implementation and official-source map; confirm all requested non-biometric increments are present with focused coverage.
-- [ ] 15. Add biometric capability detection and secure wrapped-key enrollment/revocation primitives with focused tests.
-- [ ] 16. Integrate biometric unlock and password fallback into background/session flows with focused tests.
-- [ ] 17. Add biometric settings and locked-vault UI using shared `#ui` components with focused tests.
-- [ ] 18. Resolve focused unit/integration, typecheck, lint, format, and extension-build failures without disturbing unrelated user changes.
-- [ ] 19. Build the packaged extension, then run browser and end-to-end tests last against the existing user systemd-managed server without starting another server; fix all failures.
+- [x] 15. Add biometric capability detection and secure wrapped-key enrollment/revocation primitives with focused tests.
+- [x] 16. Integrate biometric unlock and password fallback into background/session flows with focused tests.
+- [x] 17. Add biometric settings and locked-vault UI using shared `#ui` components with focused tests.
+- [x] 18. Resolve focused unit/integration, typecheck, lint, format, and extension-build failures without disturbing unrelated user changes.
+- [x] 19. Build the packaged extension, then run browser and end-to-end tests last against the existing user systemd-managed server without starting another server; fix all failures.

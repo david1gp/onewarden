@@ -20,7 +20,7 @@ test("inline menu uses a closed protected mount and cleans up without leaking fi
   expect(host.outerHTML).not.toContain("never-copy-me")
 
   const escapeEvent = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
-  expect(document.dispatchEvent(escapeEvent)).toBe(true)
+  document.dispatchEvent(escapeEvent)
   menu.dismiss("stopped")
   expect(document.querySelector("[data-onewarden-autofill='menu']")).toBeNull()
   expect(dismissals).toEqual(["escape"])

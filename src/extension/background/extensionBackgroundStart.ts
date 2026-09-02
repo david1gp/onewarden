@@ -1,5 +1,7 @@
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import { extensionAutofillBackgroundPortsCreate } from "../autofill/extensionAutofillBackgroundPortsCreate.js"
+import { extensionBiometricAdapterCreate } from "../biometric/extensionBiometricAdapterCreate.js"
 import { extensionPasskeyConsentUiCreate } from "../passkey/extensionPasskeyConsentUiCreate.js"
 import { extensionVaultSessionCreate } from "../session/extensionVaultSessionCreate.js"
 import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
@@ -15,14 +17,18 @@ import { extensionScriptingAdapterCreate } from "./extensionScriptingAdapterCrea
 import type { ExtensionTabsAdapter } from "./extensionTabsAdapter.js"
 import type { ExtensionWindowsAdapter } from "./extensionWindowsAdapter.js"
 
+const extensionWebAuthnDefaultOrigin = new URL(extensionEnvironmentDefaultSource.base).origin
+
 /** Entry point of the MV3 service worker. Listener registration stays synchronous. */
 export function extensionBackgroundStart(): void {
   const storage = extensionStorageCreate(extensionStorageAdapterCreate(chrome.storage))
   const vaultSession = extensionVaultSessionCreate(storage)
+  const biometric = extensionBiometricAdapterCreate({ storage })
   const service = extensionBackgroundServiceCreate({
     apiClient: extensionBackgroundApiClientCreate(storage),
     storage,
     vaultSession,
+    biometric,
     alarms: extensionAlarmsAdapterCreate(chrome.alarms),
   })
   const autofill = extensionAutofillBackgroundPortsCreate(chrome.runtime, { service, storage })
@@ -81,12 +87,12 @@ export function extensionBackgroundStart(): void {
     initialize: router.initialize,
     oneWardenOriginsRead: async () => {
       const configuredResult = await storage.environmentSettingsLoad()
-      if (!configuredResult.success) return ["https://onewarden.contentoren.de"]
-      const environmentResult = extensionEnvironmentResolve(configuredResult.data ?? "us")
-      if (!environmentResult.success) return ["https://onewarden.contentoren.de"]
+      if (!configuredResult.success) return [extensionWebAuthnDefaultOrigin]
+      const environmentResult = extensionEnvironmentResolve(configuredResult.data ?? extensionEnvironmentDefaultSource)
+      if (!environmentResult.success) return [extensionWebAuthnDefaultOrigin]
       const webVaultOriginResult = extensionWebAuthnOriginValidate(environmentResult.data.webVault)
-      if (!webVaultOriginResult.success) return ["https://onewarden.contentoren.de"]
-      return ["https://onewarden.contentoren.de", webVaultOriginResult.data.origin]
+      if (!webVaultOriginResult.success) return [extensionWebAuthnDefaultOrigin]
+      return [...new Set([extensionWebAuthnDefaultOrigin, webVaultOriginResult.data.origin])]
     },
     consentResolve: passkeyConsentUi.open,
   })

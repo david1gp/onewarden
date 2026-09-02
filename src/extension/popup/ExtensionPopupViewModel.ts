@@ -1,3 +1,4 @@
+import type { ExtensionBiometricStatus } from "../biometric/extensionBiometricStatusSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import type { ExtensionPopupStatus } from "./ExtensionPopupStatus.js"
 
@@ -19,4 +20,6 @@ export interface ExtensionPopupViewModel {
   copiedFieldKey: string | null
   /** Whether the current build can fill the active tab. */
   fillAvailable: boolean
+  /** Biometric capability and enrollment status for unlocking the vault. */
+  biometricStatus: ExtensionBiometricStatus | null
 }

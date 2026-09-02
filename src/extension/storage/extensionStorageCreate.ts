@@ -6,6 +6,10 @@ import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import type { ExtensionEnvironmentSource } from "../api/extensionEnvironmentSourceSchema.js"
 import { type ExtensionAuthSession, extensionAuthSessionStorageSchema } from "./extensionAuthSessionStorageSchema.js"
 import { type ExtensionAutofillPolicy, extensionAutofillPolicySchema } from "./extensionAutofillPolicySchema.js"
+import {
+  type ExtensionBiometricEnrollment,
+  extensionBiometricEnrollmentSchema,
+} from "./extensionBiometricEnrollmentSchema.js"
 import { type ExtensionCreateDraft, extensionCreateDraftStorageSchema } from "./extensionCreateDraftStorageSchema.js"
 import {
   type ExtensionEnvironmentStorage,
@@ -351,6 +355,47 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
   const createDraftsClear = (): Promise<Result<void>> =>
     storageRemove(adapter.local, extensionStorageKeys.createDrafts, "extensionStorage.createDraftsClear")
 
+  const biometricEnrollmentLoad = async (userId: string): Promise<Result<ExtensionBiometricEnrollment | null>> => {
+    const op = "extensionStorage.biometricEnrollmentLoad"
+    const userIdResult = v.safeParse(v.pipe(v.string(), v.minLength(1), v.maxLength(128)), userId)
+    if (!userIdResult.success) {
+      return resultErrorCreate(op, "Biometric enrollment user id is invalid.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const result = await storageRead(
+      adapter.local,
+      extensionStorageKeys.biometricEnrollment,
+      extensionBiometricEnrollmentSchema,
+      op,
+    )
+    if (!result.success) return result
+    if (result.data === null || result.data.userId !== userIdResult.output) return resultCreate(null)
+    const { schemaVersion: _schemaVersion, ...enrollment } = result.data
+    return resultCreate(enrollment)
+  }
+
+  const biometricEnrollmentSave = (enrollment: ExtensionBiometricEnrollment): Promise<Result<void>> =>
+    storageWrite(
+      adapter.local,
+      extensionStorageKeys.biometricEnrollment,
+      extensionBiometricEnrollmentSchema,
+      storageVersionedCreate<ExtensionBiometricEnrollment>(enrollment),
+      "extensionStorage.biometricEnrollmentSave",
+    )
+
+  const biometricEnrollmentClear = async (userId: string): Promise<Result<void>> => {
+    const op = "extensionStorage.biometricEnrollmentClear"
+    const enrollmentResult = await biometricEnrollmentLoad(userId)
+    if (!enrollmentResult.success) {
+      if (enrollmentResult.code !== "platform.internal") return enrollmentResult
+      return storageRemove(adapter.local, extensionStorageKeys.biometricEnrollment, op)
+    }
+    if (enrollmentResult.data === null) return resultCreate(undefined)
+    return storageRemove(adapter.local, extensionStorageKeys.biometricEnrollment, op)
+  }
+
   const lock = (): Promise<Result<void>> =>
     storageRemove(adapter.session, extensionStorageKeys.sessionState, "extensionStorage.lock")
 
@@ -396,6 +441,9 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
     createDraftSave,
     createDraftDelete,
     createDraftsClear,
+    biometricEnrollmentLoad,
+    biometricEnrollmentSave,
+    biometricEnrollmentClear,
     lock,
     logout,
   }

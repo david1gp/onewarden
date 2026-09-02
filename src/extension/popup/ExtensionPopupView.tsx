@@ -9,6 +9,7 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { Separator } from "#ui/static/separator/Separator.jsx"
+import { SeparatorWithText } from "#ui/static/separator/SeparatorWithText.jsx"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import { ExtensionPopupLoginCard } from "./ExtensionPopupLoginCard.jsx"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
@@ -98,17 +99,36 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       </Show>
 
       <Show when={state.isLocked()}>
-        <section class="flex flex-col gap-2 py-4">
+        <section class="flex flex-col gap-2 py-4" aria-label="Unlock vault">
           <p class="text-sm">Your vault is locked.</p>
+          <Show when={state.biometricAvailable() && state.biometricEnrolled()}>
+            <Button variant="filledBlue" disabled={state.busy()} onClick={state.biometricUnlock}>
+              Unlock with biometrics
+            </Button>
+            <SeparatorWithText>
+              <span class="text-xs text-slate-500 uppercase">or with password</span>
+            </SeparatorWithText>
+          </Show>
           <InputS
             type="password"
             aria-label="Master password"
             placeholder="Master password"
             valueSignal={state.masterPasswordSignal}
           />
-          <Button variant="filledBlue" disabled={state.busy()} onClick={state.vaultUnlock}>
+          <Button
+            variant={state.biometricAvailable() && state.biometricEnrolled() ? "outline" : "filledBlue"}
+            disabled={state.busy()}
+            onClick={state.vaultUnlock}
+          >
             Unlock
           </Button>
+          <Show when={state.errorMessage()}>
+            {(message) => (
+              <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+                {message()}
+              </p>
+            )}
+          </Show>
         </section>
       </Show>
 

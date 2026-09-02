@@ -6,6 +6,7 @@ import { extensionWebAuthnRpIdValidate } from "../../../src/extension/webauthn/e
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const origin = "https://login.example.test"
+const oneWardenOrigin = "https://onewarden.contentoren.de"
 const response = {
   id: "AQ",
   rawId: "AQ",
@@ -116,6 +117,16 @@ test("background WebAuthn bridge derives origin and frame from MessageSender and
 
   expect(result?.result).toMatchObject({ success: true })
   expect(result?.fallbackRequested).toBe(false)
+})
+
+test("background WebAuthn bridge excludes the OneWarden first-run origin by default", async () => {
+  const { bridge } = backgroundCreate({ oneWardenOriginsRead: undefined })
+  const result = await bridge.messageHandle(bridgeRequest(), senderCreate(`${oneWardenOrigin}/register`))
+
+  expect(result).toMatchObject({
+    result: { success: false, errorMessage: "WebAuthn is disabled for this origin." },
+    fallbackRequested: true,
+  })
 })
 
 test("background WebAuthn bridge rejects insecure, excluded, public-suffix, and child-frame requests", async () => {
@@ -297,4 +308,73 @@ test("content bridge excludes the configured OneWarden origin and forwards no pa
     expect.arrayContaining([expect.objectContaining({ kind: "response", requestId: "request-1" })]),
   )
   cleanup()
+})
+
+test("content bridge excludes the OneWarden origin when first-run environment storage is unset", async () => {
+  const listeners = new Set<unknown>()
+  const sentMessages: unknown[] = []
+  const globalWithExtensionContext = globalThis as typeof globalThis & {
+    window?: unknown
+    document?: unknown
+    location?: unknown
+    chrome?: unknown
+    addEventListener?: (type: string, listener: unknown) => void
+    removeEventListener?: (type: string, listener: unknown) => void
+    postMessage?: (...args: unknown[]) => void
+  }
+  const previousWindow = globalWithExtensionContext.window
+  const previousDocument = globalWithExtensionContext.document
+  const previousLocation = globalWithExtensionContext.location
+  const previousChrome = globalWithExtensionContext.chrome
+  const previousAddEventListener = globalWithExtensionContext.addEventListener
+  const previousRemoveEventListener = globalWithExtensionContext.removeEventListener
+  const previousPostMessage = globalWithExtensionContext.postMessage
+
+  globalWithExtensionContext.window = globalThis
+  globalWithExtensionContext.document = {
+    contentType: "text/html",
+    featurePolicy: { allowsFeature: () => true },
+  }
+  globalWithExtensionContext.location = {
+    href: `${oneWardenOrigin}/vault`,
+    origin: oneWardenOrigin,
+    protocol: "https:",
+    hostname: "onewarden.contentoren.de",
+  }
+  globalWithExtensionContext.chrome = {
+    storage: { local: { get: async () => ({}) } },
+    runtime: { sendMessage: async () => undefined },
+  }
+  globalWithExtensionContext.addEventListener = (_type, listener) => {
+    listeners.add(listener)
+  }
+  globalWithExtensionContext.removeEventListener = (_type, listener) => {
+    listeners.delete(listener)
+  }
+  globalWithExtensionContext.postMessage = (message) => {
+    sentMessages.push(message)
+  }
+
+  try {
+    const cleanup = await extensionWebAuthnContentBridgeInstall()
+
+    expect(listeners).toHaveLength(0)
+    expect(sentMessages).toHaveLength(0)
+    cleanup()
+  } finally {
+    if (previousWindow === undefined) delete globalWithExtensionContext.window
+    else globalWithExtensionContext.window = previousWindow
+    if (previousDocument === undefined) delete globalWithExtensionContext.document
+    else globalWithExtensionContext.document = previousDocument
+    if (previousLocation === undefined) delete globalWithExtensionContext.location
+    else globalWithExtensionContext.location = previousLocation
+    if (previousChrome === undefined) delete globalWithExtensionContext.chrome
+    else globalWithExtensionContext.chrome = previousChrome
+    if (previousAddEventListener === undefined) delete globalWithExtensionContext.addEventListener
+    else globalWithExtensionContext.addEventListener = previousAddEventListener
+    if (previousRemoveEventListener === undefined) delete globalWithExtensionContext.removeEventListener
+    else globalWithExtensionContext.removeEventListener = previousRemoveEventListener
+    if (previousPostMessage === undefined) delete globalWithExtensionContext.postMessage
+    else globalWithExtensionContext.postMessage = previousPostMessage
+  }
 })

@@ -54,6 +54,11 @@ const extensionRuntimeMessageSchemaData = v.variant("type", [
   v.strictObject({ type: v.literal("accountVerify"), request: extensionAccountVerifyRequestSchema }),
   v.strictObject({ type: v.literal("accountPasswordSetup"), request: extensionAccountPasswordSetupRequestSchema }),
   v.strictObject({ type: v.literal("unlock"), request: extensionUnlockRequestSchema }),
+  v.strictObject({ type: v.literal("biometricCapabilityRead") }),
+  v.strictObject({ type: v.literal("biometricStatusRead") }),
+  v.strictObject({ type: v.literal("biometricEnroll") }),
+  v.strictObject({ type: v.literal("biometricRevoke") }),
+  v.strictObject({ type: v.literal("biometricUnlock") }),
   v.strictObject({
     type: v.literal("viewModelLoad"),
     surface: v.optional(extensionRuntimeSurfaceSchema, "popup"),

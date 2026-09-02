@@ -28,6 +28,8 @@ export interface ExtensionPopupCommands {
   settingsOpen: () => void
   /** Unlock from the locked state using the master password. */
   vaultUnlock: (masterPassword: string) => void
+  /** Unlock from the locked state using biometrics. */
+  biometricUnlock: () => void
   /** Start the login flow from the logged-out state or log in with credentials. */
   accountLogin: (credentials?: { email: string; password: string }) => void
   /** Open extension-native account creation and verification in the full window. */

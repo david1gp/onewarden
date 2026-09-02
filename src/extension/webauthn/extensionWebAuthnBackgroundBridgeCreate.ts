@@ -1,8 +1,9 @@
 import * as v from "valibot"
-import { type Result } from "#result"
+import type { Result } from "#result"
 import { base64UrlEncode } from "../../shared/crypto/base64UrlEncode.js"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 import { extensionPasskeyAssertionResponseSchema } from "../passkey/extensionPasskeyAssertionResponseSchema.js"
 import type { ExtensionPasskeyConsentContext } from "../passkey/extensionPasskeyConsentContextSchema.js"
 import type { ExtensionPasskeyConsent } from "../passkey/extensionPasskeyConsentSchema.js"
@@ -22,7 +23,7 @@ import {
 } from "./extensionWebAuthnRequestContextResolve.js"
 import { extensionWebAuthnRpIdValidate } from "./extensionWebAuthnRpIdValidate.js"
 
-const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
+const extensionWebAuthnDefaultOrigin = new URL(extensionEnvironmentDefaultSource.base).origin
 const extensionWebAuthnDefaultTimeout = 120_000
 const extensionWebAuthnRecordSchema = v.record(v.string(), v.unknown())
 

@@ -57,7 +57,17 @@ export function extensionPopupCommandsCreate(
   const accountLogin = (credentials?: { email: string; password: string }) => {
     if (credentials !== undefined) {
       onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null }))
-      void sender({ type: "login", request: credentials }).then(async (res) => {
+      void sender({
+        type: "login",
+        request: {
+          ...credentials,
+          clientId: "browser",
+          scope: "api offline_access",
+          deviceIdentifier: "onewarden-extension",
+          deviceName: "OneWarden",
+          deviceType: "14",
+        },
+      }).then(async (res) => {
         if (!res.success) {
           onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: res.errorMessage ?? "Login failed." }))
           return
@@ -85,6 +95,7 @@ export function extensionPopupCommandsCreate(
     generatorOpen,
     settingsOpen,
     vaultUnlock: commonCommands.vaultUnlock,
+    biometricUnlock: commonCommands.biometricUnlock,
     accountLogin,
     accountRegister,
     ...overrides,

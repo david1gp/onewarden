@@ -32,6 +32,7 @@ type ExtensionCommonCommands<Login extends ExtensionCommonLogin, Field extends E
   vaultLock: () => void
   vaultLogout: () => void
   vaultUnlock: (masterPassword: string) => void
+  biometricUnlock: () => void
 }
 
 /** Creates the commands shared by extension surfaces without owning their surface-specific commands. */
@@ -122,5 +123,20 @@ export function extensionCommonCommandsCreate<
     })
   }
 
-  return { loginFill, fieldCopy, totpCopy, vaultSync, vaultLock, vaultLogout, vaultUnlock }
+  const biometricUnlock = () => {
+    onModelUpdate((prev) => ({ ...prev, busy: true, errorMessage: null }))
+    void messageSend({ type: "biometricUnlock" }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          errorMessage: res.errorMessage ?? "Biometric unlock failed.",
+        }))
+        return
+      }
+      await onRefresh()
+    })
+  }
+
+  return { loginFill, fieldCopy, totpCopy, vaultSync, vaultLock, vaultLogout, vaultUnlock, biometricUnlock }
 }

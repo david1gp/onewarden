@@ -11,6 +11,7 @@ const extensionAuthSessionStorageDataSchema = v.strictObject({
   scope: v.string(),
   accountId: v.nullable(v.string()),
   email: v.nullable(v.string()),
+  encryptedPrivateKey: v.optional(v.nullable(v.string())),
 })
 
 export const extensionAuthSessionStorageSchema = v.strictObject({

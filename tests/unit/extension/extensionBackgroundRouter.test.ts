@@ -114,6 +114,16 @@ function routerCreate(
     start: async () => resultCreate(undefined),
     passwordLogin: async () => resultCreate(undefined),
     unlock: async () => resultCreate(undefined),
+    biometricCapabilityRead: async () =>
+      resultCreate({ status: "available" as const, platformAuthenticator: true as const, prf: true as const }),
+    biometricStatusRead: async () =>
+      resultCreate({
+        capability: { status: "available" as const, platformAuthenticator: true as const, prf: true as const },
+        enrolled: true,
+      }),
+    biometricEnroll: async () => resultCreate({ enrolled: true as const }),
+    biometricRevoke: async () => resultCreate({ enrolled: false as const }),
+    biometricUnlock: async () => resultCreate({ status: "authenticated" as const }),
     conditionalSync: async () =>
       resultCreate({ status: "unchanged", changed: false, revisionDate: 1, lastSyncedAt: 2 }),
     manualSync: async () => resultCreate({ status: "synced", changed: true, revisionDate: 2, lastSyncedAt: 3 }),
@@ -531,6 +541,16 @@ test("extensionBackgroundRouterCreate registers synchronously and builds a site-
   expect(fullWindowResponse).toMatchObject({
     success: true,
     data: {
+      environment: {
+        region: "selfHosted",
+        base: "https://onewarden.contentoren.de",
+        webVault: "",
+        api: "",
+        identity: "",
+        icons: "",
+        notifications: "",
+        events: "",
+      },
       logins: [{ creationDate: "2026-08-01T00:00:00.000Z", revisionDate: "2026-09-01T00:00:00.000Z" }],
     },
   })
@@ -716,6 +736,29 @@ test("extensionBackgroundRouterCreate opens create and edit handoffs at the conf
   ])
 })
 
+test("extensionBackgroundRouterCreate uses the OneWarden web origin for an unset first-run handoff", async () => {
+  const context = routerCreate()
+
+  const result = await context.router.messageHandle({
+    type: "sessionHandoffOpen",
+    request: { operation: "create", cipherId: null },
+  })
+
+  expect(result).toEqual({
+    success: true,
+    data: { url: "https://onewarden.contentoren.de/ciphers/new#handoff" },
+  })
+  expect(context.handoffCalls).toEqual([
+    {
+      operation: "create",
+      cipherId: null,
+      webVaultOrigin: "https://onewarden.contentoren.de",
+      prefillUrl: "https://example.test/login",
+    },
+  ])
+  expect(context.local.values.has(extensionStorageKeys.environmentSettings)).toBe(false)
+})
+
 test("extensionBackgroundRouterCreate rejects obsolete normal local create and draft actions", async () => {
   const context = routerCreate()
 
@@ -803,4 +846,32 @@ test("extensionBackgroundRouterCreate loads and saves the typed lock policy mess
   expect((await context.router.messageHandle({ type: "lockPolicySave", request: { action: "invalid" } })).success).toBe(
     false,
   )
+})
+
+test("extensionBackgroundRouterCreate routes biometric capability, enrollment, revocation, and unlock messages", async () => {
+  const context = routerCreate()
+
+  expect(await context.router.messageHandle({ type: "biometricCapabilityRead" })).toEqual({
+    success: true,
+    data: { status: "available", platformAuthenticator: true, prf: true },
+  })
+  expect(await context.router.messageHandle({ type: "biometricStatusRead" })).toEqual({
+    success: true,
+    data: {
+      capability: { status: "available", platformAuthenticator: true, prf: true },
+      enrolled: true,
+    },
+  })
+  expect(await context.router.messageHandle({ type: "biometricEnroll" })).toEqual({
+    success: true,
+    data: { enrolled: true },
+  })
+  expect(await context.router.messageHandle({ type: "biometricRevoke" })).toEqual({
+    success: true,
+    data: { enrolled: false },
+  })
+  expect(await context.router.messageHandle({ type: "biometricUnlock" })).toEqual({
+    success: true,
+    data: { status: "authenticated" },
+  })
 })

@@ -13,6 +13,7 @@ export function extensionPopupViewModelCreate(
     busy: false,
     copiedFieldKey: null,
     fillAvailable: false,
+    biometricStatus: null,
     ...overrides,
   }
 }

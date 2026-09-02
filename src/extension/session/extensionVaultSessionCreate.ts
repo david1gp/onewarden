@@ -56,6 +56,65 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
 
   const isUnlocked = (): boolean => userKey !== null
 
+  const userKeyUse = <T>(operation: (key: Uint8Array) => Promise<Result<T>>): Promise<Result<T>> =>
+    operationRun(async () => {
+      if (userKey === null) {
+        return resultErrorCreate("extensionVaultSession.userKeyUse", "Vault is locked.", {
+          code: "platform.unauthorized",
+          statusCode: 401,
+        })
+      }
+      const keyCopy = new Uint8Array(new ArrayBuffer(userKey.byteLength))
+      keyCopy.set(userKey)
+      try {
+        return await operation(keyCopy)
+      } catch {
+        return resultErrorCreate("extensionVaultSession.userKeyUse", "Secure key operation failed.", {
+          code: "platform.internal",
+          statusCode: 500,
+        })
+      } finally {
+        keyCopy.fill(0)
+      }
+    })
+
+  const unlockWithUserKeyRun = async (
+    input: Uint8Array,
+    encryptedPrivateKey: unknown,
+    op: string,
+  ): Promise<Result<void>> => {
+    if (!(input instanceof Uint8Array) || input.byteLength !== 64) {
+      return resultErrorCreate(op, "Vault unlock returned an invalid user key.", {
+        code: "platform.invalid-request",
+        statusCode: 400,
+      })
+    }
+    const nextUserKey = new Uint8Array(new ArrayBuffer(64))
+    nextUserKey.set(input)
+    let privateKeyBytes: Uint8Array | null = null
+    if (typeof encryptedPrivateKey === "string" && encryptedPrivateKey.length > 0) {
+      const userPrivateKeyResult = await extensionUserPrivateKeyDecrypt(encryptedPrivateKey, nextUserKey)
+      if (!userPrivateKeyResult.success) {
+        nextUserKey.fill(0)
+        return userPrivateKeyResult
+      }
+      privateKeyBytes = userPrivateKeyResult.data
+    }
+    const stateResult = await storage.sessionStateSave({ status: "unlocked", unlockedAt: now() })
+    if (!stateResult.success) {
+      nextUserKey.fill(0)
+      privateKeyBytes?.fill(0)
+      return stateResult
+    }
+    clearUserKey()
+    userKey = nextUserKey
+    userPrivateKey = privateKeyBytes
+    return resultCreate(undefined)
+  }
+
+  const unlockWithUserKey = (input: Uint8Array, encryptedPrivateKey?: unknown): Promise<Result<void>> =>
+    operationRun(() => unlockWithUserKeyRun(input, encryptedPrivateKey, "extensionVaultSession.unlockWithUserKey"))
+
   const unlock = (request: unknown): Promise<Result<void>> =>
     operationRun(async () => {
       const op = "extensionVaultSession.unlock"
@@ -74,25 +133,9 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
         accountPrivateKey !== undefined && accountPrivateKey !== null && accountPrivateKey.length > 0
           ? accountPrivateKey
           : parsed.output.token.PrivateKey
-      let userPrivateKeyResult: Result<Uint8Array> | null = null
-      if (encryptedPrivateKey !== null && encryptedPrivateKey !== undefined && encryptedPrivateKey.length > 0) {
-        userPrivateKeyResult = await extensionUserPrivateKeyDecrypt(encryptedPrivateKey, userKeyResult.data)
-        if (!userPrivateKeyResult.success) {
-          userKeyResult.data.fill(0)
-          return userPrivateKeyResult
-        }
-      }
-      const privateKeyBytes = userPrivateKeyResult?.success ? userPrivateKeyResult.data : null
-      const stateResult = await storage.sessionStateSave({ status: "unlocked", unlockedAt: now() })
-      if (!stateResult.success) {
-        userKeyResult.data.fill(0)
-        privateKeyBytes?.fill(0)
-        return stateResult
-      }
-      clearUserKey()
-      userKey = userKeyResult.data
-      userPrivateKey = privateKeyBytes
-      return resultCreate(undefined)
+      const unlockResult = await unlockWithUserKeyRun(userKeyResult.data, encryptedPrivateKey, op)
+      userKeyResult.data.fill(0)
+      return unlockResult
     })
 
   const lock = (): Promise<Result<void>> =>
@@ -293,7 +336,9 @@ export function extensionVaultSessionCreate(storage: ExtensionStorage, now: () =
 
   return {
     isUnlocked,
+    userKeyUse,
     unlock,
+    unlockWithUserKey,
     lock,
     logout,
     personalLoginCipherDecrypt,

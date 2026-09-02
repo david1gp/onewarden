@@ -8,4 +8,5 @@ export const extensionStorageKeys = {
   generatorPreferences: "onewarden.generator-preferences",
   vaultSort: "onewarden.vault-sort",
   createDrafts: "onewarden.create-drafts",
+  biometricEnrollment: "onewarden.biometric-enrollment",
 } as const

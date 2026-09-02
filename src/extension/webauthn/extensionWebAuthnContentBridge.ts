@@ -1,10 +1,11 @@
 import * as v from "valibot"
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import { extensionEnvironmentStorageSchema } from "../storage/extensionEnvironmentStorageSchema.js"
 import { extensionStorageKeys } from "../storage/extensionStorageKeys.js"
 import {
-  extensionWebAuthnBridgeRequestSchema,
   type ExtensionWebAuthnBridgeRequest,
+  extensionWebAuthnBridgeRequestSchema,
 } from "./extensionWebAuthnBridgeRequestSchema.js"
 import { extensionWebAuthnBridgeResponseSchema } from "./extensionWebAuthnBridgeResponseSchema.js"
 import { extensionWebAuthnFramePolicyValidate } from "./extensionWebAuthnFramePolicyValidate.js"
@@ -12,7 +13,7 @@ import { extensionWebAuthnOriginValidate } from "./extensionWebAuthnOriginValida
 import { extensionWebAuthnPageMessageSchema } from "./extensionWebAuthnPageMessageSchema.js"
 
 const extensionWebAuthnSource = "onewarden-webauthn"
-const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
+const extensionWebAuthnDefaultOrigin = new URL(extensionEnvironmentDefaultSource.base).origin
 
 type ExtensionWebAuthnContentContext = {
   window: Window

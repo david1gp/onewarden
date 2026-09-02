@@ -3,14 +3,15 @@ import type { Result } from "#result"
 import { resultCreate } from "../../shared/result/resultCreate.js"
 import { resultErrorCreate } from "../../shared/result/resultErrorCreate.js"
 import { totpCodeCreate } from "../../shared/totp/totpCodeCreate.js"
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 import { extensionEnvironmentResolve } from "../api/extensionEnvironmentResolve.js"
 import {
   type ExtensionEnvironmentSource,
   extensionEnvironmentSourceSchema,
 } from "../api/extensionEnvironmentSourceSchema.js"
-import { extensionAutofillFillValuesCreate } from "../autofill/extensionAutofillFillValuesCreate.js"
 import type { ExtensionLoginResult } from "../auth/extensionLoginResultSchema.js"
 import { extensionLoginResultSchema } from "../auth/extensionLoginResultSchema.js"
+import { extensionAutofillFillValuesCreate } from "../autofill/extensionAutofillFillValuesCreate.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
@@ -61,6 +62,11 @@ type ExtensionBackgroundService = Pick<
   | "accountVerificationEmailSend"
   | "accountVerify"
   | "accountPasswordSetup"
+  | "biometricCapabilityRead"
+  | "biometricStatusRead"
+  | "biometricEnroll"
+  | "biometricRevoke"
+  | "biometricUnlock"
   | "unlock"
   | "conditionalSync"
   | "manualSync"
@@ -195,9 +201,11 @@ function activeUrlParse(url: string | null): { hostname: string } | null {
 function extensionEnvironmentSettingsCreate(
   source: ExtensionEnvironmentSource | null,
 ): ExtensionFullWindowEnvironmentSettings {
-  if (source === null) {
+  const configuredSource: ExtensionEnvironmentSource = source ?? extensionEnvironmentDefaultSource
+
+  if (configuredSource === "us" || configuredSource === "eu") {
     return {
-      region: "us",
+      region: configuredSource,
       base: "",
       webVault: "",
       api: "",
@@ -208,23 +216,10 @@ function extensionEnvironmentSettingsCreate(
     }
   }
 
-  if (source === "us" || source === "eu") {
-    return {
-      region: source,
-      base: "",
-      webVault: "",
-      api: "",
-      identity: "",
-      icons: "",
-      notifications: "",
-      events: "",
-    }
-  }
-
-  if (typeof source === "string") {
+  if (typeof configuredSource === "string") {
     return {
       region: "selfHosted",
-      base: source,
+      base: configuredSource,
       webVault: "",
       api: "",
       identity: "",
@@ -234,16 +229,16 @@ function extensionEnvironmentSettingsCreate(
     }
   }
 
-  const base = source.baseUrl ?? source.base ?? ""
+  const base = configuredSource.baseUrl ?? configuredSource.base ?? ""
   return {
-    region: base === "" ? (source.region ?? "us") : "selfHosted",
+    region: base === "" ? (configuredSource.region ?? "us") : "selfHosted",
     base,
-    webVault: source.webVaultUrl ?? source.webVault ?? "",
-    api: source.apiUrl ?? source.api ?? "",
-    identity: source.identityUrl ?? source.identity ?? "",
-    icons: source.iconsUrl ?? source.icons ?? "",
-    notifications: source.notificationsUrl ?? source.notifications ?? "",
-    events: source.eventsUrl ?? source.events ?? "",
+    webVault: configuredSource.webVaultUrl ?? configuredSource.webVault ?? "",
+    api: configuredSource.apiUrl ?? configuredSource.api ?? "",
+    identity: configuredSource.identityUrl ?? configuredSource.identity ?? "",
+    icons: configuredSource.iconsUrl ?? configuredSource.icons ?? "",
+    notifications: configuredSource.notificationsUrl ?? configuredSource.notifications ?? "",
+    events: configuredSource.eventsUrl ?? configuredSource.events ?? "",
   }
 }
 
@@ -435,6 +430,9 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     const autofillPolicyResult =
       surface === "fullwindow" ? await options.storage.autofillPolicyLoad() : resultCreate(null)
     if (!autofillPolicyResult.success) return autofillPolicyResult
+    const biometricStatusResult = await options.service.biometricStatusRead()
+    if (!biometricStatusResult.success) return biometricStatusResult
+    const biometricStatus = biometricStatusResult.data
     const authResult = await options.storage.authSessionLoad()
     if (!authResult.success) return authResult
     const stateResult = await options.storage.sessionStateLoad()
@@ -447,6 +445,7 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       busy: false,
       copiedFieldKey: null,
       fillAvailable: contextResult.data.fillAvailable,
+      biometricStatus,
     }
     if (authResult.data === null) {
       return resultCreate(
@@ -536,6 +535,36 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     const initializeResult = await initialize()
     if (!initializeResult.success) return initializeResult
     return loginResultValidate(await options.service.unlock(request), "extensionBackgroundRouter.unlock")
+  }
+
+  const biometricCapabilityRead = async (): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.biometricCapabilityRead()
+  }
+
+  const biometricStatusRead = async (): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.biometricStatusRead()
+  }
+
+  const biometricEnroll = async (): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.biometricEnroll()
+  }
+
+  const biometricRevoke = async (): Promise<Result<unknown>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return options.service.biometricRevoke()
+  }
+
+  const biometricUnlock = async (): Promise<Result<ExtensionLoginResult>> => {
+    const initializeResult = await initialize()
+    if (!initializeResult.success) return initializeResult
+    return loginResultValidate(await options.service.biometricUnlock(), "extensionBackgroundRouter.biometricUnlock")
   }
 
   const loginChallengeSubmit = async (
@@ -831,7 +860,9 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     if (!initializeResult.success) return initializeResult
     const environmentSourceResult = await options.storage.environmentSettingsLoad()
     if (!environmentSourceResult.success) return environmentSourceResult
-    const environmentResult = extensionEnvironmentResolve(environmentSourceResult.data ?? "us")
+    const environmentResult = extensionEnvironmentResolve(
+      environmentSourceResult.data ?? extensionEnvironmentDefaultSource,
+    )
     if (!environmentResult.success) return environmentResult
     const contextResult = request.operation === "create" ? await activeTabContextLookup() : null
     if (contextResult !== null && !contextResult.success) return contextResult
@@ -1038,6 +1069,16 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
         if (!requestResult.success) return requestResult
         return unlock(requestResult.data)
       }
+      case "biometricCapabilityRead":
+        return biometricCapabilityRead()
+      case "biometricStatusRead":
+        return biometricStatusRead()
+      case "biometricEnroll":
+        return biometricEnroll()
+      case "biometricRevoke":
+        return biometricRevoke()
+      case "biometricUnlock":
+        return biometricUnlock()
       case "viewModelLoad":
         return viewModelLoad(message.surface)
       case "conditionalSync":
@@ -1208,5 +1249,10 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
     passkeyConsentContextCreate,
     passkeyCredentialCreate,
     passkeyAssertion,
+    biometricCapabilityRead,
+    biometricStatusRead,
+    biometricEnroll,
+    biometricRevoke,
+    biometricUnlock,
   }
 }

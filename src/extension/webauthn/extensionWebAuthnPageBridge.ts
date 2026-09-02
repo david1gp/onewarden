@@ -1,7 +1,8 @@
 import * as v from "valibot"
+import { extensionEnvironmentDefaultSource } from "../api/extensionEnvironmentDefaultSource.js"
 
 const extensionWebAuthnSource = "onewarden-webauthn"
-const extensionWebAuthnDefaultOrigin = "https://onewarden.contentoren.de"
+const extensionWebAuthnDefaultOrigin = new URL(extensionEnvironmentDefaultSource.base).origin
 const extensionWebAuthnBridgeRequestType = "request"
 const extensionWebAuthnBridgeResponseType = "response"
 const extensionWebAuthnBridgeEnableType = "enable"

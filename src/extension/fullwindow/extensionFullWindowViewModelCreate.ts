@@ -48,6 +48,9 @@ export function extensionFullWindowViewModelCreate(
     securitySaveStatus: extensionFullWindowSecuritySaveStatus.idle,
     autofillPolicy: null,
     autofillSaveStatus: extensionFullWindowSecuritySaveStatus.idle,
+    biometricStatus: null,
+    biometricSaveStatus: extensionFullWindowSecuritySaveStatus.idle,
+    biometricErrorMessage: null,
     ...overrides,
   }
 }

@@ -34,6 +34,9 @@ export function extensionPopupViewStateCreate(
 
   const siteLabel = createMemo(() => hostname() ?? "No active site")
 
+  const biometricAvailable = createMemo(() => model().biometricStatus?.capability.status === "available")
+  const biometricEnrolled = createMemo(() => model().biometricStatus?.enrolled ?? false)
+
   const fieldIsCopied = (field: ExtensionCopyableField) => model().copiedFieldKey === field.key
   const totpIsCopied = (login: ExtensionLogin) => model().copiedFieldKey === `totp:${login.id}`
 
@@ -49,6 +52,7 @@ export function extensionPopupViewStateCreate(
   const settingsOpen = () => commands().settingsOpen()
   const accountLogin = () => commands().accountLogin()
   const accountRegister = () => commands().accountRegister()
+  const biometricUnlock = () => commands().biometricUnlock()
 
   const vaultUnlock = () => {
     const masterPassword = masterPasswordSignal.get()
@@ -86,6 +90,9 @@ export function extensionPopupViewStateCreate(
     generatorOpen,
     settingsOpen,
     vaultUnlock,
+    biometricAvailable,
+    biometricEnrolled,
+    biometricUnlock,
     accountLogin,
     accountRegister,
   }

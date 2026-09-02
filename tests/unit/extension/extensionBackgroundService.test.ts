@@ -268,6 +268,38 @@ test("extensionBackgroundServiceCreate logs in and coalesces concurrent refreshe
   expect(refreshedAuth.data?.accessToken).toBe("refreshed-access-token")
 })
 
+test("extensionBackgroundServiceCreate does not persist malformed refresh responses", async () => {
+  const context = serviceCreate()
+  const storedAuth = {
+    accessToken: "access-token",
+    refreshToken: "refresh-token",
+    expiresAt: 0,
+    tokenType: "Bearer" as const,
+    scope: "api offline_access",
+    accountId: null,
+    email: passwordLogin.email,
+  }
+  expect(await context.storage.authSessionSave(storedAuth)).toMatchObject({ success: true })
+  const service = extensionBackgroundServiceCreate({
+    storage: context.storage,
+    vaultSession: context.vaultSession,
+    alarms: context.alarms,
+    now: () => nowValue,
+    apiClient: {
+      prelogin: async () => resultCreate(prelogin),
+      passwordToken: async () => resultCreate(tokenCreate()),
+      refreshToken: async () => resultCreate({ ...refreshResponse, access_token: "" }),
+      revisionDate: async () => resultCreate(nowValue),
+      sync: async () => resultCreate({} as BitwardenSyncEnvelope),
+    },
+  })
+
+  const refreshResult = await service.refreshToken()
+
+  expect(refreshResult).toMatchObject({ success: false, code: "platform.internal", statusCode: 500 })
+  expect(await context.storage.authSessionLoad()).toEqual({ success: true, data: storedAuth })
+})
+
 test("extensionBackgroundServiceCreate performs conditional and manual sync while persisting only encrypted data", async () => {
   const context = serviceCreate()
   const encryptedCipherResult = await extensionPersonalLoginCipherEncrypt(plainCipherCreate(), userKey)

@@ -2,6 +2,7 @@ import type { ExtensionBackgroundCipherSummary } from "../background/extensionBa
 import type { ExtensionBackgroundCollectionDto } from "../background/extensionBackgroundCollectionDtoSchema.js"
 import type { ExtensionBackgroundFolderDto } from "../background/extensionBackgroundFolderDtoSchema.js"
 import type { ExtensionCipherDetailReadResult } from "../background/extensionCipherDetailReadResultSchema.js"
+import type { ExtensionBiometricStatus } from "../biometric/extensionBiometricStatusSchema.js"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionLoginChallenge } from "../auth/extensionLoginChallengeSchema.js"
 import type { ExtensionProfile } from "../crypto/extensionProfileSchema.js"
@@ -59,4 +60,10 @@ export interface ExtensionFullWindowViewModel {
   securitySaveStatus: ExtensionFullWindowSecuritySaveStatus
   autofillPolicy: ExtensionAutofillPolicy | null
   autofillSaveStatus: ExtensionFullWindowSecuritySaveStatus
+  /** Biometric capability and enrollment status. */
+  biometricStatus: ExtensionBiometricStatus | null
+  /** Lifecycle of biometric enrollment or revocation actions. */
+  biometricSaveStatus: ExtensionFullWindowSecuritySaveStatus
+  /** Error message specific to biometric operations. */
+  biometricErrorMessage: string | null
 }

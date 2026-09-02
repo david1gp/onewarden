@@ -1,4 +1,5 @@
 import { defineManifest } from "@crxjs/vite-plugin"
+import { extensionEnvironmentDefaultSource } from "./api/extensionEnvironmentDefaultSource.js"
 
 /** Chrome MV3 manifest for the OneWarden browser extension build. */
 export const extensionManifest = defineManifest({
@@ -18,7 +19,7 @@ export const extensionManifest = defineManifest({
   content_scripts: [
     {
       matches: ["https://*/*", "http://*/*"],
-      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      exclude_matches: [`${extensionEnvironmentDefaultSource.base}/*`],
       js: ["autofill/extensionCredentialNetworkBridgeEntry.ts"],
       run_at: "document_start",
       all_frames: true,
@@ -27,7 +28,7 @@ export const extensionManifest = defineManifest({
     },
     {
       matches: ["https://*/*", "http://*/*"],
-      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      exclude_matches: [`${extensionEnvironmentDefaultSource.base}/*`],
       js: ["autofill/extensionAutofillContentStart.ts"],
       run_at: "document_start",
       all_frames: true,
@@ -36,7 +37,7 @@ export const extensionManifest = defineManifest({
     },
     {
       matches: ["https://*/*", "http://localhost/*"],
-      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      exclude_matches: [`${extensionEnvironmentDefaultSource.base}/*`],
       js: ["webauthn/extensionWebAuthnPageBridge.ts"],
       run_at: "document_start",
       all_frames: false,
@@ -44,7 +45,7 @@ export const extensionManifest = defineManifest({
     },
     {
       matches: ["https://*/*", "http://localhost/*"],
-      exclude_matches: ["https://onewarden.contentoren.de/*"],
+      exclude_matches: [`${extensionEnvironmentDefaultSource.base}/*`],
       js: ["webauthn/extensionWebAuthnContentBridge.ts"],
       run_at: "document_start",
       all_frames: false,

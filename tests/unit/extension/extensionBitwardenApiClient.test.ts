@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test"
 import { extensionBitwardenApiClientCreate } from "../../../src/extension/api/extensionBitwardenApiClientCreate.js"
 import { extensionEnvironmentResolve } from "../../../src/extension/api/extensionEnvironmentResolve.js"
+import { extensionBackgroundApiClientCreate } from "../../../src/extension/background/extensionBackgroundApiClientCreate.js"
 import type { BitwardenEncryptedCipherMutationRequest } from "../../../src/shared/api/bitwardenEncryptedCipherMutationRequestSchema.js"
+import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 
 const environmentResult = extensionEnvironmentResolve("https://vault.example")
 if (!environmentResult.success) throw new Error("Test environment is invalid.")
@@ -106,6 +108,34 @@ test("extensionBitwardenApiClientCreate sends identity and API requests with typ
   expect(calls[0]).toMatchObject({ input: "https://vault.example/identity/accounts/prelogin" })
   expect(calls[1]?.init?.body).toContain("grant_type=password")
   expect(calls[2]?.init?.headers).toMatchObject({ authorization: "Bearer access-token" })
+})
+
+test("extensionBackgroundApiClientCreate uses the OneWarden first-run origin when environment storage is unset", async () => {
+  const previousFetch = globalThis.fetch
+  const calls: string[] = []
+  globalThis.fetch = async (input) => {
+    calls.push(String(input))
+    return Response.json({
+      kdf: 0,
+      kdfIterations: 600000,
+      kdfMemory: null,
+      kdfParallelism: null,
+      kdfSettings: { iterations: 600000, kdfType: 0, memory: null, parallelism: null },
+      salt: null,
+    })
+  }
+
+  try {
+    const storage = {
+      environmentSettingsLoad: async () => resultCreate(null),
+    } as Parameters<typeof extensionBackgroundApiClientCreate>[0]
+    const result = await extensionBackgroundApiClientCreate(storage).prelogin({ email: "user@example.com" })
+
+    expect(result.success).toBe(true)
+    expect(calls).toEqual(["https://onewarden.contentoren.de/identity/accounts/prelogin"])
+  } finally {
+    globalThis.fetch = previousFetch
+  }
 })
 
 test("extensionBitwardenApiClientCreate returns errors for invalid responses and fetch failures", async () => {

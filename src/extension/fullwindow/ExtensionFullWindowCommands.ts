@@ -67,6 +67,9 @@ export interface ExtensionFullWindowCommands {
   vaultLock: () => void
   vaultLogout: () => void
   vaultUnlock: (masterPassword: string) => void
+  biometricUnlock: () => void
+  biometricEnroll: () => void
+  biometricRevoke: () => void
   accountLogin: (
     credentials?: { email: string; password: string },
     environment?: ExtensionFullWindowEnvironmentSettings,

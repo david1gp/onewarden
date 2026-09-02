@@ -97,7 +97,15 @@ test("full-window commands send typed runtime messages for environment save and 
 
   expect(sentMessages[1]).toEqual({
     type: "login",
-    request: { email: "user@example.com", password: "mypassword" },
+    request: {
+      email: "user@example.com",
+      password: "mypassword",
+      clientId: "browser",
+      scope: "api offline_access",
+      deviceIdentifier: "onewarden-extension",
+      deviceName: "OneWarden",
+      deviceType: "14",
+    },
   })
   expect(refreshCalls).toBe(2)
 })
@@ -223,6 +231,7 @@ test("full-window shared commands send typed messages, update busy state, and re
     {
       messageSend: async (message) => {
         sentMessages.push(message)
+        if (message.type === "unlock") return resultCreate({ status: "authenticated" })
         return resultCreate(undefined)
       },
       onModelUpdate: (updater) => {

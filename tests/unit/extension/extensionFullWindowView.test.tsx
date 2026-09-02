@@ -453,25 +453,61 @@ test("extensionFullWindowView disables commands while a command is in flight", (
   root.unmount()
 })
 
-test("extensionFullWindowView shows the base URL field only for self-hosted servers", () => {
+test("extensionFullWindowEnvironmentSettingsCreate defaults to the self-hosted OneWarden server", () => {
+  expect(extensionFullWindowEnvironmentSettingsCreate()).toEqual({
+    region: "selfHosted",
+    base: "https://onewarden.contentoren.de",
+    webVault: "",
+    api: "",
+    identity: "",
+    icons: "",
+    notifications: "",
+    events: "",
+  })
+})
+
+test("extensionFullWindowView shows exactly one Server URL field", () => {
   const root = fullWindowRender({ status: "ready", logins: [] })
 
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect(root.queryByLabelText("Server base URL")).toBeNull()
-
-  fireEvent.change(root.getByLabelText("Region"), { target: { value: "selfHosted" } })
-  expect(root.getByLabelText("Server base URL")).toBeDefined()
+  expect((root.getByLabelText("Region") as HTMLSelectElement).value).toBe("selfHosted")
+  const serverUrlInputs = root.getAllByLabelText("Server URL")
+  expect(serverUrlInputs).toHaveLength(1)
+  expect(root.getAllByRole("textbox")).toHaveLength(1)
+  expect((serverUrlInputs[0] as HTMLInputElement).type).toBe("url")
+  expect((serverUrlInputs[0] as HTMLInputElement).value).toBe("https://onewarden.contentoren.de")
+  for (const label of [
+    "Server base URL",
+    "Web vault URL",
+    "API URL",
+    "Identity URL",
+    "Icons URL",
+    "Notifications URL",
+    "Events URL",
+  ]) {
+    expect(root.queryByLabelText(label)).toBeNull()
+  }
 
   root.unmount()
 })
 
-test("extensionFullWindowView saves region, base and independent service overrides", () => {
+test("extensionFullWindowView saves region and base while retaining persisted service fields", () => {
   const saved: unknown[] = []
+  const existingEnvironment = extensionFullWindowEnvironmentSettingsCreate({
+    region: "eu",
+    base: "https://legacy.example.com",
+    webVault: "https://web.example.com",
+    api: "https://api.example.com",
+    identity: "https://identity.example.com",
+    icons: "https://icons.example.com",
+    notifications: "https://notifications.example.com",
+    events: "https://events.example.com",
+  })
   const root = fullWindowRender(
     {
       status: "ready",
       logins: [],
-      environment: extensionFullWindowEnvironmentSettingsCreate({ region: "eu" }),
+      environment: existingEnvironment,
     },
     { environmentSave: (environment) => saved.push(environment) },
   )
@@ -480,18 +516,15 @@ test("extensionFullWindowView saves region, base and independent service overrid
   expect((root.getByLabelText("Region") as HTMLSelectElement).value).toBe("eu")
 
   fireEvent.change(root.getByLabelText("Region"), { target: { value: "selfHosted" } })
-  fireEvent.input(root.getByLabelText("Server base URL"), { target: { value: "https://vault.example.com" } })
-  fireEvent.input(root.getByLabelText("Identity URL"), { target: { value: "https://sso.example.com" } })
-  fireEvent.input(root.getByLabelText("Icons URL"), { target: { value: "https://icons.example.com" } })
+  fireEvent.input(root.getByLabelText("Server URL"), { target: { value: "https://vault.example.com" } })
   fireEvent.click(root.getByRole("button", { name: "Save settings" }))
 
   expect(saved).toEqual([
-    extensionFullWindowEnvironmentSettingsCreate({
+    {
+      ...existingEnvironment,
       region: "selfHosted",
       base: "https://vault.example.com",
-      identity: "https://sso.example.com",
-      icons: "https://icons.example.com",
-    }),
+    },
   ])
 
   root.unmount()
@@ -624,7 +657,7 @@ test("extensionFullWindowView re-enables settings and surfaces a save error afte
 
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
   fireEvent.change(root.getByLabelText("Region"), { target: { value: "selfHosted" } })
-  fireEvent.input(root.getByLabelText("Server base URL"), { target: { value: "https://vault.example.com" } })
+  fireEvent.input(root.getByLabelText("Server URL"), { target: { value: "https://vault.example.com" } })
   fireEvent.click(root.getByRole("button", { name: "Save settings" }))
 
   expect((root.getByRole("button", { name: "Saving settings…" }) as HTMLButtonElement).disabled).toBe(true)

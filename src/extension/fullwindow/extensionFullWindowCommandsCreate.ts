@@ -520,17 +520,32 @@ export function extensionFullWindowCommandsCreate(
         }))
         return
       }
-      const res = await sender({ type: "login", request: credentials })
+      const res = await sender({
+        type: "login",
+        request: {
+          ...credentials,
+          clientId: "browser",
+          scope: "api offline_access",
+          deviceIdentifier: "onewarden-extension",
+          deviceName: "OneWarden",
+          deviceType: "14",
+        },
+      })
       if (!res.success) {
         onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: res.errorMessage ?? "Login failed." }))
         return
       }
       const loginResult = v.safeParse(extensionLoginResultSchema, res.data)
-      if (loginResult.success && loginResult.output.status === "challenge") {
+      if (!loginResult.success) {
+        await onRefresh()
+        return
+      }
+      const loginOutput = loginResult.output
+      if (loginOutput.status === "challenge") {
         onModelUpdate((prev) => ({
           ...prev,
           busy: false,
-          authChallenge: loginResult.output.challenge,
+          authChallenge: loginOutput.challenge,
           authMessage: null,
           errorMessage: null,
         }))
@@ -550,13 +565,14 @@ export function extensionFullWindowCommandsCreate(
       onModelUpdate((prev) => ({ ...prev, busy: false, errorMessage: "Login response is invalid." }))
       return
     }
-    if (parsed.output.status === "challenge") {
+    const parsedOutput = parsed.output
+    if (parsedOutput.status === "challenge") {
       onModelUpdate((prev) => ({
         ...prev,
         busy: false,
-        authChallenge: parsed.output.challenge,
+        authChallenge: parsedOutput.challenge,
         authMessage: null,
-        errorMessage: parsed.output.challenge.errorMessage,
+        errorMessage: parsedOutput.challenge.errorMessage,
       }))
       return
     }
@@ -708,6 +724,66 @@ export function extensionFullWindowCommandsCreate(
     })
   }
 
+  const biometricEnroll = () => {
+    onModelUpdate((prev) => ({
+      ...prev,
+      busy: true,
+      errorMessage: null,
+      biometricErrorMessage: null,
+      biometricSaveStatus: extensionFullWindowSecuritySaveStatus.saving,
+    }))
+    void sender({ type: "biometricEnroll" }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          biometricSaveStatus: extensionFullWindowSecuritySaveStatus.error,
+          biometricErrorMessage: res.errorMessage ?? "Biometric enrollment failed.",
+          errorMessage: res.errorMessage ?? "Biometric enrollment failed.",
+        }))
+        return
+      }
+      await onRefresh()
+      onModelUpdate((prev) => ({
+        ...prev,
+        busy: false,
+        biometricSaveStatus: extensionFullWindowSecuritySaveStatus.saved,
+        biometricErrorMessage: null,
+        errorMessage: null,
+      }))
+    })
+  }
+
+  const biometricRevoke = () => {
+    onModelUpdate((prev) => ({
+      ...prev,
+      busy: true,
+      errorMessage: null,
+      biometricErrorMessage: null,
+      biometricSaveStatus: extensionFullWindowSecuritySaveStatus.saving,
+    }))
+    void sender({ type: "biometricRevoke" }).then(async (res) => {
+      if (!res.success) {
+        onModelUpdate((prev) => ({
+          ...prev,
+          busy: false,
+          biometricSaveStatus: extensionFullWindowSecuritySaveStatus.error,
+          biometricErrorMessage: res.errorMessage ?? "Biometric revocation failed.",
+          errorMessage: res.errorMessage ?? "Biometric revocation failed.",
+        }))
+        return
+      }
+      await onRefresh()
+      onModelUpdate((prev) => ({
+        ...prev,
+        busy: false,
+        biometricSaveStatus: extensionFullWindowSecuritySaveStatus.saved,
+        biometricErrorMessage: null,
+        errorMessage: null,
+      }))
+    })
+  }
+
   return {
     loginFill: commonCommands.loginFill,
     fieldCopy: commonCommands.fieldCopy,
@@ -755,6 +831,9 @@ export function extensionFullWindowCommandsCreate(
     vaultLock: commonCommands.vaultLock,
     vaultLogout: commonCommands.vaultLogout,
     vaultUnlock,
+    biometricUnlock: commonCommands.biometricUnlock,
+    biometricEnroll,
+    biometricRevoke,
     accountLogin,
     loginChallengeSubmit,
     loginChallengeEmailSend,
