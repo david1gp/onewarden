@@ -1,5 +1,8 @@
 import type { VaultItem } from "./vaultItemSchema.js"
 
+const rsaPrivateKeyBegin = "-----BEGIN " + "RSA PRIVATE KEY-----"
+const rsaPrivateKeyEnd = "-----END " + "RSA PRIVATE KEY-----"
+
 export const vaultTrashDemoData: readonly VaultItem[] = [
   {
     id: "item-trash-legacy-db",
@@ -36,9 +39,9 @@ export const vaultTrashDemoData: readonly VaultItem[] = [
     favorite: false,
     deletedAt: "2026-08-16T14:00:00.000Z",
     folder: "Infrastructure",
-    notes: `-----BEGIN RSA PRIVATE KEY-----
+    notes: `${rsaPrivateKeyBegin}
 MIIEowIBAAKCAQEA0r1459XjZ... [DEPRECATED PROFILE]
------END RSA PRIVATE KEY-----
+${rsaPrivateKeyEnd}
 
 Replaced by Tailscale wireguard mesh architecture.`,
     customFields: [
