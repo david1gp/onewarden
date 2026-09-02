@@ -44,6 +44,6 @@ install -d -m 700 "$HOME/.local/share/onewarden"
 
 # prodctl deploys a source archive. Build the bundled runtime package in the
 # release so the service does not depend on release-local node_modules.
-"$bun_path" install --frozen-lockfile
+"$bun_path" install --frozen-lockfile --ignore-scripts --os=linux --cpu=x64
 "$bun_path" ./node_modules/vite/bin/vite.js build --config vite.web.config.ts
 "$bun_path" run backend:package
