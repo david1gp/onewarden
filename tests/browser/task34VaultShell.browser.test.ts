@@ -105,6 +105,30 @@ test.describe("task 34 vault shell and navigation UI", () => {
     await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible()
   })
 
+  test("scrolls the /demo directory with an ordinary wheel event", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 700 })
+    await page.goto("/demo")
+    await expect(page.getByRole("heading", { level: 1, name: "OneWarden UI Demo Directory" })).toBeVisible()
+
+    const directory = page.locator("#root > div").filter({
+      has: page.getByRole("heading", { level: 1, name: "OneWarden UI Demo Directory" }),
+    })
+    await expect(directory).toHaveCount(1)
+    const initialDocumentSize = await page.evaluate(() => ({
+      clientHeight: document.documentElement.clientHeight,
+      scrollHeight: document.documentElement.scrollHeight,
+      scrollY: window.scrollY,
+    }))
+    expect(initialDocumentSize.scrollHeight).toBeGreaterThan(initialDocumentSize.clientHeight)
+    expect(initialDocumentSize.scrollY).toBe(0)
+
+    await directory.hover()
+    await page.mouse.wheel(0, 500)
+
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+    await expect.poll(() => directory.evaluate((element) => element.scrollTop)).toBe(0)
+  })
+
   test("handles locked vault unlocking and relocking on /demo/locked", async ({ page }) => {
     await page.goto("/demo/locked")
 
