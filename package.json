@@ -72,7 +72,7 @@
     "@solid-primitives/keyed": "^1.5.3",
     "@solid-primitives/scheduled": "^1.5.3",
     "@solidjs/router": "^1.0.0",
-    "clsx": "^2.1.1",
+    "cn": "^0.2.4",
     "corvu": "^0.7.2",
     "dayjs": "^1.11.20",
     "drizzle-orm": "^0.45.2",
@@ -81,7 +81,6 @@
     "jose": "^6.2.10",
     "nodemailer": "^9.0.6",
     "solid-js": "^1.9.15",
-    "tailwind-merge": "^3.6.0",
     "tldts": "^7.4.11",
     "valibot": "^1.4.2"
   },
