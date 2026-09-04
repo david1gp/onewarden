@@ -12,3 +12,5 @@ test-results/
 .onewarden-deploy.lock
 # The user explicitly does NOT want to track this lock file.
 bun.lock
+/data/
+/onewarden.sqlite*
