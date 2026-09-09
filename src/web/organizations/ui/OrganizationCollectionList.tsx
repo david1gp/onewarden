@@ -1,6 +1,6 @@
 import { For, type JSX, Show } from "solid-js"
 import { Input } from "#ui/input/input/Input.jsx"
-import { ButtonIcon1 } from "#ui/interactive/button/ButtonIcon1.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
@@ -20,7 +20,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
           <span class="font-bold text-slate-900 text-sm dark:text-slate-100">
             Collections ({state.filteredCollections().length})
           </span>
-          <ButtonIcon1
+          <ButtonIcon
             variant="filled"
             size="sm"
             icon={vaultSvgIcons.plus}
@@ -29,7 +29,7 @@ export function OrganizationCollectionList(props: OrganizationCollectionListProp
             iconClass="size-3.5 mr-1"
           >
             <span>New Collection</span>
-          </ButtonIcon1>
+          </ButtonIcon>
         </div>
         <div class="relative mt-2.5 flex items-center">
           <Icon

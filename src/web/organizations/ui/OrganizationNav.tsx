@@ -1,6 +1,6 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { ButtonIcon1 } from "#ui/interactive/button/ButtonIcon1.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { type OrganizationNavProps, organizationNavStateCreate } from "./organizationNavStateCreate.js"
@@ -38,7 +38,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
           </div>
         </div>
 
-        <ButtonIcon1
+        <ButtonIcon
           variant="outline"
           size="sm"
           icon={vaultSvgIcons.plus}
@@ -47,7 +47,7 @@ export function OrganizationNav(props: OrganizationNavProps): JSX.Element {
           iconClass="size-3.5 mr-1"
         >
           <span>New Org</span>
-        </ButtonIcon1>
+        </ButtonIcon>
       </div>
 
       {/* Right: Tab Navigation */}

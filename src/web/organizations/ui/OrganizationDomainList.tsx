@@ -1,6 +1,6 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { ButtonIcon1 } from "#ui/interactive/button/ButtonIcon1.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
@@ -22,7 +22,7 @@ export function OrganizationDomainList(props: OrganizationDomainListProps): JSX.
             Verify domain ownership using DNS TXT records to claim corporate domains and enable Single Sign-On.
           </p>
         </div>
-        <ButtonIcon1
+        <ButtonIcon
           variant="filled"
           size="sm"
           icon={vaultSvgIcons.plus}
@@ -31,7 +31,7 @@ export function OrganizationDomainList(props: OrganizationDomainListProps): JSX.
           iconClass="size-3.5 mr-1"
         >
           <span>Claim Domain</span>
-        </ButtonIcon1>
+        </ButtonIcon>
       </div>
 
       {/* Domain Cards */}

@@ -1,6 +1,6 @@
 import { type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { ButtonIcon1 } from "#ui/interactive/button/ButtonIcon1.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { CipherDialog } from "../ciphers/ui/CipherDialog.jsx"
 import { VaultEntryDetail } from "./VaultEntryDetail.jsx"
 import { VaultEntryList } from "./VaultEntryList.jsx"
@@ -17,7 +17,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
       <div class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5 lg:hidden dark:border-slate-800 dark:bg-slate-900">
         <div class="flex items-center gap-2">
           <Show when={state.activeMobileTab() !== "nav"}>
-            <ButtonIcon1
+            <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.arrowLeft}
@@ -27,7 +27,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
               iconClass="size-3.5 mr-1 text-blue-600 dark:text-blue-400"
             >
               <span>{state.activeMobileTab() === "detail" ? "Items" : "Vaults"}</span>
-            </ButtonIcon1>
+            </ButtonIcon>
           </Show>
           <Show when={state.activeMobileTab() === "nav"}>
             <span class="font-bold text-sm text-slate-900 dark:text-slate-50">OneWarden Vaults</span>
