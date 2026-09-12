@@ -53,13 +53,51 @@ test("ExtensionFullWindowCipherExtras exposes accessible attachment and password
   expect(view.getByText("past-password")).toBeTruthy()
   await fireEvent.click(view.getByRole("button", { name: "Copy past password" }))
   await fireEvent.click(view.getByRole("button", { name: "Download attachment receipt.pdf" }))
+  expect(
+    view
+      .getByRole("button", { name: "Download attachment receipt.pdf" })
+      .classList.contains("extension-selected-control"),
+  ).toBe(false)
   await fireEvent.click(view.getByRole("button", { name: "Delete attachment receipt.pdf" }))
-  expect(view.getByRole("alertdialog", { name: "Delete attachment?" })).toBeTruthy()
+  expect(
+    view.getByRole("alertdialog", { name: "Delete attachment?" }).classList.contains("extension-destructive-surface"),
+  ).toBe(true)
+  expect(
+    view.getByRole("button", { name: "Delete", hidden: false }).classList.contains("extension-destructive-control"),
+  ).toBe(true)
   await fireEvent.click(view.getByRole("button", { name: "Delete", hidden: false }))
   await fireEvent.click(view.getByRole("button", { name: "Restore" }))
-  expect(view.getByRole("alertdialog", { name: "Restore this password?" })).toBeTruthy()
+  expect(
+    view.getByRole("alertdialog", { name: "Restore this password?" }).classList.contains("extension-warning-surface"),
+  ).toBe(true)
   await fireEvent.click(view.getByRole("button", { name: "Restore password" }))
   expect(actions).toEqual(["copy", "download", "delete", "restore"])
+})
+
+test("ExtensionFullWindowCipherExtras accepts deterministic initial confirmation states", () => {
+  const model = () => extensionFullWindowViewModelCreate({ status: "ready" })
+  const commands = extensionFullWindowCommandsCreate()
+  const attachmentView = render(() => (
+    <ExtensionFullWindowCipherExtras
+      cipher={() => login}
+      model={model}
+      commands={commands}
+      initialState={{ deleteAttachmentId: "attachment-1" }}
+    />
+  ))
+  expect(attachmentView.getByRole("alertdialog", { name: "Delete attachment?" })).toBeDefined()
+  attachmentView.unmount()
+
+  const historyView = render(() => (
+    <ExtensionFullWindowCipherExtras
+      cipher={() => login}
+      model={model}
+      commands={commands}
+      initialState={{ restorePasswordHistoryIndex: 0 }}
+    />
+  ))
+  expect(historyView.getByRole("alertdialog", { name: "Restore this password?" })).toBeDefined()
+  historyView.unmount()
 })
 
 test("passwordHistoryRestore preserves history semantics and sends an atomic cipher update", async () => {

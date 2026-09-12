@@ -79,7 +79,10 @@ test("extensionFullWindowView offers login when logged out and hides lock and lo
   let loginCalls = 0
   const root = fullWindowRender({ status: "loggedOut" }, { accountLogin: () => (loginCalls += 1) })
 
-  fireEvent.click(root.getByRole("button", { name: "Log in" }))
+  const login = root.getByRole("button", { name: "Log in" })
+  expect(login.classList.contains("extension-primary-control")).toBe(true)
+  expect(root.getByRole("button", { name: "Vault" }).classList.contains("extension-selected-control")).toBe(true)
+  fireEvent.click(login)
 
   expect(loginCalls).toBe(1)
   expect(root.queryByRole("button", { name: "Lock" })).toBeNull()

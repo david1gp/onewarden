@@ -41,6 +41,7 @@ test("settings exposes conservative page-load and explicit active-site controls"
     />
   ))
   expect(view.getByText(/Cards and identities are never filled automatically/)).toBeTruthy()
+  expect(view.getByText(/With Never selected/).classList.contains("extension-warning-surface")).toBe(true)
   await fireEvent.click(view.getByText("Disable on this site"))
   await fireEvent.click(view.getByText("Save autofill settings"))
   expect(siteToggles).toBe(1)

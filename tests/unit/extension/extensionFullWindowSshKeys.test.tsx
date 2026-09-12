@@ -38,6 +38,18 @@ const summary = {
   name: sshKey.name,
 }
 
+function definitionListsExpectValid(container: HTMLElement) {
+  const lists = container.querySelectorAll("dl")
+  expect(lists.length).toBeGreaterThan(0)
+  for (const list of lists) {
+    for (const group of list.children) {
+      expect(group.tagName).toBe("DIV")
+      expect(Array.from(group.children, (child) => child.tagName)).toEqual(["DT", "DD"])
+    }
+    for (const button of list.querySelectorAll("button")) expect(button.closest("dd")).not.toBeNull()
+  }
+}
+
 test("full-window SSH key detail masks, reveals, copies, and enforces permissions", () => {
   window.history.replaceState(null, "", "/?category=ssh-keys")
   const copied: Array<[string, string]> = []
@@ -58,6 +70,7 @@ test("full-window SSH key detail masks, reveals, copies, and enforces permission
   ))
   fireEvent.click(root.getByRole("button", { name: "SSH keys" }))
   fireEvent.click(root.getByRole("button", { name: "Production deploy key" }))
+  definitionListsExpectValid(root.getByRole("article", { name: "Details of Production deploy key" }))
   expect(root.container.textContent).not.toContain("BEGIN OPENSSH PRIVATE KEY")
   expect(root.getByText("SHA256:abc123")).toBeDefined()
   expect(root.getByText("ssh-ed25519 AAAATEST deploy")).toBeDefined()

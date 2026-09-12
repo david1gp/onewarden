@@ -96,6 +96,10 @@ test("task14 full-window logged-out registration validates and transitions to ve
     />
   ))
 
+  const accountButtons = root.getAllByRole("button", { name: "Create account" })
+  expect(accountButtons.some((button) => button.classList.contains("extension-primary-control"))).toBe(true)
+  expect(accountButtons.filter((button) => button.classList.contains("extension-selected-control")).length).toBe(2)
+
   fireEvent.input(root.getByLabelText("Email address"), { target: { value: "new@example.com" } })
   fireEvent.input(root.getByLabelText("Master password"), { target: { value: "long-password" } })
   fireEvent.input(root.getByLabelText("Confirm master password"), { target: { value: "different-password" } })

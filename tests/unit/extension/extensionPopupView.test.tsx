@@ -52,7 +52,9 @@ test("extensionPopupView offers login when logged out and hides lock control", (
   let loginCalls = 0
   const root = popupRender({ status: "loggedOut" }, { accountLogin: () => (loginCalls += 1) })
 
-  fireEvent.click(root.getByRole("button", { name: "Log in" }))
+  const login = root.getByRole("button", { name: "Log in" })
+  expect(login.classList.contains("extension-primary-control")).toBe(true)
+  fireEvent.click(login)
 
   expect(loginCalls).toBe(1)
   expect(root.queryByRole("button", { name: "Lock" })).toBeNull()
@@ -239,14 +241,35 @@ test("extensionPopupView exposes current vault, generator, settings, and vault c
   )
 
   expect(root.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBe("page")
+  expect(root.getByRole("button", { name: "Vault" }).classList.contains("extension-selected-control")).toBe(true)
+  expect(root.getByRole("navigation", { name: "Extension navigation" })).toBeDefined()
+  expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("button", { name: "Generator" }).classList.contains("extension-selected-control")).toBe(true)
 
-  for (const name of ["Vault", "Generator", "Settings", "Add login", "Sync", "Lock", "Log out"]) {
-    fireEvent.click(root.getByRole("button", { name }))
-  }
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
+  expect(root.getByRole("button", { name: "Vault" }).hasAttribute("aria-current")).toBe(false)
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  expect(root.getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page")
+  expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
+  fireEvent.click(root.getByRole("button", { name: "Vault" }))
+  for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
 
-  expect(calls).toEqual(["full", "generator", "settings", "add", "sync", "lock", "logout"])
+  expect(calls).toEqual(["generator", "settings", "full", "add", "sync", "lock", "logout"])
 
   root.unmount()
+})
+
+test("extensionPopupView provides form autocomplete metadata and bounded results", () => {
+  const root = popupRender({ status: "ready", hostname: "example.com", logins: [exampleLogin] })
+
+  expect(root.getByLabelText("Search logins").getAttribute("autocomplete")).toBe("off")
+  root.unmount()
+
+  const locked = popupRender({ status: "locked" })
+  expect(locked.getByLabelText("Master password").getAttribute("autocomplete")).toBe("current-password")
+  expect(locked.container.querySelector("ul")).toBeNull()
+  locked.unmount()
 })
 
 test("extensionPopupView disables commands while a command is in flight", () => {

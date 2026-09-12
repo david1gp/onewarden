@@ -70,6 +70,18 @@ const summary = (cipher: ExtensionCipher) => ({
   name: cipher.name,
 })
 
+function definitionListsExpectValid(container: HTMLElement) {
+  const lists = container.querySelectorAll("dl")
+  expect(lists.length).toBeGreaterThan(0)
+  for (const list of lists) {
+    for (const group of list.children) {
+      expect(group.tagName).toBe("DIV")
+      expect(Array.from(group.children, (child) => child.tagName)).toEqual(["DT", "DD"])
+    }
+    for (const button of list.querySelectorAll("button")) expect(button.closest("dd")).not.toBeNull()
+  }
+}
+
 test("full-window cards mask, reveal and copy sensitive details and support edit validation", () => {
   window.history.replaceState(null, "", "/?category=cards")
   const copied: Array<[string, string]> = []
@@ -96,6 +108,7 @@ test("full-window cards mask, reveal and copy sensitive details and support edit
 
   fireEvent.click(root.getByRole("button", { name: "Cards" }))
   fireEvent.click(root.getByRole("button", { name: "Travel card" }))
+  definitionListsExpectValid(root.getByRole("article", { name: "Details of Travel card" }))
   expect(root.container.textContent).not.toContain("4111111111111111")
   expect(root.container.textContent).not.toContain("123-45-6789")
   expect(root.getByText("••••••••••••••••")).toBeDefined()
@@ -162,6 +175,7 @@ test("full-window identities use useful sections, mask identification, enforce r
 
   fireEvent.click(root.getByRole("button", { name: "Identities" }))
   fireEvent.click(root.getByRole("button", { name: "Ada personal" }))
+  definitionListsExpectValid(root.getByRole("article", { name: "Details of Ada personal" }))
   expect(root.getByRole("region", { name: "Personal information" }).textContent).toContain("Dr Ada Lovelace")
   expect(root.getByRole("region", { name: "Address" }).textContent).toContain("1 Engine Way")
   expect(root.container.textContent).not.toContain("123-45-6789")

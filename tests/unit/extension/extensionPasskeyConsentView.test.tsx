@@ -51,10 +51,22 @@ test("passkey consent view requests fresh verification before confirmation", asy
   ))
 
   const password = await root.findByLabelText("Master password")
-  expect(root.getByRole("button", { name: "Confirm" }).hasAttribute("disabled")).toBe(true)
+  const confirm = root.getByRole("button", { name: "Confirm" })
+  expect(confirm.hasAttribute("disabled")).toBe(true)
+  expect(confirm.classList.contains("extension-primary-control")).toBe(true)
+  expect(root.getByRole("button", { name: "Verify" }).classList.contains("extension-primary-control")).toBe(true)
   fireEvent.input(password, { target: { value: "correct" } })
   fireEvent.click(root.getByRole("button", { name: "Verify" }))
   await waitFor(() => expect(root.getByText("Example login")).toBeDefined())
+  const credentialList = root.getByRole("listbox", { name: "Passkey credentials" })
+  const selectedCredential = root.getByRole("option", { name: /Example login/ })
+  expect(credentialList.contains(selectedCredential)).toBe(true)
+  expect(selectedCredential.getAttribute("aria-selected")).toBe("true")
+  expect(selectedCredential.classList.contains("extension-selected-control")).toBe(true)
+  expect(selectedCredential.classList.contains("extension-credential-option")).toBe(true)
+  const selectedEmail = root.getByText("user@example.test")
+  expect(selectedCredential.contains(selectedEmail)).toBe(true)
+  expect(selectedEmail.classList.contains("extension-muted-text")).toBe(true)
   expect(messages).toContainEqual({
     type: "passkeyConsentUiVerify",
     request: { requestId: "request-1", password: "correct" },
