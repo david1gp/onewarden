@@ -3,6 +3,7 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionBackgroundCipherSummary } from "../background/extensionBackgroundCipherSummarySchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -11,10 +12,19 @@ type SshKeyMode = "list" | "create" | "detail" | "edit" | "delete"
 export function extensionFullWindowSshKeyStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: ExtensionFullWindowInitialState,
 ) {
   const querySignal = extensionFullWindowUrlSignalCreate("q")
-  const selectedIdSignal = extensionFullWindowUrlSignalCreate("ssh-key")
-  const modeSignal = createSignalObject<SshKeyMode>(selectedIdSignal.get() ? "detail" : "list")
+  const selectedIdSignal = initialState
+    ? createSignalObject(initialState.selectedCipherId ?? "")
+    : extensionFullWindowUrlSignalCreate("ssh-key")
+  const modeSignal = createSignalObject<SshKeyMode>(
+    initialState?.deleteCipherConfirmation && selectedIdSignal.get()
+      ? "delete"
+      : selectedIdSignal.get()
+        ? "detail"
+        : "list",
+  )
   const nameSignal = createSignalObject("")
   const privateKeySignal = createSignalObject("")
   const publicKeySignal = createSignalObject("")

@@ -4,17 +4,25 @@ import type { ExtensionCipherAttachment } from "../crypto/extensionCipherAttachm
 import type { ExtensionCipherPasswordHistoryEntry } from "../crypto/extensionCipherPasswordHistoryEntrySchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 
 type CipherExtrasStateOptions = {
   cipher: () => ExtensionCipher
   model: () => ExtensionFullWindowViewModel
   commands: () => ExtensionFullWindowCommands
+  initialState?: ExtensionFullWindowInitialState
 }
 
 export function extensionFullWindowCipherExtrasStateCreate(options: CipherExtrasStateOptions) {
-  const deleteCandidateSignal = createSignalObject<ExtensionCipherAttachment | null>(null)
-  const restoreCandidateSignal = createSignalObject<ExtensionCipherPasswordHistoryEntry | null>(null)
+  const initialAttachments = options.cipher().attachments ?? []
+  const initialHistory = options.cipher().type === 1 ? (options.cipher().passwordHistory ?? []) : []
+  const deleteCandidateSignal = createSignalObject<ExtensionCipherAttachment | null>(
+    initialAttachments.find((attachment) => attachment.id === options.initialState?.deleteAttachmentId) ?? null,
+  )
+  const restoreCandidateSignal = createSignalObject<ExtensionCipherPasswordHistoryEntry | null>(
+    initialHistory[options.initialState?.restorePasswordHistoryIndex ?? -1] ?? null,
+  )
   const revealedSignal = createSignalObject<Record<string, boolean>>({})
   let fileInput: HTMLInputElement | undefined
   let currentCipherId = options.cipher().id

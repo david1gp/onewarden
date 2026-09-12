@@ -1,11 +1,11 @@
 import { type JSX, Show } from "solid-js"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import type { ExtensionFullWindowCommands } from "../fullwindow/ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowEnvironmentSettings } from "../fullwindow/ExtensionFullWindowEnvironmentSettings.js"
+import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { extensionAccountAuthViewStateCreate } from "./extensionAccountAuthViewStateCreate.js"
 
 export function ExtensionAccountAuthView(p: {
@@ -23,33 +23,34 @@ export function ExtensionAccountAuthView(p: {
   })
 
   return (
-    <CardWrapper class="mx-auto flex w-full max-w-lg flex-col gap-4 p-5">
+    <ExtensionCardWrapper class="mx-auto flex w-full max-w-lg flex-col gap-4 p-5">
       <header class="flex flex-col gap-1">
         <h2 class="text-lg font-semibold">Account access</h2>
-        <p class="text-sm text-slate-600 dark:text-slate-300">
-          Create or finish setting up an account on the selected server.
-        </p>
+        <p class="extension-muted-text text-sm">Create or finish setting up an account on the selected server.</p>
       </header>
       <nav aria-label="Account setup" class="flex flex-wrap gap-1">
         <Button
-          variant={state.isRegister() ? "filledBlue" : "outline"}
+          variant="outline"
           size="sm"
+          class="extension-selected-control"
           aria-current={state.isRegister() ? "step" : undefined}
           onClick={state.registerOpen}
         >
           Create account
         </Button>
         <Button
-          variant={state.isVerify() ? "filledBlue" : "outline"}
+          variant="outline"
           size="sm"
+          class="extension-selected-control"
           aria-current={state.isVerify() ? "step" : undefined}
           onClick={state.verifyOpen}
         >
           Verify email
         </Button>
         <Button
-          variant={state.isPasswordSetup() ? "filledBlue" : "outline"}
+          variant="outline"
           size="sm"
+          class="extension-selected-control"
           aria-current={state.isPasswordSetup() ? "step" : undefined}
           onClick={state.passwordSetupOpen}
         >
@@ -59,7 +60,7 @@ export function ExtensionAccountAuthView(p: {
 
       <div class="flex flex-col gap-1">
         <Label for={`${p.idPrefix ?? ""}account-email`}>Email address</Label>
-        <InputS
+        <ExtensionInputS
           id={`${p.idPrefix ?? ""}account-email`}
           type="email"
           autocomplete="email"
@@ -71,7 +72,7 @@ export function ExtensionAccountAuthView(p: {
       <Show when={state.isRegister()}>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-name`}>Name (optional)</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-name`}
             autocomplete="name"
             valueSignal={state.nameSignal}
@@ -83,7 +84,7 @@ export function ExtensionAccountAuthView(p: {
       <Show when={state.isRegister() || state.isPasswordSetup()}>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-password`}>Master password</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-password`}
             type="password"
             autocomplete="new-password"
@@ -93,7 +94,7 @@ export function ExtensionAccountAuthView(p: {
         </div>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-password-confirm`}>Confirm master password</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-password-confirm`}
             type="password"
             autocomplete="new-password"
@@ -103,7 +104,7 @@ export function ExtensionAccountAuthView(p: {
         </div>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-password-hint`}>Master password hint (optional)</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-password-hint`}
             valueSignal={state.passwordHintSignal}
             disabled={state.busy()}
@@ -114,23 +115,21 @@ export function ExtensionAccountAuthView(p: {
       <Show when={state.isPasswordSetup()}>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-access-token`}>Setup access token</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-access-token`}
             type="password"
             autocomplete="off"
             valueSignal={state.accessTokenSignal}
             disabled={state.busy()}
           />
-          <p class="text-xs text-slate-600 dark:text-slate-300">
-            Use only the short-lived token supplied by your identity login.
-          </p>
+          <p class="extension-muted-text text-xs">Use only the short-lived token supplied by your identity login.</p>
         </div>
       </Show>
 
       <Show when={state.isVerify()}>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-user-id`}>User ID</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-user-id`}
             autocomplete="off"
             valueSignal={state.userIdSignal}
@@ -139,7 +138,7 @@ export function ExtensionAccountAuthView(p: {
         </div>
         <div class="flex flex-col gap-1">
           <Label for={`${p.idPrefix ?? ""}account-token`}>Verification token</Label>
-          <InputS
+          <ExtensionInputS
             id={`${p.idPrefix ?? ""}account-token`}
             type="password"
             autocomplete="off"
@@ -156,7 +155,7 @@ export function ExtensionAccountAuthView(p: {
       </Show>
       <Show when={state.errorMessage()}>
         {(message) => (
-          <div role="alert" class="flex flex-col gap-2 text-sm text-red-600 dark:text-red-400">
+          <div role="alert" class="extension-error-text flex flex-col gap-2 text-sm">
             <p>{message()}</p>
             <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.retry}>
               Retry
@@ -166,7 +165,7 @@ export function ExtensionAccountAuthView(p: {
       </Show>
       <Show when={state.successMessage()}>
         {(message) => (
-          <p role="status" aria-live="polite" class="text-sm text-green-700 dark:text-green-400">
+          <p role="status" aria-live="polite" class="extension-success-text text-sm">
             {message()}
           </p>
         )}
@@ -174,12 +173,22 @@ export function ExtensionAccountAuthView(p: {
 
       <div class="flex flex-wrap gap-2">
         <Show when={state.isRegister()}>
-          <Button variant="filledBlue" disabled={state.busy()} onClick={() => void state.accountRegister()}>
+          <Button
+            variant="filledBlue"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={() => void state.accountRegister()}
+          >
             Create account
           </Button>
         </Show>
         <Show when={state.isVerify()}>
-          <Button variant="filledBlue" disabled={state.busy()} onClick={() => void state.accountVerify()}>
+          <Button
+            variant="filledBlue"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={() => void state.accountVerify()}
+          >
             Verify email
           </Button>
           <Button variant="outline" disabled={state.busy()} onClick={() => void state.verificationEmailSend()}>
@@ -187,7 +196,12 @@ export function ExtensionAccountAuthView(p: {
           </Button>
         </Show>
         <Show when={state.isPasswordSetup()}>
-          <Button variant="filledBlue" disabled={state.busy()} onClick={() => void state.accountPasswordSetup()}>
+          <Button
+            variant="filledBlue"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={() => void state.accountPasswordSetup()}
+          >
             Set master password
           </Button>
         </Show>
@@ -198,6 +212,6 @@ export function ExtensionAccountAuthView(p: {
           Server settings
         </Button>
       </div>
-    </CardWrapper>
+    </ExtensionCardWrapper>
   )
 }

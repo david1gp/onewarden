@@ -3,21 +3,22 @@ import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { For, type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
-import { SelectSingleNative } from "#ui/input/select/SelectSingleNative.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
-import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
-import { Separator } from "#ui/static/separator/Separator.jsx"
-import { SeparatorWithText } from "#ui/static/separator/SeparatorWithText.jsx"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import { ExtensionAccountAuthView } from "../auth/ExtensionAccountAuthView.jsx"
 import { ExtensionLoginChallengeView } from "../auth/ExtensionLoginChallengeView.jsx"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
+import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
+import { ExtensionSelectSingleNative } from "../ui/ExtensionSelectSingleNative.jsx"
+import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
+import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
 import { ExtensionFullWindowCardPane } from "./ExtensionFullWindowCardPane.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { ExtensionFullWindowGeneratorPane } from "./ExtensionFullWindowGeneratorPane.jsx"
 import { ExtensionFullWindowIdentityPane } from "./ExtensionFullWindowIdentityPane.jsx"
 import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
@@ -32,7 +33,7 @@ import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewSta
 export interface ExtensionFullWindowViewProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
-  initialState?: { pane?: string; selectedLoginId?: string }
+  initialState?: ExtensionFullWindowInitialState
   generatorOptions?: Parameters<typeof ExtensionFullWindowGeneratorPane>[0]["options"]
   generatorPreferences?: () => ExtensionGeneratorPreferences
   generatorPreferencesLoaded?: () => boolean
@@ -53,64 +54,61 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
   })
 
   return (
-    <Dynamic
-      component={p.root ?? "main"}
-      class="flex min-h-dvh flex-col gap-3 bg-slate-50 p-4 text-slate-900 md:p-6 dark:bg-slate-950 dark:text-slate-100"
-    >
+    <Dynamic component={p.root ?? "main"} class="extension-page-surface flex min-h-dvh flex-col gap-3 p-4 md:p-6">
       <header class="flex flex-wrap items-center justify-between gap-2">
         <h1 class="text-lg font-semibold">OneWarden Vault</h1>
-        <Badge role="group" aria-label="Active site">
+        <ExtensionBadge role="group" aria-label="Active site">
           {state.siteLabel()}
-        </Badge>
+        </ExtensionBadge>
       </header>
 
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="flex flex-wrap items-center gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-900"
+        class="extension-subtle-surface flex flex-wrap items-center gap-1 rounded-xl p-1"
       >
-        <ButtonIcon
-          variant={state.isVaultPane() ? "filledBlue" : "ghost"}
+        <ExtensionButtonIcon
+          variant="ghost"
           size="sm"
           icon={mdiLock}
           aria-current={state.isVaultPane() ? "page" : undefined}
           onClick={state.vaultPaneOpen}
-          class="min-h-10"
+          class="extension-selected-control min-h-10"
         >
           Vault
-        </ButtonIcon>
-        <ButtonIcon
-          variant={state.isGeneratorPane() ? "filledBlue" : "ghost"}
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
+          variant="ghost"
           size="sm"
           icon={mdiKey}
           aria-current={state.isGeneratorPane() ? "page" : undefined}
           onClick={state.generatorPaneOpen}
-          class="min-h-10"
+          class="extension-selected-control min-h-10"
         >
           Generator
-        </ButtonIcon>
-        <ButtonIcon
-          variant={state.isSettingsPane() ? "filledBlue" : "ghost"}
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
+          variant="ghost"
           size="sm"
           icon={mdiCog}
           aria-current={state.isSettingsPane() ? "page" : undefined}
           onClick={state.settingsPaneOpen}
-          class="min-h-10"
+          class="extension-selected-control min-h-10"
         >
           Settings
-        </ButtonIcon>
+        </ExtensionButtonIcon>
         <Show when={state.isLoggedOut()}>
           <Button
-            variant={state.isAuthPane() ? "filledBlue" : "ghost"}
+            variant="ghost"
             size="sm"
             aria-current={state.isAuthPane() ? "page" : undefined}
             onClick={state.authPaneOpen}
-            class="min-h-10"
+            class="extension-selected-control min-h-10"
           >
             Create account
           </Button>
         </Show>
         <Show when={state.isVaultPane()}>
-          <span aria-hidden="true" class="mx-1 hidden h-6 w-px bg-slate-300 sm:block dark:bg-slate-700" />
+          <span aria-hidden="true" class="extension-boundary mx-1 hidden h-6 border-l sm:block" />
           <Show when={state.isLoginCategory()}>
             <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
               Add login
@@ -132,7 +130,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         </Show>
       </nav>
 
-      <Separator />
+      <ExtensionSeparator />
 
       <Show when={state.isAuthPane() && state.isLoggedOut()}>
         <ExtensionAccountAuthView
@@ -147,7 +145,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
       <Show when={state.isAuthPane() && !state.isLoggedOut()}>
         <section role="status" class="flex max-w-md flex-col gap-2 py-6">
           <p class="text-sm">Account setup is available after logging out.</p>
-          <Button variant="filledBlue" onClick={state.vaultPaneOpen}>
+          <Button variant="filledBlue" class="extension-primary-control" onClick={state.vaultPaneOpen}>
             Return to vault
           </Button>
         </section>
@@ -232,19 +230,26 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
             fallback={
               <section class="flex max-w-md flex-col gap-2 py-6">
                 <p class="text-sm">Sign in to open your vault.</p>
-                <InputS
+                <ExtensionInputS
                   type="email"
                   aria-label="Email address"
                   placeholder="Email address"
+                  disabled={state.busy()}
                   valueSignal={state.emailSignal}
                 />
-                <InputS
+                <ExtensionInputS
                   type="password"
                   aria-label="Master password"
                   placeholder="Master password"
+                  disabled={state.busy()}
                   valueSignal={state.masterPasswordSignal}
                 />
-                <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
+                <Button
+                  variant="filledBlue"
+                  class="extension-primary-control"
+                  disabled={state.busy()}
+                  onClick={state.accountLogin}
+                >
                   Log in
                 </Button>
               </section>
@@ -270,21 +275,30 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               <section class="flex max-w-md flex-col gap-3 py-6" aria-label="Unlock vault">
                 <p class="text-sm">Your vault is locked.</p>
                 <Show when={state.biometricAvailable() && state.biometricEnrolled()}>
-                  <Button variant="filledBlue" disabled={state.busy()} onClick={state.biometricUnlock}>
+                  <Button
+                    variant="filledBlue"
+                    class="extension-primary-control"
+                    disabled={state.busy()}
+                    onClick={state.biometricUnlock}
+                  >
                     Unlock with biometrics
                   </Button>
-                  <SeparatorWithText>
-                    <span class="text-xs text-slate-500 uppercase">or with password</span>
-                  </SeparatorWithText>
+                  <ExtensionSeparatorWithText>
+                    <span class="extension-muted-text text-xs uppercase">or with password</span>
+                  </ExtensionSeparatorWithText>
                 </Show>
-                <InputS
+                <ExtensionInputS
                   type="password"
                   aria-label="Master password"
                   placeholder="Master password"
+                  disabled={state.busy()}
                   valueSignal={state.masterPasswordSignal}
                 />
                 <Button
                   variant={state.biometricAvailable() && state.biometricEnrolled() ? "outline" : "filledBlue"}
+                  class={
+                    state.biometricAvailable() && state.biometricEnrolled() ? undefined : "extension-primary-control"
+                  }
                   disabled={state.busy()}
                   onClick={state.vaultUnlock}
                 >
@@ -292,7 +306,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                 </Button>
                 <Show when={state.errorMessage()}>
                   {(message) => (
-                    <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+                    <p role="alert" class="extension-error-text text-xs">
                       {message()}
                     </p>
                   )}
@@ -315,7 +329,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
         <Show when={state.isError()}>
           <section role="alert" class="flex max-w-md flex-col gap-2 py-6">
-            <p class="text-sm text-red-600 dark:text-red-400">{state.errorMessage() ?? "Something went wrong."}</p>
+            <p class="extension-error-text text-sm">{state.errorMessage() ?? "Something went wrong."}</p>
             <Button variant="outline" disabled={state.busy()} onClick={state.vaultSync}>
               Retry
             </Button>
@@ -336,7 +350,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               <div class="min-w-0 grow">
                 <nav class="mb-4 flex flex-wrap gap-1" aria-label="Vault item types">
                   <Button
-                    variant={state.isLoginCategory() ? "filledBlue" : "ghost"}
+                    variant="ghost"
+                    class="extension-selected-control"
                     size="sm"
                     aria-current={state.isLoginCategory() ? "page" : undefined}
                     onClick={state.loginCategoryOpen}
@@ -344,7 +359,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     Logins
                   </Button>
                   <Button
-                    variant={state.isSecureNoteCategory() ? "filledBlue" : "ghost"}
+                    variant="ghost"
+                    class="extension-selected-control"
                     size="sm"
                     aria-current={state.isSecureNoteCategory() ? "page" : undefined}
                     onClick={state.secureNoteCategoryOpen}
@@ -352,7 +368,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     Secure notes
                   </Button>
                   <Button
-                    variant={state.isCardCategory() ? "filledBlue" : "ghost"}
+                    variant="ghost"
+                    class="extension-selected-control"
                     size="sm"
                     aria-current={state.isCardCategory() ? "page" : undefined}
                     onClick={state.cardCategoryOpen}
@@ -360,7 +377,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     Cards
                   </Button>
                   <Button
-                    variant={state.isIdentityCategory() ? "filledBlue" : "ghost"}
+                    variant="ghost"
+                    class="extension-selected-control"
                     size="sm"
                     aria-current={state.isIdentityCategory() ? "page" : undefined}
                     onClick={state.identityCategoryOpen}
@@ -368,7 +386,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     Identities
                   </Button>
                   <Button
-                    variant={state.isSshKeyCategory() ? "filledBlue" : "ghost"}
+                    variant="ghost"
+                    class="extension-selected-control"
                     size="sm"
                     aria-current={state.isSshKeyCategory() ? "page" : undefined}
                     onClick={state.sshKeyCategoryOpen}
@@ -381,6 +400,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     model={state.resourceFilteredModel}
                     commands={p.commands}
                     idPrefix={p.idPrefix}
+                    initialState={p.initialState}
                   />
                 </Show>
                 <Show when={state.isCardCategory()}>
@@ -388,6 +408,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     model={state.resourceFilteredModel}
                     commands={p.commands}
                     idPrefix={p.idPrefix}
+                    initialState={p.initialState}
                   />
                 </Show>
                 <Show when={state.isIdentityCategory()}>
@@ -395,6 +416,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     model={state.resourceFilteredModel}
                     commands={p.commands}
                     idPrefix={p.idPrefix}
+                    initialState={p.initialState}
                   />
                 </Show>
                 <Show when={state.isSshKeyCategory()}>
@@ -402,21 +424,23 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     model={state.resourceFilteredModel}
                     commands={p.commands}
                     idPrefix={p.idPrefix}
+                    initialState={p.initialState}
                   />
                 </Show>
                 <Show when={state.isLoginCategory()}>
                   <div class="flex flex-col gap-4 md:flex-row md:items-start">
                     <section aria-label="Logins" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
-                      <InputS
+                      <ExtensionInputS
                         type="search"
                         aria-label="Search logins"
                         placeholder="Search logins"
+                        disabled={state.busy()}
                         valueSignal={state.searchQuerySignal}
                       />
 
                       <div class="flex flex-col gap-1">
                         <Label for={`${p.idPrefix ?? ""}extension-vault-sort`}>Sort logins</Label>
-                        <SelectSingleNative
+                        <ExtensionSelectSingleNative
                           id={`${p.idPrefix ?? ""}extension-vault-sort`}
                           disabled={state.busy()}
                           valueSignal={state.vaultSortSignal}
@@ -427,7 +451,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
                       <Show when={state.siteFilterAvailable()}>
                         <Button
-                          variant={state.siteOnly() ? "filledBlue" : "outline"}
+                          variant="outline"
+                          class="extension-selected-control"
                           size="sm"
                           aria-pressed={state.siteOnly() ? "true" : "false"}
                           onClick={state.siteOnlyToggle}
@@ -438,7 +463,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
                       <Show when={state.errorMessage()}>
                         {(message) => (
-                          <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+                          <p role="alert" class="extension-error-text text-xs">
                             {message()}
                           </p>
                         )}
@@ -447,7 +472,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                       <Show
                         when={!state.isEmpty()}
                         fallback={
-                          <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+                          <p class="extension-muted-text py-6 text-center text-sm">
                             {state.hasNoLogins() ? "Your vault is empty." : "No logins match your filters."}
                           </p>
                         }
@@ -471,11 +496,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                     <section aria-label="Login details" class="min-w-0 grow">
                       <Show
                         when={state.selectedLogin()}
-                        fallback={
-                          <p class="py-6 text-sm text-slate-600 dark:text-slate-300">
-                            Select a login to see its details.
-                          </p>
-                        }
+                        fallback={<p class="extension-muted-text py-6 text-sm">Select a login to see its details.</p>}
                       >
                         {(login) => (
                           <ExtensionFullWindowLoginDetail
@@ -494,6 +515,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                             model={p.model}
                             commands={p.commands}
                             idPrefix={p.idPrefix}
+                            initialState={p.initialState}
                           />
                         )}
                       </Show>

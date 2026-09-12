@@ -1,13 +1,14 @@
 import { For, type JSX, Show } from "solid-js"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
-import { TextareaS } from "#ui/input/textarea/TextareaS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
+import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
+import { ExtensionTextareaS } from "../ui/ExtensionTextareaS.jsx"
 import { ExtensionFullWindowAssignmentPanel } from "./ExtensionFullWindowAssignmentPanel.jsx"
 import { ExtensionFullWindowCipherExtras } from "./ExtensionFullWindowCipherExtras.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowSshKeyStateCreate } from "./extensionFullWindowSshKeyStateCreate.js"
 
@@ -15,28 +16,36 @@ export interface ExtensionFullWindowSshKeyPaneProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
   idPrefix?: string
+  initialState?: ExtensionFullWindowInitialState
 }
 
 export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPaneProps): JSX.Element {
-  const state = extensionFullWindowSshKeyStateCreate(p.model, () => p.commands)
+  const state = extensionFullWindowSshKeyStateCreate(p.model, () => p.commands, p.initialState)
   return (
     <div class="flex flex-col gap-4 md:flex-row md:items-start">
       <section aria-label="SSH keys" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
         <div class="flex items-center justify-between gap-2">
           <h2 class="font-semibold">SSH keys</h2>
-          <Button variant="filledBlue" size="sm" disabled={state.busy()} onClick={state.sshKeyCreateOpen}>
+          <Button
+            variant="filledBlue"
+            size="sm"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={state.sshKeyCreateOpen}
+          >
             New SSH key
           </Button>
         </div>
-        <InputS
+        <ExtensionInputS
           type="search"
           aria-label="Search SSH keys"
           placeholder="Search SSH keys"
+          disabled={state.busy()}
           valueSignal={state.querySignal}
         />
         <Show when={state.errorMessage()}>
           {(message) => (
-            <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+            <p role="alert" class="extension-error-text text-xs">
               {message()}
             </p>
           )}
@@ -50,7 +59,7 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
           <Show
             when={state.visibleSshKeys().length > 0}
             fallback={
-              <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              <p class="extension-muted-text py-6 text-center text-sm">
                 {state.sshKeysEmpty() ? "No SSH keys yet." : "No SSH keys match your search."}
               </p>
             }
@@ -60,8 +69,8 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                 {(key) => (
                   <li>
                     <Button
-                      variant={state.selectedSummary()?.id === key.id ? "filledBlue" : "ghost"}
-                      class="w-full justify-start"
+                      variant="ghost"
+                      class="extension-selected-control w-full justify-start"
                       aria-current={state.selectedSummary()?.id === key.id ? "true" : undefined}
                       onClick={() => state.sshKeySelect(key)}
                     >
@@ -76,7 +85,7 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
       </section>
       <section aria-label="SSH key details" class="min-w-0 grow">
         <Show when={state.formOpen()}>
-          <CardWrapper>
+          <ExtensionCardWrapper>
             <form
               aria-label={state.creating() ? "Create SSH key" : "Edit SSH key"}
               class="flex flex-col gap-4"
@@ -86,53 +95,67 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
               <h2 class="text-lg font-semibold">{state.creating() ? "New SSH key" : "Edit SSH key"}</h2>
               <div>
                 <Label for={`${p.idPrefix ?? ""}ssh-name`}>Name</Label>
-                <InputS id={`${p.idPrefix ?? ""}ssh-name`} required autofocus valueSignal={state.nameSignal} />
+                <ExtensionInputS
+                  id={`${p.idPrefix ?? ""}ssh-name`}
+                  required
+                  autofocus
+                  disabled={state.busy()}
+                  valueSignal={state.nameSignal}
+                />
               </div>
               <div>
                 <Label for={`${p.idPrefix ?? ""}ssh-private`}>Private key</Label>
-                <TextareaS
+                <ExtensionTextareaS
                   id={`${p.idPrefix ?? ""}ssh-private`}
                   required
                   rows={8}
                   autocomplete="off"
                   spellcheck={false}
+                  disabled={state.busy()}
                   valueSignal={state.privateKeySignal}
                 />
               </div>
               <div>
                 <Label for={`${p.idPrefix ?? ""}ssh-public`}>Public key</Label>
-                <TextareaS
+                <ExtensionTextareaS
                   id={`${p.idPrefix ?? ""}ssh-public`}
                   required
                   rows={3}
                   autocomplete="off"
                   spellcheck={false}
+                  disabled={state.busy()}
                   valueSignal={state.publicKeySignal}
                 />
               </div>
               <div>
                 <Label for={`${p.idPrefix ?? ""}ssh-fingerprint`}>Fingerprint</Label>
-                <InputS
+                <ExtensionInputS
                   id={`${p.idPrefix ?? ""}ssh-fingerprint`}
                   required
                   autocomplete="off"
                   spellcheck={false}
+                  disabled={state.busy()}
                   valueSignal={state.fingerprintSignal}
                 />
               </div>
               <div>
                 <Label for={`${p.idPrefix ?? ""}ssh-notes`}>Notes</Label>
-                <TextareaS id={`${p.idPrefix ?? ""}ssh-notes`} rows={4} valueSignal={state.notesSignal} />
+                <ExtensionTextareaS
+                  id={`${p.idPrefix ?? ""}ssh-notes`}
+                  rows={4}
+                  disabled={state.busy()}
+                  valueSignal={state.notesSignal}
+                />
               </div>
               <Show when={state.validation()}>
                 {(message) => (
-                  <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+                  <p role="alert" class="extension-error-text text-sm">
                     {message()}
                   </p>
                 )}
               </Show>
               <div class="flex gap-2">
-                <Button type="submit" variant="filledBlue" disabled={state.busy()}>
+                <Button type="submit" variant="filledBlue" class="extension-primary-control" disabled={state.busy()}>
                   {state.creating() ? "Save SSH key" : "Save changes"}
                 </Button>
                 <Button type="button" variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -140,7 +163,7 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                 </Button>
               </div>
             </form>
-          </CardWrapper>
+          </ExtensionCardWrapper>
         </Show>
         <Show when={!state.formOpen() && state.detailLoading()}>
           <div role="status" aria-label="Loading SSH key details" class="flex justify-center py-8">
@@ -149,7 +172,7 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && state.selectedDetail()}>
           {(cipher) => (
-            <CardWrapper>
+            <ExtensionCardWrapper>
               <article aria-label={`Details of ${cipher().name}`} class="flex flex-col gap-4">
                 <div class="flex items-center justify-between gap-2">
                   <h2 class="text-lg font-semibold">{cipher().name}</h2>
@@ -161,58 +184,65 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                   <Show when={cipher().sshKey.keyFingerprint}>
                     {(value) => (
                       <div>
-                        <dt class="text-xs font-medium text-slate-600 dark:text-slate-300">Fingerprint</dt>
-                        <dd class="break-all font-mono">{value()}</dd>
-                        <Button variant="ghost" size="sm" onClick={() => state.fieldCopy("keyFingerprint", value())}>
-                          {state.fieldIsCopied("keyFingerprint") ? "Copied" : "Copy fingerprint"}
-                        </Button>
+                        <dt class="extension-muted-text text-xs font-medium">Fingerprint</dt>
+                        <dd>
+                          <div class="break-all font-mono">{value()}</div>
+                          <Button variant="ghost" size="sm" onClick={() => state.fieldCopy("keyFingerprint", value())}>
+                            {state.fieldIsCopied("keyFingerprint") ? "Copied" : "Copy fingerprint"}
+                          </Button>
+                        </dd>
                       </div>
                     )}
                   </Show>
                   <Show when={cipher().sshKey.publicKey}>
                     {(value) => (
                       <div>
-                        <dt class="text-xs font-medium text-slate-600 dark:text-slate-300">Public key</dt>
-                        <dd class="whitespace-pre-wrap break-all font-mono text-sm">{value()}</dd>
-                        <Button variant="ghost" size="sm" onClick={() => state.fieldCopy("publicKey", value())}>
-                          {state.fieldIsCopied("publicKey") ? "Copied" : "Copy public key"}
-                        </Button>
+                        <dt class="extension-muted-text text-xs font-medium">Public key</dt>
+                        <dd>
+                          <div class="whitespace-pre-wrap break-all font-mono text-sm">{value()}</div>
+                          <Button variant="ghost" size="sm" onClick={() => state.fieldCopy("publicKey", value())}>
+                            {state.fieldIsCopied("publicKey") ? "Copied" : "Copy public key"}
+                          </Button>
+                        </dd>
                       </div>
                     )}
                   </Show>
                   <Show when={cipher().sshKey.privateKey}>
                     {(value) => (
                       <div>
-                        <dt class="text-xs font-medium text-slate-600 dark:text-slate-300">Private key</dt>
-                        <dd class="whitespace-pre-wrap break-all font-mono text-sm" aria-live="polite">
-                          {state.privateKeyValue(value())}
+                        <dt class="extension-muted-text text-xs font-medium">Private key</dt>
+                        <dd>
+                          <div class="whitespace-pre-wrap break-all font-mono text-sm" aria-live="polite">
+                            {state.privateKeyValue(value())}
+                          </div>
+                          <div class="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              class="extension-selected-control"
+                              disabled={!state.canViewSensitive()}
+                              aria-pressed={state.privateKeyIsRevealed()}
+                              onClick={state.privateKeyRevealToggle}
+                            >
+                              {state.privateKeyIsRevealed() ? "Hide private key" : "Reveal private key"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!state.canViewSensitive()}
+                              onClick={() => state.fieldCopy("privateKey", value())}
+                            >
+                              {state.fieldIsCopied("privateKey") ? "Copied" : "Copy private key"}
+                            </Button>
+                          </div>
                         </dd>
-                        <div class="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!state.canViewSensitive()}
-                            aria-pressed={state.privateKeyIsRevealed()}
-                            onClick={state.privateKeyRevealToggle}
-                          >
-                            {state.privateKeyIsRevealed() ? "Hide private key" : "Reveal private key"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!state.canViewSensitive()}
-                            onClick={() => state.fieldCopy("privateKey", value())}
-                          >
-                            {state.fieldIsCopied("privateKey") ? "Copied" : "Copy private key"}
-                          </Button>
-                        </div>
                       </div>
                     )}
                   </Show>
                 </dl>
                 <Show when={cipher().notes}>{(notes) => <p class="whitespace-pre-wrap text-sm">{notes()}</p>}</Show>
                 <Show when={!state.canEdit()}>
-                  <p role="status" class="text-sm text-slate-600 dark:text-slate-300">
+                  <p role="status" class="extension-muted-text text-sm">
                     You have view-only access to this item.
                   </p>
                 </Show>
@@ -231,6 +261,7 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                   model={p.model}
                   commands={p.commands}
                   idPrefix={`${p.idPrefix ?? ""}ssh-key-`}
+                  initialState={p.initialState}
                 />
                 <Show
                   when={state.deleting()}
@@ -258,14 +289,19 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                   <div
                     role="alertdialog"
                     aria-labelledby={`${p.idPrefix ?? ""}delete-ssh-title`}
-                    class="flex flex-col gap-2 rounded-lg border border-red-300 p-3"
+                    class="extension-destructive-surface flex flex-col gap-2 rounded-lg p-3"
                   >
                     <h3 id={`${p.idPrefix ?? ""}delete-ssh-title`} class="font-semibold">
                       Move this SSH key to trash?
                     </h3>
                     <p class="text-sm">You can restore it later from a compatible vault client.</p>
                     <div class="flex gap-2">
-                      <Button variant="filledBlue" disabled={state.busy()} onClick={state.sshKeyDeleteConfirm}>
+                      <Button
+                        variant="filledBlue"
+                        class="extension-destructive-control"
+                        disabled={state.busy()}
+                        onClick={state.sshKeyDeleteConfirm}
+                      >
                         Move to trash
                       </Button>
                       <Button variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -275,11 +311,11 @@ export function ExtensionFullWindowSshKeyPane(p: ExtensionFullWindowSshKeyPanePr
                   </div>
                 </Show>
               </article>
-            </CardWrapper>
+            </ExtensionCardWrapper>
           )}
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && !state.selectedDetail()}>
-          <p class="py-6 text-sm text-slate-600 dark:text-slate-300">Select an SSH key to see its details.</p>
+          <p class="extension-muted-text py-6 text-sm">Select an SSH key to see its details.</p>
         </Show>
       </section>
     </div>

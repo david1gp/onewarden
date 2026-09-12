@@ -12,6 +12,7 @@ import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCre
 import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
@@ -57,22 +58,28 @@ type ExtensionFullWindowViewSortOptions = {
 export function extensionFullWindowViewStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
-  initialState?: { pane?: string; selectedLoginId?: string },
+  initialState?: ExtensionFullWindowInitialState,
   sortOptions: ExtensionFullWindowViewSortOptions = {},
 ) {
-  const searchQuerySignal = extensionFullWindowUrlSignalCreate("q")
+  const searchQuerySignal = initialState
+    ? createSignalObject(initialState.query ?? "")
+    : extensionFullWindowUrlSignalCreate("q")
   const selectedLoginIdSignal = initialState
     ? createSignalObject(initialState.selectedLoginId ?? "")
     : extensionFullWindowUrlSignalCreate("login", "", extensionFullWindowLoginIdSchema)
   const paneSignal = initialState
     ? createSignalObject(initialState.pane ?? extensionFullWindowPane.vault)
     : extensionFullWindowUrlSignalCreate("pane", extensionFullWindowPane.vault, extensionFullWindowPaneSchema)
-  const siteOnlySignal = extensionFullWindowUrlSignalCreate("site", "", extensionFullWindowSiteFilterSchema)
-  const vaultCategorySignal = extensionFullWindowUrlSignalCreate("category", "logins")
+  const siteOnlySignal = initialState
+    ? createSignalObject(initialState.siteOnly ? "1" : "")
+    : extensionFullWindowUrlSignalCreate("site", "", extensionFullWindowSiteFilterSchema)
+  const vaultCategorySignal = initialState
+    ? createSignalObject(initialState.category ?? "logins")
+    : extensionFullWindowUrlSignalCreate("category", "logins")
   const emailSignal = createSignalObject("")
   const masterPasswordSignal = createSignalObject("")
   const localVaultSortSignal = createSignalObject<VaultSort>(vaultSortDefault)
-  const resourceState = extensionFullWindowResourceStateCreate(model, commands)
+  const resourceState = extensionFullWindowResourceStateCreate(model, commands, initialState)
   const resourceFilteredModel = createMemo(() => ({
     ...model(),
     logins: model().logins.filter(resourceState.cipherMatches),

@@ -3,6 +3,9 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
+import { extensionThemeNext } from "../theme/extensionThemeNext.js"
+import { extensionThemeSet } from "../theme/extensionThemeSet.js"
+import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import { extensionPopupStatus } from "./ExtensionPopupStatus.js"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
@@ -12,9 +15,17 @@ import { extensionPopupLoginSearchMatch } from "./extensionPopupLoginSearchMatch
 export function extensionPopupViewStateCreate(
   model: () => ExtensionPopupViewModel,
   commands: () => ExtensionPopupCommands,
+  themeOptions: {
+    theme?: () => "light" | "dark"
+    onThemeChange?: (theme: "light" | "dark") => void
+  } = {},
 ) {
   const searchQuerySignal = createSignalObject("")
   const masterPasswordSignal = createSignalObject("")
+  const localThemeSignal = createSignalObject<"light" | "dark">(
+    document.documentElement.classList.contains("dark") ? "dark" : "light",
+  )
+  const activePaneSignal = createSignalObject<"vault" | "generator" | "settings">(extensionFullWindowPane.vault)
 
   const status = createMemo(() => model().status)
   const hostname = createMemo(() => model().hostname)
@@ -36,6 +47,16 @@ export function extensionPopupViewStateCreate(
 
   const biometricAvailable = createMemo(() => model().biometricStatus?.capability.status === "available")
   const biometricEnrolled = createMemo(() => model().biometricStatus?.enrolled ?? false)
+  const theme = createMemo(() => themeOptions.theme?.() ?? localThemeSignal.get())
+  const themeToggle = (): void => {
+    const next = extensionThemeNext(theme())
+    if (themeOptions.onThemeChange !== undefined) {
+      themeOptions.onThemeChange(next)
+      return
+    }
+    localThemeSignal.set(next)
+    void extensionThemeSet(next)
+  }
 
   const fieldIsCopied = (field: ExtensionCopyableField) => model().copiedFieldKey === field.key
   const totpIsCopied = (login: ExtensionLogin) => model().copiedFieldKey === `totp:${login.id}`
@@ -47,9 +68,21 @@ export function extensionPopupViewStateCreate(
   const vaultSync = () => commands().vaultSync()
   const vaultLock = () => commands().vaultLock()
   const vaultLogout = () => commands().vaultLogout()
-  const fullVaultOpen = () => commands().fullVaultOpen()
-  const generatorOpen = () => commands().generatorOpen()
-  const settingsOpen = () => commands().settingsOpen()
+  const isVaultPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.vault)
+  const isGeneratorPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.generator)
+  const isSettingsPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.settings)
+  const fullVaultOpen = () => {
+    activePaneSignal.set(extensionFullWindowPane.vault)
+    commands().fullVaultOpen()
+  }
+  const generatorOpen = () => {
+    activePaneSignal.set(extensionFullWindowPane.generator)
+    commands().generatorOpen()
+  }
+  const settingsOpen = () => {
+    activePaneSignal.set(extensionFullWindowPane.settings)
+    commands().settingsOpen()
+  }
   const accountLogin = () => commands().accountLogin()
   const accountRegister = () => commands().accountRegister()
   const biometricUnlock = () => commands().biometricUnlock()
@@ -89,10 +122,15 @@ export function extensionPopupViewStateCreate(
     fullVaultOpen,
     generatorOpen,
     settingsOpen,
+    isVaultPane,
+    isGeneratorPane,
+    isSettingsPane,
     vaultUnlock,
     biometricAvailable,
     biometricEnrolled,
     biometricUnlock,
+    theme,
+    themeToggle,
     accountLogin,
     accountRegister,
   }

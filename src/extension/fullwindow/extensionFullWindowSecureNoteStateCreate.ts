@@ -3,6 +3,7 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionBackgroundCipherSummary } from "../background/extensionBackgroundCipherSummarySchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -11,10 +12,19 @@ type SecureNoteMode = "list" | "create" | "detail" | "edit" | "delete"
 export function extensionFullWindowSecureNoteStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: ExtensionFullWindowInitialState,
 ) {
   const querySignal = extensionFullWindowUrlSignalCreate("q")
-  const selectedIdSignal = extensionFullWindowUrlSignalCreate("note")
-  const modeSignal = createSignalObject<SecureNoteMode>(selectedIdSignal.get() ? "detail" : "list")
+  const selectedIdSignal = initialState
+    ? createSignalObject(initialState.selectedCipherId ?? "")
+    : extensionFullWindowUrlSignalCreate("note")
+  const modeSignal = createSignalObject<SecureNoteMode>(
+    initialState?.deleteCipherConfirmation && selectedIdSignal.get()
+      ? "delete"
+      : selectedIdSignal.get()
+        ? "detail"
+        : "list",
+  )
   const nameSignal = createSignalObject("")
   const noteSignal = createSignalObject("")
   const validationSignal = createSignalObject<string | null>(null)

@@ -1,8 +1,9 @@
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
+import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowCipherExtrasStateCreate } from "./extensionFullWindowCipherExtrasStateCreate.js"
 
@@ -11,6 +12,7 @@ export interface ExtensionFullWindowCipherExtrasProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
   idPrefix?: string
+  initialState?: ExtensionFullWindowInitialState
 }
 
 export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtrasProps): JSX.Element {
@@ -18,10 +20,11 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
     cipher: p.cipher,
     model: p.model,
     commands: () => p.commands,
+    initialState: p.initialState,
   })
   return (
     <div class="flex flex-col gap-3">
-      <CardWrapper class="flex flex-col gap-3 border border-slate-200 dark:border-slate-700">
+      <ExtensionCardWrapper class="flex flex-col gap-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h3 class="font-semibold">Attachments ({state.attachments().length})</h3>
           <Show when={state.canEdit()}>
@@ -44,15 +47,15 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
         </Show>
         <Show
           when={state.attachments().length > 0}
-          fallback={<p class="text-sm text-slate-600 dark:text-slate-300">No attachments.</p>}
+          fallback={<p class="extension-muted-text text-sm">No attachments.</p>}
         >
           <ul class="flex list-none flex-col gap-2">
             <For each={state.attachments()}>
               {(attachment) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 p-2 dark:border-slate-700">
+                <li class="extension-boundary flex flex-wrap items-center justify-between gap-2 rounded border p-2">
                   <div class="min-w-0">
                     <p class="truncate text-sm font-medium">{attachment.fileName}</p>
-                    <p class="text-xs text-slate-600 dark:text-slate-300">{state.sizeFormat(attachment)}</p>
+                    <p class="extension-muted-text text-xs">{state.sizeFormat(attachment)}</p>
                   </div>
                   <div class="flex gap-2">
                     <Button
@@ -89,7 +92,7 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
               role="alertdialog"
               aria-labelledby={`${p.idPrefix ?? ""}attachment-delete-title`}
               aria-describedby={`${p.idPrefix ?? ""}attachment-delete-description`}
-              class="flex flex-col gap-2 rounded border border-red-300 p-3"
+              class="extension-destructive-surface flex flex-col gap-2 rounded p-3"
             >
               <h4 id={`${p.idPrefix ?? ""}attachment-delete-title`} class="font-semibold">
                 Delete attachment?
@@ -98,7 +101,12 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
                 {attachment().fileName} will be permanently deleted.
               </p>
               <div class="flex gap-2">
-                <Button variant="filledBlue" disabled={state.anyAttachmentBusy()} onClick={state.deleteConfirm}>
+                <Button
+                  variant="filledBlue"
+                  class="extension-destructive-control"
+                  disabled={state.anyAttachmentBusy()}
+                  onClick={state.deleteConfirm}
+                >
                   Delete
                 </Button>
                 <Button variant="outline" disabled={state.anyAttachmentBusy()} onClick={state.deleteCancel}>
@@ -108,27 +116,26 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
             </div>
           )}
         </Show>
-      </CardWrapper>
+      </ExtensionCardWrapper>
 
       <Show when={state.canViewHistory() && state.history().length > 0}>
-        <CardWrapper class="flex flex-col gap-3 border border-slate-200 dark:border-slate-700">
+        <ExtensionCardWrapper class="flex flex-col gap-3">
           <h3 class="font-semibold">Password history ({state.history().length})</h3>
           <ul class="flex list-none flex-col gap-2">
             <For each={state.history()}>
               {(entry, index) => (
-                <li class="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 p-2 dark:border-slate-700">
+                <li class="extension-boundary flex flex-wrap items-center justify-between gap-2 rounded border p-2">
                   <div class="min-w-0">
                     <p class="truncate font-mono text-sm" aria-live="polite">
                       {state.historyRevealed(entry, index()) ? entry.password : "••••••••••••"}
                     </p>
-                    <p class="text-xs text-slate-600 dark:text-slate-300">
-                      Last used: {state.dateFormat(entry.lastUsedDate)}
-                    </p>
+                    <p class="extension-muted-text text-xs">Last used: {state.dateFormat(entry.lastUsedDate)}</p>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
+                      class="extension-selected-control"
                       aria-label={state.historyRevealed(entry, index()) ? "Hide past password" : "Reveal past password"}
                       aria-pressed={state.historyRevealed(entry, index())}
                       onClick={() => state.historyRevealToggle(entry, index())}
@@ -163,7 +170,7 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
               role="alertdialog"
               aria-labelledby={`${p.idPrefix ?? ""}password-restore-title`}
               aria-describedby={`${p.idPrefix ?? ""}password-restore-description`}
-              class="flex flex-col gap-2 rounded border border-amber-300 p-3"
+              class="extension-warning-surface flex flex-col gap-2 rounded p-3"
             >
               <h4 id={`${p.idPrefix ?? ""}password-restore-title`} class="font-semibold">
                 Restore this password?
@@ -172,7 +179,12 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
                 It will become the current password. The current password will be added to history.
               </p>
               <div class="flex gap-2">
-                <Button variant="filledBlue" disabled={state.busy()} onClick={state.restoreConfirm}>
+                <Button
+                  variant="filledBlue"
+                  class="extension-primary-control"
+                  disabled={state.busy()}
+                  onClick={state.restoreConfirm}
+                >
                   Restore password
                 </Button>
                 <Button variant="outline" disabled={state.busy()} onClick={state.restoreCancel}>
@@ -181,11 +193,11 @@ export function ExtensionFullWindowCipherExtras(p: ExtensionFullWindowCipherExtr
               </div>
             </div>
           </Show>
-        </CardWrapper>
+        </ExtensionCardWrapper>
       </Show>
       <Show when={state.errorMessage()}>
         {(message) => (
-          <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" class="extension-error-text text-sm">
             {message()}
           </p>
         )}

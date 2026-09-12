@@ -1,8 +1,8 @@
 import { For, type JSX, Show } from "solid-js"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { Badge } from "#ui/static/badge/Badge.jsx"
+import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import { extensionFullWindowResourceNavigationStateCreate } from "./extensionFullWindowResourceNavigationStateCreate.js"
 import type { extensionFullWindowResourceStateCreate } from "./extensionFullWindowResourceStateCreate.js"
@@ -21,7 +21,13 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
     >
       <div class="flex items-center justify-between gap-2">
         <h2 class="font-semibold">Vault</h2>
-        <Button variant="ghost" size="sm" aria-pressed={!state.filterActive()} onClick={state.filterClear}>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="extension-selected-control"
+          aria-pressed={!state.filterActive()}
+          onClick={state.filterClear}
+        >
           All ({state.allCount()})
         </Button>
       </div>
@@ -32,21 +38,17 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
       </Show>
       <Show when={!state.resourcesLoading()}>
         <nav aria-label="Organizations" class="flex flex-col gap-1">
-          <h3 class="text-xs font-semibold uppercase text-slate-600 dark:text-slate-300">Organizations</h3>
+          <h3 class="extension-muted-text text-xs font-semibold uppercase">Organizations</h3>
           <Show
             when={state.activeOrganizations().length > 0}
-            fallback={<p class="text-xs text-slate-600 dark:text-slate-300">No organizations.</p>}
+            fallback={<p class="extension-muted-text text-xs">No organizations.</p>}
           >
             <For each={state.activeOrganizations()}>
               {(organization) => (
                 <Button
-                  variant={
-                    state.selectedOrganization()?.id === organization.id && state.selectedCollection() === null
-                      ? "filledBlue"
-                      : "ghost"
-                  }
+                  variant="ghost"
                   size="sm"
-                  class="w-full justify-start"
+                  class="extension-selected-control w-full justify-start"
                   aria-current={
                     state.selectedOrganization()?.id === organization.id && state.selectedCollection() === null
                       ? "page"
@@ -63,26 +65,20 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
 
         <section aria-labelledby={`${p.idPrefix ?? ""}folders-heading`} class="flex flex-col gap-1">
           <div class="flex items-center justify-between gap-2">
-            <h3
-              id={`${p.idPrefix ?? ""}folders-heading`}
-              class="text-xs font-semibold uppercase text-slate-600 dark:text-slate-300"
-            >
+            <h3 id={`${p.idPrefix ?? ""}folders-heading`} class="extension-muted-text text-xs font-semibold uppercase">
               Folders
             </h3>
             <Button variant="ghost" size="sm" disabled={state.busy()} onClick={() => state.actionOpen("folder-create")}>
               New
             </Button>
           </div>
-          <Show
-            when={state.folders().length > 0}
-            fallback={<p class="text-xs text-slate-600 dark:text-slate-300">No folders.</p>}
-          >
+          <Show when={state.folders().length > 0} fallback={<p class="extension-muted-text text-xs">No folders.</p>}>
             <For each={state.folders()}>
               {(folder) => (
                 <Button
-                  variant={state.selectedFolder()?.id === folder.id ? "filledBlue" : "ghost"}
+                  variant="ghost"
                   size="sm"
-                  class="w-full justify-start"
+                  class="extension-selected-control w-full justify-start"
                   aria-current={state.selectedFolder()?.id === folder.id ? "page" : undefined}
                   onClick={() => state.folderOpen(folder.id)}
                 >
@@ -119,7 +115,7 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
           <div class="flex items-center justify-between gap-2">
             <h3
               id={`${p.idPrefix ?? ""}collections-heading`}
-              class="text-xs font-semibold uppercase text-slate-600 dark:text-slate-300"
+              class="extension-muted-text text-xs font-semibold uppercase"
             >
               Collections
             </h3>
@@ -136,15 +132,15 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
           </div>
           <Show
             when={state.collections().length > 0}
-            fallback={<p class="text-xs text-slate-600 dark:text-slate-300">No collections.</p>}
+            fallback={<p class="extension-muted-text text-xs">No collections.</p>}
           >
             <For each={state.collections()}>
               {(collection) => (
-                <div class="rounded-lg border border-slate-200 p-1 dark:border-slate-700">
+                <div class="extension-boundary rounded-lg border p-1">
                   <Button
-                    variant={state.selectedCollection()?.id === collection.id ? "filledBlue" : "ghost"}
+                    variant="ghost"
                     size="sm"
-                    class="w-full justify-start"
+                    class="extension-selected-control w-full justify-start"
                     aria-current={state.selectedCollection()?.id === collection.id ? "page" : undefined}
                     onClick={() => state.collectionOpen(collection)}
                   >
@@ -156,22 +152,22 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
                   >
                     <Show when={collection.manage}>
                       <li>
-                        <Badge>Manage</Badge>
+                        <ExtensionBadge>Manage</ExtensionBadge>
                       </li>
                     </Show>
                     <Show when={collection.readOnly}>
                       <li>
-                        <Badge>Read only</Badge>
+                        <ExtensionBadge>Read only</ExtensionBadge>
                       </li>
                     </Show>
                     <Show when={collection.unmanaged}>
                       <li>
-                        <Badge>Unmanaged</Badge>
+                        <ExtensionBadge>Unmanaged</ExtensionBadge>
                       </li>
                     </Show>
                     <Show when={collection.hidePasswords}>
                       <li>
-                        <Badge>Passwords hidden</Badge>
+                        <ExtensionBadge>Passwords hidden</ExtensionBadge>
                       </li>
                     </Show>
                   </ul>
@@ -207,20 +203,32 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
       <Show when={["folder-create", "folder-edit", "collection-create", "collection-edit"].includes(state.action())}>
         <form
           aria-label={state.action().includes("collection") ? "Manage collection" : "Manage folder"}
-          class="flex flex-col gap-2 rounded-lg border border-slate-300 p-3 dark:border-slate-700"
+          class="extension-boundary flex flex-col gap-2 rounded-lg border p-3"
           onSubmit={state.formSubmit}
         >
           <Label for={`${p.idPrefix ?? ""}resource-name`}>Name</Label>
-          <InputS id={`${p.idPrefix ?? ""}resource-name`} required autofocus valueSignal={state.nameSignal} />
+          <ExtensionInputS
+            id={`${p.idPrefix ?? ""}resource-name`}
+            required
+            autofocus
+            disabled={state.busy()}
+            valueSignal={state.nameSignal}
+          />
           <Show when={state.validation()}>
             {(message) => (
-              <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+              <p role="alert" class="extension-error-text text-xs">
                 {message()}
               </p>
             )}
           </Show>
           <div class="flex gap-1">
-            <Button type="submit" variant="filledBlue" size="sm" disabled={state.busy()}>
+            <Button
+              type="submit"
+              variant="filledBlue"
+              size="sm"
+              class="extension-primary-control"
+              disabled={state.busy()}
+            >
               Save
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={state.actionCancel}>
@@ -233,11 +241,17 @@ export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowReso
         <div
           role="alertdialog"
           aria-label="Confirm resource deletion"
-          class="flex flex-col gap-2 rounded-lg border border-red-300 p-3"
+          class="extension-destructive-surface flex flex-col gap-2 rounded-lg p-3"
         >
           <p class="text-sm">Delete this {state.action().includes("collection") ? "collection" : "folder"}?</p>
           <div class="flex gap-1">
-            <Button variant="filledBlue" size="sm" disabled={state.busy()} onClick={state.deleteConfirm}>
+            <Button
+              variant="filledBlue"
+              size="sm"
+              class="extension-destructive-control"
+              disabled={state.busy()}
+              onClick={state.deleteConfirm}
+            >
               Delete
             </Button>
             <Button variant="outline" size="sm" onClick={state.actionCancel}>

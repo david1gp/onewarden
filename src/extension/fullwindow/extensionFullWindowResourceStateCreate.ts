@@ -4,6 +4,7 @@ import type { ExtensionBackgroundCipherSummary } from "../background/extensionBa
 import type { ExtensionBackgroundCollectionDto } from "../background/extensionBackgroundCollectionDtoSchema.js"
 import type { ExtensionProfile } from "../crypto/extensionProfileSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -21,11 +22,20 @@ type ExtensionOrganization = ExtensionProfile["organizations"][number]
 export function extensionFullWindowResourceStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: ExtensionFullWindowInitialState,
 ) {
-  const folderIdSignal = extensionFullWindowUrlSignalCreate("folder")
-  const collectionIdSignal = extensionFullWindowUrlSignalCreate("collection")
-  const organizationIdSignal = extensionFullWindowUrlSignalCreate("organization")
-  const actionSignal = extensionFullWindowUrlSignalCreate("resource-action")
+  const folderIdSignal = initialState
+    ? createSignalObject(initialState.folderId ?? "")
+    : extensionFullWindowUrlSignalCreate("folder")
+  const collectionIdSignal = initialState
+    ? createSignalObject(initialState.collectionId ?? "")
+    : extensionFullWindowUrlSignalCreate("collection")
+  const organizationIdSignal = initialState
+    ? createSignalObject(initialState.organizationId ?? "")
+    : extensionFullWindowUrlSignalCreate("organization")
+  const actionSignal = initialState
+    ? createSignalObject<ResourceAction>(initialState.resourceAction ?? "")
+    : extensionFullWindowUrlSignalCreate("resource-action")
   const nameSignal = createSignalObject("")
   const validationSignal = createSignalObject<string | null>(null)
 

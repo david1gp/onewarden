@@ -4,6 +4,7 @@ import type { ExtensionBackgroundCipherSummary } from "../background/extensionBa
 import type { ExtensionCipherIdentity } from "../crypto/extensionCipherIdentitySchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -52,10 +53,19 @@ const identityFieldNames: IdentityField[] = [
 export function extensionFullWindowIdentityStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: ExtensionFullWindowInitialState,
 ) {
   const querySignal = extensionFullWindowUrlSignalCreate("q")
-  const selectedIdSignal = extensionFullWindowUrlSignalCreate("identity")
-  const modeSignal = createSignalObject<IdentityMode>(selectedIdSignal.get() ? "detail" : "list")
+  const selectedIdSignal = initialState
+    ? createSignalObject(initialState.selectedCipherId ?? "")
+    : extensionFullWindowUrlSignalCreate("identity")
+  const modeSignal = createSignalObject<IdentityMode>(
+    initialState?.deleteCipherConfirmation && selectedIdSignal.get()
+      ? "delete"
+      : selectedIdSignal.get()
+        ? "detail"
+        : "list",
+  )
   const nameSignal = createSignalObject("")
   const notesSignal = createSignalObject("")
   const validationSignal = createSignalObject<string | null>(null)

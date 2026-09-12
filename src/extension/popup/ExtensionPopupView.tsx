@@ -1,15 +1,17 @@
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
+import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
+import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
-import { Badge } from "#ui/static/badge/Badge.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
-import { Separator } from "#ui/static/separator/Separator.jsx"
-import { SeparatorWithText } from "#ui/static/separator/SeparatorWithText.jsx"
+import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
+import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
+import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
+import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import { ExtensionPopupLoginCard } from "./ExtensionPopupLoginCard.jsx"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
@@ -20,6 +22,9 @@ export interface ExtensionPopupViewProps {
   commands: ExtensionPopupCommands
   root?: "main" | "div"
   navigationLabel?: string
+  idPrefix?: string
+  theme?: () => "light" | "dark"
+  onThemeChange?: (theme: "light" | "dark") => void
 }
 
 /** Browser-action popup showing the vault filtered to the active site. */
@@ -27,57 +32,69 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   const state = extensionPopupViewStateCreate(
     () => p.model,
     () => p.commands,
+    { theme: p.theme, onThemeChange: p.onThemeChange },
   )
 
   return (
     <Dynamic
       component={p.root ?? "main"}
-      class="flex w-90 flex-col gap-3 bg-slate-50 p-3 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+      class="extension-page-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
     >
       <header class="flex items-center justify-between gap-2">
         <h1 class="text-sm font-semibold">OneWarden</h1>
-        <Badge role="group" aria-label="Active site">
-          {state.siteLabel()}
-        </Badge>
+        <div class="flex items-center gap-2">
+          <ExtensionButtonIcon
+            icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
+            variant="ghost"
+            size="sm"
+            aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+            onClick={state.themeToggle}
+          />
+          <ExtensionBadge role="group" aria-label="Active site">
+            {state.siteLabel()}
+          </ExtensionBadge>
+        </div>
       </header>
 
-      <Separator />
+      <ExtensionSeparator />
 
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="flex items-center gap-1 rounded-xl bg-slate-200 p-1 dark:bg-slate-900"
+        class="extension-subtle-surface grid grid-cols-3 items-center gap-1 rounded-xl p-1"
       >
-        <ButtonIcon
-          variant="filledBlue"
+        <ExtensionButtonIcon
+          variant="ghost"
           size="sm"
           icon={mdiLock}
-          aria-current="page"
+          aria-current={state.isVaultPane() ? "page" : undefined}
           disabled={state.busy()}
           onClick={state.fullVaultOpen}
-          class="min-h-10 flex-1 px-2"
+          class="extension-selected-control min-h-10 min-w-0 px-2"
         >
           Vault
-        </ButtonIcon>
-        <ButtonIcon
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
           variant="ghost"
           size="sm"
           icon={mdiKey}
+          aria-current={state.isGeneratorPane() ? "page" : undefined}
           disabled={state.busy()}
           onClick={state.generatorOpen}
-          class="min-h-10 flex-1 px-2"
+          class="extension-selected-control min-h-10 min-w-0 px-2"
         >
           Generator
-        </ButtonIcon>
-        <ButtonIcon
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
           variant="ghost"
           size="sm"
           icon={mdiCog}
+          aria-current={state.isSettingsPane() ? "page" : undefined}
           disabled={state.busy()}
           onClick={state.settingsOpen}
-          class="min-h-10 flex-1 px-2"
+          class="extension-selected-control min-h-10 min-w-0 px-2"
         >
           Settings
-        </ButtonIcon>
+        </ExtensionButtonIcon>
       </nav>
 
       <Show when={state.isLoading()}>
@@ -89,7 +106,12 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       <Show when={state.isLoggedOut()}>
         <section class="flex flex-col gap-2 py-4">
           <p class="text-sm">Sign in to use your vault on this site.</p>
-          <Button variant="filledBlue" disabled={state.busy()} onClick={state.accountLogin}>
+          <Button
+            variant="filledBlue"
+            disabled={state.busy()}
+            onClick={state.accountLogin}
+            class="extension-primary-control"
+          >
             Log in
           </Button>
           <Button variant="outline" disabled={state.busy()} onClick={state.accountRegister}>
@@ -102,29 +124,37 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         <section class="flex flex-col gap-2 py-4" aria-label="Unlock vault">
           <p class="text-sm">Your vault is locked.</p>
           <Show when={state.biometricAvailable() && state.biometricEnrolled()}>
-            <Button variant="filledBlue" disabled={state.busy()} onClick={state.biometricUnlock}>
+            <Button
+              variant="filledBlue"
+              disabled={state.busy()}
+              onClick={state.biometricUnlock}
+              class="extension-primary-control"
+            >
               Unlock with biometrics
             </Button>
-            <SeparatorWithText>
-              <span class="text-xs text-slate-500 uppercase">or with password</span>
-            </SeparatorWithText>
+            <ExtensionSeparatorWithText>
+              <span class="extension-muted-text text-xs uppercase">or with password</span>
+            </ExtensionSeparatorWithText>
           </Show>
-          <InputS
+          <ExtensionInputS
             type="password"
             aria-label="Master password"
             placeholder="Master password"
+            autocomplete="current-password"
+            disabled={state.busy()}
             valueSignal={state.masterPasswordSignal}
           />
           <Button
             variant={state.biometricAvailable() && state.biometricEnrolled() ? "outline" : "filledBlue"}
             disabled={state.busy()}
             onClick={state.vaultUnlock}
+            class={state.biometricAvailable() && state.biometricEnrolled() ? undefined : "extension-primary-control"}
           >
             Unlock
           </Button>
           <Show when={state.errorMessage()}>
             {(message) => (
-              <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+              <p role="alert" class="extension-error-text text-xs">
                 {message()}
               </p>
             )}
@@ -134,7 +164,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
 
       <Show when={state.isError()}>
         <section role="alert" class="flex flex-col gap-2 py-4">
-          <p class="text-sm text-red-600 dark:text-red-400">{state.errorMessage() ?? "Something went wrong."}</p>
+          <p class="extension-error-text text-sm">{state.errorMessage() ?? "Something went wrong."}</p>
           <Button variant="outline" disabled={state.busy()} onClick={state.vaultSync}>
             Retry
           </Button>
@@ -142,23 +172,26 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       </Show>
 
       <Show when={state.isReady()}>
-        <InputS
+        <ExtensionInputS
           type="search"
+          id={`${p.idPrefix ?? ""}popup-login-search`}
           aria-label="Search logins"
           placeholder="Search logins"
+          autocomplete="off"
+          disabled={state.busy()}
           valueSignal={state.searchQuerySignal}
         />
 
         <Show when={state.errorMessage()}>
           {(message) => (
-            <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+            <p role="alert" class="extension-error-text text-xs">
               {message()}
             </p>
           )}
         </Show>
 
         <Show when={!state.isEmpty()}>
-          <ul class="flex list-none flex-col gap-2">
+          <ul class="max-h-72 min-w-0 overflow-y-auto pr-1 flex list-none flex-col gap-2" aria-label="Saved logins">
             <For each={state.visibleLogins()}>
               {(login) => (
                 <li>
@@ -179,13 +212,13 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
 
         <Show when={state.isEmpty()}>
-          <p class="py-4 text-center text-sm text-slate-600 dark:text-slate-300">
+          <p role="status" class="extension-muted-text py-4 text-center text-sm">
             {state.hasNoLogins() ? "No logins saved for this site." : "No logins match your search."}
           </p>
         </Show>
       </Show>
 
-      <Separator />
+      <ExtensionSeparator />
 
       <footer class="flex flex-wrap gap-1">
         <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.loginAdd}>

@@ -1,13 +1,14 @@
 import { For, type JSX, Show } from "solid-js"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
-import { TextareaS } from "#ui/input/textarea/TextareaS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
+import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
+import { ExtensionTextareaS } from "../ui/ExtensionTextareaS.jsx"
 import { ExtensionFullWindowAssignmentPanel } from "./ExtensionFullWindowAssignmentPanel.jsx"
 import { ExtensionFullWindowCipherExtras } from "./ExtensionFullWindowCipherExtras.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowSecureNoteStateCreate } from "./extensionFullWindowSecureNoteStateCreate.js"
 
@@ -15,28 +16,36 @@ export interface ExtensionFullWindowSecureNotePaneProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
   idPrefix?: string
+  initialState?: ExtensionFullWindowInitialState
 }
 
 export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNotePaneProps): JSX.Element {
-  const state = extensionFullWindowSecureNoteStateCreate(p.model, () => p.commands)
+  const state = extensionFullWindowSecureNoteStateCreate(p.model, () => p.commands, p.initialState)
   return (
     <div class="flex flex-col gap-4 md:flex-row md:items-start">
       <section aria-label="Secure notes" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
         <div class="flex items-center justify-between gap-2">
           <h2 class="font-semibold">Secure notes</h2>
-          <Button variant="filledBlue" size="sm" disabled={state.busy()} onClick={state.noteCreateOpen}>
+          <Button
+            variant="filledBlue"
+            size="sm"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={state.noteCreateOpen}
+          >
             New note
           </Button>
         </div>
-        <InputS
+        <ExtensionInputS
           type="search"
           aria-label="Search secure notes"
           placeholder="Search secure notes"
+          disabled={state.busy()}
           valueSignal={state.querySignal}
         />
         <Show when={state.errorMessage()}>
           {(message) => (
-            <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+            <p role="alert" class="extension-error-text text-xs">
               {message()}
             </p>
           )}
@@ -50,7 +59,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
           <Show
             when={state.visibleNotes().length > 0}
             fallback={
-              <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              <p class="extension-muted-text py-6 text-center text-sm">
                 {state.notesEmpty() ? "No secure notes yet." : "No secure notes match your search."}
               </p>
             }
@@ -60,8 +69,8 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                 {(note) => (
                   <li>
                     <Button
-                      variant={state.selectedSummary()?.id === note.id ? "filledBlue" : "ghost"}
-                      class="w-full justify-start"
+                      variant="ghost"
+                      class="extension-selected-control w-full justify-start"
                       aria-current={state.selectedSummary()?.id === note.id ? "true" : undefined}
                       onClick={() => state.noteSelect(note)}
                     >
@@ -77,7 +86,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
 
       <section aria-label="Secure note details" class="min-w-0 grow">
         <Show when={state.formOpen()}>
-          <CardWrapper>
+          <ExtensionCardWrapper>
             <form
               aria-label={state.creating() ? "Create secure note" : "Edit secure note"}
               class="flex flex-col gap-3"
@@ -87,21 +96,32 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
               <h2 class="text-lg font-semibold">{state.creating() ? "New secure note" : "Edit secure note"}</h2>
               <div>
                 <Label for={`${p.idPrefix ?? ""}secure-note-name`}>Name</Label>
-                <InputS id={`${p.idPrefix ?? ""}secure-note-name`} required autofocus valueSignal={state.nameSignal} />
+                <ExtensionInputS
+                  id={`${p.idPrefix ?? ""}secure-note-name`}
+                  required
+                  autofocus
+                  disabled={state.busy()}
+                  valueSignal={state.nameSignal}
+                />
               </div>
               <div>
                 <Label for={`${p.idPrefix ?? ""}secure-note-text`}>Note</Label>
-                <TextareaS id={`${p.idPrefix ?? ""}secure-note-text`} rows={10} valueSignal={state.noteSignal} />
+                <ExtensionTextareaS
+                  id={`${p.idPrefix ?? ""}secure-note-text`}
+                  rows={10}
+                  disabled={state.busy()}
+                  valueSignal={state.noteSignal}
+                />
               </div>
               <Show when={state.validation()}>
                 {(message) => (
-                  <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+                  <p role="alert" class="extension-error-text text-sm">
                     {message()}
                   </p>
                 )}
               </Show>
               <div class="flex gap-2">
-                <Button type="submit" variant="filledBlue" disabled={state.busy()}>
+                <Button type="submit" variant="filledBlue" class="extension-primary-control" disabled={state.busy()}>
                   {state.creating() ? "Save note" : "Save changes"}
                 </Button>
                 <Button type="button" variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -109,7 +129,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                 </Button>
               </div>
             </form>
-          </CardWrapper>
+          </ExtensionCardWrapper>
         </Show>
         <Show when={!state.formOpen() && state.detailLoading()}>
           <div role="status" aria-label="Loading secure note details" class="flex justify-center py-8">
@@ -118,7 +138,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && state.selectedDetail()}>
           {(note) => (
-            <CardWrapper>
+            <ExtensionCardWrapper>
               <article aria-label={`Details of ${note().name}`} class="flex flex-col gap-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <h2 class="text-lg font-semibold">{note().name}</h2>
@@ -128,7 +148,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                 </div>
                 <p class="whitespace-pre-wrap text-sm">{note().notes || "This secure note is empty."}</p>
                 <Show when={!state.canEdit()}>
-                  <p role="status" class="text-sm text-slate-600 dark:text-slate-300">
+                  <p role="status" class="extension-muted-text text-sm">
                     You have view-only access to this item.
                   </p>
                 </Show>
@@ -147,6 +167,7 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                   model={p.model}
                   commands={p.commands}
                   idPrefix={`${p.idPrefix ?? ""}secure-note-`}
+                  initialState={p.initialState}
                 />
                 <Show
                   when={state.deleting()}
@@ -179,14 +200,19 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                   <div
                     role="alertdialog"
                     aria-labelledby={`${p.idPrefix ?? ""}delete-note-title`}
-                    class="flex flex-col gap-2 rounded-lg border border-red-300 p-3"
+                    class="extension-destructive-surface flex flex-col gap-2 rounded-lg p-3"
                   >
                     <h3 id={`${p.idPrefix ?? ""}delete-note-title`} class="font-semibold">
                       Move this secure note to trash?
                     </h3>
                     <p class="text-sm">You can restore it later from a compatible vault client.</p>
                     <div class="flex gap-2">
-                      <Button variant="filledBlue" disabled={state.busy()} onClick={state.noteDeleteConfirm}>
+                      <Button
+                        variant="filledBlue"
+                        class="extension-destructive-control"
+                        disabled={state.busy()}
+                        onClick={state.noteDeleteConfirm}
+                      >
                         Move to trash
                       </Button>
                       <Button variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -196,11 +222,11 @@ export function ExtensionFullWindowSecureNotePane(p: ExtensionFullWindowSecureNo
                   </div>
                 </Show>
               </article>
-            </CardWrapper>
+            </ExtensionCardWrapper>
           )}
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && !state.selectedDetail()}>
-          <p class="py-6 text-sm text-slate-600 dark:text-slate-300">Select a secure note to see its details.</p>
+          <p class="extension-muted-text py-6 text-sm">Select a secure note to see its details.</p>
         </Show>
       </section>
     </div>

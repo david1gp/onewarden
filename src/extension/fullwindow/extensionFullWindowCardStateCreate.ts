@@ -3,6 +3,7 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionBackgroundCipherSummary } from "../background/extensionBackgroundCipherSummarySchema.js"
 import type { ExtensionCipher } from "../crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
 
@@ -12,10 +13,19 @@ type CardField = "cardholderName" | "brand" | "number" | "expMonth" | "expYear" 
 export function extensionFullWindowCardStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
+  initialState?: ExtensionFullWindowInitialState,
 ) {
   const querySignal = extensionFullWindowUrlSignalCreate("q")
-  const selectedIdSignal = extensionFullWindowUrlSignalCreate("card")
-  const modeSignal = createSignalObject<CardMode>(selectedIdSignal.get() ? "detail" : "list")
+  const selectedIdSignal = initialState
+    ? createSignalObject(initialState.selectedCipherId ?? "")
+    : extensionFullWindowUrlSignalCreate("card")
+  const modeSignal = createSignalObject<CardMode>(
+    initialState?.deleteCipherConfirmation && selectedIdSignal.get()
+      ? "delete"
+      : selectedIdSignal.get()
+        ? "detail"
+        : "list",
+  )
   const nameSignal = createSignalObject("")
   const notesSignal = createSignalObject("")
   const cardholderNameSignal = createSignalObject("")

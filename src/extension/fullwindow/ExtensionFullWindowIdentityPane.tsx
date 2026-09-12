@@ -1,13 +1,14 @@
 import { For, type JSX, Show } from "solid-js"
-import { InputS } from "#ui/input/input/InputS.jsx"
 import { Label } from "#ui/input/label/Label.jsx"
-import { TextareaS } from "#ui/input/textarea/TextareaS.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
+import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
+import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
+import { ExtensionTextareaS } from "../ui/ExtensionTextareaS.jsx"
 import { ExtensionFullWindowAssignmentPanel } from "./ExtensionFullWindowAssignmentPanel.jsx"
 import { ExtensionFullWindowCipherExtras } from "./ExtensionFullWindowCipherExtras.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowIdentityStateCreate } from "./extensionFullWindowIdentityStateCreate.js"
 
@@ -81,28 +82,36 @@ export interface ExtensionFullWindowIdentityPaneProps {
   model: () => ExtensionFullWindowViewModel
   commands: ExtensionFullWindowCommands
   idPrefix?: string
+  initialState?: ExtensionFullWindowInitialState
 }
 
 export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPaneProps): JSX.Element {
-  const state = extensionFullWindowIdentityStateCreate(p.model, () => p.commands)
+  const state = extensionFullWindowIdentityStateCreate(p.model, () => p.commands, p.initialState)
   return (
     <div class="flex flex-col gap-4 md:flex-row md:items-start">
       <section aria-label="Identities" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
         <div class="flex items-center justify-between gap-2">
           <h2 class="font-semibold">Identities</h2>
-          <Button variant="filledBlue" size="sm" disabled={state.busy()} onClick={state.identityCreateOpen}>
+          <Button
+            variant="filledBlue"
+            size="sm"
+            class="extension-primary-control"
+            disabled={state.busy()}
+            onClick={state.identityCreateOpen}
+          >
             New identity
           </Button>
         </div>
-        <InputS
+        <ExtensionInputS
           type="search"
           aria-label="Search identities"
           placeholder="Search identities"
+          disabled={state.busy()}
           valueSignal={state.querySignal}
         />
         <Show when={state.errorMessage()}>
           {(message) => (
-            <p role="alert" class="text-xs text-red-600 dark:text-red-400">
+            <p role="alert" class="extension-error-text text-xs">
               {message()}
             </p>
           )}
@@ -116,7 +125,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
           <Show
             when={state.visibleIdentities().length > 0}
             fallback={
-              <p class="py-6 text-center text-sm text-slate-600 dark:text-slate-300">
+              <p class="extension-muted-text py-6 text-center text-sm">
                 {state.identitiesEmpty() ? "No identities yet." : "No identities match your search."}
               </p>
             }
@@ -126,8 +135,8 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                 {(identity) => (
                   <li>
                     <Button
-                      variant={state.selectedSummary()?.id === identity.id ? "filledBlue" : "ghost"}
-                      class="w-full justify-start"
+                      variant="ghost"
+                      class="extension-selected-control w-full justify-start"
                       aria-current={state.selectedSummary()?.id === identity.id ? "true" : undefined}
                       onClick={() => state.identitySelect(identity)}
                     >
@@ -143,7 +152,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
 
       <section aria-label="Identity details" class="min-w-0 grow">
         <Show when={state.formOpen()}>
-          <CardWrapper>
+          <ExtensionCardWrapper>
             <form
               aria-label={state.creating() ? "Create identity" : "Edit identity"}
               class="flex flex-col gap-4"
@@ -153,20 +162,27 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
               <h2 class="text-lg font-semibold">{state.creating() ? "New identity" : "Edit identity"}</h2>
               <div>
                 <Label for={`${p.idPrefix ?? ""}identity-name`}>Name</Label>
-                <InputS id={`${p.idPrefix ?? ""}identity-name`} required autofocus valueSignal={state.nameSignal} />
+                <ExtensionInputS
+                  id={`${p.idPrefix ?? ""}identity-name`}
+                  required
+                  autofocus
+                  disabled={state.busy()}
+                  valueSignal={state.nameSignal}
+                />
               </div>
               <For each={identityFormSections}>
                 {(section) => (
-                  <fieldset class="grid gap-3 rounded-lg border border-slate-300 p-3 sm:grid-cols-2 dark:border-slate-700">
+                  <fieldset class="extension-boundary grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
                     <legend class="px-1 font-medium">{section.title}</legend>
                     <For each={section.fields}>
                       {(field) => (
                         <div>
                           <Label for={`${p.idPrefix ?? ""}identity-${field.key}`}>{field.label}</Label>
-                          <InputS
+                          <ExtensionInputS
                             id={`${p.idPrefix ?? ""}identity-${field.key}`}
                             autocomplete={field.autocomplete}
                             inputmode={field.inputmode}
+                            disabled={state.busy()}
                             valueSignal={state.fieldSignal(field.key)}
                           />
                         </div>
@@ -177,17 +193,22 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
               </For>
               <div>
                 <Label for={`${p.idPrefix ?? ""}identity-notes`}>Notes</Label>
-                <TextareaS id={`${p.idPrefix ?? ""}identity-notes`} rows={4} valueSignal={state.notesSignal} />
+                <ExtensionTextareaS
+                  id={`${p.idPrefix ?? ""}identity-notes`}
+                  rows={4}
+                  disabled={state.busy()}
+                  valueSignal={state.notesSignal}
+                />
               </div>
               <Show when={state.validation()}>
                 {(message) => (
-                  <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+                  <p role="alert" class="extension-error-text text-sm">
                     {message()}
                   </p>
                 )}
               </Show>
               <div class="flex gap-2">
-                <Button type="submit" variant="filledBlue" disabled={state.busy()}>
+                <Button type="submit" variant="filledBlue" class="extension-primary-control" disabled={state.busy()}>
                   {state.creating() ? "Save identity" : "Save changes"}
                 </Button>
                 <Button type="button" variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -195,7 +216,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                 </Button>
               </div>
             </form>
-          </CardWrapper>
+          </ExtensionCardWrapper>
         </Show>
         <Show when={!state.formOpen() && state.detailLoading()}>
           <div role="status" aria-label="Loading identity details" class="flex justify-center py-8">
@@ -204,7 +225,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && state.selectedDetail()}>
           {(cipher) => (
-            <CardWrapper>
+            <ExtensionCardWrapper>
               <article aria-label={`Details of ${cipher().name}`} class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <h2 class="text-lg font-semibold">{cipher().name}</h2>
@@ -220,31 +241,36 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                         <For each={section.fields}>
                           {(field) => (
                             <div>
-                              <dt class="text-xs font-medium text-slate-600 dark:text-slate-300">{field.label}</dt>
-                              <dd class="break-words" aria-live={field.sensitive ? "polite" : undefined}>
-                                {state.fieldValue(field)}
-                              </dd>
-                              <div class="flex gap-1">
-                                <Show when={field.sensitive}>
+                              <dt class="extension-muted-text text-xs font-medium">{field.label}</dt>
+                              <dd>
+                                <div class="break-words" aria-live={field.sensitive ? "polite" : undefined}>
+                                  {state.fieldValue(field)}
+                                </div>
+                                <div class="flex gap-1">
+                                  <Show when={field.sensitive}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      class="extension-selected-control"
+                                      disabled={!state.canViewSensitive()}
+                                      aria-pressed={state.fieldIsRevealed(field.key)}
+                                      onClick={() => state.fieldRevealToggle(field.key)}
+                                    >
+                                      {state.fieldIsRevealed(field.key)
+                                        ? `Hide ${field.label}`
+                                        : `Reveal ${field.label}`}
+                                    </Button>
+                                  </Show>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    disabled={!state.canViewSensitive()}
-                                    aria-pressed={state.fieldIsRevealed(field.key)}
-                                    onClick={() => state.fieldRevealToggle(field.key)}
+                                    disabled={field.sensitive && !state.canViewSensitive()}
+                                    onClick={() => state.fieldCopy(field.key, field.value)}
                                   >
-                                    {state.fieldIsRevealed(field.key) ? `Hide ${field.label}` : `Reveal ${field.label}`}
+                                    {state.fieldIsCopied(field.key) ? "Copied" : `Copy ${field.label}`}
                                   </Button>
-                                </Show>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={field.sensitive && !state.canViewSensitive()}
-                                  onClick={() => state.fieldCopy(field.key, field.value)}
-                                >
-                                  {state.fieldIsCopied(field.key) ? "Copied" : `Copy ${field.label}`}
-                                </Button>
-                              </div>
+                                </div>
+                              </dd>
                             </div>
                           )}
                         </For>
@@ -254,7 +280,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                 </For>
                 <Show when={cipher().notes}>{(notes) => <p class="whitespace-pre-wrap text-sm">{notes()}</p>}</Show>
                 <Show when={!state.canEdit()}>
-                  <p role="status" class="text-sm text-slate-600 dark:text-slate-300">
+                  <p role="status" class="extension-muted-text text-sm">
                     You have view-only access to this item.
                   </p>
                 </Show>
@@ -273,6 +299,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                   model={p.model}
                   commands={p.commands}
                   idPrefix={`${p.idPrefix ?? ""}identity-`}
+                  initialState={p.initialState}
                 />
                 <Show
                   when={state.deleting()}
@@ -281,6 +308,7 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                       <Button
                         variant="filledBlue"
                         size="sm"
+                        class="extension-primary-control"
                         disabled={!p.model().fillAvailable || state.busy()}
                         onClick={() => p.commands.cipherFill?.(cipher().id, 4)}
                       >
@@ -308,14 +336,19 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                   <div
                     role="alertdialog"
                     aria-labelledby={`${p.idPrefix ?? ""}delete-identity-title`}
-                    class="flex flex-col gap-2 rounded-lg border border-red-300 p-3"
+                    class="extension-destructive-surface flex flex-col gap-2 rounded-lg p-3"
                   >
                     <h3 id={`${p.idPrefix ?? ""}delete-identity-title`} class="font-semibold">
                       Move this identity to trash?
                     </h3>
                     <p class="text-sm">You can restore it later from a compatible vault client.</p>
                     <div class="flex gap-2">
-                      <Button variant="filledBlue" disabled={state.busy()} onClick={state.identityDeleteConfirm}>
+                      <Button
+                        variant="filledBlue"
+                        class="extension-destructive-control"
+                        disabled={state.busy()}
+                        onClick={state.identityDeleteConfirm}
+                      >
                         Move to trash
                       </Button>
                       <Button variant="outline" disabled={state.busy()} onClick={state.actionCancel}>
@@ -325,11 +358,11 @@ export function ExtensionFullWindowIdentityPane(p: ExtensionFullWindowIdentityPa
                   </div>
                 </Show>
               </article>
-            </CardWrapper>
+            </ExtensionCardWrapper>
           )}
         </Show>
         <Show when={!state.formOpen() && !state.detailLoading() && !state.selectedDetail()}>
-          <p class="py-6 text-sm text-slate-600 dark:text-slate-300">Select an identity to see its details.</p>
+          <p class="extension-muted-text py-6 text-sm">Select an identity to see its details.</p>
         </Show>
       </section>
     </div>
