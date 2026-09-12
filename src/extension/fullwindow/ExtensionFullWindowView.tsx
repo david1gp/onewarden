@@ -1,6 +1,8 @@
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
+import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
+import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { Label } from "#ui/input/label/Label.jsx"
@@ -14,7 +16,6 @@ import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { ExtensionSelectSingleNative } from "../ui/ExtensionSelectSingleNative.jsx"
-import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
 import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
 import { ExtensionFullWindowCardPane } from "./ExtensionFullWindowCardPane.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
@@ -41,6 +42,8 @@ export interface ExtensionFullWindowViewProps {
   vaultSort?: () => VaultSort
   vaultSortLoaded?: () => boolean
   onVaultSortChange?: (sort: VaultSort) => void
+  theme?: () => "light" | "dark"
+  onThemeChange?: (theme: "light" | "dark") => void
   idPrefix?: string
   root?: "main" | "div"
   navigationLabel?: string
@@ -51,86 +54,101 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
   const state = extensionFullWindowViewStateCreate(p.model, () => p.commands, p.initialState, {
     vaultSort: p.vaultSort,
     onVaultSortChange: p.onVaultSortChange,
+    theme: p.theme,
+    onThemeChange: p.onThemeChange,
   })
 
   return (
-    <Dynamic component={p.root ?? "main"} class="extension-page-surface flex min-h-dvh flex-col gap-3 p-4 md:p-6">
-      <header class="flex flex-wrap items-center justify-between gap-2">
-        <h1 class="text-lg font-semibold">OneWarden Vault</h1>
-        <ExtensionBadge role="group" aria-label="Active site">
-          {state.siteLabel()}
-        </ExtensionBadge>
-      </header>
+    <Dynamic
+      component={p.root ?? "main"}
+      class="extension-page-surface mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col gap-4 p-3 sm:p-4 lg:p-5"
+    >
+      <header class="extension-subtle-surface flex flex-wrap items-center gap-2 rounded-2xl p-2 shadow-sm sm:gap-3">
+        <div class="flex min-w-0 items-center gap-2 px-1 sm:mr-1">
+          <h1 class="truncate text-base font-semibold sm:text-lg">OneWarden Vault</h1>
+        </div>
 
-      <nav
-        aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="extension-subtle-surface flex flex-wrap items-center gap-1 rounded-xl p-1"
-      >
-        <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiLock}
-          aria-current={state.isVaultPane() ? "page" : undefined}
-          onClick={state.vaultPaneOpen}
-          class="extension-selected-control min-h-10"
+        <nav
+          aria-label={p.navigationLabel ?? "Extension navigation"}
+          class="order-3 grid w-full grid-cols-3 items-center gap-1 sm:order-none sm:w-auto sm:flex"
         >
-          Vault
-        </ExtensionButtonIcon>
-        <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiKey}
-          aria-current={state.isGeneratorPane() ? "page" : undefined}
-          onClick={state.generatorPaneOpen}
-          class="extension-selected-control min-h-10"
-        >
-          Generator
-        </ExtensionButtonIcon>
-        <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiCog}
-          aria-current={state.isSettingsPane() ? "page" : undefined}
-          onClick={state.settingsPaneOpen}
-          class="extension-selected-control min-h-10"
-        >
-          Settings
-        </ExtensionButtonIcon>
-        <Show when={state.isLoggedOut()}>
-          <Button
+          <ExtensionButtonIcon
             variant="ghost"
             size="sm"
-            aria-current={state.isAuthPane() ? "page" : undefined}
-            onClick={state.authPaneOpen}
-            class="extension-selected-control min-h-10"
+            icon={mdiLock}
+            aria-current={state.isVaultPane() ? "page" : undefined}
+            onClick={state.vaultPaneOpen}
+            class="extension-selected-control min-h-9 min-w-0 px-2"
           >
-            Create account
-          </Button>
-        </Show>
-        <Show when={state.isVaultPane()}>
-          <span aria-hidden="true" class="extension-boundary mx-1 hidden h-6 border-l sm:block" />
-          <Show when={state.isLoginCategory()}>
-            <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
-              Add login
-            </Button>
-          </Show>
-          <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
-            Sync
-          </Button>
-          <Show when={state.isReady()}>
-            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
-              Lock
-            </Button>
-          </Show>
-          <Show when={!state.isLoggedOut()}>
-            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
-              Log out
-            </Button>
-          </Show>
-        </Show>
-      </nav>
+            Vault
+          </ExtensionButtonIcon>
+          <ExtensionButtonIcon
+            variant="ghost"
+            size="sm"
+            icon={mdiKey}
+            aria-current={state.isGeneratorPane() ? "page" : undefined}
+            onClick={state.generatorPaneOpen}
+            class="extension-selected-control min-h-9 min-w-0 px-2"
+          >
+            Generator
+          </ExtensionButtonIcon>
+          <ExtensionButtonIcon
+            variant="ghost"
+            size="sm"
+            icon={mdiCog}
+            aria-current={state.isSettingsPane() ? "page" : undefined}
+            onClick={state.settingsPaneOpen}
+            class="extension-selected-control min-h-9 min-w-0 px-2"
+          >
+            Settings
+          </ExtensionButtonIcon>
+        </nav>
 
-      <ExtensionSeparator />
+        <div class="ml-auto flex flex-wrap items-center justify-end gap-1">
+          <ExtensionBadge role="group" aria-label="Active site" class="max-w-40 truncate sm:max-w-56">
+            {state.siteLabel()}
+          </ExtensionBadge>
+          <ExtensionButtonIcon
+            icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
+            variant="ghost"
+            size="sm"
+            aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+            onClick={state.themeToggle}
+          />
+          <Show when={state.isLoggedOut()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-current={state.isAuthPane() ? "page" : undefined}
+              onClick={state.authPaneOpen}
+              class="extension-selected-control min-h-10"
+            >
+              Create account
+            </Button>
+          </Show>
+          <Show when={state.isVaultPane()}>
+            <span aria-hidden="true" class="extension-boundary mx-1 hidden h-6 border-l sm:block" />
+            <Show when={state.isLoginCategory()}>
+              <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
+                Add login
+              </Button>
+            </Show>
+            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
+              Sync
+            </Button>
+            <Show when={state.isReady()}>
+              <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
+                Lock
+              </Button>
+            </Show>
+            <Show when={!state.isLoggedOut()}>
+              <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
+                Log out
+              </Button>
+            </Show>
+          </Show>
+        </div>
+      </header>
 
       <Show when={state.isAuthPane() && state.isLoggedOut()}>
         <ExtensionAccountAuthView
@@ -345,7 +363,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               </div>
             }
           >
-            <div class="flex flex-col gap-4 md:flex-row md:items-start">
+            <div class="grid gap-4 md:grid-cols-[14rem_minmax(0,1fr)] md:items-start xl:grid-cols-[16rem_minmax(0,1fr)]">
               <ExtensionFullWindowResourceNavigation resourceState={state.resourceState} idPrefix={p.idPrefix} />
               <div class="min-w-0 grow">
                 <nav class="mb-4 flex flex-wrap gap-1" aria-label="Vault item types">
@@ -428,8 +446,8 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
                   />
                 </Show>
                 <Show when={state.isLoginCategory()}>
-                  <div class="flex flex-col gap-4 md:flex-row md:items-start">
-                    <section aria-label="Logins" class="flex min-w-0 flex-col gap-2 md:w-80 md:shrink-0">
+                  <div class="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)] lg:items-start xl:grid-cols-[minmax(22rem,0.8fr)_minmax(30rem,1.2fr)]">
+                    <section aria-label="Logins" class="flex min-w-0 flex-col gap-2">
                       <ExtensionInputS
                         type="search"
                         aria-label="Search logins"

@@ -15,10 +15,7 @@ interface ExtensionFullWindowResourceNavigationProps {
 export function ExtensionFullWindowResourceNavigation(p: ExtensionFullWindowResourceNavigationProps): JSX.Element {
   const state = extensionFullWindowResourceNavigationStateCreate(p.resourceState)
   return (
-    <aside
-      aria-label="Vault folders, collections, and organizations"
-      class="flex min-w-0 flex-col gap-4 md:w-64 md:shrink-0"
-    >
+    <aside aria-label="Vault folders, collections, and organizations" class="flex min-w-0 flex-col gap-4">
       <div class="flex items-center justify-between gap-2">
         <h2 class="font-semibold">Vault</h2>
         <Button

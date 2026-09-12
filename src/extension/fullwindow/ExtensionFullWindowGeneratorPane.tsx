@@ -28,7 +28,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
   return (
     <section
       aria-labelledby={`${p.idPrefix ?? ""}password-generator-title`}
-      class="mx-auto flex w-full max-w-3xl flex-col gap-4 py-2 sm:py-5"
+      class="mx-auto flex w-full max-w-6xl flex-col gap-4 py-2 sm:py-5"
     >
       <div class="flex items-start gap-3 px-1">
         <span class="extension-info-surface flex size-10 shrink-0 items-center justify-center rounded-xl">

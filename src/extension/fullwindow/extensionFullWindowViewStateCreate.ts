@@ -11,6 +11,8 @@ import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
 import type { ExtensionAutofillPolicy } from "../storage/extensionAutofillPolicySchema.js"
 import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.js"
+import { extensionThemeNext } from "../theme/extensionThemeNext.js"
+import { extensionThemeSet } from "../theme/extensionThemeSet.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
@@ -49,9 +51,11 @@ const timeoutLabels: Record<string, string> = {
 const actionOptions = ["lock", "logout"]
 const actionLabels: Record<string, string> = { lock: "Lock", logout: "Log out" }
 
-type ExtensionFullWindowViewSortOptions = {
+type ExtensionFullWindowViewOptions = {
   vaultSort?: () => VaultSort
   onVaultSortChange?: (sort: VaultSort) => void
+  theme?: () => "light" | "dark"
+  onThemeChange?: (theme: "light" | "dark") => void
 }
 
 /** Component-local view state and command glue for the full-window vault. */
@@ -59,7 +63,7 @@ export function extensionFullWindowViewStateCreate(
   model: () => ExtensionFullWindowViewModel,
   commands: () => ExtensionFullWindowCommands,
   initialState?: ExtensionFullWindowInitialState,
-  sortOptions: ExtensionFullWindowViewSortOptions = {},
+  options: ExtensionFullWindowViewOptions = {},
 ) {
   const searchQuerySignal = initialState
     ? createSignalObject(initialState.query ?? "")
@@ -79,6 +83,9 @@ export function extensionFullWindowViewStateCreate(
   const emailSignal = createSignalObject("")
   const masterPasswordSignal = createSignalObject("")
   const localVaultSortSignal = createSignalObject<VaultSort>(vaultSortDefault)
+  const localThemeSignal = createSignalObject<"light" | "dark">(
+    document.documentElement.classList.contains("dark") ? "dark" : "light",
+  )
   const resourceState = extensionFullWindowResourceStateCreate(model, commands, initialState)
   const resourceFilteredModel = createMemo(() => ({
     ...model(),
@@ -127,16 +134,26 @@ export function extensionFullWindowViewStateCreate(
   const siteOnly = createMemo(() => siteOnlySignal.get() === "1")
   const siteFilterAvailable = createMemo(() => hostname() !== null)
   const siteLabel = createMemo(() => hostname() ?? "No active site")
-  const vaultSort = createMemo(() => sortOptions.vaultSort?.() ?? localVaultSortSignal.get())
+  const vaultSort = createMemo(() => options.vaultSort?.() ?? localVaultSortSignal.get())
   const vaultSortSet = (value: string): void => {
     const parsed = v.safeParse(vaultSortSchema, value)
     if (!parsed.success) return
     localVaultSortSignal.set(parsed.output)
-    sortOptions.onVaultSortChange?.(parsed.output)
+    options.onVaultSortChange?.(parsed.output)
   }
   const vaultSortSignal: SignalObject<string> = { get: vaultSort, set: vaultSortSet }
   const vaultSortOptionValues = () => vaultSortOptions.map((option) => option.value)
   const vaultSortLabel = (value: string) => vaultSortOptions.find((option) => option.value === value)?.label ?? value
+  const theme = createMemo(() => options.theme?.() ?? localThemeSignal.get())
+  const themeToggle = (): void => {
+    const next = extensionThemeNext(theme())
+    if (options.onThemeChange !== undefined) {
+      options.onThemeChange(next)
+      return
+    }
+    localThemeSignal.set(next)
+    void extensionThemeSet(next)
+  }
   const visibleLogins = createMemo(() => {
     const filteredLogins = resourceFilteredModel()
       .logins.filter((login) => !siteOnly() || extensionFullWindowLoginUriMatch(login, hostname()))
@@ -322,6 +339,8 @@ export function extensionFullWindowViewStateCreate(
     vaultSortSignal,
     vaultSortOptionValues,
     vaultSortLabel,
+    theme,
+    themeToggle,
     errorMessage,
     authChallenge,
     authMessage,

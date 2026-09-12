@@ -49,6 +49,8 @@ type FullWindowRenderOptions = Pick<
   | "vaultSort"
   | "vaultSortLoaded"
   | "onVaultSortChange"
+  | "theme"
+  | "onThemeChange"
 >
 
 function fullWindowRender(
@@ -700,6 +702,58 @@ test("extensionFullWindowView navigates among URL-backed vault, generator and se
   expect(root.getByLabelText("Server settings")).toBeDefined()
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
   expect(root.getByLabelText("Search logins")).toBeDefined()
+
+  root.unmount()
+})
+
+test("extensionFullWindowView uses the compact full-window shell and wide-screen layout", () => {
+  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
+  const shell = root.container.firstElementChild as HTMLElement
+  const navigation = root.getByRole("navigation", { name: "Extension navigation" })
+
+  expect(shell.classList.contains("min-h-dvh")).toBe(true)
+  expect(shell.classList.contains("max-w-screen-2xl")).toBe(true)
+  expect(navigation.classList.contains("order-3")).toBe(true)
+  expect(navigation.classList.contains("sm:w-auto")).toBe(true)
+  expect(
+    [...root.container.querySelectorAll("div")].some((element) =>
+      element.classList.contains("md:grid-cols-[14rem_minmax(0,1fr)]"),
+    ),
+  ).toBe(true)
+  expect(
+    [...root.container.querySelectorAll("div")].some((element) =>
+      element.classList.contains("lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)]"),
+    ),
+  ).toBe(true)
+
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+  const generator = root.getByRole("region", { name: "Generator" })
+  expect(generator.classList.contains("max-w-6xl")).toBe(true)
+  expect(generator.classList.contains("max-w-3xl")).toBe(false)
+
+  root.unmount()
+})
+
+test("extensionFullWindowView toggles the theme through its shared theme state", () => {
+  const theme = createSignalObject<"light" | "dark">("light")
+  const changed: string[] = []
+  const root = fullWindowRender(
+    { status: "ready", logins: [] },
+    {},
+    {
+      theme: theme.get,
+      onThemeChange: (next) => {
+        changed.push(next)
+        theme.set(next)
+      },
+    },
+  )
+
+  expect(root.getByRole("button", { name: "Switch to dark theme" })).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Switch to dark theme" }))
+
+  expect(changed).toEqual(["dark"])
+  expect(root.getByRole("button", { name: "Switch to light theme" })).toBeDefined()
 
   root.unmount()
 })

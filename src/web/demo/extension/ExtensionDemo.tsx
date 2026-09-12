@@ -56,7 +56,7 @@ export function ExtensionDemo(): JSX.Element {
                   initialTheme={index() % 2 === 0 ? "light" : "dark"}
                   viewportClass="h-[min(48rem,75dvh)]"
                 >
-                  {() => (
+                  {(theme, themeSet) => (
                     <ExtensionFullWindowView
                       idPrefix={fixture.idPrefix}
                       root="div"
@@ -65,6 +65,8 @@ export function ExtensionDemo(): JSX.Element {
                       commands={extensionDemoFixtures.fullWindowCommands}
                       initialState={fixture.initialState}
                       generatorOptions={extensionDemoFixtures.generatorOptions}
+                      theme={theme}
+                      onThemeChange={themeSet}
                     />
                   )}
                 </ExtensionDemoFrame>
