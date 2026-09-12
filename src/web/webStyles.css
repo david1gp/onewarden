@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "../extension/extensionThemeStyles.css";
 @source "../../ui";
 @source "../../src";
 
 /* Tailwind v4 resolves `dark:` through `prefers-color-scheme` by default, which
    ignores the `.dark` class that `themeSet` toggles on <html>. Bind the variant
    to that class so the theme button actually switches light/dark. */
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *):not(.extension-theme-root[data-extension-theme="light"] *));
 
 html,
 body,
@@ -18,38 +19,4 @@ html.dark,
 html.dark body,
 html.dark #root {
   background-color: #020617;
-}
-
-/* The badge variants are shared from ./ui, which is outside Tailwind's
-   application source scan. Keep their semantic colors present in the web
-   bundle so they retain their intended contrast in both themes. */
-.bg-emerald-700 {
-  background-color: #047857;
-}
-
-.bg-rose-700 {
-  background-color: #be123c;
-}
-
-/* Scoped to the `.dark` class for the same reason as the custom variant above:
-   these overrides must follow the selected theme, not the OS preference. */
-:where(.dark, .dark *) {
-  .dark\:bg-emerald-600 {
-    background-color: #047857;
-  }
-
-  .dark\:bg-rose-600 {
-    background-color: #be123c;
-  }
-
-  .border-amber-200 {
-    background-color: #451a03;
-    border-color: #92400e;
-    color: #fef3c7;
-  }
-
-  #master-password {
-    background-color: #1e293b;
-    color: #f8fafc;
-  }
 }

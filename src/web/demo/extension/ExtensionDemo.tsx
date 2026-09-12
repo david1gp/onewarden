@@ -1,8 +1,8 @@
 import { For, type JSX } from "solid-js"
-import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { ExtensionFullWindowView } from "../../../extension/fullwindow/ExtensionFullWindowView.jsx"
 import { ExtensionPasskeyConsentApp } from "../../../extension/passkey-consent/ExtensionPasskeyConsentApp.jsx"
 import { ExtensionPopupView } from "../../../extension/popup/ExtensionPopupView.jsx"
+import { ExtensionDemoFrame } from "./ExtensionDemoFrame.jsx"
 import { extensionDemoFixtures } from "./extensionDemoFixtures.js"
 
 export function ExtensionDemo(): JSX.Element {
@@ -21,15 +21,24 @@ export function ExtensionDemo(): JSX.Element {
         <GallerySection title="Popup" description="Browser-action states at the production popup width.">
           <div class="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <For each={extensionDemoFixtures.popupModels}>
-              {(fixture) => (
-                <DemoFrame label={fixture.label} class="overflow-auto">
-                  <ExtensionPopupView
-                    root="div"
-                    navigationLabel={`Popup · ${fixture.label} navigation`}
-                    model={fixture.model}
-                    commands={extensionDemoFixtures.popupCommands}
-                  />
-                </DemoFrame>
+              {(fixture, index) => (
+                <ExtensionDemoFrame
+                  label={fixture.label}
+                  initialTheme={index() % 2 === 0 ? "light" : "dark"}
+                  frameClass="w-full max-w-90"
+                >
+                  {(theme, themeSet) => (
+                    <ExtensionPopupView
+                      root="div"
+                      idPrefix={fixture.idPrefix}
+                      navigationLabel={`Popup · ${fixture.label} navigation`}
+                      model={fixture.model}
+                      commands={extensionDemoFixtures.popupCommands}
+                      theme={theme}
+                      onThemeChange={themeSet}
+                    />
+                  )}
+                </ExtensionDemoFrame>
               )}
             </For>
           </div>
@@ -41,18 +50,24 @@ export function ExtensionDemo(): JSX.Element {
         >
           <div class="flex flex-col gap-8">
             <For each={extensionDemoFixtures.fullWindowModels}>
-              {(fixture) => (
-                <DemoFrame label={fixture.label} class="max-h-[48rem] overflow-auto" scrollable>
-                  <ExtensionFullWindowView
-                    idPrefix={fixture.idPrefix}
-                    root="div"
-                    navigationLabel={`Full-window · ${fixture.label} navigation`}
-                    model={() => fixture.model}
-                    commands={extensionDemoFixtures.fullWindowCommands}
-                    initialState={fixture.initialState}
-                    generatorOptions={extensionDemoFixtures.generatorOptions}
-                  />
-                </DemoFrame>
+              {(fixture, index) => (
+                <ExtensionDemoFrame
+                  label={fixture.label}
+                  initialTheme={index() % 2 === 0 ? "light" : "dark"}
+                  viewportClass="h-[min(48rem,75dvh)]"
+                >
+                  {() => (
+                    <ExtensionFullWindowView
+                      idPrefix={fixture.idPrefix}
+                      root="div"
+                      navigationLabel={`Full-window · ${fixture.label} navigation`}
+                      model={() => fixture.model}
+                      commands={extensionDemoFixtures.fullWindowCommands}
+                      initialState={fixture.initialState}
+                      generatorOptions={extensionDemoFixtures.generatorOptions}
+                    />
+                  )}
+                </ExtensionDemoFrame>
               )}
             </For>
           </div>
@@ -64,10 +79,15 @@ export function ExtensionDemo(): JSX.Element {
         >
           <div class="grid items-start gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <For each={extensionDemoFixtures.passkey}>
-              {(fixture) => (
-                <DemoFrame label={fixture.label} class="h-[30rem] overflow-auto" scrollable>
-                  <ExtensionPasskeyConsentApp root="div" options={fixture.options} />
-                </DemoFrame>
+              {(fixture, index) => (
+                <ExtensionDemoFrame
+                  label={fixture.label}
+                  initialTheme={index() % 2 === 0 ? "light" : "dark"}
+                  frameClass="w-full max-w-md"
+                  viewportClass="h-[30rem]"
+                >
+                  {() => <ExtensionPasskeyConsentApp root="div" options={fixture.options} />}
+                </ExtensionDemoFrame>
               )}
             </For>
           </div>
@@ -86,19 +106,5 @@ function GallerySection(p: { title: string; description: string; children: JSX.E
       </div>
       {p.children}
     </section>
-  )
-}
-
-function DemoFrame(p: { label: string; class?: string; scrollable?: boolean; children: JSX.Element }): JSX.Element {
-  return (
-    <CardWrapper
-      aria-label={`${p.label} frame`}
-      class="overflow-hidden border border-slate-300 bg-slate-200 p-0 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-    >
-      <p class="border-slate-300 border-b px-4 py-2 font-medium text-sm dark:border-slate-700">{p.label}</p>
-      <div class={p.class} tabindex={p.scrollable ? 0 : undefined}>
-        {p.children}
-      </div>
-    </CardWrapper>
   )
 }

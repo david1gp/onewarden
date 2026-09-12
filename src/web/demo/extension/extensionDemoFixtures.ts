@@ -1,6 +1,8 @@
 import type { Result } from "#result"
 import type { ExtensionLogin } from "../../../extension/ExtensionLogin.js"
+import type { ExtensionCipher } from "../../../extension/crypto/extensionCipherSchema.js"
 import type { ExtensionFullWindowCommands } from "../../../extension/fullwindow/ExtensionFullWindowCommands.js"
+import type { ExtensionFullWindowInitialState } from "../../../extension/fullwindow/ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "../../../extension/fullwindow/ExtensionFullWindowViewModel.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "../../../extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../extension/fullwindow/extensionFullWindowViewModelCreate.js"
@@ -23,6 +25,8 @@ const fixtureLogins: ExtensionLogin[] = [
       { key: "username", label: "Username", value: "ada@northstar.test" },
       { key: "password", label: "Password", value: "demo-password", sensitive: true },
       { key: "uri", label: "Website", value: "https://mail.northstar.test/login" },
+      { key: "custom:0", label: "Account number", value: "NS-2048" },
+      { key: "custom:1", label: "Recovery phrase", value: "northstar-demo-recovery", sensitive: true },
     ],
   },
   {
@@ -36,6 +40,83 @@ const fixtureLogins: ExtensionLogin[] = [
     ],
   },
 ]
+
+const fixtureRevisionDate = "2026-09-01T00:00:00.000Z"
+
+const fixtureLoginCipher = {
+  object: "cipherDetails",
+  id: "demo-mail",
+  type: 1,
+  creationDate: fixtureRevisionDate,
+  revisionDate: fixtureRevisionDate,
+  deletedDate: null,
+  organizationId: null,
+  folderId: null,
+  name: "Northstar Mail",
+  notes: "Primary account used for deterministic extension previews.",
+  favorite: true,
+  edit: true,
+  viewPassword: true,
+  fields: [
+    { name: "Account number", value: "NS-2048", type: 0, linkedId: null },
+    { name: "Recovery phrase", value: "northstar-demo-recovery", type: 1, linkedId: null },
+  ],
+  attachments: [
+    { id: "demo-attachment", fileName: "recovery-codes.txt", size: "2048", sizeName: "2 KB", object: "attachment" },
+  ],
+  passwordHistory: [{ password: "Northstar!Previous-2025", lastUsedDate: "2026-08-15T10:30:00.000Z" }],
+  login: {
+    username: "ada@northstar.test",
+    password: "demo-password",
+    uris: [{ uri: "https://mail.northstar.test/login", match: null }],
+    totp: null,
+  },
+} satisfies Extract<ExtensionCipher, { type: 1 }>
+
+const fixtureSecureNote = {
+  ...cipherDetailCommonCreate("demo-note", 2, "Recovery plan"),
+  type: 2,
+  notes: "Store the offline recovery kit in the secure archive.",
+  secureNote: { type: 0 },
+} satisfies Extract<ExtensionCipher, { type: 2 }>
+
+const fixtureCard = {
+  ...cipherDetailCommonCreate("demo-card", 3, "Northstar travel card"),
+  type: 3,
+  notes: "Travel expenses only.",
+  card: {
+    cardholderName: "Ada Lovelace",
+    brand: "Visa",
+    number: "4111111111111111",
+    expMonth: "09",
+    expYear: "2030",
+    code: "123",
+  },
+} satisfies Extract<ExtensionCipher, { type: 3 }>
+
+const fixtureIdentity = {
+  ...cipherDetailCommonCreate("demo-identity", 4, "Ada Lovelace"),
+  type: 4,
+  notes: null,
+  identity: {
+    firstName: "Ada",
+    lastName: "Lovelace",
+    company: "Northstar",
+    email: "ada@northstar.test",
+    passportNumber: "NORTHSTAR-2048",
+  },
+} satisfies Extract<ExtensionCipher, { type: 4 }>
+
+const fixtureSshKey = {
+  ...cipherDetailCommonCreate("demo-ssh", 5, "Production deploy key"),
+  type: 5,
+  notes: "Restricted production key.",
+  sshKey: {
+    privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\ndemo\n-----END OPENSSH PRIVATE KEY-----",
+    publicKey: "ssh-ed25519 AAAADEMO northstar",
+    keyFingerprint: "SHA256:northstar-demo",
+  },
+} satisfies Extract<ExtensionCipher, { type: 5 }>
 
 const popupCommands: ExtensionPopupCommands = {
   loginFill: actionIgnore,
@@ -116,14 +197,28 @@ const fullWindowCommands: ExtensionFullWindowCommands = {
 }
 
 const popupModels = [
-  { label: "Ready · copied feedback", model: popupModelCreate({ copiedFieldKey: "password" }) },
-  { label: "Loading", model: extensionPopupViewModelCreate({ status: "loading", hostname: "mail.northstar.test" }) },
   {
+    idPrefix: "popup-ready-",
+    label: "Ready · copied feedback",
+    model: popupModelCreate({ copiedFieldKey: "password" }),
+  },
+  {
+    idPrefix: "popup-loading-",
+    label: "Loading",
+    model: extensionPopupViewModelCreate({ status: "loading", hostname: "mail.northstar.test" }),
+  },
+  {
+    idPrefix: "popup-signed-out-",
     label: "Signed out",
     model: extensionPopupViewModelCreate({ status: "loggedOut", hostname: "mail.northstar.test" }),
   },
-  { label: "Locked", model: extensionPopupViewModelCreate({ status: "locked", hostname: "mail.northstar.test" }) },
   {
+    idPrefix: "popup-locked-",
+    label: "Locked",
+    model: extensionPopupViewModelCreate({ status: "locked", hostname: "mail.northstar.test" }),
+  },
+  {
+    idPrefix: "popup-error-",
     label: "Error · retry available",
     model: extensionPopupViewModelCreate({
       status: "error",
@@ -131,15 +226,149 @@ const popupModels = [
       errorMessage: "The vault could not be synchronized.",
     }),
   },
-  { label: "Ready · empty and busy", model: popupModelCreate({ logins: [], busy: true, fillAvailable: false }) },
-] satisfies { label: string; model: ExtensionPopupViewModel }[]
+  {
+    idPrefix: "popup-empty-",
+    label: "Ready · empty and busy",
+    model: popupModelCreate({ logins: [], busy: true, fillAvailable: false }),
+  },
+] satisfies { idPrefix: string; label: string; model: ExtensionPopupViewModel }[]
 
 const fullWindowModels = [
   {
     idPrefix: "full-window-vault-selected-",
-    label: "Vault · selected login and copied field",
-    model: fullWindowModelCreate({ copiedFieldKey: "password" }),
+    label: "Vault · cipher extras and custom fields",
+    model: fullWindowModelCreate({ copiedFieldKey: "password", selectedLoginCipher: fixtureLoginCipher }),
     initialState: { pane: "vault", selectedLoginId: "demo-mail" },
+  },
+  {
+    idPrefix: "full-window-attachment-delete-",
+    label: "Vault · attachment delete confirmation",
+    model: fullWindowModelCreate({ selectedLoginCipher: fixtureLoginCipher }),
+    initialState: {
+      pane: "vault",
+      selectedLoginId: "demo-mail",
+      deleteAttachmentId: "demo-attachment",
+    },
+  },
+  {
+    idPrefix: "full-window-password-restore-",
+    label: "Vault · password restore confirmation",
+    model: fullWindowModelCreate({ selectedLoginCipher: fixtureLoginCipher }),
+    initialState: {
+      pane: "vault",
+      selectedLoginId: "demo-mail",
+      restorePasswordHistoryIndex: 0,
+    },
+  },
+  {
+    idPrefix: "full-window-auth-",
+    label: "Authentication · account registration",
+    model: extensionFullWindowViewModelCreate({ status: "loggedOut", hostname: "mail.northstar.test" }),
+    initialState: { pane: "auth" },
+  },
+  {
+    idPrefix: "full-window-challenge-",
+    label: "Authentication · two-step challenge",
+    model: extensionFullWindowViewModelCreate({
+      status: "loggedOut",
+      hostname: "mail.northstar.test",
+      authChallenge: {
+        challengeId: "demo-challenge",
+        providers: [0, 1, 7, 8],
+        emailHint: "a••@northstar.test",
+        webAuthn: null,
+        errorMessage: null,
+      },
+      authMessage: "Enter the current code to continue.",
+    }),
+    initialState: { pane: "vault" },
+  },
+  {
+    idPrefix: "full-window-notes-",
+    label: "Vault pane · secure note delete confirmation",
+    model: fullWindowModelCreate({
+      secureNotes: [cipherSummaryCreate("demo-note", 2, "Recovery plan")],
+      selectedSecureNote: fixtureSecureNote,
+    }),
+    initialState: {
+      pane: "vault",
+      category: "notes",
+      selectedCipherId: "demo-note",
+      deleteCipherConfirmation: true,
+    },
+  },
+  {
+    idPrefix: "full-window-cards-",
+    label: "Vault pane · card delete confirmation",
+    model: fullWindowModelCreate({
+      cards: [cipherSummaryCreate("demo-card", 3, "Northstar travel card")],
+      selectedCard: fixtureCard,
+    }),
+    initialState: {
+      pane: "vault",
+      category: "cards",
+      selectedCipherId: "demo-card",
+      deleteCipherConfirmation: true,
+    },
+  },
+  {
+    idPrefix: "full-window-identities-",
+    label: "Vault pane · identity delete confirmation",
+    model: fullWindowModelCreate({
+      identities: [cipherSummaryCreate("demo-identity", 4, "Ada Lovelace")],
+      selectedIdentity: fixtureIdentity,
+    }),
+    initialState: {
+      pane: "vault",
+      category: "identities",
+      selectedCipherId: "demo-identity",
+      deleteCipherConfirmation: true,
+    },
+  },
+  {
+    idPrefix: "full-window-ssh-keys-",
+    label: "Vault pane · SSH key delete confirmation",
+    model: fullWindowModelCreate({
+      sshKeys: [cipherSummaryCreate("demo-ssh", 5, "Production deploy key")],
+      selectedSshKey: fixtureSshKey,
+    }),
+    initialState: {
+      pane: "vault",
+      category: "ssh-keys",
+      selectedCipherId: "demo-ssh",
+      deleteCipherConfirmation: true,
+    },
+  },
+  {
+    idPrefix: "full-window-folder-delete-",
+    label: "Vault resources · folder delete confirmation",
+    model: fullWindowModelCreate({ folders: [{ id: "demo-folder", name: "Archive", object: "folder" }] }),
+    initialState: { pane: "vault", folderId: "demo-folder", resourceAction: "folder-delete" },
+  },
+  {
+    idPrefix: "full-window-collection-delete-",
+    label: "Vault resources · collection delete confirmation",
+    model: fullWindowModelCreate({
+      profile: {
+        organizations: [{ id: "demo-organization", name: "Northstar", status: 2, accessAll: true }],
+      },
+      collections: [
+        {
+          id: "demo-collection",
+          organizationId: "demo-organization",
+          name: "Operations",
+          object: "collection",
+          assigned: true,
+          manage: true,
+        },
+      ],
+    }),
+    initialState: {
+      pane: "vault",
+      organizationId: "demo-organization",
+      collectionId: "demo-collection",
+      resourceAction: "collection-delete",
+    },
   },
   {
     idPrefix: "full-window-generator-",
@@ -210,7 +439,7 @@ const fullWindowModels = [
   idPrefix: string
   label: string
   model: ExtensionFullWindowViewModel
-  initialState: { pane: string; selectedLoginId?: string }
+  initialState: ExtensionFullWindowInitialState
 }[]
 
 const passkeyModels = {
@@ -320,6 +549,36 @@ function passkeyModelCreate(overrides: Partial<ExtensionPasskeyConsentUiModel> =
       },
     ],
     ...overrides,
+  }
+}
+
+function cipherSummaryCreate(id: string, type: 2 | 3 | 4 | 5, name: string) {
+  return {
+    object: "cipherMini" as const,
+    id,
+    type,
+    revisionDate: "2026-09-01T00:00:00.000Z",
+    deletedDate: null,
+    name,
+  }
+}
+
+function cipherDetailCommonCreate(id: string, type: 2 | 3 | 4 | 5, name: string) {
+  return {
+    object: "cipherDetails" as const,
+    id,
+    type,
+    creationDate: fixtureRevisionDate,
+    revisionDate: fixtureRevisionDate,
+    deletedDate: null,
+    organizationId: null,
+    folderId: null,
+    name,
+    notes: null,
+    favorite: false,
+    edit: true,
+    permissions: { delete: true },
+    fields: [],
   }
 }
 
