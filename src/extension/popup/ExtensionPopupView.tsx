@@ -7,12 +7,14 @@ import { For, type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
+import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
 import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
+import { ExtensionPopupGeneratorPane } from "./ExtensionPopupGeneratorPane.jsx"
 import { ExtensionPopupLoginCard } from "./ExtensionPopupLoginCard.jsx"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
 import { extensionPopupViewStateCreate } from "./extensionPopupViewStateCreate.js"
@@ -25,6 +27,10 @@ export interface ExtensionPopupViewProps {
   idPrefix?: string
   theme?: () => "light" | "dark"
   onThemeChange?: (theme: "light" | "dark") => void
+  generatorOptions?: Parameters<typeof ExtensionPopupGeneratorPane>[0]["options"]
+  generatorPreferences?: () => ExtensionGeneratorPreferences
+  generatorPreferencesLoaded?: () => boolean
+  onGeneratorPreferencesChange?: (preferences: ExtensionGeneratorPreferences) => void
 }
 
 /** Browser-action popup showing the vault filtered to the active site. */
@@ -68,7 +74,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           icon={mdiLock}
           aria-current={state.isVaultPane() ? "page" : undefined}
           disabled={state.busy()}
-          onClick={state.fullVaultOpen}
+          onClick={state.vaultPaneOpen}
           class="extension-selected-control min-h-10 min-w-0 px-2"
         >
           Vault
@@ -79,7 +85,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           icon={mdiKey}
           aria-current={state.isGeneratorPane() ? "page" : undefined}
           disabled={state.busy()}
-          onClick={state.generatorOpen}
+          onClick={state.generatorPaneOpen}
           class="extension-selected-control min-h-10 min-w-0 px-2"
         >
           Generator
@@ -97,13 +103,37 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </ExtensionButtonIcon>
       </nav>
 
-      <Show when={state.isLoading()}>
+      <Show when={state.isGeneratorPane()}>
+        <Show
+          when={p.generatorPreferencesLoaded?.() ?? true}
+          fallback={
+            <div role="status" aria-label="Loading generator preferences" class="flex justify-center py-6">
+              <LoaderShuffle4Dots />
+            </div>
+          }
+        >
+          <ExtensionPopupGeneratorPane
+            idPrefix={p.idPrefix}
+            options={
+              p.generatorPreferences === undefined
+                ? p.generatorOptions
+                : {
+                    ...p.generatorOptions,
+                    initialPreferences: p.generatorPreferences(),
+                    onPreferencesChange: p.onGeneratorPreferencesChange,
+                  }
+            }
+          />
+        </Show>
+      </Show>
+
+      <Show when={state.isVaultPane() && state.isLoading()}>
         <div role="status" aria-label="Loading vault" class="flex justify-center py-6">
           <LoaderShuffle4Dots />
         </div>
       </Show>
 
-      <Show when={state.isLoggedOut()}>
+      <Show when={state.isVaultPane() && state.isLoggedOut()}>
         <section class="flex flex-col gap-2 py-4">
           <p class="text-sm">Sign in to use your vault on this site.</p>
           <Button
@@ -120,7 +150,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </section>
       </Show>
 
-      <Show when={state.isLocked()}>
+      <Show when={state.isVaultPane() && state.isLocked()}>
         <section class="flex flex-col gap-2 py-4" aria-label="Unlock vault">
           <p class="text-sm">Your vault is locked.</p>
           <Show when={state.biometricAvailable() && state.biometricEnrolled()}>
@@ -162,7 +192,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </section>
       </Show>
 
-      <Show when={state.isError()}>
+      <Show when={state.isVaultPane() && state.isError()}>
         <section role="alert" class="flex flex-col gap-2 py-4">
           <p class="extension-error-text text-sm">{state.errorMessage() ?? "Something went wrong."}</p>
           <Button variant="outline" disabled={state.busy()} onClick={state.vaultSync}>
@@ -171,7 +201,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </section>
       </Show>
 
-      <Show when={state.isReady()}>
+      <Show when={state.isVaultPane() && state.isReady()}>
         <ExtensionInputS
           type="search"
           id={`${p.idPrefix ?? ""}popup-login-search`}
@@ -218,26 +248,40 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
       </Show>
 
-      <ExtensionSeparator />
+      <Show when={state.isVaultPane() || state.isGeneratorPane()}>
+        <ExtensionSeparator />
+      </Show>
 
-      <footer class="flex flex-wrap gap-1">
-        <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.loginAdd}>
-          Add login
-        </Button>
-        <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
-          Sync
-        </Button>
-        <Show when={state.isReady()}>
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
-            Lock
+      <Show when={state.isVaultPane()}>
+        <footer class="flex flex-wrap gap-1">
+          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.loginAdd}>
+            Add login
           </Button>
-        </Show>
-        <Show when={!state.isLoggedOut()}>
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
-            Log out
+          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
+            Sync
           </Button>
-        </Show>
-      </footer>
+          <Show when={state.isReady()}>
+            <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
+              Lock
+            </Button>
+          </Show>
+          <Show when={!state.isLoggedOut()}>
+            <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
+              Log out
+            </Button>
+          </Show>
+          <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.fullVaultOpen} class="ml-auto">
+            Open full vault
+          </Button>
+        </footer>
+      </Show>
+      <Show when={state.isGeneratorPane()}>
+        <footer class="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={state.generatorOpen}>
+            Open full generator
+          </Button>
+        </footer>
+      </Show>
     </Dynamic>
   )
 }

@@ -3,9 +3,9 @@ import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
+import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
 import { extensionThemeNext } from "../theme/extensionThemeNext.js"
 import { extensionThemeSet } from "../theme/extensionThemeSet.js"
-import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import { extensionPopupStatus } from "./ExtensionPopupStatus.js"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
@@ -71,13 +71,11 @@ export function extensionPopupViewStateCreate(
   const isVaultPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.vault)
   const isGeneratorPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.generator)
   const isSettingsPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.settings)
-  const fullVaultOpen = () => {
+  const vaultPaneOpen = () => {
     activePaneSignal.set(extensionFullWindowPane.vault)
-    commands().fullVaultOpen()
   }
-  const generatorOpen = () => {
+  const generatorPaneOpen = () => {
     activePaneSignal.set(extensionFullWindowPane.generator)
-    commands().generatorOpen()
   }
   const settingsOpen = () => {
     activePaneSignal.set(extensionFullWindowPane.settings)
@@ -119,8 +117,10 @@ export function extensionPopupViewStateCreate(
     vaultSync,
     vaultLock,
     vaultLogout,
-    fullVaultOpen,
-    generatorOpen,
+    vaultPaneOpen,
+    generatorPaneOpen,
+    fullVaultOpen: () => commands().fullVaultOpen(),
+    generatorOpen: () => commands().generatorOpen(),
     settingsOpen,
     isVaultPane,
     isGeneratorPane,

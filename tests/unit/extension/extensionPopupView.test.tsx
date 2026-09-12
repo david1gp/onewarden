@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
-import { ExtensionPopupView } from "../../../src/extension/popup/ExtensionPopupView.jsx"
+import { ExtensionPopupView, type ExtensionPopupViewProps } from "../../../src/extension/popup/ExtensionPopupView.jsx"
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
 import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
@@ -30,11 +30,21 @@ const otherLogin: ExtensionLogin = {
   copyableFields: [{ key: "username", label: "Username", value: "root@example.com" }],
 }
 
-function popupRender(model: Partial<ExtensionPopupViewModel>, commands: Partial<ExtensionPopupCommands> = {}) {
+type PopupRenderOptions = Pick<
+  ExtensionPopupViewProps,
+  "generatorOptions" | "generatorPreferences" | "generatorPreferencesLoaded" | "onGeneratorPreferencesChange"
+>
+
+function popupRender(
+  model: Partial<ExtensionPopupViewModel>,
+  commands: Partial<ExtensionPopupCommands> = {},
+  options: PopupRenderOptions = {},
+) {
   return render(() => (
     <ExtensionPopupView
       model={extensionPopupViewModelCreate(model)}
       commands={extensionPopupCommandsCreate(commands)}
+      {...options}
     />
   ))
 }
@@ -241,21 +251,80 @@ test("extensionPopupView exposes current vault, generator, settings, and vault c
   )
 
   expect(root.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBe("page")
-  expect(root.getByRole("button", { name: "Vault" }).classList.contains("extension-selected-control")).toBe(true)
   expect(root.getByRole("navigation", { name: "Extension navigation" })).toBeDefined()
   expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
-  expect(root.getByRole("button", { name: "Generator" }).classList.contains("extension-selected-control")).toBe(true)
+  expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   expect(root.getByRole("button", { name: "Vault" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
+  fireEvent.click(root.getByRole("button", { name: "Open full generator" }))
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
   expect(root.getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page")
   expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
+  fireEvent.click(root.getByRole("button", { name: "Open full vault" }))
   for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
 
   expect(calls).toEqual(["generator", "settings", "full", "add", "sync", "lock", "logout"])
+
+  root.unmount()
+})
+
+test("extensionPopupView renders the inline generator and keeps its controls compact", async () => {
+  const copied: string[] = []
+  const root = popupRender(
+    { status: "loading" },
+    {},
+    { generatorOptions: { clipboardWrite: async (value) => copied.push(value) } },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+
+  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
+  expect(root.getByLabelText("Generated passphrase")).toBeDefined()
+  expect(root.queryByLabelText("Search logins")).toBeNull()
+
+  fireEvent.click(root.getByRole("radio", { name: "Password" }))
+  const password = root.getByLabelText("Generated password") as HTMLInputElement
+  fireEvent.input(root.getByLabelText("Password length"), { target: { value: "32" } })
+  expect(password.value).toHaveLength(32)
+
+  fireEvent.click(root.getByRole("button", { name: "Reveal generated secret" }))
+  expect(password.type).toBe("text")
+  fireEvent.click(root.getByRole("button", { name: "Copy generated password" }))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(copied).toEqual([password.value])
+  expect(root.getByRole("status").textContent).toContain("Copied to clipboard")
+
+  root.unmount()
+})
+
+test("extensionPopupView hydrates popup generator preferences before rendering controls", () => {
+  const root = popupRender(
+    { status: "loading" },
+    {},
+    {
+      generatorPreferences: () => ({
+        mode: "password",
+        password: {
+          length: 47,
+          characterPolicy: { lowercase: false, uppercase: true, numbers: false, symbols: true },
+        },
+        passphrase: { numWords: 11, wordSeparator: "·", includeNumber: false },
+      }),
+      generatorPreferencesLoaded: () => true,
+    },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Generator" }))
+
+  expect(root.getByRole("radio", { name: "Password" }).getAttribute("aria-checked")).toBe("true")
+  expect((root.getByLabelText("Password length") as HTMLInputElement).value).toBe("47")
+  expect((root.container.querySelector("#popup-generator-uppercase") as HTMLInputElement).checked).toBe(true)
+  expect((root.container.querySelector("#popup-generator-lowercase") as HTMLInputElement).checked).toBe(false)
 
   root.unmount()
 })

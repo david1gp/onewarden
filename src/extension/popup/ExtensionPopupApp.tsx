@@ -8,5 +8,13 @@ export interface ExtensionPopupAppProps {
 
 export function ExtensionPopupApp(props: ExtensionPopupAppProps): JSX.Element {
   const state = extensionPopupAppStateCreate(props.options)
-  return <ExtensionPopupView model={state.model()} commands={state.commands} />
+  return (
+    <ExtensionPopupView
+      model={state.model()}
+      commands={state.commands}
+      generatorPreferences={state.generatorPreferences}
+      generatorPreferencesLoaded={state.generatorPreferencesLoaded}
+      onGeneratorPreferencesChange={state.onGeneratorPreferencesChange}
+    />
+  )
 }
