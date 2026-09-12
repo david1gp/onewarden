@@ -1,0 +1,348 @@
+.extension-theme-root {
+  min-height: 100%;
+  color-scheme: light;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e2e8f0;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #475569;
+  --color-accent: #dbeafe;
+  --color-accent-foreground: #1e3a8a;
+  --color-destructive: #b91c1c;
+  --color-destructive-hover: #991b1b;
+  --color-destructive-foreground: #ffffff;
+  --color-destructive-surface: #fef2f2;
+  --color-destructive-surface-foreground: #991b1b;
+  --color-info: #1e40af;
+  --color-success: #166534;
+  --color-warning: #713f12;
+  --color-warning-border: #a16207;
+  --color-warning-surface: #fef3c7;
+  --color-border: #64748b;
+  --color-input: #64748b;
+  --color-ring: #1d4ed8;
+  --color-control-disabled: #cbd5e1;
+  --color-control-disabled-foreground: #334155;
+  --color-placeholder: var(--color-muted-foreground);
+}
+
+.extension-theme-root.dark,
+.dark .extension-theme-root[data-extension-theme-source="host"] {
+  color-scheme: dark;
+  --color-background: #020617;
+  --color-foreground: #f8fafc;
+  --color-card: #0f172a;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #0f172a;
+  --color-popover-foreground: #f8fafc;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #93c5fd;
+  --color-primary-foreground: #0f172a;
+  --color-secondary: #334155;
+  --color-secondary-foreground: #f8fafc;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #cbd5e1;
+  --color-accent: #1e3a8a;
+  --color-accent-foreground: #dbeafe;
+  --color-destructive: #f87171;
+  --color-destructive-hover: #fca5a5;
+  --color-destructive-foreground: #450a0a;
+  --color-destructive-surface: #450a0a;
+  --color-destructive-surface-foreground: #fecaca;
+  --color-info: #93c5fd;
+  --color-success: #86efac;
+  --color-warning: #fde68a;
+  --color-warning-border: #fbbf24;
+  --color-warning-surface: #422006;
+  --color-border: #94a3b8;
+  --color-input: #94a3b8;
+  --color-ring: #60a5fa;
+  --color-control-disabled: #334155;
+  --color-control-disabled-foreground: #e2e8f0;
+}
+
+html.extension-theme-root,
+html.extension-theme-root body,
+html.extension-theme-root #root {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+html.extension-theme-root body,
+html.extension-theme-root #root {
+  min-height: inherit;
+}
+
+.extension-theme-root ::placeholder {
+  color: var(--color-placeholder);
+}
+
+.extension-primary-control,
+.extension-selected-control:is([aria-current], [aria-selected="true"], [aria-pressed="true"]) {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.extension-selected-control:not([aria-current], [aria-selected="true"], [aria-pressed="true"]) {
+  color: var(--color-secondary-foreground);
+}
+
+.extension-destructive-control {
+  background-color: var(--color-destructive);
+  border-color: var(--color-destructive);
+  color: var(--color-destructive-foreground);
+}
+
+.extension-destructive-control:hover {
+  background-color: var(--color-destructive-hover);
+  border-color: var(--color-destructive-hover);
+}
+
+.extension-destructive-control:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.extension-destructive-control:disabled,
+.extension-destructive-control:disabled:hover {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-border);
+  color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.extension-primary-control :is(svg, svg *),
+.extension-selected-control:is([aria-current], [aria-selected="true"], [aria-pressed="true"]) :is(svg, svg *) {
+  color: var(--color-primary-foreground);
+  fill: var(--color-primary-foreground);
+}
+
+.extension-primary-control:hover,
+.extension-selected-control:is([aria-current], [aria-selected="true"], [aria-pressed="true"]):hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.extension-selected-control:not([aria-current], [aria-selected="true"], [aria-pressed="true"]):hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.extension-primary-control:focus-visible,
+.extension-selected-control:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.extension-primary-control:disabled,
+.extension-selected-control:disabled,
+.extension-primary-control:disabled:hover,
+.extension-selected-control:disabled:hover {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-control-disabled);
+  color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.extension-primary-control:disabled :is(svg, svg *),
+.extension-selected-control:disabled :is(svg, svg *),
+.extension-destructive-control:disabled :is(svg, svg *) {
+  color: var(--color-control-disabled-foreground);
+  fill: var(--color-control-disabled-foreground);
+}
+
+.extension-input-control,
+.extension-textarea-control,
+.extension-select-control {
+  background-color: var(--color-card);
+  border-color: var(--color-input);
+  color: var(--color-foreground);
+}
+
+.extension-page-surface {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+.extension-card-surface {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-card-foreground);
+}
+
+.extension-subtle-surface {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+.extension-info-surface {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.extension-warning-surface {
+  background-color: var(--color-warning-surface);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning);
+}
+
+.extension-destructive-surface {
+  background-color: var(--color-destructive-surface);
+  border: 1px solid var(--color-destructive);
+  color: var(--color-destructive-surface-foreground);
+}
+
+.extension-muted-text {
+  color: var(--color-muted-foreground);
+}
+
+.extension-info-text {
+  color: var(--color-info);
+}
+
+.extension-success-text {
+  color: var(--color-success);
+}
+
+.extension-error-text {
+  color: var(--color-destructive);
+}
+
+.extension-selected-control:is([aria-current], [aria-selected="true"], [aria-pressed="true"]) .extension-muted-text {
+  color: var(--color-primary-foreground) !important;
+}
+
+.extension-selected-control:disabled .extension-muted-text {
+  color: var(--color-control-disabled-foreground);
+}
+
+.extension-boundary {
+  border-color: var(--color-border);
+}
+
+.extension-badge {
+  background-color: var(--color-muted);
+  border-color: var(--color-border);
+  color: var(--color-foreground);
+}
+
+.extension-separator,
+.extension-separator-with-text {
+  width: 100%;
+}
+
+.extension-separator > div,
+.extension-separator-with-text > div > div {
+  background-color: var(--color-border);
+}
+
+.extension-input-control:focus-visible,
+.extension-textarea-control:focus-visible,
+.extension-select-control:focus-visible,
+.extension-checkbox-input:focus-visible,
+.extension-switch-control [role="radio"]:focus-visible,
+.extension-credential-option:focus-visible,
+.extension-icon-control:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.extension-input-control:disabled,
+.extension-textarea-control:disabled,
+.extension-select-control:disabled {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-border);
+  color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+  opacity: 1;
+  -webkit-text-fill-color: var(--color-control-disabled-foreground);
+}
+
+.extension-checkbox-input,
+.extension-range-control {
+  accent-color: var(--color-primary);
+}
+
+.extension-range-control:disabled {
+  accent-color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+}
+
+.extension-checkbox-control:has(.extension-checkbox-input:checked) {
+  color: var(--color-foreground);
+}
+
+.extension-checkbox-control:has(.extension-checkbox-input:disabled) {
+  color: var(--color-control-disabled-foreground);
+}
+
+.extension-checkbox-input:disabled {
+  accent-color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.extension-switch-control {
+  background-color: var(--color-card);
+  border-color: var(--color-border);
+}
+
+.extension-switch-control[data-disabled="true"] {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-border);
+  color: var(--color-control-disabled-foreground);
+}
+
+.extension-switch-control [role="radio"] {
+  color: var(--color-foreground);
+}
+
+.extension-switch-control [role="radio"][aria-checked="true"] {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.extension-switch-control [role="radio"][aria-checked="true"]:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.extension-switch-control [role="radio"][aria-checked="false"]:hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.extension-switch-control [role="radio"]:disabled,
+.extension-switch-control [role="radio"]:disabled:hover,
+.extension-credential-option:disabled,
+.extension-credential-option:disabled:hover,
+.extension-icon-control:disabled,
+.extension-icon-control:disabled:hover,
+.extension-icon-control[aria-disabled="true"],
+.extension-icon-control[aria-disabled="true"]:hover {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-border);
+  color: var(--color-control-disabled-foreground);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.extension-credential-selector:has(.extension-credential-option:disabled) {
+  border-color: var(--color-border);
+}
+
+.extension-icon-control:disabled :is(svg, svg *),
+.extension-icon-control[aria-disabled="true"] :is(svg, svg *) {
+  color: var(--color-control-disabled-foreground);
+  fill: var(--color-control-disabled-foreground);
+}

@@ -1,3 +1,39 @@
 @import "tailwindcss";
+@import "./extensionThemeStyles.css";
+@custom-variant dark (&:where(.dark, .dark *));
 @source "../../ui";
 @source "../../src";
+
+@theme static {
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e2e8f0;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #475569;
+  --color-accent: #dbeafe;
+  --color-accent-foreground: #1e3a8a;
+  --color-destructive: #b91c1c;
+  --color-destructive-hover: #991b1b;
+  --color-destructive-foreground: #ffffff;
+  --color-destructive-surface: #fef2f2;
+  --color-destructive-surface-foreground: #991b1b;
+  --color-info: #1e40af;
+  --color-success: #166534;
+  --color-warning: #713f12;
+  --color-warning-border: #a16207;
+  --color-warning-surface: #fef3c7;
+  --color-border: #64748b;
+  --color-input: #64748b;
+  --color-ring: #1d4ed8;
+  --color-control-disabled: #cbd5e1;
+  --color-control-disabled-foreground: #334155;
+  --color-placeholder: var(--color-muted-foreground);
+}

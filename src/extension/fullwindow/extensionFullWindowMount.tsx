@@ -1,6 +1,7 @@
 import { render } from "solid-js/web"
 import { extensionStorageAdapterCreate } from "../storage/extensionStorageAdapterCreate.js"
 import { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
+import { extensionThemeInit } from "../theme/extensionThemeInit.js"
 import { ExtensionFullWindowApp } from "./ExtensionFullWindowApp.jsx"
 import "../extensionStyles.css"
 
@@ -9,4 +10,4 @@ if (!root) throw new Error("extensionFullWindowMount could not find the #root el
 
 const storage = extensionStorageCreate(extensionStorageAdapterCreate(chrome.storage))
 
-render(() => <ExtensionFullWindowApp options={{ storage }} />, root)
+void extensionThemeInit().then(() => render(() => <ExtensionFullWindowApp options={{ storage }} />, root))
