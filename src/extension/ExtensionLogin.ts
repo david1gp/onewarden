@@ -9,6 +9,7 @@ export interface ExtensionLogin {
   organizationId?: string | null
   folderId?: string | null
   collectionIds?: string[]
+  favorite?: boolean
   edit?: boolean
   viewPassword?: boolean
   username: string | null

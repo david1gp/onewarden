@@ -15,6 +15,7 @@ export function ExtensionFullWindowApp(props: ExtensionFullWindowAppProps): JSX.
     <ExtensionFullWindowView
       model={state.model}
       commands={state.commands}
+      cipherAdapter={state.cipherAdapter}
       generatorPreferences={state.generatorPreferences}
       generatorPreferencesLoaded={state.generatorPreferencesLoaded}
       onGeneratorPreferencesChange={state.onGeneratorPreferencesChange}

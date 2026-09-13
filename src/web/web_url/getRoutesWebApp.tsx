@@ -2,6 +2,7 @@ import { type JSX, lazy } from "solid-js"
 import { getRoutesDemo } from "../demo/demo_url/getRoutesDemo.jsx"
 import type { PageNameDemo } from "../demo/demo_url/pageNameDemo.js"
 import { vaultDemoData } from "../demo/vaultDemoData.js"
+import { webCipherPresentationAdapterCreate } from "../ciphers/actions/webCipherPresentationAdapterCreate.js"
 import type { webAppStateCreate } from "../ui/webAppStateCreate.js"
 import type { PageNameWebApp } from "./pageNameWebApp.js"
 import { pageNameWebApp } from "./pageNameWebApp.js"
@@ -54,7 +55,9 @@ const SendListView = lazy(() =>
 const SettingsView = lazy(() =>
   import("../settings/ui/SettingsView.jsx").then((module) => ({ default: module.SettingsView })),
 )
-const VaultShell = lazy(() => import("../vault/ui/VaultShell.jsx").then((module) => ({ default: module.VaultShell })))
+const WebVaultShell = lazy(() =>
+  import("../vault/ui/WebVaultShell.jsx").then((module) => ({ default: module.WebVaultShell })),
+)
 
 type WebAppState = ReturnType<typeof webAppStateCreate>
 type WebAppRouteComponent = () => JSX.Element
@@ -70,6 +73,9 @@ type WebAppRoute = Readonly<{
 
 export function getRoutesWebApp(input: Readonly<{ readonly state: WebAppState }>): readonly WebAppRoute[] {
   const { state } = input
+  const cipherAdapter = webCipherPresentationAdapterCreate({
+    accessToken: () => state.session.session()?.accessToken ?? null,
+  })
   const authLogin = () => (
     <AuthLoginView
       session={state.session}
@@ -90,7 +96,7 @@ export function getRoutesWebApp(input: Readonly<{ readonly state: WebAppState }>
       pageName: pageNameWebApp.root,
       path: pageRouteWebApp.root,
       component: () => (
-        <VaultShell
+        <WebVaultShell
           initialItems={vaultDemoData}
           onOpenOrganizations={() => state.navigate(urlWebApp(pageNameWebApp.organizations))}
           onOpenSends={() => state.navigate(urlWebApp(pageNameWebApp.sends))}
@@ -193,6 +199,7 @@ export function getRoutesWebApp(input: Readonly<{ readonly state: WebAppState }>
       path: pageRouteWebApp.cipherCreate,
       component: () => (
         <CipherPage
+          adapter={cipherAdapter}
           initialMode={() => "create"}
           defaultUri={state.currentCipherCreateUri}
           onNavigateBack={() => state.navigate(urlWebApp(pageNameWebApp.root))}
@@ -206,6 +213,7 @@ export function getRoutesWebApp(input: Readonly<{ readonly state: WebAppState }>
       path: pageRouteWebApp.cipherEdit,
       component: () => (
         <CipherPage
+          adapter={cipherAdapter}
           cipherId={state.routeCipherId}
           initialMode={() => "edit"}
           onNavigateBack={() => state.navigate(urlWebApp(pageNameWebApp.root))}
@@ -219,6 +227,7 @@ export function getRoutesWebApp(input: Readonly<{ readonly state: WebAppState }>
       path: pageRouteWebApp.cipherView,
       component: () => (
         <CipherPage
+          adapter={cipherAdapter}
           cipherId={state.routeCipherId}
           initialMode={() => "view"}
           onNavigateBack={() => state.navigate(urlWebApp(pageNameWebApp.root))}

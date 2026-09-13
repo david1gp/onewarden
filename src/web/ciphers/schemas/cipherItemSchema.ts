@@ -6,6 +6,7 @@ import { cipherIdentityDataSchema } from "./cipherIdentityDataSchema.js"
 import { cipherLoginDataSchema } from "./cipherLoginDataSchema.js"
 import { cipherPasswordHistoryEntrySchema } from "./cipherPasswordHistoryEntrySchema.js"
 import { cipherSecureNoteDataSchema } from "./cipherSecureNoteDataSchema.js"
+import { cipherSshKeyDataSchema } from "./cipherSshKeyDataSchema.js"
 import { cipherTypeSchema } from "./cipherTypeSchema.js"
 
 export const cipherItemSchema = v.object({
@@ -26,6 +27,7 @@ export const cipherItemSchema = v.object({
   secureNote: v.optional(v.nullable(cipherSecureNoteDataSchema)),
   card: v.optional(v.nullable(cipherCardDataSchema)),
   identity: v.optional(v.nullable(cipherIdentityDataSchema)),
+  sshKey: v.optional(v.nullable(cipherSshKeyDataSchema)),
   creationDate: v.optional(v.nullable(v.string())),
   revisionDate: v.optional(v.nullable(v.string())),
   deletedDate: v.optional(v.nullable(v.string())),

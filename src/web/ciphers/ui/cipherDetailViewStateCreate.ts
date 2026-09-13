@@ -1,7 +1,6 @@
 import { createEffect, createMemo, onCleanup } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { VaultCollection } from "../../vault/model/vaultCollectionSchema.js"
-import { cipherApiClientCreate } from "../actions/cipherApiClientCreate.js"
 import { cipherCardBrandDetect } from "../model/cipherCardBrandDetect.js"
 import { cipherCardFormat } from "../model/cipherCardFormat.js"
 import { cipherCategoryIconResolve } from "../model/cipherCategoryIconResolve.js"
@@ -12,8 +11,19 @@ import type { CipherItem } from "../schemas/cipherItemSchema.js"
 export interface CipherDetailViewStateProps {
   item: () => CipherItem | null
   collections?: () => readonly VaultCollection[]
-  onToggleFavorite?: (id: string) => Promise<void> | void
+  actions?: {
+    copyToClipboard: (value: string) => Promise<void> | void
+    toggleFavorite: (id: string) => Promise<void> | void
+    delete: (id: string, hard: boolean) => Promise<void> | void
+    restore: (id: string) => Promise<void> | void
+    archive: (id: string, archived: boolean) => Promise<void> | void
+    clone: (id: string) => Promise<void> | void
+    share: (id: string, organizationId: string, collectionIds: string[]) => Promise<void> | void
+    uploadAttachment: (id: string, file: File) => Promise<void> | void
+    deleteAttachment: (id: string, attachmentId: string) => Promise<void> | void
+  }
   onEdit?: (id: string) => void
+  onToggleFavorite?: (id: string) => Promise<void> | void
   onDelete?: (id: string, hard: boolean) => Promise<void> | void
   onRestore?: (id: string) => Promise<void> | void
   onArchive?: (id: string, archived: boolean) => Promise<void> | void
@@ -21,16 +31,18 @@ export interface CipherDetailViewStateProps {
   onShare?: (id: string, organizationId: string, collectionIds: string[]) => Promise<void> | void
   onUploadAttachment?: (id: string, file: File) => Promise<void> | void
   onDeleteAttachment?: (id: string, attachmentId: string) => Promise<void> | void
+  fillAvailable?: () => boolean
+  onFill?: (id: string) => void
 }
 
 export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
-  const apiClient = cipherApiClientCreate()
   const displayedItem = createSignalObject<CipherItem | null>(props.item())
   const isPasswordRevealed = createSignalObject(false)
   const isCardNumberRevealed = createSignalObject(false)
   const isCvvRevealed = createSignalObject(false)
   const isSsnRevealed = createSignalObject(false)
   const isPassportRevealed = createSignalObject(false)
+  const isSshPrivateKeyRevealed = createSignalObject(false)
   const copiedField = createSignalObject<string | null>(null)
 
   // Dialog open signals
@@ -40,6 +52,17 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
 
   const isActionLoading = createSignalObject(false)
   const actionErrorMessage = createSignalObject<string | null>(null)
+  const actions = props.actions ?? {
+    copyToClipboard: () => undefined,
+    toggleFavorite: props.onToggleFavorite ?? (() => undefined),
+    delete: props.onDelete ?? (() => undefined),
+    restore: props.onRestore ?? (() => undefined),
+    archive: props.onArchive ?? (() => undefined),
+    clone: props.onClone ?? (() => undefined),
+    share: props.onShare ?? (() => undefined),
+    uploadAttachment: props.onUploadAttachment ?? (() => undefined),
+    deleteAttachment: props.onDeleteAttachment ?? (() => undefined),
+  }
 
   let copyTimer: ReturnType<typeof setTimeout> | null = null
   let actionRequestId = 0
@@ -66,6 +89,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isCvvRevealed.set(false)
     isSsnRevealed.set(false)
     isPassportRevealed.set(false)
+    isSshPrivateKeyRevealed.set(false)
     copiedField.set(null)
     if (copyTimer) {
       clearTimeout(copyTimer)
@@ -91,9 +115,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   })
 
   const copyToClipboard = (fieldName: string, value: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(value).catch(() => {})
-    }
+    void Promise.resolve(actions.copyToClipboard(value)).catch(() => {})
     copiedField.set(fieldName)
     if (copyTimer) clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {
@@ -101,6 +123,8 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
       copyTimer = null
     }, 2000)
   }
+
+  const copyValueToClipboard = (value: string) => copyToClipboard("value", value)
 
   const togglePasswordReveal = () => isPasswordRevealed.set(!isPasswordRevealed.get())
   const toggleCardNumberReveal = () => isCardNumberRevealed.set(!isCardNumberRevealed.get())
@@ -151,11 +175,25 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
   })
 
   const customFields = () => displayedItem.get()?.fields ?? []
+  const sshPrivateKeyValue = createMemo(() => {
+    const privateKey = displayedItem.get()?.sshKey?.privateKey
+    if (!privateKey) return ""
+    if (!canViewPassword()) return "Hidden by organization policy"
+    return isSshPrivateKeyRevealed.get() ? privateKey : "•".repeat(Math.min(privateKey.length, 64))
+  })
 
   const isDeleted = createMemo(() => !!displayedItem.get()?.deletedDate)
   const isArchived = createMemo(() => !!displayedItem.get()?.archivedDate)
   const canViewPassword = createMemo(() => displayedItem.get()?.viewPassword !== false)
   const openShareDialog = () => isShareDialogOpen.set(true)
+  const handleFill = () => {
+    const item = displayedItem.get()
+    if (item) props.onFill?.(item.id)
+  }
+  const toggleSshPrivateKeyReveal = () => {
+    if (!canViewPassword()) return
+    isSshPrivateKeyRevealed.set(!isSshPrivateKeyRevealed.get())
+  }
 
   const openDeleteDialog = (hard: boolean) => {
     deleteHardMode.set(hard)
@@ -169,24 +207,10 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onDelete) {
-        await props.onDelete(it.id, deleteHardMode.get())
-      } else {
-        const res = deleteHardMode.get() ? await apiClient.hardDelete(it.id) : await apiClient.softDelete(it.id)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        if (deleteHardMode.get()) {
-          displayedItem.set(null)
-        } else {
-          const refreshed = await apiClient.get(it.id)
-          if (!actionRequestIsCurrent(requestId, it.id)) return
-          if (refreshed.success) {
-            displayedItem.set(refreshed.data)
-          } else {
-            displayedItem.set({ ...it, deletedDate: new Date().toISOString() })
-          }
-        }
-      }
+      await actions.delete(it.id, deleteHardMode.get())
+      if (!actionRequestIsCurrent(requestId, it.id)) return
+      if (deleteHardMode.get()) displayedItem.set(null)
+      else displayedItem.set({ ...it, deletedDate: new Date().toISOString() })
       if (!actionRequestIsCurrent(requestId, it.id)) return
       isDeleteDialogOpen.set(false)
     } catch (err: any) {
@@ -204,14 +228,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onRestore) {
-        await props.onRestore(it.id)
-      } else {
-        const res = await apiClient.restore(it.id)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set(res.data)
-      }
+      await actions.restore(it.id)
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -228,14 +245,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onArchive) {
-        await props.onArchive(it.id, !isArchived())
-      } else {
-        const res = await apiClient.archive(it.id, !isArchived())
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set(res.data)
-      }
+      await actions.archive(it.id, !isArchived())
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -252,14 +262,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onClone) {
-        await props.onClone(it.id)
-      } else {
-        const res = await apiClient.clone(it.id)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set(res.data)
-      }
+      await actions.clone(it.id)
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -276,16 +279,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onShare) {
-        await props.onShare(it.id, organizationId, collectionIds)
-      } else {
-        const res = it.organizationId
-          ? await apiClient.updateCollections(it.id, collectionIds)
-          : await apiClient.share(it.id, organizationId, collectionIds, it)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set(res.data)
-      }
+      await actions.share(it.id, organizationId, collectionIds)
       if (!actionRequestIsCurrent(requestId, it.id)) return
       isShareDialogOpen.set(false)
     } catch (err: any) {
@@ -303,14 +297,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onUploadAttachment) {
-        await props.onUploadAttachment(it.id, file)
-      } else {
-        const res = await apiClient.uploadAttachment(it.id, file, file.name)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set(res.data)
-      }
+      await actions.uploadAttachment(it.id, file)
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -327,18 +314,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onDeleteAttachment) {
-        await props.onDeleteAttachment(it.id, attachmentId)
-      } else {
-        const res = await apiClient.deleteAttachment(it.id, attachmentId)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        const updatedAttachments = (it.attachments ?? []).filter((attachment) => attachment.id !== attachmentId)
-        displayedItem.set({
-          ...it,
-          attachments: updatedAttachments.length > 0 ? updatedAttachments : null,
-        })
-      }
+      await actions.deleteAttachment(it.id, attachmentId)
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -355,16 +331,9 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading.set(true)
     actionErrorMessage.set(null)
     try {
-      if (props.onToggleFavorite) {
-        await props.onToggleFavorite(it.id)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set({ ...it, favorite: !it.favorite })
-      } else {
-        const res = await apiClient.favorite(it.id, !it.favorite)
-        if (!res.success) throw new Error(res.errorMessage)
-        if (!actionRequestIsCurrent(requestId, it.id)) return
-        displayedItem.set({ ...it, favorite: !it.favorite })
-      }
+      await actions.toggleFavorite(it.id)
+      if (!actionRequestIsCurrent(requestId, it.id)) return
+      displayedItem.set({ ...it, favorite: !it.favorite })
       if (!actionRequestIsCurrent(requestId, it.id)) return
     } catch (err: any) {
       if (!actionRequestIsCurrent(requestId, it.id)) return
@@ -383,6 +352,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isCvvRevealed: isCvvRevealed.get,
     isSsnRevealed: isSsnRevealed.get,
     isPassportRevealed: isPassportRevealed.get,
+    isSshPrivateKeyRevealed: isSshPrivateKeyRevealed.get,
     copiedField: copiedField.get,
     categoryTheme,
     categoryIcon,
@@ -392,6 +362,7 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     formattedIdentityFullName,
     formattedIdentityAddress,
     customFields,
+    sshPrivateKeyValue,
     isDeleted,
     isArchived,
     canViewPassword,
@@ -401,11 +372,13 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     isActionLoading: isActionLoading.get,
     actionErrorMessage: actionErrorMessage.get,
     copyToClipboard,
+    copyValueToClipboard,
     togglePasswordReveal,
     toggleCardNumberReveal,
     toggleCvvReveal,
     toggleSsnReveal,
     togglePassportReveal,
+    toggleSshPrivateKeyReveal,
     openShareDialog,
     openDeleteDialog,
     handleConfirmDelete,
@@ -416,6 +389,8 @@ export function cipherDetailViewStateCreate(props: CipherDetailViewStateProps) {
     handleUploadAttachment,
     handleDeleteAttachment,
     toggleFavorite,
+    fillAvailable: props.fillAvailable ?? (() => false),
+    handleFill,
     editItem: () => {
       const it = displayedItem.get()
       if (it && props.onEdit) props.onEdit(it.id)

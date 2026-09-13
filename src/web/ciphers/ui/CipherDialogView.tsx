@@ -1,0 +1,70 @@
+import { type JSX, Match, Show, Switch } from "solid-js"
+import { mdiClose } from "@adaptive-ds/mdi/mdiClose.js"
+import Dialog from "@corvu/dialog"
+import { buttonCvaIconOnly, buttonVariant } from "#ui/interactive/button/buttonCva.js"
+import { buttonIconCva } from "#ui/interactive/button/buttonIconCva.js"
+import { classesDialogContentMerge, classesDialogOverlayMerge } from "#ui/interactive/dialog/classesDialogContent.js"
+import { Icon } from "#ui/static/icon/Icon.jsx"
+import { CipherDetailView } from "./CipherDetailView.jsx"
+import { CipherEditForm } from "./CipherEditForm.jsx"
+import type { CipherDialogViewProps } from "./cipherDialogViewProps.js"
+
+export function CipherDialogView(props: CipherDialogViewProps): JSX.Element {
+  const state = props.state
+
+  return (
+    <Dialog open={state.isOpen()} onOpenChange={state.handleOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay class={classesDialogOverlayMerge()} />
+        <Dialog.Content
+          class={classesDialogContentMerge("max-w-4xl h-[90vh] max-h-[850px] p-0 flex flex-col overflow-hidden")}
+        >
+          <div class="relative z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900 shrink-0">
+            <div>
+              <Dialog.Label class="text-base font-bold text-slate-900 dark:text-slate-50">
+                {state.dialogTitle()}
+              </Dialog.Label>
+              <Dialog.Description class="sr-only">
+                {state.mode() === "view"
+                  ? "Encrypted vault item credentials and details."
+                  : "Fill out the fields to save to your encrypted vault."}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close class={buttonCvaIconOnly(buttonVariant.outline, false, false)} title="Close dialog">
+              <Icon path={mdiClose} class={buttonIconCva(buttonVariant.outline, "")} />
+            </Dialog.Close>
+          </div>
+
+          <div class="flex-1 overflow-hidden">
+            <Show
+              when={!state.isLoading()}
+              fallback={
+                <div class="flex h-full items-center justify-center p-8">
+                  <div class="flex flex-col items-center gap-2">
+                    <div class="size-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Loading cipher details...</p>
+                  </div>
+                </div>
+              }
+            >
+              <Switch>
+                <Match when={state.mode() === "view"}>
+                  <CipherDetailView state={state.detailState} />
+                </Match>
+                <Match when={state.mode() === "edit" || state.mode() === "create"}>
+                  <CipherEditForm
+                    initialItem={state.mode() === "edit" ? state.currentItem : undefined}
+                    onSave={state.handleSave}
+                    onCancel={state.handleClose}
+                    isSaving={state.isSaving}
+                    errorMessage={state.errorMessage}
+                  />
+                </Match>
+              </Switch>
+            </Show>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog>
+  )
+}

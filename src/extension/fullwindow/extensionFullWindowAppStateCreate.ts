@@ -12,6 +12,8 @@ import type { extensionStorageCreate } from "../storage/extensionStorageCreate.j
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowCommandsCreate } from "./extensionFullWindowCommandsCreate.js"
+import type { CipherPresentationAdapter } from "../../web/ciphers/ui/cipherPresentationAdapter.js"
+import { extensionCipherPresentationAdapterCreate } from "./extensionCipherPresentationAdapterCreate.js"
 import { extensionFullWindowViewModelCreate } from "./extensionFullWindowViewModelCreate.js"
 
 type ExtensionGeneratorPreferencesStorage = Pick<
@@ -23,6 +25,7 @@ type ExtensionVaultSortStorage = Pick<ReturnType<typeof extensionStorageCreate>,
 export type ExtensionFullWindowAppOptions = {
   messageSend?: <T = unknown>(message: ExtensionRuntimeMessage) => Promise<Result<T>>
   clipboard?: ExtensionClipboardAdapter
+  cipherAdapter?: CipherPresentationAdapter
   storage?: ExtensionGeneratorPreferencesStorage & Partial<ExtensionVaultSortStorage>
 }
 
@@ -139,6 +142,9 @@ export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAp
       onRefresh: refresh,
     },
   )
+  const cipherAdapter =
+    options.cipherAdapter ??
+    extensionCipherPresentationAdapterCreate({ messageSend: sender, clipboard: options.clipboard })
 
   onMount(() => {
     void refresh()
@@ -149,6 +155,7 @@ export function extensionFullWindowAppStateCreate(options: ExtensionFullWindowAp
   return {
     model: modelSignal.get,
     commands,
+    cipherAdapter,
     refresh,
     generatorPreferences: generatorPreferencesSignal.get,
     generatorPreferencesLoaded: generatorPreferencesLoadedSignal.get,

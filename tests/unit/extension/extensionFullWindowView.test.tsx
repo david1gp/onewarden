@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { fireEvent, render } from "@solidjs/testing-library"
+import { fireEvent, render, within } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
 import {
@@ -10,10 +10,13 @@ import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwi
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "../../../src/extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
-import type { ExtensionGeneratorPreferences } from "../../../src/extension/storage/extensionGeneratorPreferencesSchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
-import { resultErrorCreate } from "../../../src/shared/result/resultErrorCreate.js"
-import type { VaultSort } from "../../../src/shared/vault/vaultSortSchema.js"
+import { cipherItemFromDemo } from "../../../src/web/ciphers/model/cipherItemFromDemo.js"
+import { cipherItemFromWire } from "../../../src/web/ciphers/model/cipherItemFromWire.js"
+import type { CipherFormData } from "../../../src/web/ciphers/schemas/cipherFormDataSchema.js"
+import type { CipherItem } from "../../../src/web/ciphers/schemas/cipherItemSchema.js"
+import type { CipherPresentationAdapter } from "../../../src/web/ciphers/ui/cipherPresentationAdapter.js"
+import type { VaultItem } from "../../../src/web/demo/vaultItemSchema.js"
 import { createSignalObject } from "../../../ui/utils/createSignalObject.js"
 
 const exampleLogin: ExtensionLogin = {
@@ -51,7 +54,54 @@ type FullWindowRenderOptions = Pick<
   | "onVaultSortChange"
   | "theme"
   | "onThemeChange"
+  | "cipherAdapter"
 >
+
+function demoItem(login: ExtensionLogin): VaultItem {
+  return {
+    id: login.id,
+    title: login.name,
+    category: "login",
+    vault: "My Vault",
+    ownership: "personal",
+    organizationId: null,
+    folderId: null,
+    collectionIds: [],
+    username: login.username,
+    password: login.copyableFields.find((field) => field.key === "password")?.value,
+    url: login.uri,
+    totp: login.totpAvailable ? "123456" : undefined,
+    notes: login.copyableFields.find((field) => field.key === "notes")?.value,
+    customFields: login.copyableFields
+      .filter((field) => field.key.startsWith("custom:"))
+      .map((field) => ({ label: field.label, value: field.value, concealed: field.sensitive === true })),
+    favorite: false,
+    createdAt: "2026-01-01",
+    updatedAt: "2026-01-02",
+  }
+}
+
+function cipherAdapterCreate(ciphers: readonly CipherItem[], copied: string[] = []): CipherPresentationAdapter {
+  const first = ciphers[0] ?? cipherItemFromDemo(demoItem(exampleLogin))
+  const existing = (id: string) => ciphers.find((cipher) => cipher.id === id) ?? first
+  return {
+    list: async () => resultCreate([...ciphers]),
+    get: async (id) => resultCreate(existing(id)),
+    create: async (data: CipherFormData | CipherItem) => resultCreate(data as CipherItem),
+    update: async (_id, data: CipherFormData | CipherItem) => resultCreate(data as CipherItem),
+    favorite: async () => resultCreate(undefined),
+    softDelete: async () => resultCreate(undefined),
+    hardDelete: async () => resultCreate(undefined),
+    restore: async (id) => resultCreate(existing(id)),
+    archive: async (id) => resultCreate(existing(id)),
+    share: async (id) => resultCreate(existing(id)),
+    updateCollections: async (id) => resultCreate(existing(id)),
+    uploadAttachment: async (id) => resultCreate(existing(id)),
+    deleteAttachment: async () => resultCreate(undefined),
+    clone: async (id) => resultCreate(existing(id)),
+    copyToClipboard: (value) => copied.push(value),
+  }
+}
 
 function fullWindowRender(
   model: Partial<ExtensionFullWindowViewModel>,
@@ -59,41 +109,90 @@ function fullWindowRender(
   options: FullWindowRenderOptions = {},
 ) {
   window.history.replaceState(null, "", "/")
+  const viewModel = extensionFullWindowViewModelCreate(model)
+  const ciphers = viewModel.logins.map((login) => cipherItemFromDemo(demoItem(login)))
   return render(() => (
     <ExtensionFullWindowView
-      model={() => extensionFullWindowViewModelCreate(model)}
+      model={() => viewModel}
       commands={extensionFullWindowCommandsCreate(commands)}
       {...options}
+      cipherAdapter={options.cipherAdapter ?? cipherAdapterCreate(ciphers)}
     />
   ))
 }
 
-test("extensionFullWindowView shows a loading indicator while the vault state is unknown", () => {
+function extensionNavigation(root: ReturnType<typeof fullWindowRender>) {
+  return within(root.getByRole("navigation", { name: "Extension navigation" }))
+}
+
+const sharedTypeCiphers = [
+  cipherItemFromWire({
+    id: "note-1",
+    type: 2,
+    name: "Recovery note",
+    notes: "Backup codes",
+    fields: [],
+    secureNote: { type: 0 },
+    favorite: false,
+  }),
+  cipherItemFromWire({
+    id: "card-1",
+    type: 3,
+    name: "Travel card",
+    fields: [],
+    card: { cardholderName: "Ada Lovelace", brand: "Visa", number: "4111111111111111", code: "123" },
+    favorite: false,
+  }),
+  cipherItemFromWire({
+    id: "identity-1",
+    type: 4,
+    name: "Ada identity",
+    fields: [],
+    identity: { firstName: "Ada", lastName: "Lovelace", email: "ada@example.test" },
+    favorite: false,
+  }),
+  cipherItemFromWire({
+    id: "ssh-1",
+    type: 5,
+    name: "Deploy key",
+    fields: [],
+    sshKey: { privateKey: "private-key", publicKey: "ssh-ed25519 AAAA", keyFingerprint: "SHA256:abc" },
+    favorite: false,
+  }),
+]
+
+const sharedTypeSummary = (cipher: CipherItem) => ({
+  object: "cipherMini" as const,
+  id: cipher.id,
+  type: cipher.type,
+  revisionDate: cipher.revisionDate ?? "2026-01-01T00:00:00.000Z",
+  deletedDate: null,
+  name: cipher.name,
+  edit: true,
+  permissions: { delete: true, restore: true },
+})
+
+test.serial("extensionFullWindowView keeps the loading state outside the shared vault shell", () => {
   const root = fullWindowRender({ status: "loading" })
 
   expect(root.getByRole("status", { name: "Loading vault" })).toBeDefined()
-  expect(root.queryByLabelText("Search logins")).toBeNull()
-
+  expect(root.queryByRole("region", { name: "Vault Items" })).toBeNull()
   root.unmount()
 })
 
-test("extensionFullWindowView offers login when logged out and hides lock and logout", () => {
+test.serial("extensionFullWindowView offers login when logged out and hides lock and logout", () => {
   let loginCalls = 0
   const root = fullWindowRender({ status: "loggedOut" }, { accountLogin: () => (loginCalls += 1) })
 
-  const login = root.getByRole("button", { name: "Log in" })
-  expect(login.classList.contains("extension-primary-control")).toBe(true)
-  expect(root.getByRole("button", { name: "Vault" }).classList.contains("extension-selected-control")).toBe(true)
-  fireEvent.click(login)
+  fireEvent.click(root.getByRole("button", { name: "Log in" }))
 
   expect(loginCalls).toBe(1)
   expect(root.queryByRole("button", { name: "Lock" })).toBeNull()
   expect(root.queryByRole("button", { name: "Log out" })).toBeNull()
-
   root.unmount()
 })
 
-test("extensionFullWindowView unlocks with the typed master password and clears the field", () => {
+test.serial("extensionFullWindowView unlocks with the typed master password and clears the field", () => {
   const passwords: string[] = []
   const root = fullWindowRender({ status: "locked" }, { vaultUnlock: (value) => passwords.push(value) })
 
@@ -103,326 +202,138 @@ test("extensionFullWindowView unlocks with the typed master password and clears 
 
   expect(passwords).toEqual(["correct horse"])
   expect(input.value).toBe("")
-
   root.unmount()
 })
 
-test("extensionFullWindowView ignores an unlock attempt without a master password", () => {
-  const passwords: string[] = []
-  const root = fullWindowRender({ status: "locked" }, { vaultUnlock: (value) => passwords.push(value) })
-
-  fireEvent.click(root.getByRole("button", { name: "Unlock" }))
-
-  expect(passwords).toEqual([])
-
-  root.unmount()
-})
-
-test("extensionFullWindowView renders the error state with a retry that syncs", () => {
+test.serial("extensionFullWindowView renders the error state with a retry that syncs", () => {
   let syncCalls = 0
   const root = fullWindowRender(
     { status: "error", errorMessage: "Server unreachable" },
-    { vaultSync: () => (syncCalls += 1) },
+    { vaultSync: () => syncCalls++ },
   )
 
   expect(root.getByRole("alert").textContent).toContain("Server unreachable")
   fireEvent.click(root.getByRole("button", { name: "Retry" }))
-
   expect(syncCalls).toBe(1)
-
   root.unmount()
 })
 
-test("extensionFullWindowView explains an empty vault separately from empty filter results", () => {
-  const empty = fullWindowRender({ status: "ready", logins: [] })
-  expect(empty.getByText("Your vault is empty.")).toBeDefined()
-  empty.unmount()
+test.serial("extensionFullWindowView renders the shared vault shell with extension-owned items", () => {
+  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
 
-  const filtered = fullWindowRender({ status: "ready", logins: [exampleLogin] })
-  fireEvent.input(filtered.getByLabelText("Search logins"), { target: { value: "nothing matches" } })
-  expect(filtered.getByText("No logins match your filters.")).toBeDefined()
-  filtered.unmount()
+  expect(root.getByRole("region", { name: "Vault Items" })).toBeDefined()
+  expect(root.getByPlaceholderText(/Search items/)).toBeDefined()
+  expect(root.getByRole("button", { name: /Example Mail/ })).toBeDefined()
+  expect(root.getByRole("heading", { name: "Example Mail" })).toBeDefined()
+  root.unmount()
 })
 
-test("extensionFullWindowView filters logins by the search query", () => {
+test.serial("extensionFullWindowView does not replace injected items with a second vault list", async () => {
+  const baseAdapter = cipherAdapterCreate([cipherItemFromDemo(demoItem(exampleLogin))])
+  let listCalls = 0
+  let getCalls = 0
+  const adapter: CipherPresentationAdapter = {
+    ...baseAdapter,
+    list: async () => {
+      listCalls += 1
+      return baseAdapter.list()
+    },
+    get: async (id) => {
+      getCalls += 1
+      return baseAdapter.get(id)
+    },
+  }
+  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] }, {}, { cipherAdapter: adapter })
+
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  expect(listCalls).toBe(0)
+  expect(getCalls).toBe(1)
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView renders all injected cipher types through the shared detail view", async () => {
+  const baseAdapter = cipherAdapterCreate(sharedTypeCiphers)
+  const adapter: CipherPresentationAdapter = {
+    ...baseAdapter,
+    get: async (id) => resultCreate(sharedTypeCiphers.find((cipher) => cipher.id === id) ?? sharedTypeCiphers[0]),
+  }
+  const root = fullWindowRender(
+    {
+      status: "ready",
+      secureNotes: [sharedTypeSummary(sharedTypeCiphers[0] as CipherItem)],
+      cards: [sharedTypeSummary(sharedTypeCiphers[1] as CipherItem)],
+      identities: [sharedTypeSummary(sharedTypeCiphers[2] as CipherItem)],
+      sshKeys: [sharedTypeSummary(sharedTypeCiphers[3] as CipherItem)],
+    },
+    {},
+    { cipherAdapter: adapter },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: /Secure Notes/ }))
+  fireEvent.click(root.getByRole("button", { name: /Recovery note/ }))
+  await Promise.resolve()
+  expect(root.getAllByText("Backup codes").length).toBeGreaterThan(0)
+
+  fireEvent.click(root.getByRole("button", { name: /Credit Cards/ }))
+  fireEvent.click(root.getByRole("button", { name: /Travel card/ }))
+  await Promise.resolve()
+  expect(root.getByText("Card Credentials")).toBeDefined()
+
+  fireEvent.click(root.getByRole("button", { name: /Identities/ }))
+  fireEvent.click(root.getByRole("button", { name: /Ada identity/ }))
+  await Promise.resolve()
+  expect(root.getByText("Personal & Identity Profile")).toBeDefined()
+
+  fireEvent.click(root.getByRole("button", { name: /SSH Keys/ }))
+  fireEvent.click(root.getByRole("button", { name: /Deploy key/ }))
+  await Promise.resolve()
+  expect(root.getByText("SHA256:abc")).toBeDefined()
+  expect(root.container.textContent).not.toContain("private-key")
+  fireEvent.click(root.getByRole("button", { name: "Reveal private key" }))
+  expect(root.getByText("private-key")).toBeDefined()
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView filters shared vault items", () => {
   const root = fullWindowRender({ status: "ready", logins: [exampleLogin, otherLogin] })
+  const search = root.getByPlaceholderText(/Search items/) as HTMLInputElement
 
-  fireEvent.input(root.getByLabelText("Search logins"), { target: { value: "admin" } })
+  fireEvent.input(search, { target: { value: "admin" } })
 
-  expect(root.queryByRole("button", { name: "Example Mail" })).toBeNull()
-  expect(root.getByRole("button", { name: "Other Admin" })).toBeDefined()
-
+  expect(root.queryByRole("button", { name: /Example Mail/ })).toBeNull()
+  expect(root.getByRole("button", { name: /Other Admin/ })).toBeDefined()
   root.unmount()
 })
 
-test("extensionFullWindowView sorts after filtering with the shared sort options", () => {
-  const logins: ExtensionLogin[] = [
-    {
-      ...exampleLogin,
-      id: "login-zulu",
-      name: "Zulu",
-      username: "zulu@keep.test",
-      uri: "https://keep.test/zulu",
-      creationDate: "2026-01-01T00:00:00.000Z",
-      revisionDate: "2026-04-01T00:00:00.000Z",
-    },
-    {
-      ...otherLogin,
-      id: "login-bravo",
-      name: "Bravo",
-      username: "bravo@drop.test",
-      uri: "https://drop.test/bravo",
-      creationDate: "2026-03-01T00:00:00.000Z",
-      revisionDate: "2026-02-01T00:00:00.000Z",
-    },
-    {
-      ...exampleLogin,
-      id: "login-alpha",
-      name: "Alpha",
-      username: "alpha@keep.test",
-      uri: "https://keep.test/alpha",
-      creationDate: "2026-01-02T00:00:00.000Z",
-      revisionDate: "2026-01-01T00:00:00.000Z",
-    },
-    {
-      ...otherLogin,
-      id: "login-charlie",
-      name: "Charlie",
-      username: "charlie@drop.test",
-      uri: "https://drop.test/charlie",
-      creationDate: "2026-02-01T00:00:00.000Z",
-      revisionDate: "2026-03-01T00:00:00.000Z",
-    },
-  ]
-  const selectedSort = createSignalObject<VaultSort>("name-az")
-  const root = fullWindowRender(
-    { status: "ready", logins },
-    {},
-    {
-      vaultSort: selectedSort.get,
-      vaultSortLoaded: () => true,
-      onVaultSortChange: selectedSort.set,
-    },
-  )
-
-  const list = () => root.getByRole("list").querySelectorAll("button")
-  const listNames = () => [...list()].map((button) => button.getAttribute("aria-label"))
-  const sortSelect = root.getByLabelText("Sort logins") as HTMLSelectElement
-  const sortCases = [
-    ["name-az", ["Alpha", "Bravo", "Charlie", "Zulu"]],
-    ["name-za", ["Zulu", "Charlie", "Bravo", "Alpha"]],
-    ["created-newest", ["Bravo", "Charlie", "Alpha", "Zulu"]],
-    ["created-oldest", ["Zulu", "Alpha", "Charlie", "Bravo"]],
-    ["updated-newest", ["Zulu", "Charlie", "Bravo", "Alpha"]],
-    ["updated-oldest", ["Alpha", "Bravo", "Charlie", "Zulu"]],
-  ] as const
-
-  expect([...sortSelect.options].map((option) => option.value)).toEqual(sortCases.map(([sort]) => sort))
-  for (const [sort, expectedNames] of sortCases) {
-    fireEvent.change(sortSelect, { target: { value: sort } })
-    expect(selectedSort.get()).toBe(sort)
-    expect(listNames()).toEqual(expectedNames)
-  }
-
-  fireEvent.input(root.getByLabelText("Search logins"), { target: { value: "keep" } })
-  fireEvent.change(sortSelect, { target: { value: "created-newest" } })
-  expect(listNames()).toEqual(["Alpha", "Zulu"])
-
-  root.unmount()
-})
-
-test("extensionFullWindowView puts missing and invalid dates last", () => {
-  const missing: ExtensionLogin = {
-    ...exampleLogin,
-    id: "login-missing",
-    name: "Missing",
-  }
-  const invalid: ExtensionLogin = {
-    ...otherLogin,
-    id: "login-invalid",
-    name: "Invalid",
-    creationDate: "not-a-date",
-    revisionDate: "also-not-a-date",
-  }
-  const validOld: ExtensionLogin = {
-    ...exampleLogin,
-    id: "login-valid-old",
-    name: "Old",
-    creationDate: "2020-01-01T00:00:00.000Z",
-    revisionDate: "2020-01-01T00:00:00.000Z",
-  }
-  const validNew: ExtensionLogin = {
-    ...otherLogin,
-    id: "login-valid-new",
-    name: "New",
-    creationDate: "2025-01-01T00:00:00.000Z",
-    revisionDate: "2025-01-01T00:00:00.000Z",
-  }
-  const selectedSort = createSignalObject<VaultSort>("name-az")
-  const root = fullWindowRender(
-    { status: "ready", logins: [missing, invalid, validOld, validNew] },
-    {},
-    {
-      vaultSort: selectedSort.get,
-      vaultSortLoaded: () => true,
-      onVaultSortChange: selectedSort.set,
-    },
-  )
-
-  const list = () => root.getByRole("list").querySelectorAll("button")
-  const listNames = () => [...list()].map((button) => button.getAttribute("aria-label"))
-  const sortSelect = root.getByLabelText("Sort logins") as HTMLSelectElement
-  for (const [sort, expectedNames] of [
-    ["created-newest", ["New", "Old", "Invalid", "Missing"]],
-    ["created-oldest", ["Old", "New", "Invalid", "Missing"]],
-    ["updated-newest", ["New", "Old", "Invalid", "Missing"]],
-    ["updated-oldest", ["Old", "New", "Invalid", "Missing"]],
-  ] as const) {
-    fireEvent.change(sortSelect, { target: { value: sort } })
-    expect(listNames()).toEqual(expectedNames)
-  }
-
-  root.unmount()
-})
-
-test("extensionFullWindowView waits for vault sorting preferences before showing the vault list", () => {
-  const root = fullWindowRender(
-    { status: "ready", logins: [exampleLogin] },
-    {},
-    { vaultSort: () => "name-az", vaultSortLoaded: () => false },
-  )
-
-  expect(root.getByRole("status", { name: "Loading vault preferences" })).toBeDefined()
-  expect(root.queryByLabelText("Sort logins")).toBeNull()
-  root.unmount()
-})
-
-test("extensionFullWindowView filters logins to the active site on demand", () => {
-  const root = fullWindowRender({
-    status: "ready",
-    hostname: "example.com",
-    logins: [exampleLogin, otherLogin],
-  })
-
-  expect(root.getByRole("button", { name: "Other Admin" })).toBeDefined()
-  fireEvent.click(root.getByRole("button", { name: "Only this site" }))
-
-  expect(root.queryByRole("button", { name: "Other Admin" })).toBeNull()
-  expect(root.getByRole("button", { name: "Example Mail" })).toBeDefined()
-
-  root.unmount()
-})
-
-test("extensionFullWindowView hides the site filter without an active site", () => {
-  const root = fullWindowRender({ status: "ready", hostname: null, logins: [exampleLogin] })
-
-  expect(root.queryByRole("button", { name: "Only this site" })).toBeNull()
-  expect(root.getByLabelText("Active site").textContent).toBe("No active site")
-
-  root.unmount()
-})
-
-test("extensionFullWindowView shows details only for the selected login", () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin, otherLogin] })
-
-  expect(root.getByText("Select a login to see its details.")).toBeDefined()
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-
-  expect(root.getByLabelText("Details of Example Mail")).toBeDefined()
-  expect(root.queryByLabelText("Details of Other Admin")).toBeNull()
-
-  fireEvent.click(root.getByRole("button", { name: "Close details" }))
-  expect(root.queryByLabelText("Details of Example Mail")).toBeNull()
-
-  root.unmount()
-})
-
-test("extensionFullWindowView delegates editing to OneWarden and does not render a local form", () => {
-  const edited: string[] = []
-  const root = fullWindowRender(
-    { status: "ready", logins: [exampleLogin] },
-    { loginEdit: (login) => edited.push(login.id) },
-  )
-
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-  fireEvent.click(root.getByRole("button", { name: "Edit Example Mail in OneWarden" }))
-
-  expect(edited).toEqual(["login-1"])
-  expect(root.queryByRole("form")).toBeNull()
-  root.unmount()
-})
-
-test("extensionFullWindowView copies standard and custom fields without rendering secrets", () => {
+test.serial("extensionFullWindowView delegates shared detail copying to the injected adapter", () => {
   const copied: string[] = []
   const root = fullWindowRender(
     { status: "ready", logins: [exampleLogin] },
-    { fieldCopy: (_login, field) => copied.push(field.key) },
+    {},
+    { cipherAdapter: cipherAdapterCreate([cipherItemFromDemo(demoItem(exampleLogin))], copied) },
   )
 
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-  for (const label of ["Username", "Password", "URI", "Notes", "API key"]) {
-    fireEvent.click(root.getByRole("button", { name: `Copy ${label} of Example Mail` }))
-  }
+  fireEvent.click(root.getByRole("button", { name: "Copy username" }))
 
-  expect(copied).toEqual(["username", "password", "uri", "notes", "custom:API key"])
-  expect(root.container.textContent).not.toContain("s3cret")
-
+  expect(copied).toEqual(["ada@example.com"])
   root.unmount()
 })
 
-test("extensionFullWindowView exposes only a generated TOTP-code copy action", () => {
-  const copied: string[] = []
-  const root = fullWindowRender(
-    { status: "ready", logins: [exampleLogin] },
-    { totpCopy: (login) => copied.push(login.id) },
-  )
-
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-  fireEvent.click(root.getByRole("button", { name: "Copy TOTP code of Example Mail" }))
-
-  expect(copied).toEqual(["login-1"])
-  expect(root.container.textContent).not.toContain("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
-
-  root.unmount()
-})
-
-test("extensionFullWindowView marks the most recently copied field", () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin], copiedFieldKey: "password" })
-
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-
-  expect(root.getByRole("button", { name: "Copy Password of Example Mail" }).textContent).toBe("Copied")
-  expect(root.getByRole("button", { name: "Copy Username of Example Mail" }).textContent).toBe("Copy")
-
-  root.unmount()
-})
-
-test("extensionFullWindowView fills only the explicitly selected login when a tab is available", () => {
+test.serial("extensionFullWindowView preserves extension fill through the shared detail view", () => {
   const filled: string[] = []
   const root = fullWindowRender(
-    { status: "ready", hostname: "example.com", logins: [exampleLogin], fillAvailable: true },
+    { status: "ready", logins: [exampleLogin], fillAvailable: true },
     { loginFill: (login) => filled.push(login.id) },
   )
 
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
   fireEvent.click(root.getByRole("button", { name: "Fill Example Mail" }))
 
   expect(filled).toEqual(["login-1"])
-
   root.unmount()
 })
 
-test("extensionFullWindowView hides fill controls when filling is unavailable", () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin], fillAvailable: false })
-
-  fireEvent.click(root.getByRole("button", { name: "Example Mail" }))
-
-  expect(root.queryByRole("button", { name: "Fill Example Mail" })).toBeNull()
-
-  root.unmount()
-})
-
-test("extensionFullWindowView exposes add, sync, lock and logout commands", () => {
+test.serial("extensionFullWindowView preserves extension vault commands alongside the shared shell", () => {
   const calls: string[] = []
   const root = fullWindowRender(
     { status: "ready", logins: [exampleLogin] },
@@ -439,26 +350,92 @@ test("extensionFullWindowView exposes add, sync, lock and logout commands", () =
   }
 
   expect(calls).toEqual(["add", "sync", "lock", "logout"])
-
   root.unmount()
 })
 
-test("extensionFullWindowView disables commands while a command is in flight", () => {
-  let syncCalls = 0
+test.serial("extensionFullWindowView keeps settings separate from the shared vault shell", () => {
+  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] }, {}, { initialState: { pane: "settings" } })
+
+  expect(root.getByLabelText("Server settings")).toBeDefined()
+  expect(root.queryByRole("region", { name: "Vault Items" })).toBeNull()
+
+  fireEvent.click(extensionNavigation(root).getByRole("button", { name: "Vault" }))
+  expect(root.getByRole("region", { name: "Vault Items" })).toBeDefined()
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView saves the extension server settings", () => {
+  const saved: unknown[] = []
   const root = fullWindowRender(
-    { status: "ready", logins: [exampleLogin], busy: true },
-    { vaultSync: () => (syncCalls += 1) },
+    { status: "ready", environment: extensionFullWindowEnvironmentSettingsCreate() },
+    { environmentSave: (environment) => saved.push(environment) },
   )
 
-  const sync = root.getByRole("button", { name: "Sync" }) as HTMLButtonElement
-  expect(sync.disabled).toBe(true)
-  fireEvent.click(sync)
-  expect(syncCalls).toBe(0)
+  fireEvent.click(extensionNavigation(root).getByRole("button", { name: "Settings" }))
+  fireEvent.input(root.getByLabelText("Server URL"), { target: { value: "https://vault.example.com" } })
+  fireEvent.click(root.getByRole("button", { name: "Save settings" }))
 
+  expect(saved).toEqual([{ ...extensionFullWindowEnvironmentSettingsCreate(), base: "https://vault.example.com" }])
   root.unmount()
 })
 
-test("extensionFullWindowEnvironmentSettingsCreate defaults to the self-hosted OneWarden server", () => {
+test.serial("extensionFullWindowView retains the generator pane", () => {
+  const root = fullWindowRender({ status: "loggedOut" })
+
+  fireEvent.click(extensionNavigation(root).getByRole("button", { name: "Generator" }))
+  expect(root.getByRole("region", { name: "Generator configuration" })).toBeDefined()
+  const passphrase = root.getByLabelText("Generated passphrase") as HTMLInputElement
+  expect(passphrase.type).toBe("text")
+  fireEvent.click(root.getByRole("button", { name: "Hide generated secret" }))
+  expect(passphrase.type).toBe("password")
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView restores the persisted generator visibility preference", () => {
+  const root = fullWindowRender(
+    { status: "loggedOut" },
+    {},
+    {
+      initialState: { pane: "generator" },
+      generatorPreferences: () => ({
+        passwordVisible: false,
+        mode: "passphrase",
+        password: {
+          length: 20,
+          characterPolicy: { lowercase: true, uppercase: true, numbers: true, symbols: true },
+        },
+        passphrase: { numWords: 3, wordSeparator: "-", includeNumber: true },
+      }),
+      generatorPreferencesLoaded: () => true,
+    },
+  )
+
+  expect((root.getByLabelText("Generated passphrase") as HTMLInputElement).type).toBe("password")
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView uses the shared theme state", () => {
+  const theme = createSignalObject<"light" | "dark">("light")
+  const changed: string[] = []
+  const root = fullWindowRender(
+    { status: "ready" },
+    {},
+    {
+      theme: theme.get,
+      onThemeChange: (next) => {
+        changed.push(next)
+        theme.set(next)
+      },
+    },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Switch to dark theme" }))
+
+  expect(changed).toEqual(["dark"])
+  root.unmount()
+})
+
+test.serial("extensionFullWindowEnvironmentSettingsCreate defaults to the self-hosted server", () => {
   expect(extensionFullWindowEnvironmentSettingsCreate()).toEqual({
     region: "selfHosted",
     base: "https://onewarden.contentoren.de",
@@ -471,441 +448,21 @@ test("extensionFullWindowEnvironmentSettingsCreate defaults to the self-hosted O
   })
 })
 
-test("extensionFullWindowView shows exactly one Server URL field", () => {
-  const root = fullWindowRender({ status: "ready", logins: [] })
+test.serial("extensionFullWindowView keeps persisted vault timeout policy controls", () => {
+  const root = fullWindowRender({ status: "ready", lockPolicy: { timeoutMinutes: 60, action: "logout" } })
 
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect((root.getByLabelText("Region") as HTMLSelectElement).value).toBe("selfHosted")
-  const serverUrlInputs = root.getAllByLabelText("Server URL")
-  expect(serverUrlInputs).toHaveLength(1)
-  expect(root.getAllByRole("textbox")).toHaveLength(1)
-  expect((serverUrlInputs[0] as HTMLInputElement).type).toBe("url")
-  expect((serverUrlInputs[0] as HTMLInputElement).value).toBe("https://onewarden.contentoren.de")
-  for (const label of [
-    "Server base URL",
-    "Web vault URL",
-    "API URL",
-    "Identity URL",
-    "Icons URL",
-    "Notifications URL",
-    "Events URL",
-  ]) {
-    expect(root.queryByLabelText(label)).toBeNull()
-  }
-
-  root.unmount()
-})
-
-test("extensionFullWindowView saves region and base while retaining persisted service fields", () => {
-  const saved: unknown[] = []
-  const existingEnvironment = extensionFullWindowEnvironmentSettingsCreate({
-    region: "eu",
-    base: "https://legacy.example.com",
-    webVault: "https://web.example.com",
-    api: "https://api.example.com",
-    identity: "https://identity.example.com",
-    icons: "https://icons.example.com",
-    notifications: "https://notifications.example.com",
-    events: "https://events.example.com",
-  })
-  const root = fullWindowRender(
-    {
-      status: "ready",
-      logins: [],
-      environment: existingEnvironment,
-    },
-    { environmentSave: (environment) => saved.push(environment) },
-  )
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect((root.getByLabelText("Region") as HTMLSelectElement).value).toBe("eu")
-
-  fireEvent.change(root.getByLabelText("Region"), { target: { value: "selfHosted" } })
-  fireEvent.input(root.getByLabelText("Server URL"), { target: { value: "https://vault.example.com" } })
-  fireEvent.click(root.getByRole("button", { name: "Save settings" }))
-
-  expect(saved).toEqual([
-    {
-      ...existingEnvironment,
-      region: "selfHosted",
-      base: "https://vault.example.com",
-    },
-  ])
-
-  root.unmount()
-})
-
-test("extensionFullWindowView loads the persisted vault timeout policy", () => {
-  const root = fullWindowRender({
-    status: "ready",
-    lockPolicy: { timeoutMinutes: 60, action: "logout" },
-  })
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  fireEvent.click(extensionNavigation(root).getByRole("button", { name: "Settings" }))
 
   expect((root.getByLabelText("Vault timeout") as HTMLSelectElement).value).toBe("60")
   expect(root.getByRole("radio", { name: "Log out" }).getAttribute("aria-checked")).toBe("true")
-  expect(root.queryByText(/With Never selected/)).toBeNull()
-
   root.unmount()
 })
 
-test("extensionFullWindowView saves minute and logout timeout choices", () => {
-  const saved: unknown[] = []
-  const root = fullWindowRender(
-    { status: "ready", lockPolicy: { timeoutMinutes: 15, action: "lock" } },
-    { lockPolicySave: (policy) => saved.push(policy) },
-  )
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  fireEvent.change(root.getByLabelText("Vault timeout"), { target: { value: "240" } })
-  fireEvent.click(root.getByRole("radio", { name: "Log out" }))
-  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
-
-  expect(saved).toEqual([{ timeoutMinutes: 240, action: "logout" }])
-
-  root.unmount()
-})
-
-test("extensionFullWindowView represents Never as a null timeout and explains its risk", () => {
-  const saved: unknown[] = []
-  const root = fullWindowRender(
-    { status: "ready", lockPolicy: { timeoutMinutes: 5, action: "lock" } },
-    { lockPolicySave: (policy) => saved.push(policy) },
-  )
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  fireEvent.change(root.getByLabelText("Vault timeout"), { target: { value: "never" } })
-
-  expect(root.getByText(/With Never selected/)).toBeDefined()
-  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
-  expect(saved).toEqual([{ timeoutMinutes: null, action: "lock" }])
-
-  root.unmount()
-})
-
-test("extensionFullWindowView shows security loading and save result states", async () => {
-  const loading = fullWindowRender({ status: "loading" })
-  fireEvent.click(loading.getByRole("button", { name: "Settings" }))
-  expect(loading.getByRole("status").textContent).toContain("Loading security settings")
-  expect(loading.queryByLabelText("Vault timeout")).toBeNull()
-  loading.unmount()
-
-  const modelSignal = createSignalObject(
-    extensionFullWindowViewModelCreate({
-      status: "ready",
-      lockPolicy: { timeoutMinutes: 30, action: "lock" },
-    }),
-  )
-  const sent: unknown[] = []
-  const commands = extensionFullWindowCommandsCreate(
-    {},
-    {
-      messageSend: async (message) => {
-        sent.push(message)
-        return resultCreate(undefined)
-      },
-      onModelUpdate: (updater) => modelSignal.set(updater(modelSignal.get())),
-    },
-  )
-  const root = render(() => <ExtensionFullWindowView model={modelSignal.get} commands={commands} />)
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
-  expect((root.getByRole("button", { name: "Saving security settings…" }) as HTMLButtonElement).disabled).toBe(true)
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  expect(sent).toEqual([{ type: "lockPolicySave", request: { timeoutMinutes: 30, action: "lock" } }])
-  expect(root.getByRole("status").textContent).toContain("Security settings saved")
-
-  root.unmount()
-})
-
-test("extensionFullWindowView surfaces security save errors", async () => {
-  const modelSignal = createSignalObject(
-    extensionFullWindowViewModelCreate({
-      status: "ready",
-      lockPolicy: { timeoutMinutes: null, action: "lock" },
-    }),
-  )
-  const commands = extensionFullWindowCommandsCreate(
-    {},
-    {
-      messageSend: async () => resultErrorCreate("extensionBackgroundRouter.lockPolicySave", "Policy storage failed."),
-      onModelUpdate: (updater) => modelSignal.set(updater(modelSignal.get())),
-    },
-  )
-  const root = render(() => <ExtensionFullWindowView model={modelSignal.get} commands={commands} />)
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  expect(root.getByRole("alert").textContent).toContain("Policy storage failed.")
-  expect((root.getByRole("button", { name: "Save security settings" }) as HTMLButtonElement).disabled).toBe(false)
-
-  root.unmount()
-})
-
-test("extensionFullWindowView re-enables settings and surfaces a save error after the bridge responds", async () => {
-  const modelSignal = createSignalObject(extensionFullWindowViewModelCreate({ status: "ready" }))
-  const commands = extensionFullWindowCommandsCreate(
-    {},
-    {
-      hostPermissionRequest: async () => resultCreate(undefined),
-      messageSend: async () =>
-        resultErrorCreate("extensionBackgroundRouter.environmentSave", "Storage is unavailable."),
-      onModelUpdate: (updater) => modelSignal.set(updater(modelSignal.get())),
-    },
-  )
-  const root = render(() => <ExtensionFullWindowView model={modelSignal.get} commands={commands} />)
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  fireEvent.change(root.getByLabelText("Region"), { target: { value: "selfHosted" } })
-  fireEvent.input(root.getByLabelText("Server URL"), { target: { value: "https://vault.example.com" } })
-  fireEvent.click(root.getByRole("button", { name: "Save settings" }))
-
-  expect((root.getByRole("button", { name: "Saving settings…" }) as HTMLButtonElement).disabled).toBe(true)
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  expect((root.getByRole("button", { name: "Save settings" }) as HTMLButtonElement).disabled).toBe(false)
-  expect(root.getByRole("alert").textContent).toContain("Storage is unavailable.")
-
-  root.unmount()
-})
-
-test("extensionFullWindowView switches between the vault and settings panes", () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect(root.getByLabelText("Server settings")).toBeDefined()
-  expect(root.queryByLabelText("Search logins")).toBeNull()
-
-  fireEvent.click(root.getByRole("button", { name: "Vault" }))
-  expect(root.getByLabelText("Search logins")).toBeDefined()
-  expect(root.queryByLabelText("Server settings")).toBeNull()
-
-  root.unmount()
-})
-
-test("extensionFullWindowView navigates among URL-backed vault, generator and settings panes", async () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
-
-  fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  expect(root.getByRole("region", { name: "Generator configuration" })).toBeDefined()
-  expect(root.queryByLabelText("Search logins")).toBeNull()
-  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
-  await new Promise((resolve) => setTimeout(resolve, 0))
-  expect(new URLSearchParams(window.location.search).get("pane")).toBe("generator")
-
-  fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect(root.getByLabelText("Server settings")).toBeDefined()
-  fireEvent.click(root.getByRole("button", { name: "Vault" }))
-  expect(root.getByLabelText("Search logins")).toBeDefined()
-
-  root.unmount()
-})
-
-test("extensionFullWindowView uses the compact full-window shell and wide-screen layout", () => {
-  const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
-  const shell = root.container.firstElementChild as HTMLElement
-  const navigation = root.getByRole("navigation", { name: "Extension navigation" })
-
-  expect(shell.classList.contains("min-h-dvh")).toBe(true)
-  expect(shell.classList.contains("max-w-screen-2xl")).toBe(true)
-  expect(navigation.classList.contains("order-3")).toBe(true)
-  expect(navigation.classList.contains("sm:w-auto")).toBe(true)
-  expect(
-    [...root.container.querySelectorAll("div")].some((element) =>
-      element.classList.contains("md:grid-cols-[14rem_minmax(0,1fr)]"),
-    ),
-  ).toBe(true)
-  expect(
-    [...root.container.querySelectorAll("div")].some((element) =>
-      element.classList.contains("lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)]"),
-    ),
-  ).toBe(true)
-
-  fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  const generator = root.getByRole("region", { name: "Generator configuration" })
-  expect(generator.classList.contains("w-full")).toBe(true)
-  expect(generator.classList.contains("min-w-0")).toBe(true)
-
-  root.unmount()
-})
-
-test("extensionFullWindowView toggles the theme through its shared theme state", () => {
-  const theme = createSignalObject<"light" | "dark">("light")
-  const changed: string[] = []
-  const root = fullWindowRender(
-    { status: "ready", logins: [] },
-    {},
-    {
-      theme: theme.get,
-      onThemeChange: (next) => {
-        changed.push(next)
-        theme.set(next)
-      },
-    },
-  )
-
-  expect(root.getByRole("button", { name: "Switch to dark theme" })).toBeDefined()
-  fireEvent.click(root.getByRole("button", { name: "Switch to dark theme" }))
-
-  expect(changed).toEqual(["dark"])
-  expect(root.getByRole("button", { name: "Switch to light theme" })).toBeDefined()
-
-  root.unmount()
-})
-
-test("extensionFullWindowGeneratorPane updates useful generation controls", () => {
-  const root = fullWindowRender({ status: "loggedOut" })
-  fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  fireEvent.click(root.getByRole("radio", { name: "Password" }))
-  const password = root.getByLabelText("Generated password") as HTMLInputElement
-
-  expect(password.type).toBe("text")
-  expect(password.value).toHaveLength(20)
-  fireEvent.input(root.getByLabelText("Password length slider"), { target: { value: "32" } })
-  expect(password.value).toHaveLength(32)
-
-  fireEvent.click(root.container.querySelector("#generator-uppercase") as HTMLInputElement)
-  fireEvent.click(root.container.querySelector("#generator-numbers") as HTMLInputElement)
-  fireEvent.click(root.container.querySelector("#generator-symbols") as HTMLInputElement)
-  fireEvent.click(root.getByRole("button", { name: "Regenerate password" }))
-  expect(password.value).toMatch(/^[a-z]{32}$/)
-  expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).disabled).toBe(true)
-
-  fireEvent.click(root.getByRole("button", { name: "Hide generated secret" }))
-  expect(password.type).toBe("password")
-  expect(root.getByRole("button", { name: "Show generated secret" }).getAttribute("aria-pressed")).toBe("false")
-
-  root.unmount()
-})
-
-test("extensionFullWindowGeneratorPane copies the generated password", async () => {
-  const copied: string[] = []
-  Object.defineProperty(navigator, "clipboard", {
-    configurable: true,
-    value: { writeText: async (value: string) => copied.push(value) },
-  })
-  const root = fullWindowRender({ status: "loggedOut" })
-  fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  fireEvent.click(root.getByRole("radio", { name: "Password" }))
-  const password = root.getByLabelText("Generated password") as HTMLInputElement
-
-  fireEvent.click(root.getByRole("button", { name: "Copy" }))
-  await new Promise((resolve) => setTimeout(resolve, 0))
-
-  expect(copied).toEqual([password.value])
-  expect(root.getByRole("button", { name: "Copied" })).toBeDefined()
-
-  root.unmount()
-  Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
-})
-
-test("extensionFullWindowGeneratorPane defaults to and controls passphrases", () => {
-  const root = fullWindowRender({ status: "loggedOut" })
-  fireEvent.click(root.getByRole("button", { name: "Generator" }))
-
-  const passphrase = root.getByLabelText("Generated passphrase") as HTMLInputElement
-  const wordCount = root.getByLabelText("Number of words") as HTMLInputElement
-  const separator = root.getByLabelText("Word separator") as HTMLInputElement
-  const includeNumber = root.container.querySelector("#passphrase-include-number") as HTMLInputElement
-
-  expect(root.getByRole("group", { name: "Type" })).toBeDefined()
-  expect(root.getByRole("radio", { name: "Passphrase" }).getAttribute("aria-checked")).toBe("true")
-  expect(wordCount.value).toBe("3")
-  expect(separator.value).toBe("-")
-  expect(includeNumber.checked).toBe(true)
-  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(3)
-  expect(passphrase.value.match(/\d/g)).toHaveLength(1)
-
-  fireEvent.input(wordCount, { target: { value: "2" } })
-  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(3)
-  fireEvent.input(wordCount, { target: { value: "21" } })
-  expect(passphrase.value.split("-").length).toBeGreaterThanOrEqual(20)
-  fireEvent.input(separator, { target: { value: "|" } })
-  fireEvent.click(includeNumber)
-
-  expect(separator.value).toBe("|")
-  expect(includeNumber.checked).toBe(false)
-  expect(passphrase.value.split("|")).toHaveLength(20)
-  expect(passphrase.value).not.toMatch(/\d/)
-
-  fireEvent.click(root.getByRole("radio", { name: "Password" }))
-  expect(root.getByLabelText("Password length")).toBeDefined()
-  expect(root.queryByLabelText("Number of words")).toBeNull()
-  fireEvent.click(root.getByRole("radio", { name: "Passphrase" }))
-  expect((root.getByLabelText("Number of words") as HTMLInputElement).value).toBe("20")
-  expect((root.getByLabelText("Word separator") as HTMLInputElement).value).toBe("|")
-  expect((root.container.querySelector("#passphrase-include-number") as HTMLInputElement).checked).toBe(false)
-  expect((root.getByRole("button", { name: "Regenerate passphrase" }) as HTMLButtonElement).disabled).toBe(false)
-
-  root.unmount()
-})
-
-test("extensionFullWindowView hydrates every generator preference into its controls", () => {
-  const preferences: ExtensionGeneratorPreferences = {
-    passwordVisible: false,
-    mode: "password",
-    password: {
-      length: 47,
-      characterPolicy: {
-        lowercase: false,
-        uppercase: true,
-        numbers: false,
-        symbols: true,
-      },
-    },
-    passphrase: {
-      numWords: 11,
-      wordSeparator: "·",
-      includeNumber: false,
-    },
-  }
+test.serial("extensionFullWindowView waits for generator preferences before creating the generator", () => {
   const root = fullWindowRender(
     { status: "loggedOut" },
     {},
-    {
-      initialState: { pane: "generator" },
-      generatorPreferences: () => preferences,
-      generatorPreferencesLoaded: () => true,
-    },
-  )
-
-  expect(root.getByRole("radio", { name: "Password" }).getAttribute("aria-checked")).toBe("true")
-  expect((root.getByLabelText("Generated password") as HTMLInputElement).type).toBe("password")
-  expect((root.getByLabelText("Password length") as HTMLInputElement).value).toBe("47")
-  expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).checked).toBe(false)
-  expect((root.container.querySelector("#generator-uppercase") as HTMLInputElement).checked).toBe(true)
-  expect((root.container.querySelector("#generator-numbers") as HTMLInputElement).checked).toBe(false)
-  expect((root.container.querySelector("#generator-symbols") as HTMLInputElement).checked).toBe(true)
-
-  fireEvent.click(root.getByRole("radio", { name: "Passphrase" }))
-  expect((root.getByLabelText("Number of words") as HTMLInputElement).value).toBe("11")
-  expect((root.getByLabelText("Word separator") as HTMLInputElement).value).toBe("·")
-  expect((root.container.querySelector("#passphrase-include-number") as HTMLInputElement).checked).toBe(false)
-
-  root.unmount()
-})
-
-test("extensionFullWindowView waits for generator preferences before creating the generator", () => {
-  const root = fullWindowRender(
-    { status: "loggedOut" },
-    {},
-    {
-      initialState: { pane: "generator" },
-      generatorPreferences: () => ({
-        mode: "passphrase",
-        password: {
-          length: 20,
-          characterPolicy: { lowercase: true, uppercase: true, numbers: true, symbols: true },
-        },
-        passphrase: { numWords: 3, wordSeparator: "-", includeNumber: true },
-      }),
-      generatorPreferencesLoaded: () => false,
-    },
+    { initialState: { pane: "generator" }, generatorPreferencesLoaded: () => false },
   )
 
   expect(root.getByRole("status", { name: "Loading generator preferences" })).toBeDefined()

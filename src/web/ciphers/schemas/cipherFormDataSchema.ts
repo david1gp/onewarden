@@ -48,6 +48,10 @@ export const cipherFormDataSchema = v.object({
   ssn: v.optional(v.string()),
   passportNumber: v.optional(v.string()),
   licenseNumber: v.optional(v.string()),
+  // SSH key fields
+  privateKey: v.optional(v.string()),
+  publicKey: v.optional(v.string()),
+  keyFingerprint: v.optional(v.string()),
   // Custom fields
   fields: v.array(cipherCustomFieldSchema),
 })

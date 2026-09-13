@@ -35,5 +35,20 @@ export function cipherFormValidate(input: unknown): Result<CipherFormData> {
     }
   }
 
+  if (data.type === 5) {
+    if (!data.privateKey?.trim() || !data.publicKey?.trim() || !data.keyFingerprint?.trim()) {
+      return resultErrorCreate(op, "Private key, public key, and fingerprint are required.", {
+        code: "cipher.invalid-ssh-key",
+        statusCode: 400,
+      })
+    }
+    if (!data.publicKey.includes(" ")) {
+      return resultErrorCreate(op, "Public key must include a key type and encoded key.", {
+        code: "cipher.invalid-ssh-key",
+        statusCode: 400,
+      })
+    }
+  }
+
   return resultCreate(data)
 }

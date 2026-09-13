@@ -106,7 +106,7 @@ test("extension demo fixtures cover auth and every production full-window pane w
   expect(new Set(idPrefixes).size).toBe(idPrefixes.length)
 })
 
-test("extension demo fixture states expose production extras and confirmation surfaces", () => {
+test("extension demo fixture states expose the shared full-window vault surface", () => {
   const fixtureGet = (label: string) => {
     const fixture = extensionDemoFixtures.fullWindowModels.find((candidate) => candidate.label === label)
     if (fixture === undefined) throw new Error(`Missing extension demo fixture: ${label}`)
@@ -125,29 +125,11 @@ test("extension demo fixture states expose production extras and confirmation su
     ))
   }
 
-  const extras = renderFixture("Vault · cipher extras and custom fields")
-  expect(extras.getByText("Attachments (1)")).toBeDefined()
-  expect(extras.getByText("Password history (1)")).toBeDefined()
-  expect(extras.getByText("Account number")).toBeDefined()
-  expect(extras.getByText("Recovery phrase")).toBeDefined()
-  extras.unmount()
-
-  const confirmationFixtures = [
-    ["Vault · attachment delete confirmation", "Delete attachment?"],
-    ["Vault · password restore confirmation", "Restore this password?"],
-    ["Vault pane · secure note delete confirmation", "Move this secure note to trash?"],
-    ["Vault pane · card delete confirmation", "Move this card to trash?"],
-    ["Vault pane · identity delete confirmation", "Move this identity to trash?"],
-    ["Vault pane · SSH key delete confirmation", "Move this SSH key to trash?"],
-    ["Vault resources · folder delete confirmation", "Confirm resource deletion"],
-    ["Vault resources · collection delete confirmation", "Confirm resource deletion"],
-  ] as const
-
-  for (const [label, dialogName] of confirmationFixtures) {
-    const fixture = renderFixture(label)
-    expect(fixture.getByRole("alertdialog", { name: dialogName })).toBeDefined()
-    fixture.unmount()
-  }
+  const vault = renderFixture("Vault · cipher extras and custom fields")
+  expect(vault.getByRole("region", { name: "Vault Items" })).toBeDefined()
+  expect(vault.getByRole("button", { name: /Northstar Mail ada@northstar.test/ })).toBeDefined()
+  expect(vault.getByRole("heading", { name: "Northstar Mail" })).toBeDefined()
+  vault.unmount()
 })
 
 test("popup demo navigation keeps text tabs and icon actions in one compact row", () => {

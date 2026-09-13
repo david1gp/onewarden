@@ -15,6 +15,7 @@ import { CipherCustomFieldsEditor } from "./CipherCustomFieldsEditor.jsx"
 import { CipherIdentityFormSection } from "./CipherIdentityFormSection.jsx"
 import { CipherLoginFormSection } from "./CipherLoginFormSection.jsx"
 import { CipherSecureNoteFormSection } from "./CipherSecureNoteFormSection.jsx"
+import { CipherSshKeyFormSection } from "./CipherSshKeyFormSection.jsx"
 import { type CipherEditFormStateProps, cipherEditFormStateCreate } from "./cipherEditFormStateCreate.js"
 
 export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
@@ -179,6 +180,13 @@ export function CipherEditForm(props: CipherEditFormStateProps): JSX.Element {
               passportNumberSignal={state.passportNumber}
               licenseNumberSignal={state.licenseNumber}
               usernameSignal={state.identityUsername}
+            />
+          </Match>
+          <Match when={state.numericType() === 5}>
+            <CipherSshKeyFormSection
+              privateKeySignal={state.privateKey}
+              publicKeySignal={state.publicKey}
+              fingerprintSignal={state.keyFingerprint}
             />
           </Match>
         </Switch>

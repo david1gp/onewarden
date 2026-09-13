@@ -1,10 +1,12 @@
 import { createEffect, createMemo } from "solid-js"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
-import { cipherApiClientCreate } from "../actions/cipherApiClientCreate.js"
 import type { CipherDialogMode } from "../schemas/cipherDialogModeSchema.js"
 import type { CipherFormData } from "../schemas/cipherFormDataSchema.js"
 import type { CipherItem } from "../schemas/cipherItemSchema.js"
 import type { CipherType } from "../schemas/cipherTypeSchema.js"
+import { cipherDetailViewStateCreate } from "./cipherDetailViewStateCreate.js"
+import type { CipherPresentationAdapter } from "./cipherPresentationAdapter.js"
+import { cipherPresentationAdapterNoopCreate } from "./cipherPresentationAdapterNoopCreate.js"
 
 export interface CipherDialogStateProps {
   openSignal?: SignalObject<boolean>
@@ -12,6 +14,7 @@ export interface CipherDialogStateProps {
   cipherId?: () => string | null
   initialItem?: () => CipherItem | null
   defaultType?: () => CipherType | undefined
+  adapter?: CipherPresentationAdapter
   onSaved?: (item: CipherItem) => Promise<void> | void
   onDeleted?: (id: string, hard: boolean) => Promise<void> | void
   onClosed?: () => void
@@ -23,8 +26,7 @@ export interface CipherDialogStateProps {
 }
 
 export function cipherDialogStateCreate(props: CipherDialogStateProps) {
-  const apiClient = cipherApiClientCreate()
-
+  const adapter = props.adapter ?? cipherPresentationAdapterNoopCreate()
   const internalOpen = createSignalObject(false)
   const openSignal = props.openSignal ?? internalOpen
 
@@ -106,7 +108,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     mutationRequestBegin()
     isLoading.set(true)
     errorMessage.set(null)
-    const result = await apiClient.get(id)
+    const result = await adapter.get(id)
     if (requestId !== loadRequestId) return
     isLoading.set(false)
     if (result.success) {
@@ -141,7 +143,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     try {
       const item = currentItem.get()
       const isEdit = mode.get() === "edit" && item !== null
-      const result = isEdit ? await apiClient.update(item.id, formData) : await apiClient.create(formData)
+      const result = isEdit ? await adapter.update(item.id, formData) : await adapter.create(formData)
       if (!mutationRequestIsCurrent(requestId, isEdit ? item.id : undefined)) return
       if (!result.success) {
         errorMessage.set(result.errorMessage)
@@ -165,7 +167,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     const newFav = !item.favorite
     currentItem.set({ ...item, favorite: newFav })
     try {
-      const result = await apiClient.favorite(id, newFav)
+      const result = await adapter.favorite(id, newFav)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (!result.success) {
         currentItem.set(item)
@@ -181,7 +183,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleDelete = async (id: string, hard: boolean): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+      const result = hard ? await adapter.hardDelete(id) : await adapter.softDelete(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (!result.success) mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
       if (props.onDeleted) await props.onDeleted(id, hard)
@@ -195,7 +197,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleRestore = async (id: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.restore(id)
+      const result = await adapter.restore(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -211,7 +213,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleArchive = async (id: string, archived: boolean): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.archive(id, archived)
+      const result = await adapter.archive(id, archived)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -227,7 +229,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleClone = async (id: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.clone(id)
+      const result = await adapter.clone(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -247,8 +249,8 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     const requestId = mutationRequestBegin()
     try {
       const result = item.organizationId
-        ? await apiClient.updateCollections(id, collectionIds)
-        : await apiClient.share(id, organizationId, collectionIds, item)
+        ? await adapter.updateCollections(id, collectionIds)
+        : await adapter.share(id, organizationId, collectionIds, item)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -264,7 +266,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleUploadAttachment = async (id: string, file: File): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.uploadAttachment(id, file, file.name)
+      const result = await adapter.uploadAttachment(id, file, file.name)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -280,7 +282,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
   const handleDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.deleteAttachment(id, attachmentId)
+      const result = await adapter.deleteAttachment(id, attachmentId)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         const current = currentItem.get()
@@ -308,6 +310,23 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     return currentItem.get()?.name ?? "Cipher Details"
   })
 
+  const detailState = cipherDetailViewStateCreate({
+    item: currentItem.get,
+    collections: () => [],
+    actions: {
+      copyToClipboard: adapter.copyToClipboard,
+      toggleFavorite: handleToggleFavorite,
+      delete: handleDelete,
+      restore: handleRestore,
+      archive: handleArchive,
+      clone: handleClone,
+      share: handleShare,
+      uploadAttachment: handleUploadAttachment,
+      deleteAttachment: handleDeleteAttachment,
+    },
+    onEdit: handleSwitchToEdit,
+  })
+
   return {
     isOpen: openSignal.get,
     mode: mode.get,
@@ -315,6 +334,7 @@ export function cipherDialogStateCreate(props: CipherDialogStateProps) {
     isLoading: isLoading.get,
     isSaving: isSaving.get,
     errorMessage: errorMessage.get,
+    detailState,
     dialogTitle,
     handleOpenChange,
     handleClose,

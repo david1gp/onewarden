@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test"
+import { cipherItemFromDemo } from "../../../src/web/ciphers/model/cipherItemFromDemo.js"
+import { webCipherPresentationAdapterCreate } from "../../../src/web/ciphers/actions/webCipherPresentationAdapterCreate.js"
 import type { VaultItem } from "../../../src/web/demo/vaultItemSchema.js"
 import { vaultWorkspaceStateCreate } from "../../../src/web/demo/vaultWorkspaceStateCreate.js"
 
@@ -146,4 +148,26 @@ test("vault workspace moves selection to the current-list replacement after demo
   })
   deleteState.permanentlyDeleteItem("trash-source")
   expect(deleteState.selectedItem()?.id).toBe("trash-next")
+})
+
+test("api-backed injected workspace propagates cipher mutations to its item owner", async () => {
+  let items = [alignedItemCreate({ id: "existing-item" })]
+  const state = vaultWorkspaceStateCreate({
+    adapter: webCipherPresentationAdapterCreate(),
+    apiBacked: true,
+    items: () => items,
+    loadItemsOnMount: false,
+    onItemsChange: (next) => {
+      items = [...next]
+    },
+  })
+  const saved = cipherItemFromDemo(alignedItemCreate({ id: "saved-item", title: "Saved item" }))
+
+  state.handleCipherSaved(saved)
+  expect(state.items().map((item) => item.id)).toEqual(["saved-item", "existing-item"])
+  expect(items.map((item) => item.id)).toEqual(["saved-item", "existing-item"])
+
+  await state.handleCipherDeleted("saved-item", true)
+  expect(state.items().map((item) => item.id)).toEqual(["existing-item"])
+  expect(items.map((item) => item.id)).toEqual(["existing-item"])
 })

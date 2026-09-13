@@ -3,6 +3,7 @@ import { createRoot } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import { adminDashboardViewStateCreate } from "../../../src/web/admin/ui/adminDashboardViewStateCreate.js"
 import { cipherDialogStateCreate } from "../../../src/web/ciphers/ui/cipherDialogStateCreate.js"
+import { webCipherPresentationAdapterCreate } from "../../../src/web/ciphers/actions/webCipherPresentationAdapterCreate.js"
 import { organizationWorkspaceStateCreate } from "../../../src/web/organizations/ui/organizationWorkspaceStateCreate.js"
 import { settingsViewStateCreate } from "../../../src/web/settings/ui/settingsViewStateCreate.js"
 import { vaultUrlStateSync } from "../../../src/web/vault/model/vaultUrlStateSync.js"
@@ -19,6 +20,7 @@ describe("router-backed URL state synchronization", () => {
     createRoot((rootDispose) => {
       dispose = rootDispose
       cipherDialogStateCreate({
+        adapter: webCipherPresentationAdapterCreate(),
         hash: () => "#details",
         mode: () => "view",
         navigateReplace: (path) => replaced.push(path),

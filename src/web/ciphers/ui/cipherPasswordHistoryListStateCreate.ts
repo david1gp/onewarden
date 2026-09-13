@@ -4,6 +4,7 @@ import type { CipherPasswordHistoryEntry } from "../schemas/cipherPasswordHistor
 
 export interface CipherPasswordHistoryListStateProps {
   entries: () => CipherPasswordHistoryEntry[]
+  copyToClipboard?: (value: string) => Promise<void> | void
 }
 
 export function cipherPasswordHistoryListStateCreate(props: CipherPasswordHistoryListStateProps) {
@@ -21,9 +22,7 @@ export function cipherPasswordHistoryListStateCreate(props: CipherPasswordHistor
   }
 
   const copyPassword = async (index: number, password: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText(password).catch(() => {})
-    }
+    await Promise.resolve(props.copyToClipboard?.(password)).catch(() => {})
     copiedIndex.set(index)
     setTimeout(() => {
       if (copiedIndex.get() === index) {

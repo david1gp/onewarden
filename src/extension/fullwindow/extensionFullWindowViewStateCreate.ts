@@ -15,6 +15,7 @@ import { extensionThemeNext } from "../theme/extensionThemeNext.js"
 import { extensionThemeSet } from "../theme/extensionThemeSet.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
+import type { CipherPresentationAdapter } from "../../web/ciphers/ui/cipherPresentationAdapter.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
@@ -26,9 +27,9 @@ import { extensionFullWindowLoginIdSchema } from "./extensionFullWindowLoginIdSc
 import { extensionFullWindowLoginSearchMatch } from "./extensionFullWindowLoginSearchMatch.js"
 import { extensionFullWindowLoginUriMatch } from "./extensionFullWindowLoginUriMatch.js"
 import { extensionFullWindowPaneSchema } from "./extensionFullWindowPaneSchema.js"
-import { extensionFullWindowResourceStateCreate } from "./extensionFullWindowResourceStateCreate.js"
 import { extensionFullWindowSiteFilterSchema } from "./extensionFullWindowSiteFilterSchema.js"
 import { extensionFullWindowUrlSignalCreate } from "./extensionFullWindowUrlSignalCreate.js"
+import { extensionFullWindowVaultStateCreate } from "./extensionFullWindowVaultStateCreate.js"
 
 const regionLabels: Record<string, string> = {
   us: "Bitwarden US",
@@ -56,6 +57,7 @@ type ExtensionFullWindowViewOptions = {
   onVaultSortChange?: (sort: VaultSort) => void
   theme?: () => "light" | "dark"
   onThemeChange?: (theme: "light" | "dark") => void
+  cipherAdapter?: CipherPresentationAdapter
 }
 
 /** Component-local view state and command glue for the full-window vault. */
@@ -86,15 +88,7 @@ export function extensionFullWindowViewStateCreate(
   const localThemeSignal = createSignalObject<"light" | "dark">(
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   )
-  const resourceState = extensionFullWindowResourceStateCreate(model, commands, initialState)
-  const resourceFilteredModel = createMemo(() => ({
-    ...model(),
-    logins: model().logins.filter(resourceState.cipherMatches),
-    secureNotes: model().secureNotes.filter(resourceState.cipherMatches),
-    cards: model().cards.filter(resourceState.cipherMatches),
-    identities: model().identities.filter(resourceState.cipherMatches),
-    sshKeys: model().sshKeys.filter(resourceState.cipherMatches),
-  }))
+  const sharedVaultState = extensionFullWindowVaultStateCreate(model, commands, options.cipherAdapter)
 
   const environmentSignal = createSignalObject(extensionFullWindowEnvironmentSettingsCreate())
   const environmentTouchedSignal = createSignalObject(false)
@@ -155,7 +149,7 @@ export function extensionFullWindowViewStateCreate(
     void extensionThemeSet(next)
   }
   const visibleLogins = createMemo(() => {
-    const filteredLogins = resourceFilteredModel()
+    const filteredLogins = model()
       .logins.filter((login) => !siteOnly() || extensionFullWindowLoginUriMatch(login, hostname()))
       .filter((login) => extensionFullWindowLoginSearchMatch(login, searchQuerySignal.get()))
     return vaultSortApply(filteredLogins, vaultSort())
@@ -422,7 +416,6 @@ export function extensionFullWindowViewStateCreate(
     environmentSave,
     lockPolicySave,
     autofillPolicySave,
-    resourceState,
-    resourceFilteredModel,
+    sharedVaultState,
   }
 }

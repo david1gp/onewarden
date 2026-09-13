@@ -5,6 +5,7 @@ import type { CipherCustomField } from "../schemas/cipherCustomFieldSchema.js"
 export interface CipherCustomFieldsViewStateProps {
   fields: () => readonly CipherCustomField[]
   itemId?: () => string | null
+  copyToClipboard?: (value: string) => Promise<void> | void
 }
 
 export function cipherCustomFieldsViewStateCreate(props: CipherCustomFieldsViewStateProps) {
@@ -45,9 +46,7 @@ export function cipherCustomFieldsViewStateCreate(props: CipherCustomFieldsViewS
   }
 
   const copyField = (index: number, value: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(value).catch(() => {})
-    }
+    void Promise.resolve(props.copyToClipboard?.(value)).catch(() => {})
     copiedFieldIndex.set(index)
     if (copyTimer) clearTimeout(copyTimer)
     copyTimer = setTimeout(() => {

@@ -1,22 +1,22 @@
 import { createEffect } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
-import { cipherApiClientCreate } from "../actions/cipherApiClientCreate.js"
 import type { CipherDialogMode } from "../schemas/cipherDialogModeSchema.js"
 import type { CipherFormData } from "../schemas/cipherFormDataSchema.js"
 import type { CipherItem } from "../schemas/cipherItemSchema.js"
 import type { CipherType } from "../schemas/cipherTypeSchema.js"
+import { cipherDetailViewStateCreate } from "./cipherDetailViewStateCreate.js"
+import type { CipherPresentationAdapter } from "./cipherPresentationAdapter.js"
 
 export interface CipherPageStateProps {
   cipherId?: () => string | null
   initialMode?: () => CipherDialogMode
   defaultType?: () => CipherType | undefined
   defaultUri?: () => string | null
+  adapter: CipherPresentationAdapter
   onNavigateBack?: () => void
 }
 
 export function cipherPageStateCreate(props: CipherPageStateProps) {
-  const apiClient = cipherApiClientCreate()
-
   const mode = createSignalObject<CipherDialogMode>(props.initialMode ? props.initialMode() : "view")
   const currentItem = createSignalObject<CipherItem | null>(null)
   const isLoading = createSignalObject(false)
@@ -54,7 +54,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     currentItem.set(null)
     isLoading.set(true)
     errorMessage.set(null)
-    const result = await apiClient.get(id)
+    const result = await props.adapter.get(id)
     if (requestId !== loadRequestId) return
     isLoading.set(false)
     if (result.success) {
@@ -87,7 +87,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     try {
       const item = currentItem.get()
       const isEdit = mode.get() === "edit" && item !== null
-      const result = isEdit ? await apiClient.update(item.id, formData) : await apiClient.create(formData)
+      const result = isEdit ? await props.adapter.update(item.id, formData) : await props.adapter.create(formData)
       if (!mutationRequestIsCurrent(requestId, isEdit ? item.id : undefined)) return
       if (!result.success) {
         errorMessage.set(result.errorMessage)
@@ -110,7 +110,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     const newFav = !item.favorite
     currentItem.set({ ...item, favorite: newFav })
     try {
-      const result = await apiClient.favorite(id, newFav)
+      const result = await props.adapter.favorite(id, newFav)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (!result.success) {
         currentItem.set(item)
@@ -126,7 +126,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleDelete = async (id: string, hard: boolean): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+      const result = hard ? await props.adapter.hardDelete(id) : await props.adapter.softDelete(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (!result.success) {
         mutationErrorThrow(requestId, new Error(result.errorMessage), result.errorMessage)
@@ -137,7 +137,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
         return
       }
       const refreshRequestId = ++loadRequestId
-      const refreshed = await apiClient.get(id)
+      const refreshed = await props.adapter.get(id)
       if (refreshRequestId !== loadRequestId || !mutationRequestIsCurrent(requestId, id)) return
       if (refreshed.success) {
         currentItem.set(refreshed.data)
@@ -152,7 +152,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleRestore = async (id: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.restore(id)
+      const result = await props.adapter.restore(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -167,7 +167,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleArchive = async (id: string, archived: boolean): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.archive(id, archived)
+      const result = await props.adapter.archive(id, archived)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -182,7 +182,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleClone = async (id: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.clone(id)
+      const result = await props.adapter.clone(id)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -201,8 +201,8 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     const requestId = mutationRequestBegin()
     try {
       const result = item.organizationId
-        ? await apiClient.updateCollections(id, collectionIds)
-        : await apiClient.share(id, organizationId, collectionIds, item)
+        ? await props.adapter.updateCollections(id, collectionIds)
+        : await props.adapter.share(id, organizationId, collectionIds, item)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -217,7 +217,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleUploadAttachment = async (id: string, file: File): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.uploadAttachment(id, file, file.name)
+      const result = await props.adapter.uploadAttachment(id, file, file.name)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         currentItem.set(result.data)
@@ -232,7 +232,7 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
   const handleDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
     const requestId = mutationRequestBegin()
     try {
-      const result = await apiClient.deleteAttachment(id, attachmentId)
+      const result = await props.adapter.deleteAttachment(id, attachmentId)
       if (!mutationRequestIsCurrent(requestId, id)) return
       if (result.success) {
         const current = currentItem.get()
@@ -260,12 +260,29 @@ export function cipherPageStateCreate(props: CipherPageStateProps) {
     }
   }
 
+  const detailState = cipherDetailViewStateCreate({
+    item: currentItem.get,
+    actions: {
+      copyToClipboard: props.adapter.copyToClipboard,
+      toggleFavorite: handleToggleFavorite,
+      delete: handleDelete,
+      restore: handleRestore,
+      archive: handleArchive,
+      clone: handleClone,
+      share: handleShare,
+      uploadAttachment: handleUploadAttachment,
+      deleteAttachment: handleDeleteAttachment,
+    },
+    onEdit: handleSwitchToEdit,
+  })
+
   return {
     mode: mode.get,
     currentItem: currentItem.get,
     isLoading: isLoading.get,
     isSaving: isSaving.get,
     errorMessage: errorMessage.get,
+    detailState,
     handleSwitchToEdit,
     handleSave,
     handleToggleFavorite,

@@ -3,11 +3,13 @@ import * as v from "valibot"
 import { createSignalObject, type SignalObject } from "#ui/utils/createSignalObject.js"
 import { type VaultSort, vaultSortSchema } from "../../shared/vault/vaultSortSchema.js"
 import { webAuthSessionDefault } from "../auth/model/webAuthSessionDefault.js"
-import { cipherApiClientCreate } from "../ciphers/actions/cipherApiClientCreate.js"
+import { webCipherPresentationAdapterCreate } from "../ciphers/actions/webCipherPresentationAdapterCreate.js"
 import { cipherItemFromDemo } from "../ciphers/model/cipherItemFromDemo.js"
 import { cipherTypeToCategory } from "../ciphers/model/cipherTypeToCategory.js"
 import type { CipherDialogMode } from "../ciphers/schemas/cipherDialogModeSchema.js"
 import type { CipherItem } from "../ciphers/schemas/cipherItemSchema.js"
+import type { CipherPresentationAdapter } from "../ciphers/ui/cipherPresentationAdapter.js"
+import { cipherDialogStateCreate } from "../ciphers/ui/cipherDialogStateCreate.js"
 import type { VaultCollection } from "../vault/model/vaultCollectionSchema.js"
 import { vaultFilterApply } from "../vault/model/vaultFilterApply.js"
 import type { VaultFolder } from "../vault/model/vaultFolderSchema.js"
@@ -44,10 +46,16 @@ export interface VaultWorkspaceProps {
   navigateReplace?: (path: string) => void
   enableKeyboardWorkflows?: boolean
   apiBacked?: boolean
+  adapter?: CipherPresentationAdapter
+  loadItemsOnMount?: boolean
+  loadItemsWhen?: () => boolean
+  onItemsChange?: (items: readonly VaultItem[]) => void
   onSelectItem?: (id: string | null) => void
   onToggleFavorite?: (id: string) => Promise<void> | void
   onRestoreItem?: (id: string) => void
   onPermanentlyDeleteItem?: (id: string) => void
+  fillAvailable?: () => boolean
+  onFill?: (item: CipherItem) => void
 }
 
 function vaultItemFromCipher(cipher: CipherItem): VaultItem {
@@ -81,8 +89,8 @@ function vaultItemFromCipher(cipher: CipherItem): VaultItem {
 }
 
 export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
-  const apiClient = cipherApiClientCreate()
   const session = webAuthSessionDefault()
+  const adapter = props.adapter ?? webCipherPresentationAdapterCreate()
   const cipherItems = createSignalObject<readonly CipherItem[]>([])
   const apiItems = createSignalObject<readonly VaultItem[] | null>(null)
   const isApiBacked = props.apiBacked ?? false
@@ -171,6 +179,12 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     return item ? cipherItemFromDemo(item) : null
   })
 
+  const sourceItemsUpdate = (next: readonly VaultItem[]) => {
+    localItems?.set(next)
+    if (apiItems.get() !== null) apiItems.set(next)
+    props.onItemsChange?.(next)
+  }
+
   const syncUrlIfEnabled = () => {
     if (!props.enableUrlSync) return
     vaultUrlStateSync(currentFilter(), {
@@ -217,6 +231,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     formMode.set("none")
     activeMobileTab.set("detail")
     props.onSelectItem?.(id)
+    if (isApiBacked) void cipherRefresh(id).catch(() => {})
     syncUrlIfEnabled()
   }
 
@@ -318,15 +333,10 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     const current = items().find((item) => item.id === id)
     if (!current) return
     const favorite = !current.favorite
-    if (localItems) {
-      localItems.set(localItems.get().map((item) => (item.id === id ? { ...item, favorite } : item)))
-    }
-    if (apiItems.get() !== null) {
-      apiItems.set(apiItems.get()?.map((item) => (item.id === id ? { ...item, favorite } : item)) ?? [])
-    }
-    const result = await apiClient.favorite(id, favorite)
+    sourceItemsUpdate(sourceItems().map((item) => (item.id === id ? { ...item, favorite } : item)))
+    const result = await adapter.favorite(id, favorite)
     if (!result.success) {
-      localItems?.set(localItems.get().map((item) => (item.id === id ? { ...item, favorite: !favorite } : item)))
+      sourceItemsUpdate(sourceItems().map((item) => (item.id === id ? { ...item, favorite: !favorite } : item)))
       throw new Error(result.errorMessage)
     }
     cipherItems.set(cipherItems.get().map((cipher) => (cipher.id === id ? { ...cipher, favorite } : cipher)))
@@ -348,28 +358,11 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
 
   const handleCipherSaved = (saved: CipherItem) => {
     const vaultItem = vaultItemFromCipher(saved)
-    if (localItems) {
-      const existing = localItems.get()
-      const index = existing.findIndex((item) => item.id === saved.id)
-      if (index >= 0) {
-        const updated = [...existing]
-        updated[index] = vaultItem
-        localItems.set(updated)
-      } else {
-        localItems.set([vaultItem, ...existing])
-      }
-    }
-    if (apiItems.get() !== null) {
-      const existing = apiItems.get() ?? []
-      const index = existing.findIndex((item) => item.id === saved.id)
-      if (index >= 0) {
-        const updated = [...existing]
-        updated[index] = vaultItem
-        apiItems.set(updated)
-      } else {
-        apiItems.set([vaultItem, ...existing])
-      }
-    }
+    const existing = sourceItems()
+    const index = existing.findIndex((item) => item.id === saved.id)
+    const updated =
+      index >= 0 ? existing.map((item) => (item.id === saved.id ? vaultItem : item)) : [vaultItem, ...existing]
+    sourceItemsUpdate(updated)
     const existingCiphers = cipherItems.get()
     const cipherIndex = existingCiphers.findIndex((cipher) => cipher.id === saved.id)
     if (cipherIndex >= 0) {
@@ -384,8 +377,7 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
 
   const handleCipherDeleted = async (id: string, hard: boolean): Promise<void> => {
     if (hard) {
-      localItems?.set(localItems.get().filter((item) => item.id !== id))
-      if (apiItems.get() !== null) apiItems.set(apiItems.get()?.filter((item) => item.id !== id) ?? [])
+      sourceItemsUpdate(sourceItems().filter((item) => item.id !== id))
       cipherItems.set(cipherItems.get().filter((cipher) => cipher.id !== id))
       if (selectedItemId.get() === id) selectedItemId.set(items().find((item) => item.id !== id)?.id ?? null)
       return
@@ -399,13 +391,13 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   }
 
   const cipherRefresh = async (id: string): Promise<void> => {
-    const result = await apiClient.get(id)
+    const result = await adapter.get(id)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
 
   const handleCipherDelete = async (id: string, hard: boolean): Promise<void> => {
-    const result = hard ? await apiClient.hardDelete(id) : await apiClient.softDelete(id)
+    const result = hard ? await adapter.hardDelete(id) : await adapter.softDelete(id)
     if (!result.success) throw new Error(result.errorMessage)
     if (hard) {
       await handleCipherDeleted(id, true)
@@ -415,19 +407,19 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   }
 
   const handleCipherRestore = async (id: string): Promise<void> => {
-    const result = await apiClient.restore(id)
+    const result = await adapter.restore(id)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
 
   const handleCipherArchive = async (id: string, archived: boolean): Promise<void> => {
-    const result = await apiClient.archive(id, archived)
+    const result = await adapter.archive(id, archived)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
 
   const handleCipherClone = async (id: string): Promise<void> => {
-    const result = await apiClient.clone(id)
+    const result = await adapter.clone(id)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
@@ -437,20 +429,20 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       cipherItems.get().find((item) => item.id === id) ?? (selectedItemId.get() === id ? selectedCipherItem() : null)
     if (!cipher) throw new Error("Cipher not found.")
     const result = cipher.organizationId
-      ? await apiClient.updateCollections(id, collectionIds)
-      : await apiClient.share(id, organizationId, collectionIds, cipher)
+      ? await adapter.updateCollections(id, collectionIds)
+      : await adapter.share(id, organizationId, collectionIds, cipher)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
 
   const handleCipherUploadAttachment = async (id: string, file: File): Promise<void> => {
-    const result = await apiClient.uploadAttachment(id, file, file.name)
+    const result = await adapter.uploadAttachment(id, file, file.name)
     if (!result.success) throw new Error(result.errorMessage)
     updateCipher(result.data)
   }
 
   const handleCipherDeleteAttachment = async (id: string, attachmentId: string): Promise<void> => {
-    const result = await apiClient.deleteAttachment(id, attachmentId)
+    const result = await adapter.deleteAttachment(id, attachmentId)
     if (!result.success) throw new Error(result.errorMessage)
     await cipherRefresh(id)
   }
@@ -554,9 +546,11 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   }
 
   createEffect(() => {
-    if (!isApiBacked || apiListRequested || !session.isUnlocked()) return
+    if (!isApiBacked || apiListRequested || props.loadItemsOnMount === false) return
+    if (props.loadItemsWhen !== undefined && !props.loadItemsWhen()) return
+    if (props.adapter === undefined && !session.isUnlocked()) return
     apiListRequested = true
-    void apiClient.list().then((result) => {
+    void adapter.list().then((result) => {
       if (!result.success) return
       cipherItems.set(result.data)
       apiItems.set(result.data.map(vaultItemFromCipher))
@@ -565,7 +559,29 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
       if (selectedId === null || !result.data.some((cipher) => cipher.id === selectedId)) {
         selectedItemId.set(result.data[0]?.id ?? null)
       }
+      const detailId = result.data.some((cipher) => cipher.id === selectedId)
+        ? selectedId
+        : (result.data[0]?.id ?? null)
+      if (detailId !== null) void cipherRefresh(detailId).catch(() => {})
     })
+  })
+
+  let initialDetailLoadedId: string | null = null
+  createEffect(() => {
+    if (!isApiBacked || props.loadItemsOnMount !== false) return
+    const availableItems = items()
+    const selectedId = selectedItemId.get()
+    const detailId = availableItems.some((item) => item.id === selectedId)
+      ? selectedId
+      : (availableItems[0]?.id ?? null)
+    if (detailId === null || initialDetailLoadedId === detailId) return
+    initialDetailLoadedId = detailId
+    if (selectedId !== detailId) {
+      selectedItemId.set(detailId)
+      activeMobileTab.set("detail")
+      props.onSelectItem?.(detailId)
+    }
+    void cipherRefresh(detailId).catch(() => {})
   })
 
   onMount(() => {
@@ -581,6 +597,19 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
   const isCipherDialogOpen = createSignalObject(false)
   const cipherDialogMode = createSignalObject<CipherDialogMode>("create")
   const cipherDialogId = createSignalObject<string | null>(null)
+  const cipherDialog = cipherDialogStateCreate({
+    adapter,
+    cipherId: cipherDialogId.get,
+    mode: cipherDialogMode.get,
+    onDeleted: handleCipherDeleted,
+    onSaved: handleCipherSaved,
+    openSignal: isCipherDialogOpen,
+    syncUrl: props.enableUrlSync,
+    pathname: props.pathname,
+    search: props.search,
+    hash: props.hash,
+    navigateReplace: props.navigateReplace,
+  })
 
   return {
     items,
@@ -637,5 +666,10 @@ export function vaultWorkspaceStateCreate(props: VaultWorkspaceProps = {}) {
     handleCipherShare,
     handleCipherUploadAttachment,
     handleCipherDeleteAttachment,
+    refreshItem: cipherRefresh,
+    cipherDialog,
+    copyToClipboard: adapter.copyToClipboard,
+    fillAvailable: props.fillAvailable,
+    onFill: props.onFill,
   }
 }

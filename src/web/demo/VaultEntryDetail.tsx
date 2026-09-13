@@ -1,23 +1,31 @@
 import type { JSX } from "solid-js"
-import { CipherDetailView } from "../ciphers/ui/CipherDetailView.jsx"
+import { WebCipherDetailView } from "../ciphers/ui/WebCipherDetailView.jsx"
 import { type VaultEntryDetailStateProps, vaultEntryDetailStateCreate } from "./vaultEntryDetailStateCreate.js"
 
 export function VaultEntryDetail(props: VaultEntryDetailStateProps): JSX.Element {
   const state = vaultEntryDetailStateCreate(props)
 
   return (
-    <CipherDetailView
+    <WebCipherDetailView
       item={state.cipherItem}
       collections={state.collections}
-      onToggleFavorite={state.toggleFavorite}
+      actions={{
+        copyToClipboard: props.copyToClipboard,
+        toggleFavorite: state.toggleFavorite,
+        delete: state.deleteItem ?? (() => undefined),
+        restore: state.restoreItem ?? (() => undefined),
+        archive: state.archiveItem ?? (() => undefined),
+        clone: state.cloneItem,
+        share: state.shareItem ?? (() => undefined),
+        uploadAttachment: state.uploadAttachment ?? (() => undefined),
+        deleteAttachment: state.deleteAttachment ?? (() => undefined),
+      }}
       onEdit={state.editItem}
-      onDelete={state.deleteItem}
-      onRestore={state.restoreItem}
-      onArchive={state.archiveItem}
-      onClone={state.cloneItem}
-      onShare={state.shareItem}
-      onUploadAttachment={(id, file) => state.uploadAttachment?.(id, file)}
-      onDeleteAttachment={(id, attachmentId) => state.deleteAttachment?.(id, attachmentId)}
+      fillAvailable={props.fillAvailable}
+      onFill={(id) => {
+        const item = state.cipherItem()
+        if (item?.id === id) props.onFill?.(item)
+      }}
     />
   )
 }

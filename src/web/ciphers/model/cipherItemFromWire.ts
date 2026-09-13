@@ -94,6 +94,15 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
       }
     : null
 
+  const rawSshKey = cipherWireRecordRead(wire.sshKey)
+  const sshKey = rawSshKey
+    ? {
+        privateKey: typeof rawSshKey.privateKey === "string" ? rawSshKey.privateKey : null,
+        publicKey: typeof rawSshKey.publicKey === "string" ? rawSshKey.publicKey : null,
+        keyFingerprint: typeof rawSshKey.keyFingerprint === "string" ? rawSshKey.keyFingerprint : null,
+      }
+    : null
+
   const rawSecureNote = cipherWireRecordRead(wire.secureNote)
   const secureNote = rawSecureNote
     ? {
@@ -164,6 +173,7 @@ export function cipherItemFromWire(wire: Record<string, unknown>): CipherItem {
     secureNote,
     card,
     identity,
+    sshKey,
     creationDate: typeof wire.creationDate === "string" ? wire.creationDate : null,
     revisionDate: typeof wire.revisionDate === "string" ? wire.revisionDate : null,
     deletedDate: typeof wire.deletedDate === "string" ? wire.deletedDate : null,

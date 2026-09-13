@@ -84,6 +84,18 @@ export function cipherItemToWire(item: CipherFormData | CipherItem): Record<stri
     } else {
       base.identity = {}
     }
+  } else if (item.type === 5) {
+    if ("sshKey" in item) {
+      base.sshKey = item.sshKey ?? {}
+    } else if ("privateKey" in item || "publicKey" in item || "keyFingerprint" in item) {
+      base.sshKey = {
+        privateKey: item.privateKey || null,
+        publicKey: item.publicKey || null,
+        keyFingerprint: item.keyFingerprint || null,
+      }
+    } else {
+      base.sshKey = {}
+    }
   }
 
   return base

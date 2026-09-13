@@ -15,10 +15,40 @@ import { CipherCustomFieldsView } from "./CipherCustomFieldsView.jsx"
 import { CipherDeleteDialog } from "./CipherDeleteDialog.jsx"
 import { CipherPasswordHistoryList } from "./CipherPasswordHistoryList.jsx"
 import { CipherShareDialog } from "./CipherShareDialog.jsx"
+import type { CipherDetailViewProps } from "./cipherDetailViewProps.js"
 import { type CipherDetailViewStateProps, cipherDetailViewStateCreate } from "./cipherDetailViewStateCreate.js"
 
-export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element {
-  const state = cipherDetailViewStateCreate(props)
+type LegacyCipherDetailViewProps = Omit<CipherDetailViewStateProps, "actions"> & {
+  onToggleFavorite?: (id: string) => Promise<void> | void
+  onDelete?: (id: string, hard: boolean) => Promise<void> | void
+  onRestore?: (id: string) => Promise<void> | void
+  onArchive?: (id: string, archived: boolean) => Promise<void> | void
+  onClone?: (id: string) => Promise<void> | void
+  onShare?: (id: string, organizationId: string, collectionIds: string[]) => Promise<void> | void
+  onUploadAttachment?: (id: string, file: File) => Promise<void> | void
+  onDeleteAttachment?: (id: string, attachmentId: string) => Promise<void> | void
+}
+
+export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDetailViewProps): JSX.Element {
+  const state =
+    "state" in props
+      ? props.state
+      : cipherDetailViewStateCreate({
+          item: props.item,
+          collections: props.collections,
+          actions: {
+            copyToClipboard: () => undefined,
+            toggleFavorite: props.onToggleFavorite ?? (() => undefined),
+            delete: props.onDelete ?? (() => undefined),
+            restore: props.onRestore ?? (() => undefined),
+            archive: props.onArchive ?? (() => undefined),
+            clone: props.onClone ?? (() => undefined),
+            share: props.onShare ?? (() => undefined),
+            uploadAttachment: props.onUploadAttachment ?? (() => undefined),
+            deleteAttachment: props.onDeleteAttachment ?? (() => undefined),
+          },
+          onEdit: props.onEdit,
+        })
 
   return (
     <article class="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-slate-50/50 text-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
@@ -147,6 +177,17 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 </Show>
 
                 <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
+                  <Show when={state.fillAvailable() && [1, 3, 4].includes(item().type)}>
+                    <Button
+                      variant="filledBlue"
+                      size="sm"
+                      class="h-8 w-full text-sm"
+                      onClick={state.handleFill}
+                      aria-label={`Fill ${item().name}`}
+                    >
+                      Fill
+                    </Button>
+                  </Show>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -379,7 +420,10 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={state.canViewPassword() && (item().passwordHistory?.length ?? 0) > 0}>
                     <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                       <h3 class="font-semibold text-slate-900 text-sm dark:text-slate-100">Password History</h3>
-                      <CipherPasswordHistoryList entries={() => item().passwordHistory ?? []} />
+                      <CipherPasswordHistoryList
+                        entries={() => item().passwordHistory ?? []}
+                        copyToClipboard={state.copyValueToClipboard}
+                      />
                     </CardWrapper>
                   </Show>
                 </div>
@@ -779,8 +823,110 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                 </CardWrapper>
               </Show>
 
+              {/* Type 5: SSH Key Details */}
+              <Show when={item().type === 5 && item().sshKey}>
+                <CardWrapper class="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                  <p class="font-semibold text-slate-900 text-sm dark:text-slate-100">SSH Key Details</p>
+                  <Show when={item().sshKey?.keyFingerprint}>
+                    {(value) => (
+                      <LabeledValueRow
+                        class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                        label="Fingerprint"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
+                          <p class="break-all font-mono text-sm text-slate-900 select-all dark:text-slate-100">
+                            {value()}
+                          </p>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "ssh-fingerprint"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy fingerprint"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 shrink-0 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() => state.copyToClipboard("ssh-fingerprint", value())}
+                          />
+                        }
+                      />
+                    )}
+                  </Show>
+                  <Show when={item().sshKey?.publicKey}>
+                    {(value) => (
+                      <LabeledValueRow
+                        class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
+                        label="Public key"
+                        labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                        value={
+                          <p class="whitespace-pre-wrap break-all font-mono text-sm text-slate-900 select-all dark:text-slate-100">
+                            {value()}
+                          </p>
+                        }
+                        action={
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "ssh-public-key"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy public key"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 shrink-0 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() => state.copyToClipboard("ssh-public-key", value())}
+                          />
+                        }
+                      />
+                    )}
+                  </Show>
+                  <Show when={state.sshPrivateKeyValue()}>
+                    <LabeledValueRow
+                      class="gap-2"
+                      label="Private key"
+                      labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
+                      value={
+                        <p class="whitespace-pre-wrap break-all font-mono text-sm text-slate-900 select-all dark:text-slate-100">
+                          {state.sshPrivateKeyValue()}
+                        </p>
+                      }
+                      action={
+                        <div class="flex shrink-0 gap-1">
+                          <ButtonIcon
+                            variant="ghost"
+                            size="sm"
+                            class="h-8 text-sm"
+                            disabled={!state.canViewPassword()}
+                            aria-label={state.isSshPrivateKeyRevealed() ? "Hide private key" : "Reveal private key"}
+                            onClick={state.toggleSshPrivateKeyReveal}
+                          >
+                            {state.isSshPrivateKeyRevealed() ? "Hide" : "Reveal"}
+                          </ButtonIcon>
+                          <CopyActionButton
+                            isCopied={state.copiedField() === "ssh-private-key"}
+                            label="Copy"
+                            copiedLabel="Copied"
+                            ariaLabel="Copy private key"
+                            variant="subtle"
+                            size="sm"
+                            class="h-8 text-sm"
+                            iconClass="size-3.5"
+                            onCopy={() => state.copyToClipboard("ssh-private-key", item().sshKey?.privateKey ?? "")}
+                          />
+                        </div>
+                      }
+                    />
+                  </Show>
+                </CardWrapper>
+              </Show>
+
               {/* Custom Fields Section */}
-              <CipherCustomFieldsView fields={state.customFields} itemId={state.itemId} />
+              <CipherCustomFieldsView
+                fields={state.customFields}
+                itemId={state.itemId}
+                copyToClipboard={state.copyValueToClipboard}
+              />
 
               {/* Secure Notes Section */}
               <Show when={item().notes}>

@@ -9,6 +9,7 @@ export interface VaultEntryDetailStateProps {
   item: () => VaultItem | null
   cipherItem?: () => CipherItem | null
   collections?: () => readonly VaultCollection[]
+  copyToClipboard: (value: string) => Promise<void> | void
   enableFavoriteAction?: boolean
   onToggleFavorite?: (id: string) => unknown
   onEdit?: (id: string) => void
@@ -20,6 +21,8 @@ export interface VaultEntryDetailStateProps {
   onShare?: (id: string, organizationId: string, collectionIds: string[]) => Promise<void> | void
   onUploadAttachment?: (id: string, file: File) => Promise<void> | void
   onDeleteAttachment?: (id: string, attachmentId: string) => Promise<void> | void
+  fillAvailable?: () => boolean
+  onFill?: (item: CipherItem) => void
 }
 
 export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
@@ -77,6 +80,8 @@ export function vaultEntryDetailStateCreate(props: VaultEntryDetailStateProps) {
     shareItem: props.onShare,
     uploadAttachment: props.onUploadAttachment,
     deleteAttachment: props.onDeleteAttachment,
+    fillAvailable: props.fillAvailable,
+    onFill: props.onFill,
     isTrashDialogOpen: isTrashDialogOpen.get,
     openTrashDialog,
     closeTrashDialog,

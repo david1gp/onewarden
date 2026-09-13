@@ -65,6 +65,11 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
   const licenseNumber = createSignalObject(initial?.identity?.licenseNumber ?? "")
   const identityUsername = createSignalObject(initial?.identity?.username ?? "")
 
+  // SSH key signals
+  const privateKey = createSignalObject(initial?.sshKey?.privateKey ?? "")
+  const publicKey = createSignalObject(initial?.sshKey?.publicKey ?? "")
+  const keyFingerprint = createSignalObject(initial?.sshKey?.keyFingerprint ?? "")
+
   // Custom fields
   const fields = createSignalObject<CipherCustomField[]>(initial?.fields ? [...initial.fields] : [])
 
@@ -110,6 +115,9 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       passportNumber.set(item.identity?.passportNumber ?? "")
       licenseNumber.set(item.identity?.licenseNumber ?? "")
       identityUsername.set(item.identity?.username ?? "")
+      privateKey.set(item.sshKey?.privateKey ?? "")
+      publicKey.set(item.sshKey?.publicKey ?? "")
+      keyFingerprint.set(item.sshKey?.keyFingerprint ?? "")
       fields.set([...item.fields])
     }
   })
@@ -118,7 +126,7 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
 
   const isEditMode = createMemo(() => !!props.initialItem?.())
 
-  const typeOptions = () => ["1", "2", "3", "4"]
+  const typeOptions = () => ["1", "2", "3", "4", "5"]
   const typeLabel = (v: string) => {
     switch (v) {
       case "1":
@@ -129,6 +137,8 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
         return "Credit Card"
       case "4":
         return "Identity"
+      case "5":
+        return "SSH Key"
       default:
         return "Login"
     }
@@ -190,6 +200,9 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
       ssn: typeNum === 4 ? ssn.get().trim() || undefined : undefined,
       passportNumber: typeNum === 4 ? passportNumber.get().trim() || undefined : undefined,
       licenseNumber: typeNum === 4 ? licenseNumber.get().trim() || undefined : undefined,
+      privateKey: typeNum === 5 ? privateKey.get().trim() || undefined : undefined,
+      publicKey: typeNum === 5 ? publicKey.get().trim() || undefined : undefined,
+      keyFingerprint: typeNum === 5 ? keyFingerprint.get().trim() || undefined : undefined,
       fields: fields.get(),
     }
 
@@ -242,6 +255,9 @@ export function cipherEditFormStateCreate(props: CipherEditFormStateProps) {
     passportNumber,
     licenseNumber,
     identityUsername,
+    privateKey,
+    publicKey,
+    keyFingerprint,
     fields,
     isEditMode,
     isSaving: () => props.isSaving?.() ?? false,

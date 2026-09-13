@@ -6,8 +6,9 @@ import type { VaultFolder } from "../model/vaultFolderSchema.js"
 import type { VaultItem } from "../model/vaultItemSchema.js"
 import { vaultSyncModelMap } from "../model/vaultSyncModelMap.js"
 import type { VaultSyncResponse } from "../model/vaultSyncResponseSchema.js"
+import { vaultWorkspaceStateCreate } from "../../demo/vaultWorkspaceStateCreate.js"
 
-export interface VaultShellProps {
+export interface WebVaultShellProps {
   initialSyncData?: VaultSyncResponse
   initialItems?: readonly VaultItem[]
   initialFolders?: readonly VaultFolder[]
@@ -28,7 +29,7 @@ export interface VaultShellProps {
   onLogout?: () => void
 }
 
-export function vaultShellStateCreate(props: VaultShellProps = {}) {
+export function vaultShellStateCreate(props: WebVaultShellProps = {}) {
   const items = createSignalObject<readonly VaultItem[]>(props.initialItems ?? [])
   const folders = createSignalObject<readonly VaultFolder[]>(props.initialFolders ?? [])
   const collections = createSignalObject<readonly VaultCollection[]>(props.initialCollections ?? [])
@@ -72,6 +73,20 @@ export function vaultShellStateCreate(props: VaultShellProps = {}) {
     }
   })
 
+  const workspace = vaultWorkspaceStateCreate({
+    apiBacked: true,
+    collections: collections.get,
+    enableKeyboardWorkflows: true,
+    enableUrlSync: props.enableUrlSync ?? true,
+    folders: folders.get,
+    items: items.get,
+    navigateReplace: props.navigateReplace,
+    pathname: props.pathname,
+    profile: profile.get,
+    search: props.search,
+    hash: props.hash,
+  })
+
   return {
     items: items.get,
     folders: folders.get,
@@ -80,6 +95,12 @@ export function vaultShellStateCreate(props: VaultShellProps = {}) {
     isLoading: isLoading.get,
     errorMessage: errorMessage.get,
     syncVault,
+    workspace: {
+      state: workspace,
+      actions: workspace,
+      profile: profile.get,
+      copyToClipboard: workspace.copyToClipboard,
+    },
     enableUrlSync: props.enableUrlSync ?? true,
   }
 }

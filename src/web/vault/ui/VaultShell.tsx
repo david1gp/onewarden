@@ -2,14 +2,13 @@ import { type JSX, Show } from "solid-js"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
-import { VaultWorkspace } from "../../demo/VaultWorkspace.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { VaultEmptyState } from "./VaultEmptyState.jsx"
-import { type VaultShellProps, vaultShellStateCreate } from "./vaultShellStateCreate.js"
+import { VaultWorkspace } from "./VaultWorkspace.jsx"
+import type { VaultShellViewProps } from "./vaultShellViewProps.js"
 
-export function VaultShell(props: VaultShellProps = {}): JSX.Element {
-  const state = vaultShellStateCreate(props)
-
+export function VaultShell(props: VaultShellViewProps): JSX.Element {
+  const { actions, state } = props
   return (
     <div class="flex h-dvh w-full flex-col overflow-hidden bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
       {/* Accessibility Skip Link */}
@@ -36,73 +35,73 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
           <Show when={state.errorMessage()}>
             <span class="truncate text-sm text-rose-700 font-medium dark:text-rose-400">{state.errorMessage()}</span>
           </Show>
-          <Show when={props.onOpenOrganizations}>
+          <Show when={actions.onOpenOrganizations}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.workVault}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onOpenOrganizations?.()}
+              onClick={() => actions.onOpenOrganizations?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Organizations
             </ButtonIcon>
           </Show>
-          <Show when={props.onOpenSends}>
+          <Show when={actions.onOpenSends}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.send}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onOpenSends?.()}
+              onClick={() => actions.onOpenSends?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Send
             </ButtonIcon>
           </Show>
-          <Show when={props.onOpenEmergencyAccess}>
+          <Show when={actions.onOpenEmergencyAccess}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.lifebuoy}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onOpenEmergencyAccess?.()}
+              onClick={() => actions.onOpenEmergencyAccess?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Emergency
             </ButtonIcon>
           </Show>
-          <Show when={props.onOpenSettings}>
+          <Show when={actions.onOpenSettings}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.server}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onOpenSettings?.()}
+              onClick={() => actions.onOpenSettings?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Settings
             </ButtonIcon>
           </Show>
-          <Show when={props.onLock}>
+          <Show when={actions.onLock}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.lock}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onLock?.()}
+              onClick={() => actions.onLock?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Lock
             </ButtonIcon>
           </Show>
-          <Show when={props.onLogout}>
+          <Show when={actions.onLogout}>
             <ButtonIcon
               variant="ghost"
               size="sm"
               icon={vaultSvgIcons.login}
               iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-              onClick={() => props.onLogout?.()}
+              onClick={() => actions.onLogout?.()}
               class="h-8 text-sm text-slate-600 dark:text-slate-300"
             >
               Log Out
@@ -113,7 +112,7 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
             size="sm"
             icon={vaultSvgIcons.clock}
             iconClass="size-3.5 mr-1 text-slate-600 dark:text-slate-400"
-            onClick={() => void state.syncVault()}
+            onClick={() => void actions.syncVault()}
             disabled={state.isLoading()}
             class="h-8 text-sm text-slate-600 dark:text-slate-300"
           >
@@ -126,21 +125,9 @@ export function VaultShell(props: VaultShellProps = {}): JSX.Element {
       <main id="main-content" class="flex flex-1 min-h-0 overflow-hidden">
         <Show
           when={state.items().length > 0 || state.isLoading()}
-          fallback={<VaultEmptyState onAction={() => void state.syncVault()} actionLabel="Sync Now" />}
+          fallback={<VaultEmptyState onAction={() => void actions.syncVault()} actionLabel="Sync Now" />}
         >
-          <VaultWorkspace
-            items={state.items}
-            folders={state.folders}
-            collections={state.collections}
-            profile={state.profile}
-            apiBacked
-            enableUrlSync={state.enableUrlSync}
-            pathname={props.pathname}
-            search={props.search}
-            hash={props.hash}
-            navigateReplace={props.navigateReplace}
-            enableKeyboardWorkflows={true}
-          />
+          <VaultWorkspace {...props.workspace} />
         </Show>
       </main>
 

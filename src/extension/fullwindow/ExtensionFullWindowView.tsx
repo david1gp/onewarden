@@ -3,31 +3,24 @@ import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
-import { For, type JSX, Show } from "solid-js"
+import { type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import { Label } from "#ui/input/label/Label.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
+import type { CipherPresentationAdapter } from "../../web/ciphers/ui/cipherPresentationAdapter.js"
+import { VaultShell } from "../../web/vault/ui/VaultShell.jsx"
 import { ExtensionAccountAuthView } from "../auth/ExtensionAccountAuthView.jsx"
 import { ExtensionLoginChallengeView } from "../auth/ExtensionLoginChallengeView.jsx"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
-import { ExtensionSelectSingleNative } from "../ui/ExtensionSelectSingleNative.jsx"
 import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
-import { ExtensionFullWindowCardPane } from "./ExtensionFullWindowCardPane.jsx"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { ExtensionFullWindowGeneratorPane } from "./ExtensionFullWindowGeneratorPane.jsx"
-import { ExtensionFullWindowIdentityPane } from "./ExtensionFullWindowIdentityPane.jsx"
-import { ExtensionFullWindowLoginDetail } from "./ExtensionFullWindowLoginDetail.jsx"
-import { ExtensionFullWindowLoginRow } from "./ExtensionFullWindowLoginRow.jsx"
-import { ExtensionFullWindowResourceNavigation } from "./ExtensionFullWindowResourceNavigation.jsx"
-import { ExtensionFullWindowSecureNotePane } from "./ExtensionFullWindowSecureNotePane.jsx"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { ExtensionFullWindowSettingsPane } from "./ExtensionFullWindowSettingsPane.jsx"
-import { ExtensionFullWindowSshKeyPane } from "./ExtensionFullWindowSshKeyPane.jsx"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
 import { extensionFullWindowViewStateCreate } from "./extensionFullWindowViewStateCreate.js"
 
@@ -44,6 +37,7 @@ export interface ExtensionFullWindowViewProps {
   onVaultSortChange?: (sort: VaultSort) => void
   theme?: () => "light" | "dark"
   onThemeChange?: (theme: "light" | "dark") => void
+  cipherAdapter?: CipherPresentationAdapter
   idPrefix?: string
   root?: "main" | "div"
   navigationLabel?: string
@@ -56,6 +50,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
     onVaultSortChange: p.onVaultSortChange,
     theme: p.theme,
     onThemeChange: p.onThemeChange,
+    cipherAdapter: p.cipherAdapter,
   })
 
   return (
@@ -355,194 +350,23 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         </Show>
 
         <Show when={state.isReady()}>
-          <Show
-            when={p.vaultSortLoaded?.() ?? true}
-            fallback={
-              <div role="status" aria-label="Loading vault preferences" class="flex justify-center py-10">
-                <LoaderShuffle4Dots />
-              </div>
-            }
-          >
-            <div class="grid gap-4 md:grid-cols-[14rem_minmax(0,1fr)] md:items-start xl:grid-cols-[16rem_minmax(0,1fr)]">
-              <ExtensionFullWindowResourceNavigation resourceState={state.resourceState} idPrefix={p.idPrefix} />
-              <div class="min-w-0 grow">
-                <nav class="mb-4 flex flex-wrap gap-1" aria-label="Vault item types">
-                  <Button
-                    variant="ghost"
-                    class="extension-selected-control"
-                    size="sm"
-                    aria-current={state.isLoginCategory() ? "page" : undefined}
-                    onClick={state.loginCategoryOpen}
-                  >
-                    Logins
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    class="extension-selected-control"
-                    size="sm"
-                    aria-current={state.isSecureNoteCategory() ? "page" : undefined}
-                    onClick={state.secureNoteCategoryOpen}
-                  >
-                    Secure notes
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    class="extension-selected-control"
-                    size="sm"
-                    aria-current={state.isCardCategory() ? "page" : undefined}
-                    onClick={state.cardCategoryOpen}
-                  >
-                    Cards
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    class="extension-selected-control"
-                    size="sm"
-                    aria-current={state.isIdentityCategory() ? "page" : undefined}
-                    onClick={state.identityCategoryOpen}
-                  >
-                    Identities
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    class="extension-selected-control"
-                    size="sm"
-                    aria-current={state.isSshKeyCategory() ? "page" : undefined}
-                    onClick={state.sshKeyCategoryOpen}
-                  >
-                    SSH keys
-                  </Button>
-                </nav>
-                <Show when={state.isSecureNoteCategory()}>
-                  <ExtensionFullWindowSecureNotePane
-                    model={state.resourceFilteredModel}
-                    commands={p.commands}
-                    idPrefix={p.idPrefix}
-                    initialState={p.initialState}
-                  />
-                </Show>
-                <Show when={state.isCardCategory()}>
-                  <ExtensionFullWindowCardPane
-                    model={state.resourceFilteredModel}
-                    commands={p.commands}
-                    idPrefix={p.idPrefix}
-                    initialState={p.initialState}
-                  />
-                </Show>
-                <Show when={state.isIdentityCategory()}>
-                  <ExtensionFullWindowIdentityPane
-                    model={state.resourceFilteredModel}
-                    commands={p.commands}
-                    idPrefix={p.idPrefix}
-                    initialState={p.initialState}
-                  />
-                </Show>
-                <Show when={state.isSshKeyCategory()}>
-                  <ExtensionFullWindowSshKeyPane
-                    model={state.resourceFilteredModel}
-                    commands={p.commands}
-                    idPrefix={p.idPrefix}
-                    initialState={p.initialState}
-                  />
-                </Show>
-                <Show when={state.isLoginCategory()}>
-                  <div class="grid gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)] lg:items-start xl:grid-cols-[minmax(22rem,0.8fr)_minmax(30rem,1.2fr)]">
-                    <section aria-label="Logins" class="flex min-w-0 flex-col gap-2">
-                      <ExtensionInputS
-                        type="search"
-                        aria-label="Search logins"
-                        placeholder="Search logins"
-                        disabled={state.busy()}
-                        valueSignal={state.searchQuerySignal}
-                      />
-
-                      <div class="flex flex-col gap-1">
-                        <Label for={`${p.idPrefix ?? ""}extension-vault-sort`}>Sort logins</Label>
-                        <ExtensionSelectSingleNative
-                          id={`${p.idPrefix ?? ""}extension-vault-sort`}
-                          disabled={state.busy()}
-                          valueSignal={state.vaultSortSignal}
-                          getOptions={state.vaultSortOptionValues}
-                          valueText={state.vaultSortLabel}
-                        />
-                      </div>
-
-                      <Show when={state.siteFilterAvailable()}>
-                        <Button
-                          variant="outline"
-                          class="extension-selected-control"
-                          size="sm"
-                          aria-pressed={state.siteOnly() ? "true" : "false"}
-                          onClick={state.siteOnlyToggle}
-                        >
-                          Only this site
-                        </Button>
-                      </Show>
-
-                      <Show when={state.errorMessage()}>
-                        {(message) => (
-                          <p role="alert" class="extension-error-text text-xs">
-                            {message()}
-                          </p>
-                        )}
-                      </Show>
-
-                      <Show
-                        when={!state.isEmpty()}
-                        fallback={
-                          <p class="extension-muted-text py-6 text-center text-sm">
-                            {state.hasNoLogins() ? "Your vault is empty." : "No logins match your filters."}
-                          </p>
-                        }
-                      >
-                        <ul class="flex list-none flex-col gap-1">
-                          <For each={state.visibleLogins()}>
-                            {(login) => (
-                              <li>
-                                <ExtensionFullWindowLoginRow
-                                  login={login}
-                                  selected={state.selectedLogin()?.id === login.id}
-                                  onSelect={state.loginSelect}
-                                />
-                              </li>
-                            )}
-                          </For>
-                        </ul>
-                      </Show>
-                    </section>
-
-                    <section aria-label="Login details" class="min-w-0 grow">
-                      <Show
-                        when={state.selectedLogin()}
-                        fallback={<p class="extension-muted-text py-6 text-sm">Select a login to see its details.</p>}
-                      >
-                        {(login) => (
-                          <ExtensionFullWindowLoginDetail
-                            login={login()}
-                            cipher={state.selectedLoginCipher}
-                            detailLoading={state.loginDetailLoading()}
-                            disabled={state.busy()}
-                            fillAvailable={state.fillAvailable()}
-                            fieldIsCopied={state.fieldIsCopied}
-                            onFill={state.loginFill}
-                            onCopy={state.fieldCopy}
-                            totpIsCopied={state.totpIsCopied}
-                            onTotpCopy={state.totpCopy}
-                            onEdit={state.loginEdit}
-                            onClose={state.loginDeselect}
-                            model={p.model}
-                            commands={p.commands}
-                            idPrefix={p.idPrefix}
-                            initialState={p.initialState}
-                          />
-                        )}
-                      </Show>
-                    </section>
-                  </div>
-                </Show>
-              </div>
-            </div>
-          </Show>
+          <VaultShell
+            workspace={state.sharedVaultState.workspace}
+            state={{
+              items: state.sharedVaultState.items,
+              folders: state.sharedVaultState.folders,
+              collections: state.sharedVaultState.collections,
+              profile: state.sharedVaultState.workspace.profile,
+              isLoading: state.sharedVaultState.isLoading,
+              errorMessage: state.sharedVaultState.errorMessage,
+            }}
+            actions={{
+              syncVault: state.sharedVaultState.syncVault,
+              onOpenSettings: state.settingsPaneOpen,
+              onLock: state.vaultLock,
+              onLogout: state.vaultLogout,
+            }}
+          />
         </Show>
       </Show>
     </Dynamic>
