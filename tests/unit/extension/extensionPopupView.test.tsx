@@ -119,7 +119,7 @@ test("extensionPopupView renders the error state with a retry that syncs", () =>
   root.unmount()
 })
 
-test("extensionPopupView shows the active hostname and matched logins", () => {
+test("extensionPopupView omits popup identity text and shows matched logins", () => {
   const root = popupRender({
     status: "ready",
     hostname: "example.com",
@@ -130,7 +130,9 @@ test("extensionPopupView shows the active hostname and matched logins", () => {
     fillAvailable: true,
   })
 
-  expect(root.getByLabelText("Active site").textContent).toBe("example.com")
+  expect(root.queryByText("OneWarden", { exact: true })).toBeNull()
+  expect(root.queryByText("example.com", { exact: true })).toBeNull()
+  expect(root.queryByLabelText("Active site")).toBeNull()
   expect(root.getByLabelText("Example Mail")).toBeDefined()
   expect(root.getByLabelText("Example Admin")).toBeDefined()
   expect([...root.container.querySelectorAll("article")].map((card) => card.getAttribute("aria-label"))).toEqual([
@@ -397,10 +399,12 @@ test("extensionPopupView disables commands while a command is in flight", () => 
   root.unmount()
 })
 
-test("extensionPopupView falls back to a placeholder when no site is active", () => {
+test("extensionPopupView does not replace the removed hostname when no site is active", () => {
   const root = popupRender({ status: "ready", hostname: null, logins: [] })
 
-  expect(root.getByLabelText("Active site").textContent).toBe("No active site")
+  expect(root.queryByText("OneWarden", { exact: true })).toBeNull()
+  expect(root.queryByText("No active site", { exact: true })).toBeNull()
+  expect(root.queryByLabelText("Active site")).toBeNull()
 
   root.unmount()
 })

@@ -92,6 +92,9 @@ test.describe("task 4 extension demo coverage", () => {
         await expect(navigation.getByRole("button", { name: /Switch to (?:light|dark) theme/ })).toHaveText("")
         await expect(navigation.getByText("Popup content")).toHaveCount(0)
         await expect(navigation.getByRole("button")).toHaveCount(4)
+        await expect(preview.getByText("OneWarden", { exact: true })).toHaveCount(0)
+        await expect(preview.getByText("mail.northstar.test", { exact: true })).toHaveCount(0)
+        await expect(preview.getByLabel("Active site", { exact: true })).toHaveCount(0)
         expect(
           await navigation.getByRole("button").evaluateAll((buttons) => {
             const tops = buttons.map((button) => button.getBoundingClientRect().top)

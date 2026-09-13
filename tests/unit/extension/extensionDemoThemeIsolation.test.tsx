@@ -154,7 +154,7 @@ test("popup demo navigation keeps text tabs and icon actions in one compact row"
   const root = render(() => (
     <ExtensionPopupView
       root="div"
-      model={extensionPopupViewModelCreate({ status: "loading" })}
+      model={extensionPopupViewModelCreate({ status: "loading", hostname: "mail.northstar.test" })}
       commands={extensionDemoFixtures.popupCommands}
     />
   ))
@@ -173,6 +173,9 @@ test("popup demo navigation keeps text tabs and icon actions in one compact row"
   expect(root.getByRole("button", { name: "Settings" }).textContent).toBe("")
   expect(root.getByRole("button", { name: "Switch to dark theme" }).textContent).toBe("")
   expect(navigation.querySelectorAll("button")).toHaveLength(4)
+  expect(root.queryByText("OneWarden", { exact: true })).toBeNull()
+  expect(root.queryByText("mail.northstar.test", { exact: true })).toBeNull()
+  expect(root.queryByLabelText("Active site")).toBeNull()
   root.unmount()
 })
 
