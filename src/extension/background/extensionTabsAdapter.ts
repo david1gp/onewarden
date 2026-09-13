@@ -12,5 +12,6 @@ type ExtensionTabsQuery = {
 
 export type ExtensionTabsAdapter = {
   query: (query: ExtensionTabsQuery) => Promise<ExtensionTab[]>
+  create: (createProperties: { active?: boolean; url?: string; windowId?: number }) => Promise<void>
   update: (tabId: number, updateProperties: { active?: boolean; url?: string }) => Promise<void>
 }

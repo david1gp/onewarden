@@ -48,6 +48,9 @@ export function extensionBackgroundStart(): void {
       const result = await chrome.tabs.query(query)
       return result.map((tab) => ({ id: tab.id, url: tab.url, windowId: tab.windowId }))
     },
+    create: async (createProperties) => {
+      await chrome.tabs.create(createProperties)
+    },
     update: async (tabId, updateProperties) => {
       await chrome.tabs.update(tabId, updateProperties)
     },

@@ -409,8 +409,34 @@ export function extensionBackgroundRouterCreate(options: ExtensionBackgroundRout
       return resultCreate({ created: false, url })
     }
 
+    const createFullWindow = async (): Promise<Result<{ created: boolean; url: string }>> => {
+      try {
+        await options.windows.create({ focused: true, type: "normal", url })
+      } catch {
+        return unavailable(op, "Full-window page could not be opened.")
+      }
+      return resultCreate({ created: true, url })
+    }
+
+    let activeTabs: Awaited<ReturnType<ExtensionTabsAdapter["query"]>> = []
     try {
-      await options.windows.create({ focused: true, type: "normal", url })
+      activeTabs = await options.tabs.query({ active: true, lastFocusedWindow: true })
+    } catch {
+      // Continue with the broader query so an existing normal window can still be reused.
+    }
+    if (!activeTabs.some((tab) => Number.isSafeInteger(tab.windowId))) {
+      try {
+        activeTabs = await options.tabs.query({ active: true })
+      } catch {
+        return createFullWindow()
+      }
+    }
+
+    const windowId = activeTabs.find((tab) => Number.isSafeInteger(tab.windowId))?.windowId
+    if (!Number.isSafeInteger(windowId)) return createFullWindow()
+
+    try {
+      await options.tabs.create({ active: true, url, windowId })
     } catch {
       return unavailable(op, "Full-window page could not be opened.")
     }

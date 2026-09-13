@@ -49,6 +49,8 @@ function routerCreate(
   activeTab = { id: 7, url: "https://example.test/login", windowId: 3 },
   otherActiveTabs = [activeTab],
   snapshotCipherOverrides?: SnapshotCipherOverride[],
+  lastFocusedActiveTabs = [activeTab],
+  lastFocusedQueryError = false,
 ) {
   const local = storageAreaCreate()
   const session = storageAreaCreate()
@@ -252,6 +254,7 @@ function routerCreate(
   let listenerRegistered = false
   const contextFilters: { documentUrls?: string[] }[] = []
   const focusedTabs: { id: number; active: boolean; url?: string }[] = []
+  const createdTabs: { active: boolean | undefined; url: string | undefined; windowId: number | undefined }[] = []
   const createdWindows: { url: string | undefined }[] = []
   const fillCalls: { tabId: number; frameId: number | undefined; username: string | null; password: string | null }[] =
     []
@@ -279,7 +282,12 @@ function routerCreate(
     tabs: {
       query: async (query) => {
         if (query.url !== undefined) return fullWindowTab === null ? [] : [fullWindowTab]
-        return query.lastFocusedWindow === true ? [activeTab] : otherActiveTabs
+        if (query.lastFocusedWindow === true && lastFocusedQueryError) throw new Error("query failed")
+        return query.lastFocusedWindow === true ? lastFocusedActiveTabs : otherActiveTabs
+      },
+      create: async (createProperties) => {
+        createdTabs.push(createProperties)
+        fullWindowTab = { id: 9, url: createProperties.url as string, windowId: createProperties.windowId as number }
       },
       update: async (tabId, update) => {
         if (update.url !== undefined && fullWindowTab !== null) fullWindowTab = { ...fullWindowTab, url: update.url }
@@ -317,6 +325,7 @@ function routerCreate(
     listenerRegistered,
     contextFilters,
     focusedTabs,
+    createdTabs,
     createdWindows,
     fillCalls,
     handoffCalls,
@@ -645,14 +654,17 @@ test("extensionBackgroundRouterCreate retains a website context while the full-w
   })
 })
 
-test("extensionBackgroundRouterCreate focuses an existing full window or opens one", async () => {
+test("extensionBackgroundRouterCreate focuses an existing vault tab or opens one in the current window", async () => {
   const context = routerCreate()
   const first = await context.router.fullWindowOpen()
   expect(first).toEqual({
     success: true,
     data: { created: true, url: "chrome-extension://onewarden/fullwindow/index.html" },
   })
-  expect(context.createdWindows).toEqual([{ url: "chrome-extension://onewarden/fullwindow/index.html" }])
+  expect(context.createdTabs).toEqual([
+    { active: true, url: "chrome-extension://onewarden/fullwindow/index.html", windowId: 3 },
+  ])
+  expect(context.createdWindows).toEqual([])
 
   const focused = await context.router.fullWindowOpen()
   expect(focused).toEqual({
@@ -664,6 +676,59 @@ test("extensionBackgroundRouterCreate focuses an existing full window or opens o
     { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html*"] },
     { documentUrls: ["chrome-extension://onewarden/fullwindow/index.html*"] },
   ])
+})
+
+test("extensionBackgroundRouterCreate falls back to another active existing window", async () => {
+  const context = routerCreate(
+    { id: 7, url: "https://example.test/login", windowId: 3 },
+    [{ id: 7, url: "https://example.test/login", windowId: 3 }],
+    undefined,
+    [],
+  )
+
+  const result = await context.router.fullWindowOpen()
+
+  expect(result).toEqual({
+    success: true,
+    data: { created: true, url: "chrome-extension://onewarden/fullwindow/index.html" },
+  })
+  expect(context.createdTabs).toEqual([
+    { active: true, url: "chrome-extension://onewarden/fullwindow/index.html", windowId: 3 },
+  ])
+})
+
+test("extensionBackgroundRouterCreate retries another existing window when the last-focused query fails", async () => {
+  const context = routerCreate(
+    undefined,
+    [{ id: 12, url: "https://example.test/account", windowId: 12 }],
+    undefined,
+    [],
+    true,
+  )
+
+  const result = await context.router.fullWindowOpen()
+
+  expect(result).toEqual({
+    success: true,
+    data: { created: true, url: "chrome-extension://onewarden/fullwindow/index.html" },
+  })
+  expect(context.createdTabs).toEqual([
+    { active: true, url: "chrome-extension://onewarden/fullwindow/index.html", windowId: 12 },
+  ])
+  expect(context.createdWindows).toEqual([])
+})
+
+test("extensionBackgroundRouterCreate opens a new window when no existing tab can be located", async () => {
+  const context = routerCreate({ id: 7, url: "https://example.test/login", windowId: 3 }, [], undefined, [])
+
+  const result = await context.router.fullWindowOpen()
+
+  expect(result).toEqual({
+    success: true,
+    data: { created: true, url: "chrome-extension://onewarden/fullwindow/index.html" },
+  })
+  expect(context.createdTabs).toEqual([])
+  expect(context.createdWindows).toEqual([{ url: "chrome-extension://onewarden/fullwindow/index.html" }])
 })
 
 test("extensionBackgroundRouterCreate opens and retargets a full-window pane", async () => {
