@@ -28,38 +28,39 @@ export function ExtensionFullWindowGeneratorPane(p: {
   return (
     <section
       aria-labelledby={`${p.idPrefix ?? ""}password-generator-title`}
-      class="mx-auto flex w-full max-w-6xl flex-col gap-4 py-2 sm:py-5"
+      class="mx-auto flex w-full max-w-4xl flex-col gap-3 py-1 sm:py-3"
     >
-      <div class="flex items-start gap-3 px-1">
-        <span class="extension-info-surface flex size-10 shrink-0 items-center justify-center rounded-xl">
-          <Icon path={mdiKey} class="size-5" />
-        </span>
-        <div>
-          <h2 id={`${p.idPrefix ?? ""}password-generator-title`} class="text-lg font-semibold tracking-tight">
-            Generator
-          </h2>
-          <p class="extension-muted-text text-sm">Create a strong passphrase or password locally in your extension.</p>
+      <div class="flex flex-col items-start justify-between gap-3 px-1 sm:flex-row sm:items-center">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="extension-info-surface flex size-9 shrink-0 items-center justify-center rounded-lg">
+            <Icon path={mdiKey} class="size-5" />
+          </span>
+          <div class="min-w-0">
+            <h2 id={`${p.idPrefix ?? ""}password-generator-title`} class="text-lg font-semibold tracking-tight">
+              Generator
+            </h2>
+            <p class="extension-muted-text text-sm">Create a secure password or passphrase on this device.</p>
+          </div>
         </div>
-      </div>
-
-      <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
-        <fieldset class="extension-boundary flex flex-col gap-2 border-b p-3 sm:p-4">
-          <legend class="font-medium">Type</legend>
+        <fieldset class="shrink-0">
+          <legend class="sr-only">Type</legend>
           <ExtensionSwitchSingle
             id={`${p.idPrefix ?? ""}generator-type`}
             valueSignal={state.modeSignal}
             getOptions={state.modeOptions}
             valueText={(mode) => generatorModeText[mode] ?? mode}
             disabled={state.copyStatus() === "copying"}
-            class="w-fit p-1"
+            class="w-fit p-1 text-sm"
           />
         </fieldset>
+      </div>
 
-        <div class="extension-subtle-surface p-3 sm:p-4">
+      <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
+        <div class="extension-subtle-surface p-2 sm:p-3">
           <Label for={`${p.idPrefix ?? ""}generated-password`} class="sr-only">
             Generated {state.passphraseMode() ? "passphrase" : "password"}
           </Label>
-          <div class="flex flex-col gap-2 sm:flex-row">
+          <div class="flex gap-1.5 sm:gap-2">
             <ExtensionInput
               id={`${p.idPrefix ?? ""}generated-password`}
               type={state.passwordVisible() ? "text" : "password"}
@@ -67,28 +68,36 @@ export function ExtensionFullWindowGeneratorPane(p: {
               readOnly
               autocomplete="off"
               spellcheck={false}
-              class="h-12 min-w-0 grow px-3 font-mono text-base tracking-wide"
+              class="h-11 min-w-0 grow px-3 font-mono text-sm tracking-wide sm:text-base"
             />
-            <div class="grid grid-cols-2 gap-2 sm:flex">
+            <div class="flex shrink-0 gap-1.5 sm:gap-2">
               <ExtensionButtonIcon
                 variant="outline"
                 icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
-                class="extension-selected-control h-12"
+                iconClass="mr-0 sm:mr-2"
+                class="extension-selected-control size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
+                aria-label={state.passwordVisible() ? "Hide" : "Show"}
                 aria-pressed={state.passwordVisible()}
                 disabled={state.copyStatus() === "copying"}
                 onClick={state.passwordVisibilityToggle}
               >
-                {state.passwordVisible() ? "Hide" : "Show"}
+                <span class="hidden sm:inline">{state.passwordVisible() ? "Hide" : "Show"}</span>
               </ExtensionButtonIcon>
               <ExtensionButtonIcon
                 variant="filledBlue"
                 icon={mdiContentCopy}
+                iconClass="mr-0 sm:mr-2"
                 isLoading={state.copyStatus() === "copying"}
                 disabled={state.copyStatus() === "copying"}
                 onClick={state.passwordCopy}
-                class="extension-primary-control h-12 min-w-24"
+                aria-label={
+                  state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"
+                }
+                class="extension-primary-control size-11 px-0 sm:h-11 sm:w-auto sm:min-w-24 sm:px-4"
               >
-                {state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"}
+                <span class="hidden sm:inline">
+                  {state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"}
+                </span>
               </ExtensionButtonIcon>
             </div>
           </div>
@@ -109,7 +118,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
         <Show
           when={state.passphraseMode()}
           fallback={
-            <div class="grid gap-5 p-4 sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:p-5">
+            <div class="grid gap-4 p-3 sm:p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)]">
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between gap-3">
                   <div>
@@ -151,7 +160,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
                   onChange={state.lowercaseSet}
                 >
                   <span class="text-sm">
-                    Lowercase <span class="extension-muted-text">a–z</span>
+                    Lowercase <span class="extension-muted-text hidden sm:inline">a–z</span>
                   </span>
                 </ExtensionCheckbox>
                 <ExtensionCheckbox
@@ -161,7 +170,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
                   onChange={state.uppercaseSet}
                 >
                   <span class="text-sm">
-                    Uppercase <span class="extension-muted-text">A–Z</span>
+                    Uppercase <span class="extension-muted-text hidden sm:inline">A–Z</span>
                   </span>
                 </ExtensionCheckbox>
                 <ExtensionCheckbox
@@ -171,7 +180,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
                   onChange={state.numbersSet}
                 >
                   <span class="text-sm">
-                    Numbers <span class="extension-muted-text">0–9</span>
+                    Numbers <span class="extension-muted-text hidden sm:inline">0–9</span>
                   </span>
                 </ExtensionCheckbox>
                 <ExtensionCheckbox
@@ -181,14 +190,14 @@ export function ExtensionFullWindowGeneratorPane(p: {
                   onChange={state.symbolsSet}
                 >
                   <span class="text-sm">
-                    Symbols <span class="extension-muted-text">!@#$</span>
+                    Symbols <span class="extension-muted-text hidden sm:inline">!@#$</span>
                   </span>
                 </ExtensionCheckbox>
               </fieldset>
             </div>
           }
         >
-          <div class="grid gap-5 p-4 sm:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)] sm:p-5">
+          <div class="grid gap-4 p-3 sm:p-4 md:grid-cols-[minmax(12rem,0.8fr)_minmax(16rem,1.2fr)]">
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -267,9 +276,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
         </div>
       </ExtensionCardWrapper>
 
-      <p class="extension-muted-text px-1 text-center text-xs">
-        Secrets are generated with cryptographically secure randomness and never leave this device.
-      </p>
+      <p class="extension-muted-text px-1 text-center text-xs">Generated securely. Nothing is sent or saved.</p>
     </section>
   )
 }

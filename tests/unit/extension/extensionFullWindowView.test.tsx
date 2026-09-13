@@ -728,7 +728,7 @@ test("extensionFullWindowView uses the compact full-window shell and wide-screen
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
   const generator = root.getByRole("region", { name: "Generator" })
-  expect(generator.classList.contains("max-w-6xl")).toBe(true)
+  expect(generator.classList.contains("max-w-4xl")).toBe(true)
   expect(generator.classList.contains("max-w-3xl")).toBe(false)
 
   root.unmount()
