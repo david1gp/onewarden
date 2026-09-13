@@ -1,9 +1,10 @@
-import { createMemo } from "solid-js"
+import { createEffect, createMemo } from "solid-js"
 import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
 import { extensionFullWindowPane } from "../fullwindow/ExtensionFullWindowPane.js"
+import type { ExtensionPopupPaneStorage } from "../storage/extensionPopupPaneStorageSchema.js"
 import { extensionThemeNext } from "../theme/extensionThemeNext.js"
 import { extensionThemeSet } from "../theme/extensionThemeSet.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
@@ -18,6 +19,9 @@ export function extensionPopupViewStateCreate(
   themeOptions: {
     theme?: () => "light" | "dark"
     onThemeChange?: (theme: "light" | "dark") => void
+    initialPane?: () => ExtensionPopupPaneStorage["pane"]
+    initialPaneLoaded?: () => boolean
+    onPaneChange?: (pane: ExtensionPopupPaneStorage["pane"]) => void
   } = {},
 ) {
   const searchQuerySignal = createSignalObject("")
@@ -25,7 +29,14 @@ export function extensionPopupViewStateCreate(
   const localThemeSignal = createSignalObject<"light" | "dark">(
     document.documentElement.classList.contains("dark") ? "dark" : "light",
   )
-  const activePaneSignal = createSignalObject<"vault" | "generator" | "settings">(extensionFullWindowPane.vault)
+  const activePaneSignal = createSignalObject<ExtensionPopupPaneStorage["pane"]>(extensionFullWindowPane.vault)
+  let initialPaneHydrated = false
+
+  createEffect(() => {
+    if (initialPaneHydrated || !(themeOptions.initialPaneLoaded?.() ?? true)) return
+    initialPaneHydrated = true
+    activePaneSignal.set(themeOptions.initialPane?.() ?? extensionFullWindowPane.vault)
+  })
 
   const status = createMemo(() => model().status)
   const hostname = createMemo(() => model().hostname)
@@ -70,15 +81,15 @@ export function extensionPopupViewStateCreate(
   const vaultLogout = () => commands().vaultLogout()
   const isVaultPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.vault)
   const isGeneratorPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.generator)
-  const isSettingsPane = createMemo(() => activePaneSignal.get() === extensionFullWindowPane.settings)
   const vaultPaneOpen = () => {
     activePaneSignal.set(extensionFullWindowPane.vault)
+    themeOptions.onPaneChange?.(extensionFullWindowPane.vault)
   }
   const generatorPaneOpen = () => {
     activePaneSignal.set(extensionFullWindowPane.generator)
+    themeOptions.onPaneChange?.(extensionFullWindowPane.generator)
   }
   const settingsOpen = () => {
-    activePaneSignal.set(extensionFullWindowPane.settings)
     commands().settingsOpen()
   }
   const accountLogin = () => commands().accountLogin()
@@ -124,7 +135,6 @@ export function extensionPopupViewStateCreate(
     settingsOpen,
     isVaultPane,
     isGeneratorPane,
-    isSettingsPane,
     vaultUnlock,
     biometricAvailable,
     biometricEnrolled,

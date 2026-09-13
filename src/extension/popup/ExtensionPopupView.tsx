@@ -8,6 +8,7 @@ import { Dynamic } from "solid-js/web"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import type { ExtensionPopupPaneStorage } from "../storage/extensionPopupPaneStorageSchema.js"
 import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
@@ -31,6 +32,9 @@ export interface ExtensionPopupViewProps {
   generatorPreferences?: () => ExtensionGeneratorPreferences
   generatorPreferencesLoaded?: () => boolean
   onGeneratorPreferencesChange?: (preferences: ExtensionGeneratorPreferences) => void
+  initialPane?: () => ExtensionPopupPaneStorage["pane"]
+  initialPaneLoaded?: () => boolean
+  onPaneChange?: (pane: ExtensionPopupPaneStorage["pane"]) => void
 }
 
 /** Browser-action popup showing the vault filtered to the active site. */
@@ -38,7 +42,13 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   const state = extensionPopupViewStateCreate(
     () => p.model,
     () => p.commands,
-    { theme: p.theme, onThemeChange: p.onThemeChange },
+    {
+      theme: p.theme,
+      onThemeChange: p.onThemeChange,
+      initialPane: p.initialPane,
+      initialPaneLoaded: p.initialPaneLoaded,
+      onPaneChange: p.onPaneChange,
+    },
   )
 
   return (
@@ -64,40 +74,40 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
 
       <ExtensionSeparator />
 
-      <nav
-        aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="extension-subtle-surface grid grid-cols-3 items-center gap-1 rounded-xl p-1"
-      >
+      <nav aria-label={p.navigationLabel ?? "Extension navigation"} class="flex min-w-0 items-center gap-2">
+        <fieldset class="extension-subtle-surface m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 rounded-xl border-0 p-1">
+          <legend class="sr-only">Popup content</legend>
+          <ExtensionButtonIcon
+            variant="ghost"
+            size="sm"
+            icon={mdiLock}
+            aria-current={state.isVaultPane() ? "page" : undefined}
+            disabled={state.busy()}
+            onClick={state.vaultPaneOpen}
+            class="extension-selected-control min-h-10 min-w-0 px-2"
+          >
+            Vault
+          </ExtensionButtonIcon>
+          <ExtensionButtonIcon
+            variant="ghost"
+            size="sm"
+            icon={mdiKey}
+            aria-current={state.isGeneratorPane() ? "page" : undefined}
+            disabled={state.busy()}
+            onClick={state.generatorPaneOpen}
+            class="extension-selected-control min-h-10 min-w-0 px-2"
+          >
+            Generator
+          </ExtensionButtonIcon>
+        </fieldset>
         <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiLock}
-          aria-current={state.isVaultPane() ? "page" : undefined}
-          disabled={state.busy()}
-          onClick={state.vaultPaneOpen}
-          class="extension-selected-control min-h-10 min-w-0 px-2"
-        >
-          Vault
-        </ExtensionButtonIcon>
-        <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiKey}
-          aria-current={state.isGeneratorPane() ? "page" : undefined}
-          disabled={state.busy()}
-          onClick={state.generatorPaneOpen}
-          class="extension-selected-control min-h-10 min-w-0 px-2"
-        >
-          Generator
-        </ExtensionButtonIcon>
-        <ExtensionButtonIcon
-          variant="ghost"
+          variant="link"
           size="sm"
           icon={mdiCog}
-          aria-current={state.isSettingsPane() ? "page" : undefined}
           disabled={state.busy()}
           onClick={state.settingsOpen}
-          class="extension-selected-control min-h-10 min-w-0 px-2"
+          title="Open Settings in a full window"
+          class="extension-muted-text min-h-10 shrink-0 px-2"
         >
           Settings
         </ExtensionButtonIcon>
