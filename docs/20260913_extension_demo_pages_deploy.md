@@ -22,4 +22,4 @@ Add and use a dedicated Cloudflare Pages deployment workflow for the backend-fre
 - [x] 1. Add the dedicated extension-demo Pages build and deployment scripts.
 - [x] 2. Verify the static build and direct demo route locally.
 - [x] 3. Commit and push the deployment workflow.
-- [ ] 4. Deploy the demo Pages project and verify its public `/demo/extension` URL.
+- [x] 4. Deploy the demo Pages project and verify its public `/demo/extension` URL.
