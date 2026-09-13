@@ -179,7 +179,7 @@ html.extension-theme-root #root {
   container-type: inline-size;
 }
 
-@container (max-width: 20rem) {
+@container (max-width: 15rem) {
   .extension-popup-navigation {
     flex-wrap: wrap;
   }
@@ -188,7 +188,7 @@ html.extension-theme-root #root {
     flex-basis: 100%;
   }
 
-  .extension-popup-navigation-settings {
+  .extension-popup-navigation-action:first-of-type {
     margin-left: auto;
   }
 }

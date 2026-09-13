@@ -1,6 +1,4 @@
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
-import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
-import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
@@ -56,64 +54,63 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       component={p.root ?? "main"}
       class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
     >
-      <header class="flex items-center justify-between gap-2">
-        <h1 class="text-sm font-semibold">OneWarden</h1>
-        <div class="flex items-center gap-2">
-          <ExtensionButtonIcon
-            icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
-            variant="ghost"
-            size="sm"
-            aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
-            onClick={state.themeToggle}
-          />
-          <ExtensionBadge role="group" aria-label="Active site">
-            {state.siteLabel()}
-          </ExtensionBadge>
-        </div>
+      <header class="flex min-w-0 items-center justify-between gap-2">
+        <h1 class="shrink-0 text-sm font-semibold">OneWarden</h1>
+        <ExtensionBadge role="group" aria-label="Active site" class="min-w-0 max-w-52 truncate">
+          {state.siteLabel()}
+        </ExtensionBadge>
       </header>
 
       <ExtensionSeparator />
 
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="extension-popup-navigation flex min-w-0 items-center gap-2"
+        class="extension-popup-navigation extension-subtle-surface flex min-w-0 items-center gap-1 rounded-xl p-1"
       >
-        <fieldset class="extension-popup-navigation-tabs extension-subtle-surface m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 rounded-xl border-0 p-1">
-          <legend class="sr-only">Popup content</legend>
-          <ExtensionButtonIcon
+        <fieldset
+          aria-label="Vault and generator"
+          class="extension-popup-navigation-tabs m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 border-0 p-0"
+        >
+          <Button
             variant="ghost"
             size="sm"
-            icon={mdiLock}
             aria-current={state.isVaultPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.vaultPaneOpen}
-            class="extension-selected-control min-h-10 min-w-0 px-2"
+            class="extension-selected-control min-h-10 min-w-0 rounded-lg px-3"
           >
             Vault
-          </ExtensionButtonIcon>
-          <ExtensionButtonIcon
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
-            icon={mdiKey}
             aria-current={state.isGeneratorPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.generatorPaneOpen}
-            class="extension-selected-control min-h-10 min-w-0 px-2"
+            class="extension-selected-control min-h-10 min-w-0 rounded-lg px-3"
           >
             Generator
-          </ExtensionButtonIcon>
+          </Button>
         </fieldset>
         <ExtensionButtonIcon
-          variant="link"
+          variant="ghost"
           size="sm"
           icon={mdiCog}
+          aria-label="Settings"
           disabled={state.busy()}
           onClick={state.settingsOpen}
           title="Open Settings in a full window"
-          class="extension-popup-navigation-settings extension-muted-text min-h-10 shrink-0 px-2"
-        >
-          Settings
-        </ExtensionButtonIcon>
+          class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+        />
+        <ExtensionButtonIcon
+          icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
+          variant="ghost"
+          size="sm"
+          aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+          title={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+          onClick={state.themeToggle}
+          class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+        />
       </nav>
 
       <Show when={state.isGeneratorPane()}>
