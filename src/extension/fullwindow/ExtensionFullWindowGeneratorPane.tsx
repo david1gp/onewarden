@@ -1,6 +1,8 @@
 import { mdiContentCopy } from "@adaptive-ds/mdi/mdiContentCopy.js"
 import { mdiEye } from "@adaptive-ds/mdi/mdiEye.js"
 import { mdiEyeOff } from "@adaptive-ds/mdi/mdiEyeOff.js"
+import { mdiFormTextboxPassword } from "@adaptive-ds/mdi/mdiFormTextboxPassword.js"
+import { mdiKeyVariant } from "@adaptive-ds/mdi/mdiKeyVariant.js"
 import { mdiRefresh } from "@adaptive-ds/mdi/mdiRefresh.js"
 import { type JSX, Show } from "solid-js"
 import { Label } from "#ui/input/label/Label.jsx"
@@ -8,13 +10,7 @@ import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import { ExtensionCheckbox } from "../ui/ExtensionCheckbox.jsx"
 import { ExtensionInput } from "../ui/ExtensionInput.jsx"
-import { ExtensionSwitchSingle } from "../ui/ExtensionSwitchSingle.jsx"
 import { extensionFullWindowGeneratorPaneStateCreate } from "./extensionFullWindowGeneratorPaneStateCreate.js"
-
-const generatorModeText: Record<string, string> = {
-  passphrase: "Passphrase",
-  password: "Password",
-}
 
 /** Compact, full-window passphrase and password generator with secure local generation and copy controls. */
 export function ExtensionFullWindowGeneratorPane(p: {
@@ -25,16 +21,34 @@ export function ExtensionFullWindowGeneratorPane(p: {
 
   return (
     <section aria-label="Generator configuration" class="flex w-full min-w-0 flex-col gap-3 py-1 sm:py-2">
-      <fieldset class="w-full sm:w-fit">
-        <legend class="sr-only">Type</legend>
-        <ExtensionSwitchSingle
-          id={`${p.idPrefix ?? ""}generator-type`}
-          valueSignal={state.modeSignal}
-          getOptions={state.modeOptions}
-          valueText={(mode) => generatorModeText[mode] ?? mode}
+      <fieldset
+        id={`${p.idPrefix ?? ""}generator-type`}
+        aria-label="Generator type"
+        class="grid w-full grid-cols-2 gap-1 border-0 p-0 text-sm sm:w-fit"
+      >
+        <legend class="sr-only">Generator type</legend>
+        <ExtensionButtonIcon
+          variant="ghost"
+          icon={mdiKeyVariant}
+          role="radio"
+          aria-checked={state.passphraseMode()}
           disabled={state.copyStatus() === "copying"}
-          class="w-full p-1 text-sm [&_[role=radio]]:grow sm:w-fit sm:[&_[role=radio]]:grow-0"
-        />
+          onClick={() => state.modeSignal.set("passphrase")}
+          class="extension-generator-mode-control min-h-10 min-w-0 rounded-lg border px-3 sm:min-w-32"
+        >
+          Passphrase
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
+          variant="ghost"
+          icon={mdiFormTextboxPassword}
+          role="radio"
+          aria-checked={!state.passphraseMode()}
+          disabled={state.copyStatus() === "copying"}
+          onClick={() => state.modeSignal.set("password")}
+          class="extension-generator-mode-control min-h-10 min-w-0 rounded-lg border px-3 sm:min-w-32"
+        >
+          Password
+        </ExtensionButtonIcon>
       </fieldset>
 
       <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
