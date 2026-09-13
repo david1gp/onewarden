@@ -46,18 +46,17 @@ test.describe("task 4 extension demo coverage", () => {
 
     const scrollableFrameLabels = frameLabels.slice(2)
     for (const frameLabel of scrollableFrameLabels) {
-      await expect(page.getByRole("article", { name: `${frameLabel} frame` }).locator(":scope > div")).toHaveAttribute(
-        "tabindex",
-        "0",
-      )
+      await expect(
+        page.getByRole("article", { name: `${frameLabel} frame` }).locator(":scope > section"),
+      ).toHaveAttribute("tabindex", "0")
     }
 
     await expect(
-      page.getByRole("article", { name: "Ready · copied feedback frame" }).locator("[tabindex='0']"),
-    ).toHaveCount(0)
+      page.getByRole("article", { name: "Ready · copied feedback frame" }).locator(":scope > section"),
+    ).toHaveAttribute("tabindex", "0")
     await expect(
-      page.getByRole("article", { name: "Error · retry available frame" }).locator("[tabindex='0']"),
-    ).toHaveCount(0)
+      page.getByRole("article", { name: "Error · retry available frame" }).locator(":scope > section"),
+    ).toHaveAttribute("tabindex", "0")
 
     const idReferences = await page.locator("[id]").evaluateAll((elements) => {
       const ids = elements.map((element) => element.id)

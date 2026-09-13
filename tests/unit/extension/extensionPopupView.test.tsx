@@ -32,7 +32,13 @@ const otherLogin: ExtensionLogin = {
 
 type PopupRenderOptions = Pick<
   ExtensionPopupViewProps,
-  "generatorOptions" | "generatorPreferences" | "generatorPreferencesLoaded" | "onGeneratorPreferencesChange"
+  | "generatorOptions"
+  | "generatorPreferences"
+  | "generatorPreferencesLoaded"
+  | "onGeneratorPreferencesChange"
+  | "initialPane"
+  | "initialPaneLoaded"
+  | "onPaneChange"
 >
 
 function popupRender(
@@ -235,7 +241,7 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView exposes current vault, generator, settings, and vault commands", () => {
+test("extensionPopupView separates content navigation from the Settings action", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
@@ -252,7 +258,12 @@ test("extensionPopupView exposes current vault, generator, settings, and vault c
 
   expect(root.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBe("page")
   expect(root.getByRole("navigation", { name: "Extension navigation" })).toBeDefined()
+  const contentNavigation = root.getByRole("group", { name: "Popup content" })
+  expect(contentNavigation.querySelectorAll("button")).toHaveLength(2)
   expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
+  expect(contentNavigation.contains(root.getByRole("button", { name: "Settings" }))).toBe(false)
+  expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("button", { name: "Settings" }).getAttribute("title")).toBe("Open Settings in a full window")
   expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
@@ -261,13 +272,36 @@ test("extensionPopupView exposes current vault, generator, settings, and vault c
   expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
   fireEvent.click(root.getByRole("button", { name: "Open full generator" }))
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
-  expect(root.getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page")
-  expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
   fireEvent.click(root.getByRole("button", { name: "Open full vault" }))
   for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
 
   expect(calls).toEqual(["generator", "settings", "full", "add", "sync", "lock", "logout"])
+
+  root.unmount()
+})
+
+test("extensionPopupView restores the content pane and does not persist Settings", () => {
+  const panes: Array<"vault" | "generator"> = []
+  const root = popupRender(
+    { status: "ready", hostname: "example.com", logins: [exampleLogin] },
+    {},
+    {
+      initialPane: () => "generator",
+      initialPaneLoaded: () => true,
+      onPaneChange: (pane) => panes.push(pane),
+    },
+  )
+
+  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
+  fireEvent.click(root.getByRole("button", { name: "Settings" }))
+  expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
+  expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
+  expect(panes).toEqual([])
+  fireEvent.click(root.getByRole("button", { name: "Vault" }))
+  expect(panes).toEqual(["vault"])
 
   root.unmount()
 })

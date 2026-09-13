@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test"
 import { fireEvent, render, within } from "@solidjs/testing-library"
+import { ExtensionFullWindowView } from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
 import { ExtensionPopupView } from "../../../src/extension/popup/ExtensionPopupView.jsx"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
-import { ExtensionFullWindowView } from "../../../src/extension/fullwindow/ExtensionFullWindowView.jsx"
 import { ExtensionDemoFrame } from "../../../src/web/demo/extension/ExtensionDemoFrame.jsx"
 import { extensionDemoFixtures } from "../../../src/web/demo/extension/extensionDemoFixtures.js"
 
@@ -150,7 +150,7 @@ test("extension demo fixture states expose production extras and confirmation su
   }
 })
 
-test("popup demo navigation uses a shrinkable three-column layout without forcing viewport overflow", () => {
+test("popup demo navigation separates its shrinkable content tabs from Settings", () => {
   const root = render(() => (
     <ExtensionPopupView
       root="div"
@@ -160,10 +160,16 @@ test("popup demo navigation uses a shrinkable three-column layout without forcin
   ))
   const navigation = root.getByRole("navigation", { name: "Extension navigation" })
 
-  expect(navigation.classList.contains("grid-cols-3")).toBe(true)
+  const contentNavigation = root.getByRole("group", { name: "Popup content" })
+  expect(contentNavigation.classList.contains("grid-cols-2")).toBe(true)
+  expect(contentNavigation.classList.contains("min-w-0")).toBe(true)
+  expect(contentNavigation.querySelectorAll("button")).toHaveLength(2)
+  expect(contentNavigation.contains(root.getByRole("button", { name: "Settings" }))).toBe(false)
   expect(root.container.firstElementChild?.classList.contains("box-border")).toBe(true)
   expect(root.container.firstElementChild?.classList.contains("max-w-full")).toBe(true)
-  for (const button of navigation.querySelectorAll("button")) expect(button.classList.contains("min-w-0")).toBe(true)
+  for (const button of contentNavigation.querySelectorAll("button"))
+    expect(button.classList.contains("min-w-0")).toBe(true)
+  expect(navigation.querySelectorAll("button")).toHaveLength(3)
   root.unmount()
 })
 

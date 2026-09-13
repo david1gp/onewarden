@@ -219,6 +219,27 @@ test("extensionStorageCreate loads and saves the versioned vault sort in local s
   }
 })
 
+test("extensionStorageCreate loads and saves only valid popup content panes", async () => {
+  const { local, storage } = storageCreate()
+
+  expect(await storage.popupPaneLoad()).toEqual({ success: true, data: null })
+  expect(await storage.popupPaneSave("generator")).toEqual({ success: true, data: undefined })
+  expect(local.values.get(extensionStorageKeys.popupPane)).toEqual({ schemaVersion: 1, pane: "generator" })
+  expect(await storage.popupPaneLoad()).toEqual({ success: true, data: "generator" })
+
+  expect(await storage.popupPaneSave("settings" as never)).toMatchObject({
+    success: false,
+    code: "platform.invalid-request",
+    statusCode: 400,
+  })
+  local.values.set(extensionStorageKeys.popupPane, { schemaVersion: 1, pane: "settings" })
+  expect(await storage.popupPaneLoad()).toMatchObject({
+    success: false,
+    code: "platform.internal",
+    statusCode: 500,
+  })
+})
+
 test("extensionStorageCreate validates vault sort records and preserves them through logout", async () => {
   const { local, storage } = storageCreate()
   await storage.vaultSortSave("updated-oldest")
