@@ -46,7 +46,8 @@ test("VaultShell renders semantic landmarks and search input", () => {
 
   expect(screen.getByRole("banner")).toBeDefined()
   expect(screen.getByRole("main")).toBeDefined()
-  expect(screen.getByRole("contentinfo")).toBeDefined()
+  expect(screen.queryByRole("contentinfo")).toBeNull()
+  expect(screen.queryByText("End-to-End Encrypted", { exact: true })).toBeNull()
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("OneWarden")
   expect(screen.getByPlaceholderText(/Search items/i)).toBeDefined()
   expect(screen.getAllByText("My Login").length).toBeGreaterThan(0)

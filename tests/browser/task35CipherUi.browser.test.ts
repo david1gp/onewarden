@@ -226,7 +226,7 @@ test.describe("task 35 cipher UI", () => {
     await page.goto("/")
     await browserAuthenticatedSessionUnlock(page)
 
-    await expect(page.getByRole("contentinfo").getByText("End-to-End Encrypted", { exact: true })).toBeVisible()
+    await expect(page.getByRole("contentinfo")).toHaveCount(0)
     await expect(page.getByRole("button", { name: /Items/i })).toBeVisible()
 
     const viewportState = await page.locator("body").evaluate((body) => ({

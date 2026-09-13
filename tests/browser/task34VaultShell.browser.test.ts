@@ -231,6 +231,7 @@ test.describe("task 34 vault shell and navigation UI", () => {
     await syncButton.click()
     await expect(page.getByRole("list", { name: "Vault Credentials" })).toBeVisible()
     await expect(page.getByRole("button", { name: /AWS Production Console/i })).toBeVisible()
-    await expect(page.getByRole("contentinfo").getByText("End-to-End Encrypted", { exact: true })).toBeVisible()
+    await expect(page.getByRole("contentinfo")).toHaveCount(0)
+    await expect(page.getByText("End-to-End Encrypted", { exact: true })).toHaveCount(0)
   })
 })

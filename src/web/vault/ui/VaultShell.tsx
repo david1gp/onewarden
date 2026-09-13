@@ -130,15 +130,6 @@ export function VaultShell(props: VaultShellViewProps): JSX.Element {
           <VaultWorkspace {...props.workspace} />
         </Show>
       </main>
-
-      {/* Application Footer */}
-      <footer class="flex h-6 shrink-0 items-center justify-between border-t border-slate-200 bg-slate-50 px-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
-        <span>OneWarden</span>
-        <span class="flex items-center gap-1">
-          <span class="size-1.5 rounded-full bg-emerald-500" />
-          End-to-End Encrypted
-        </span>
-      </footer>
     </div>
   )
 }
