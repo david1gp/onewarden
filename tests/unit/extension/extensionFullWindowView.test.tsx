@@ -14,6 +14,7 @@ import type { ExtensionFullWindowViewModel } from "../../../src/extension/fullwi
 import { extensionFullWindowCommandsCreate } from "../../../src/extension/fullwindow/extensionFullWindowCommandsCreate.js"
 import { extensionFullWindowEnvironmentSettingsCreate } from "../../../src/extension/fullwindow/extensionFullWindowEnvironmentSettingsCreate.js"
 import { extensionFullWindowViewModelCreate } from "../../../src/extension/fullwindow/extensionFullWindowViewModelCreate.js"
+import type { ExtensionLockPolicy } from "../../../src/extension/storage/extensionLockPolicySchema.js"
 import { resultCreate } from "../../../src/shared/result/resultCreate.js"
 import { cipherItemFromDemo } from "../../../src/web/ciphers/model/cipherItemFromDemo.js"
 import { cipherItemFromWire } from "../../../src/web/ciphers/model/cipherItemFromWire.js"
@@ -489,6 +490,58 @@ test.serial("extensionFullWindowView keeps persisted vault timeout policy contro
   expect((root.getByLabelText("Vault timeout") as HTMLSelectElement).value).toBe("60")
   expect(root.getByRole("radio", { name: "Log out" }).getAttribute("aria-checked")).toBe("true")
   root.unmount()
+})
+
+test.serial("extensionFullWindowView displays the long vault timeout options", () => {
+  const root = fullWindowRender(
+    { status: "ready", lockPolicy: { timeoutMinutes: null, action: "lock" } },
+    {},
+    { initialState: { pane: "settings" } },
+  )
+  const timeout = root.getByLabelText("Vault timeout") as HTMLSelectElement
+
+  expect(Array.from(timeout.options).map((option) => [option.value, option.textContent])).toEqual([
+    ["1", "1 minute"],
+    ["5", "5 minutes"],
+    ["15", "15 minutes"],
+    ["30", "30 minutes"],
+    ["60", "1 hour"],
+    ["240", "4 hours"],
+    ["1440", "1 day"],
+    ["4320", "3 days"],
+    ["10080", "1 week"],
+    ["never", "Never"],
+  ])
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView saves long vault timeouts with both existing actions", () => {
+  const saved: ExtensionLockPolicy[] = []
+  const durations = [1440, 4320, 10080]
+
+  for (const action of ["lock", "logout"] as const) {
+    for (const timeoutMinutes of durations) {
+      const root = fullWindowRender(
+        { status: "ready", lockPolicy: { timeoutMinutes: null, action } },
+        { lockPolicySave: (policy) => saved.push(policy) },
+        { initialState: { pane: "settings" } },
+      )
+      const timeout = root.getByLabelText("Vault timeout") as HTMLSelectElement
+
+      fireEvent.change(timeout, { target: { value: timeoutMinutes.toString() } })
+      fireEvent.click(root.getByRole("button", { name: "Save security settings" }))
+      root.unmount()
+    }
+  }
+
+  expect(saved).toEqual([
+    { timeoutMinutes: 1440, action: "lock" },
+    { timeoutMinutes: 4320, action: "lock" },
+    { timeoutMinutes: 10080, action: "lock" },
+    { timeoutMinutes: 1440, action: "logout" },
+    { timeoutMinutes: 4320, action: "logout" },
+    { timeoutMinutes: 10080, action: "logout" },
+  ])
 })
 
 test.serial("extensionFullWindowView waits for generator preferences before creating the generator", () => {
