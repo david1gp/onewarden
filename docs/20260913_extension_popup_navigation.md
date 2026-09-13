@@ -25,4 +25,4 @@ Persist the popup's selected content tab across popup reopenings, and present Se
 - [x] 2. Redesign and verify Settings as a visually distinct link/action using `sol-medium`.
 - [x] 3. Run final verification for the combined popup behavior.
 - [x] 4. Use a Luna subagent with the `/commits` skill to commit and push the intended changes.
-- [ ] 5. Deploy the committed result and report the outcome.
+- [x] 5. Deploy the committed result and report the outcome.
