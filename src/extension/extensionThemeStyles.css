@@ -175,6 +175,24 @@ html.extension-theme-root #root {
   color: var(--color-foreground);
 }
 
+.extension-popup-surface {
+  container-type: inline-size;
+}
+
+@container (max-width: 20rem) {
+  .extension-popup-navigation {
+    flex-wrap: wrap;
+  }
+
+  .extension-popup-navigation-tabs {
+    flex-basis: 100%;
+  }
+
+  .extension-popup-navigation-settings {
+    margin-left: auto;
+  }
+}
+
 .extension-card-surface {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);

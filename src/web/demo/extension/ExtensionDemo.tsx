@@ -25,7 +25,7 @@ export function ExtensionDemo(): JSX.Element {
                 <ExtensionDemoFrame
                   label={fixture.label}
                   initialTheme={index() % 2 === 0 ? "light" : "dark"}
-                  frameClass="w-full max-w-90"
+                  frameClass="w-full max-w-90 lg:p-0"
                 >
                   {(theme, themeSet) => (
                     <ExtensionPopupView

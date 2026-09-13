@@ -54,7 +54,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   return (
     <Dynamic
       component={p.root ?? "main"}
-      class="extension-page-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
+      class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
     >
       <header class="flex items-center justify-between gap-2">
         <h1 class="text-sm font-semibold">OneWarden</h1>
@@ -74,8 +74,11 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
 
       <ExtensionSeparator />
 
-      <nav aria-label={p.navigationLabel ?? "Extension navigation"} class="flex min-w-0 items-center gap-2">
-        <fieldset class="extension-subtle-surface m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 rounded-xl border-0 p-1">
+      <nav
+        aria-label={p.navigationLabel ?? "Extension navigation"}
+        class="extension-popup-navigation flex min-w-0 items-center gap-2"
+      >
+        <fieldset class="extension-popup-navigation-tabs extension-subtle-surface m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 rounded-xl border-0 p-1">
           <legend class="sr-only">Popup content</legend>
           <ExtensionButtonIcon
             variant="ghost"
@@ -107,7 +110,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           disabled={state.busy()}
           onClick={state.settingsOpen}
           title="Open Settings in a full window"
-          class="extension-muted-text min-h-10 shrink-0 px-2"
+          class="extension-popup-navigation-settings extension-muted-text min-h-10 shrink-0 px-2"
         >
           Settings
         </ExtensionButtonIcon>
