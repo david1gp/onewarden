@@ -278,7 +278,8 @@ test("extensionPopupView renders compact text tabs and labeled icon-only actions
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   expect(root.getByRole("button", { name: "Vault" }).hasAttribute("aria-current")).toBe(false)
-  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
+  expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
+  expect(root.container.textContent).not.toContain("Generated securely on this device.")
   fireEvent.click(root.getByRole("button", { name: "Open full generator" }))
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
   expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
@@ -325,7 +326,7 @@ test("extensionPopupView renders the inline generator and keeps its controls com
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
 
-  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
+  expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
   expect(root.getByLabelText("Generated passphrase")).toBeDefined()
   expect(root.queryByLabelText("Search logins")).toBeNull()
 

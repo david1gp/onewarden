@@ -24,23 +24,15 @@ export function ExtensionPopupGeneratorPane(p: {
   const state = extensionFullWindowGeneratorPaneStateCreate(p.options)
 
   return (
-    <section aria-labelledby={`${p.idPrefix ?? ""}popup-generator-title`} class="flex min-w-0 flex-col gap-3">
-      <div class="flex items-center justify-between gap-2 px-1">
-        <div>
-          <h2 id={`${p.idPrefix ?? ""}popup-generator-title`} class="text-sm font-semibold">
-            Generator
-          </h2>
-          <p class="extension-muted-text text-xs">Generated securely on this device.</p>
-        </div>
-        <ExtensionSwitchSingle
-          id={`${p.idPrefix ?? ""}popup-generator-type`}
-          valueSignal={state.modeSignal}
-          getOptions={state.modeOptions}
-          valueText={(mode) => generatorModeText[mode] ?? mode}
-          disabled={state.copyStatus() === "copying"}
-          class="shrink-0 p-1 text-xs"
-        />
-      </div>
+    <section aria-label="Generator" class="flex min-w-0 flex-col gap-3">
+      <ExtensionSwitchSingle
+        id={`${p.idPrefix ?? ""}popup-generator-type`}
+        valueSignal={state.modeSignal}
+        getOptions={state.modeOptions}
+        valueText={(mode) => generatorModeText[mode] ?? mode}
+        disabled={state.copyStatus() === "copying"}
+        class="shrink-0 self-end p-1 text-xs"
+      />
 
       <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
         <div class="extension-subtle-surface flex gap-1.5 p-2">
