@@ -19,10 +19,10 @@ export interface ExtensionPopupLoginCardProps {
 /** One matched login with its explicit fill and per-field copy controls. */
 export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
   return (
-    <article class="min-w-0" aria-label={p.login.name}>
-      <div class="flex items-start justify-between gap-2">
+    <article class="grid min-w-0 grid-cols-2" aria-label={p.login.name}>
+      <div class="col-span-2 flex min-w-0 items-start justify-between gap-2">
         <div class="min-w-0">
-          <p class="truncate text-sm font-semibold">{p.login.name}</p>
+          <h2 class="truncate text-sm font-semibold">{p.login.name}</h2>
           <p class="extension-muted-text truncate text-xs">{p.login.username ?? "No username"}</p>
         </div>
         <Show when={p.fillAvailable}>
@@ -38,7 +38,7 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
         </Show>
       </div>
       <Show when={p.login.copyableFields.length > 0 || p.login.totpAvailable}>
-        <div class="mt-2 flex flex-wrap gap-1">
+        <div class="col-span-2 mt-2 grid min-w-0 grid-cols-2 gap-1">
           <For each={p.login.copyableFields}>
             {(field) => (
               <ButtonIcon
@@ -48,6 +48,7 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
                 disabled={p.disabled}
                 aria-label={`Copy ${field.label} of ${p.login.name}`}
                 onClick={() => p.onCopy(p.login, field)}
+                class="min-w-0 w-full"
               >
                 {p.fieldIsCopied(field) ? `${field.label} copied` : field.label}
               </ButtonIcon>
@@ -61,6 +62,7 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
               disabled={p.disabled}
               aria-label={`Copy TOTP code of ${p.login.name}`}
               onClick={() => p.onTotpCopy(p.login)}
+              class="min-w-0 w-full"
             >
               {p.totpIsCopied(p.login) ? "TOTP code copied" : "TOTP code"}
             </ButtonIcon>

@@ -1,8 +1,5 @@
 import { expect, test } from "bun:test"
 import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
-import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
-import { mdiOpenInNew } from "@adaptive-ds/mdi/mdiOpenInNew.js"
-import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
@@ -144,6 +141,13 @@ test("extensionPopupView omits popup identity text and shows matched logins", ()
     "Example Mail",
     "Example Admin",
   ])
+  const savedLogins = root.getByRole("list", { name: "Saved logins" })
+  expect(savedLogins.classList.contains("grid-cols-1")).toBe(true)
+  expect(savedLogins.classList.contains("grid-cols-2")).toBe(false)
+  expect(savedLogins.classList.contains("min-h-0")).toBe(true)
+  expect(savedLogins.classList.contains("overflow-y-auto")).toBe(true)
+  expect(root.container.firstElementChild?.classList.contains("max-h-dvh")).toBe(true)
+  expect(root.getByRole("contentinfo").classList.contains("shrink-0")).toBe(true)
   expect(root.queryByLabelText("Sort logins")).toBeNull()
 
   root.unmount()
@@ -248,16 +252,12 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView renders text tabs and labeled action icons", () => {
+test("extensionPopupView renders text tabs and only the retained popup footer action", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
     {
       loginAdd: () => calls.push("add"),
-      vaultSync: () => calls.push("sync"),
-      vaultLock: () => calls.push("lock"),
-      vaultLogout: () => calls.push("logout"),
-      fullVaultOpen: () => calls.push("full"),
       generatorOpen: () => calls.push("generator"),
       settingsOpen: () => calls.push("settings"),
     },
@@ -291,17 +291,12 @@ test("extensionPopupView renders text tabs and labeled action icons", () => {
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
   const addLogin = root.getByRole("button", { name: "Add login" })
-  const sync = root.getByRole("button", { name: "Sync" })
-  const logout = root.getByRole("button", { name: "Log out" })
-  const openFullVault = root.getByRole("button", { name: "Open full vault" })
   expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
-  expect(sync.querySelector("path")?.getAttribute("d")).toBe(mdiSync)
-  expect(logout.querySelector("path")?.getAttribute("d")).toBe(mdiLogout)
-  expect(openFullVault.querySelector("path")?.getAttribute("d")).toBe(mdiOpenInNew)
-  fireEvent.click(openFullVault)
-  for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
+  for (const name of ["Sync", "Lock", "Log out", "Open full vault"])
+    expect(root.queryByRole("button", { name })).toBeNull()
+  fireEvent.click(addLogin)
 
-  expect(calls).toEqual(["settings", "full", "add", "sync", "lock", "logout"])
+  expect(calls).toEqual(["settings", "add"])
 
   root.unmount()
 })
@@ -424,17 +419,17 @@ test("extensionPopupView provides form autocomplete metadata and bounded results
   locked.unmount()
 })
 
-test("extensionPopupView disables commands while a command is in flight", () => {
-  let syncCalls = 0
+test("extensionPopupView disables retained footer commands while a command is in flight", () => {
+  let addCalls = 0
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin], busy: true },
-    { vaultSync: () => (syncCalls += 1) },
+    { loginAdd: () => (addCalls += 1) },
   )
 
-  const sync = root.getByRole("button", { name: "Sync" }) as HTMLButtonElement
-  expect(sync.disabled).toBe(true)
-  fireEvent.click(sync)
-  expect(syncCalls).toBe(0)
+  const addLogin = root.getByRole("button", { name: "Add login" }) as HTMLButtonElement
+  expect(addLogin.disabled).toBe(true)
+  fireEvent.click(addLogin)
+  expect(addCalls).toBe(0)
 
   root.unmount()
 })

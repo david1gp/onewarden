@@ -50,3 +50,33 @@ test("ExtensionPopupLoginCard uses semantic field icons and preserves password i
 
   screen.unmount()
 })
+
+test("ExtensionPopupLoginCard spans its summary and lays out field actions in equal columns", () => {
+  const screen = render(() => (
+    <ExtensionPopupLoginCard
+      login={{ ...login, name: "Northstar Mail" }}
+      disabled={false}
+      fillAvailable={true}
+      fieldIsCopied={() => false}
+      onFill={() => {}}
+      onCopy={() => {}}
+      totpIsCopied={() => false}
+      onTotpCopy={() => {}}
+    />
+  ))
+
+  const card = screen.getByLabelText("Northstar Mail")
+  const summary = screen.getByRole("heading", { name: "Northstar Mail" }).parentElement?.parentElement
+  const username = screen.getByRole("button", { name: "Copy Username of Northstar Mail" })
+  const password = screen.getByRole("button", { name: "Copy Password of Northstar Mail" })
+  const fieldGrid = username.parentElement
+
+  expect(card.classList.contains("grid-cols-2")).toBe(true)
+  expect(summary?.classList.contains("col-span-2")).toBe(true)
+  expect(fieldGrid?.classList.contains("grid-cols-2")).toBe(true)
+  expect(fieldGrid?.classList.contains("col-span-2")).toBe(true)
+  expect(username.classList.contains("w-full")).toBe(true)
+  expect(password.classList.contains("w-full")).toBe(true)
+
+  screen.unmount()
+})

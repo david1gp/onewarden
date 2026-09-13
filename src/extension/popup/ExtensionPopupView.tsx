@@ -2,9 +2,6 @@ import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
-import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
-import { mdiOpenInNew } from "@adaptive-ds/mdi/mdiOpenInNew.js"
-import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
@@ -57,7 +54,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   return (
     <Dynamic
       component={p.root ?? "main"}
-      class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-2 p-2"
+      class="extension-page-surface extension-popup-surface box-border flex max-h-dvh w-90 max-w-full min-w-0 flex-col gap-2 overflow-hidden p-2"
     >
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
@@ -227,7 +224,10 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
 
         <Show when={!state.isEmpty()}>
-          <ul class="grid max-h-72 min-w-0 grid-cols-2 list-none gap-2 overflow-y-auto pr-1" aria-label="Saved logins">
+          <ul
+            class="grid min-h-0 min-w-0 flex-1 grid-cols-1 list-none gap-2 overflow-y-auto pr-1"
+            aria-label="Saved logins"
+          >
             <For each={state.visibleLogins()}>
               {(login) => (
                 <li class="min-w-0">
@@ -259,30 +259,9 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       </Show>
 
       <Show when={state.isVaultPane()}>
-        <footer class="flex flex-wrap gap-1">
+        <footer class="flex shrink-0 flex-wrap gap-1">
           <ExtensionButtonIcon variant="outline" icon={mdiAccountPlus} disabled={state.busy()} onClick={state.loginAdd}>
             Add login
-          </ExtensionButtonIcon>
-          <ExtensionButtonIcon variant="outline" icon={mdiSync} disabled={state.busy()} onClick={state.vaultSync}>
-            Sync
-          </ExtensionButtonIcon>
-          <Show when={state.isReady()}>
-            <ExtensionButtonIcon variant="outline" icon={mdiLock} disabled={state.busy()} onClick={state.vaultLock}>
-              Lock
-            </ExtensionButtonIcon>
-          </Show>
-          <Show when={!state.isLoggedOut()}>
-            <ExtensionButtonIcon variant="outline" icon={mdiLogout} disabled={state.busy()} onClick={state.vaultLogout}>
-              Log out
-            </ExtensionButtonIcon>
-          </Show>
-          <ExtensionButtonIcon
-            variant="outline"
-            icon={mdiOpenInNew}
-            disabled={state.busy()}
-            onClick={state.fullVaultOpen}
-          >
-            Open full vault
           </ExtensionButtonIcon>
         </footer>
       </Show>
