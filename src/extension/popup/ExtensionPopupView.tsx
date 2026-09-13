@@ -7,7 +7,6 @@ import { Button } from "#ui/interactive/button/Button.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
 import type { ExtensionPopupPaneStorage } from "../storage/extensionPopupPaneStorageSchema.js"
-import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
@@ -54,15 +53,6 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       component={p.root ?? "main"}
       class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
     >
-      <header class="flex min-w-0 items-center justify-between gap-2">
-        <h1 class="shrink-0 text-sm font-semibold">OneWarden</h1>
-        <ExtensionBadge role="group" aria-label="Active site" class="min-w-0 max-w-52 truncate">
-          {state.siteLabel()}
-        </ExtensionBadge>
-      </header>
-
-      <ExtensionSeparator />
-
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
         class="extension-popup-navigation extension-subtle-surface flex min-w-0 items-center gap-1 rounded-xl p-1"

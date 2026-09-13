@@ -39,7 +39,6 @@ export function extensionPopupViewStateCreate(
   })
 
   const status = createMemo(() => model().status)
-  const hostname = createMemo(() => model().hostname)
   const errorMessage = createMemo(() => model().errorMessage)
   const busy = createMemo(() => model().busy)
   const fillAvailable = createMemo(() => model().fillAvailable)
@@ -53,8 +52,6 @@ export function extensionPopupViewStateCreate(
     visibleLogins,
     () => model().logins,
   )
-
-  const siteLabel = createMemo(() => hostname() ?? "No active site")
 
   const biometricAvailable = createMemo(() => model().biometricStatus?.capability.status === "available")
   const biometricEnrolled = createMemo(() => model().biometricStatus?.enrolled ?? false)
@@ -106,8 +103,6 @@ export function extensionPopupViewStateCreate(
   return {
     searchQuerySignal,
     masterPasswordSignal,
-    hostname,
-    siteLabel,
     errorMessage,
     busy,
     fillAvailable,
