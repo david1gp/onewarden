@@ -20,6 +20,7 @@ import {
   extensionGeneratorPreferencesSchema,
 } from "./extensionGeneratorPreferencesSchema.js"
 import { type ExtensionLockPolicy, extensionLockPolicySchema } from "./extensionLockPolicySchema.js"
+import { type ExtensionPopupPaneStorage, extensionPopupPaneStorageSchema } from "./extensionPopupPaneStorageSchema.js"
 import { type ExtensionSessionState, extensionSessionStateStorageSchema } from "./extensionSessionStateStorageSchema.js"
 import type { ExtensionStorageAdapter } from "./extensionStorageAdapter.js"
 import { extensionStorageKeys } from "./extensionStorageKeys.js"
@@ -291,6 +292,22 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
       "extensionStorage.generatorPreferencesSave",
     )
 
+  const popupPaneLoad = async (): Promise<Result<ExtensionPopupPaneStorage["pane"] | null>> => {
+    const op = "extensionStorage.popupPaneLoad"
+    const result = await storageRead(adapter.local, extensionStorageKeys.popupPane, extensionPopupPaneStorageSchema, op)
+    if (!result.success) return result
+    return resultCreate(result.data?.pane ?? null)
+  }
+
+  const popupPaneSave = (pane: ExtensionPopupPaneStorage["pane"]): Promise<Result<void>> =>
+    storageWrite(
+      adapter.local,
+      extensionStorageKeys.popupPane,
+      extensionPopupPaneStorageSchema,
+      storageVersionedCreate({ pane }),
+      "extensionStorage.popupPaneSave",
+    )
+
   const vaultSortLoad = async (): Promise<Result<VaultSort | null>> => {
     const op = "extensionStorage.vaultSortLoad"
     const result = await storageRead(adapter.local, extensionStorageKeys.vaultSort, extensionVaultSortStorageSchema, op)
@@ -435,6 +452,8 @@ export function extensionStorageCreate(adapter: ExtensionStorageAdapter) {
     autofillPolicySave,
     generatorPreferencesLoad,
     generatorPreferencesSave,
+    popupPaneLoad,
+    popupPaneSave,
     vaultSortLoad,
     vaultSortSave,
     createDraftsLoad,

@@ -6,6 +6,7 @@ import type { ExtensionRuntimeMessage } from "../messaging/extensionRuntimeMessa
 import { extensionRuntimeMessageSend } from "../messaging/extensionRuntimeMessageSend.js"
 import { extensionGeneratorPreferencesDefault } from "../storage/extensionGeneratorPreferencesDefault.js"
 import type { ExtensionGeneratorPreferences } from "../storage/extensionGeneratorPreferencesSchema.js"
+import type { ExtensionPopupPaneStorage } from "../storage/extensionPopupPaneStorageSchema.js"
 import type { extensionStorageCreate } from "../storage/extensionStorageCreate.js"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import type { ExtensionPopupViewModel } from "./ExtensionPopupViewModel.js"
@@ -15,7 +16,10 @@ import { extensionPopupViewModelCreate } from "./extensionPopupViewModelCreate.j
 export type ExtensionPopupAppOptions = {
   messageSend?: <T = unknown>(message: ExtensionRuntimeMessage) => Promise<Result<T>>
   clipboard?: ExtensionClipboardAdapter
-  storage?: Pick<ReturnType<typeof extensionStorageCreate>, "generatorPreferencesLoad" | "generatorPreferencesSave">
+  storage?: Pick<
+    ReturnType<typeof extensionStorageCreate>,
+    "generatorPreferencesLoad" | "generatorPreferencesSave" | "popupPaneLoad" | "popupPaneSave"
+  >
 }
 
 export function extensionPopupAppStateCreate(options: ExtensionPopupAppOptions = {}) {
@@ -27,6 +31,10 @@ export function extensionPopupAppStateCreate(options: ExtensionPopupAppOptions =
   const generatorPreferencesLoadedSignal = createSignalObject(options.storage === undefined)
   let generatorPreferencesRevision = 0
   let generatorPreferencesSaveQueue = Promise.resolve()
+  const popupPaneSignal = createSignalObject<ExtensionPopupPaneStorage["pane"]>("vault")
+  const popupPaneLoadedSignal = createSignalObject(options.storage === undefined)
+  let popupPaneRevision = 0
+  let popupPaneSaveQueue = Promise.resolve()
 
   const onModelUpdate = (updater: (prev: ExtensionPopupViewModel) => ExtensionPopupViewModel) => {
     modelSignal.set(updater(modelSignal.get()))
@@ -74,6 +82,31 @@ export function extensionPopupAppStateCreate(options: ExtensionPopupAppOptions =
       .catch((error: unknown) => console.error("Generator preferences could not be saved.", error))
   }
 
+  const popupPaneLoad = async (): Promise<void> => {
+    if (options.storage === undefined) return
+    const revision = popupPaneRevision
+    const result = await options.storage.popupPaneLoad()
+    if (!result.success) {
+      console.error(result.errorMessage)
+      popupPaneLoadedSignal.set(true)
+      return
+    }
+    if (revision === popupPaneRevision && result.data !== null) popupPaneSignal.set(result.data)
+    popupPaneLoadedSignal.set(true)
+  }
+
+  const popupPaneSave = (pane: ExtensionPopupPaneStorage["pane"]): void => {
+    popupPaneRevision += 1
+    popupPaneSignal.set(pane)
+    if (options.storage === undefined) return
+    popupPaneSaveQueue = popupPaneSaveQueue
+      .then(async () => {
+        const result = await options.storage?.popupPaneSave(pane)
+        if (result !== undefined && !result.success) console.error(result.errorMessage)
+      })
+      .catch((error: unknown) => console.error("Popup pane could not be saved.", error))
+  }
+
   const commands: ExtensionPopupCommands = extensionPopupCommandsCreate(
     {},
     {
@@ -87,6 +120,7 @@ export function extensionPopupAppStateCreate(options: ExtensionPopupAppOptions =
   onMount(() => {
     void refresh()
     void generatorPreferencesLoad()
+    void popupPaneLoad()
   })
 
   return {
@@ -96,5 +130,8 @@ export function extensionPopupAppStateCreate(options: ExtensionPopupAppOptions =
     generatorPreferences: generatorPreferencesSignal.get,
     generatorPreferencesLoaded: generatorPreferencesLoadedSignal.get,
     onGeneratorPreferencesChange: generatorPreferencesSave,
+    popupPane: popupPaneSignal.get,
+    popupPaneLoaded: popupPaneLoadedSignal.get,
+    onPopupPaneChange: popupPaneSave,
   }
 }

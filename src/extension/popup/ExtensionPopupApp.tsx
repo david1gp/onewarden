@@ -15,6 +15,9 @@ export function ExtensionPopupApp(props: ExtensionPopupAppProps): JSX.Element {
       generatorPreferences={state.generatorPreferences}
       generatorPreferencesLoaded={state.generatorPreferencesLoaded}
       onGeneratorPreferencesChange={state.onGeneratorPreferencesChange}
+      initialPane={state.popupPane}
+      initialPaneLoaded={state.popupPaneLoaded}
+      onPaneChange={state.onPopupPaneChange}
     />
   )
 }
