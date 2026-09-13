@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
 import type { ExtensionPersonalLoginCipher } from "../crypto/extensionPersonalLoginCipherSchema.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
@@ -11,6 +12,7 @@ import { ExtensionFullWindowCipherExtras } from "./ExtensionFullWindowCipherExtr
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "./ExtensionFullWindowViewModel.js"
+import { fieldIconPathGet } from "../../shared/field/fieldIconPathGet.js"
 
 export interface ExtensionFullWindowLoginDetailProps {
   login: ExtensionLogin
@@ -79,7 +81,10 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
           <For each={p.login.copyableFields}>
             {(field) => (
               <li class="flex items-center justify-between gap-2">
-                <span class="min-w-0 truncate text-sm">{field.label}</span>
+                <span class="flex min-w-0 items-center gap-1.5 truncate text-sm">
+                  <Icon path={fieldIconPathGet(field.label)} class="size-3.5" />
+                  <span class="truncate">{field.label}</span>
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
@@ -94,7 +99,10 @@ export function ExtensionFullWindowLoginDetail(p: ExtensionFullWindowLoginDetail
           </For>
           <Show when={p.login.totpAvailable}>
             <li class="flex items-center justify-between gap-2">
-              <span class="min-w-0 truncate text-sm">TOTP code</span>
+              <span class="flex min-w-0 items-center gap-1.5 truncate text-sm">
+                <Icon path={fieldIconPathGet("TOTP code")} class="size-3.5" />
+                <span class="truncate">TOTP code</span>
+              </span>
               <Button
                 variant="outline"
                 size="sm"

@@ -9,6 +9,7 @@ import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
 import { CopyActionButton } from "../../../ui/interactive/button/CopyActionButton.jsx"
 import { LabeledValueRow } from "../../../ui/static/value/LabeledValueRow.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
+import { fieldIconPathGet } from "../../../shared/field/fieldIconPathGet.js"
 import { CipherAttachmentsSection } from "./CipherAttachmentsSection.jsx"
 import { CipherCustomFieldsView } from "./CipherCustomFieldsView.jsx"
 import { CipherDeleteDialog } from "./CipherDeleteDialog.jsx"
@@ -213,7 +214,12 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().login?.username}>
                       <LabeledValueRow
                         class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
-                        label="Username"
+                        label={
+                          <span class="inline-flex items-center gap-1.5">
+                            <Icon path={fieldIconPathGet("Username")} class="size-3.5" />
+                            Username
+                          </span>
+                        }
                         labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
                         value={
                           <p class="truncate font-medium text-sm text-slate-900 select-all dark:text-slate-100">
@@ -245,7 +251,12 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().login?.password}>
                       <LabeledValueRow
                         class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
-                        label="Password"
+                        label={
+                          <span class="inline-flex items-center gap-1.5">
+                            <Icon path={fieldIconPathGet("Password")} class="size-3.5" />
+                            Password
+                          </span>
+                        }
                         labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
                         value={
                           <p class="truncate font-mono text-sm tracking-wider text-slate-900 select-all dark:text-slate-100">
@@ -295,7 +306,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                         class="group gap-2 border-b border-slate-100 pb-3 dark:border-slate-800/80"
                         label={
                           <>
-                            <span class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            <span class="inline-flex items-center gap-1.5 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                              <Icon path={fieldIconPathGet("TOTP code")} class="size-3.5" />
                               One-Time Password (2FA)
                             </span>
                             <span class="size-1.5 animate-pulse rounded-full bg-blue-700" />
@@ -332,7 +344,8 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                     <Show when={item().login?.uris && item().login!.uris!.length > 0}>
                       <div class="group flex items-center justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                          <p class="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                          <p class="inline-flex items-center gap-1.5 font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400">
+                            <Icon path={fieldIconPathGet("Website")} class="size-3.5" />
                             Website
                           </p>
                           <LinkTextExternal
@@ -544,7 +557,12 @@ export function CipherDetailView(props: CipherDetailViewStateProps): JSX.Element
                   <Show when={item().identity?.username}>
                     <LabeledValueRow
                       class="gap-2 border-b border-slate-100 pb-2.5 dark:border-slate-800/80"
-                      label="Username"
+                      label={
+                        <span class="inline-flex items-center gap-1.5">
+                          <Icon path={fieldIconPathGet("Username")} class="size-3.5" />
+                          Username
+                        </span>
+                      }
                       labelClass="font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
                       value={
                         <p class="truncate text-sm text-slate-900 select-all dark:text-slate-100">

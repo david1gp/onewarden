@@ -2,9 +2,11 @@ import { For, type JSX, Show } from "solid-js"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
+import { Icon } from "#ui/static/icon/Icon.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
 import { CopyActionButton } from "../../../ui/interactive/button/CopyActionButton.jsx"
 import { LabeledValueRow } from "../../../ui/static/value/LabeledValueRow.jsx"
+import { fieldIconPathGet } from "../../../shared/field/fieldIconPathGet.js"
 import {
   type CipherCustomFieldsViewStateProps,
   cipherCustomFieldsViewStateCreate,
@@ -26,7 +28,12 @@ export function CipherCustomFieldsView(props: CipherCustomFieldsViewStateProps):
               return (
                 <LabeledValueRow
                   class="gap-2 border-b border-slate-100 pb-2.5 last:border-0 last:pb-0 dark:border-slate-800/80"
-                  label={field.name}
+                  label={
+                    <span class="inline-flex min-w-0 items-center gap-1.5">
+                      <Icon path={fieldIconPathGet(field.name)} class="size-3.5" />
+                      <span class="truncate">{field.name}</span>
+                    </span>
+                  }
                   labelClass="truncate font-semibold text-sm text-slate-600 uppercase tracking-wider dark:text-slate-400"
                   value={
                     <Show

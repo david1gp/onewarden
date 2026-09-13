@@ -1,8 +1,10 @@
 import { For, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
+import { fieldIconPathGet } from "../../shared/field/fieldIconPathGet.js"
 
 export interface ExtensionPopupLoginCardProps {
   login: ExtensionLogin
@@ -41,27 +43,31 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
         <div class="mt-2 flex flex-wrap gap-1">
           <For each={p.login.copyableFields}>
             {(field) => (
-              <Button
+              <ButtonIcon
                 variant="outline"
                 size="sm"
+                icon={fieldIconPathGet(field.label)}
+                iconClass="size-3.5"
                 disabled={p.disabled}
                 aria-label={`Copy ${field.label} of ${p.login.name}`}
                 onClick={() => p.onCopy(p.login, field)}
               >
                 {p.fieldIsCopied(field) ? `${field.label} copied` : field.label}
-              </Button>
+              </ButtonIcon>
             )}
           </For>
           <Show when={p.login.totpAvailable}>
-            <Button
+            <ButtonIcon
               variant="outline"
               size="sm"
+              icon={fieldIconPathGet("TOTP code")}
+              iconClass="size-3.5"
               disabled={p.disabled}
               aria-label={`Copy TOTP code of ${p.login.name}`}
               onClick={() => p.onTotpCopy(p.login)}
             >
               {p.totpIsCopied(p.login) ? "TOTP code copied" : "TOTP code"}
-            </Button>
+            </ButtonIcon>
           </Show>
         </div>
       </Show>
