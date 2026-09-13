@@ -87,6 +87,17 @@ test.describe("task 4 extension demo coverage", () => {
 
         await expect(frame).toBeVisible()
         await expect(navigation).toBeVisible()
+        await expect(navigation.getByRole("group", { name: "Vault and generator" })).toBeVisible()
+        await expect(navigation.getByRole("button", { name: "Settings" })).toHaveText("")
+        await expect(navigation.getByRole("button", { name: /Switch to (?:light|dark) theme/ })).toHaveText("")
+        await expect(navigation.getByText("Popup content")).toHaveCount(0)
+        await expect(navigation.getByRole("button")).toHaveCount(4)
+        expect(
+          await navigation.getByRole("button").evaluateAll((buttons) => {
+            const tops = buttons.map((button) => button.getBoundingClientRect().top)
+            return Math.max(...tops) - Math.min(...tops) < 1
+          }),
+        ).toBe(true)
         expect(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
         expect(
           await navigation
@@ -95,5 +106,25 @@ test.describe("task 4 extension demo coverage", () => {
         ).toBe(true)
       }
     }
+  })
+
+  test("keeps the popup theme action synchronized with its isolated demo frame", async ({ page }) => {
+    await page.goto("/demo/extension")
+
+    const frame = page.getByRole("article", { name: "Ready · copied feedback frame", exact: true })
+    const preview = frame.locator(":scope > section")
+    const navigation = preview.getByRole("navigation")
+    const theme = navigation.getByRole("button", { name: "Switch to dark theme" })
+
+    await expect(preview).toHaveAttribute("data-extension-theme", "light")
+    await expect(theme).toHaveAttribute("title", "Switch to dark theme")
+    await theme.click()
+
+    await expect(preview).toHaveAttribute("data-extension-theme", "dark")
+    await expect(navigation.getByRole("button", { name: "Switch to light theme" })).toHaveAttribute(
+      "title",
+      "Switch to light theme",
+    )
+    await expect(frame.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true")
   })
 })

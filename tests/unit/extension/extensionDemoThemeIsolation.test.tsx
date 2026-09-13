@@ -150,7 +150,7 @@ test("extension demo fixture states expose production extras and confirmation su
   }
 })
 
-test("popup demo navigation separates its shrinkable content tabs from Settings", () => {
+test("popup demo navigation keeps text tabs and icon actions in one compact row", () => {
   const root = render(() => (
     <ExtensionPopupView
       root="div"
@@ -160,16 +160,19 @@ test("popup demo navigation separates its shrinkable content tabs from Settings"
   ))
   const navigation = root.getByRole("navigation", { name: "Extension navigation" })
 
-  const contentNavigation = root.getByRole("group", { name: "Popup content" })
+  const contentNavigation = root.getByRole("group", { name: "Vault and generator" })
   expect(contentNavigation.classList.contains("grid-cols-2")).toBe(true)
   expect(contentNavigation.classList.contains("min-w-0")).toBe(true)
   expect(contentNavigation.querySelectorAll("button")).toHaveLength(2)
+  expect(contentNavigation.querySelectorAll("svg")).toHaveLength(0)
   expect(contentNavigation.contains(root.getByRole("button", { name: "Settings" }))).toBe(false)
   expect(root.container.firstElementChild?.classList.contains("box-border")).toBe(true)
   expect(root.container.firstElementChild?.classList.contains("max-w-full")).toBe(true)
   for (const button of contentNavigation.querySelectorAll("button"))
     expect(button.classList.contains("min-w-0")).toBe(true)
-  expect(navigation.querySelectorAll("button")).toHaveLength(3)
+  expect(root.getByRole("button", { name: "Settings" }).textContent).toBe("")
+  expect(root.getByRole("button", { name: "Switch to dark theme" }).textContent).toBe("")
+  expect(navigation.querySelectorAll("button")).toHaveLength(4)
   root.unmount()
 })
 

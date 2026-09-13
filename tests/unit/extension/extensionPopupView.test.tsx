@@ -241,7 +241,7 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView separates content navigation from the Settings action", () => {
+test("extensionPopupView renders compact text tabs and labeled icon-only actions", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
@@ -257,13 +257,20 @@ test("extensionPopupView separates content navigation from the Settings action",
   )
 
   expect(root.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBe("page")
-  expect(root.getByRole("navigation", { name: "Extension navigation" })).toBeDefined()
-  const contentNavigation = root.getByRole("group", { name: "Popup content" })
+  const navigation = root.getByRole("navigation", { name: "Extension navigation" })
+  const contentNavigation = root.getByRole("group", { name: "Vault and generator" })
   expect(contentNavigation.querySelectorAll("button")).toHaveLength(2)
+  expect(contentNavigation.querySelectorAll("svg")).toHaveLength(0)
   expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
   expect(contentNavigation.contains(root.getByRole("button", { name: "Settings" }))).toBe(false)
   expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
   expect(root.getByRole("button", { name: "Settings" }).getAttribute("title")).toBe("Open Settings in a full window")
+  expect(root.getByRole("button", { name: "Settings" }).textContent).toBe("")
+  const theme = root.getByRole("button", { name: "Switch to dark theme" })
+  expect(theme.getAttribute("title")).toBe("Switch to dark theme")
+  expect(theme.textContent).toBe("")
+  expect(navigation.querySelectorAll("button")).toHaveLength(4)
+  expect(root.container.textContent).not.toContain("Popup content")
   expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
