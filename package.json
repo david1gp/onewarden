@@ -23,7 +23,7 @@
     "compatibility:manifest": "bun run tools/compatibility/upstreamRouteManifestGenerate.ts",
     "compatibility:manifest:check": "bun run tools/compatibility/upstreamRouteManifestCheck.ts",
     "extension": "vite --config src/extension/vite.config.ts",
-    "deploy": "bun run frontend:deploy",
+    "deploy": "bun run frontend:deploy && bun run demo:deploy",
     "frontend:build": "bun run build",
     "frontend:upload": "bunx wrangler pages deploy ./dist/client --project-name=onewarden-site --branch main --commit-dirty=true",
     "frontend:deploy": "bun run frontend:build && bun run frontend:upload",
