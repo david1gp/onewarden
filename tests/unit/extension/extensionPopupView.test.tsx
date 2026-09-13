@@ -267,7 +267,7 @@ test("extensionPopupView renders text tabs and labeled action icons", () => {
   const navigation = root.getByRole("navigation", { name: "Extension navigation" })
   const contentNavigation = root.getByRole("group", { name: "Vault and generator" })
   expect(contentNavigation.querySelectorAll("button")).toHaveLength(2)
-  expect(contentNavigation.querySelectorAll("svg")).toHaveLength(0)
+  expect(contentNavigation.querySelectorAll("svg")).toHaveLength(2)
   expect(root.getByRole("button", { name: "Generator" }).hasAttribute("aria-current")).toBe(false)
   expect(contentNavigation.contains(root.getByRole("button", { name: "Settings" }))).toBe(false)
   expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
@@ -285,7 +285,7 @@ test("extensionPopupView renders text tabs and labeled action icons", () => {
   expect(root.getByRole("button", { name: "Vault" }).hasAttribute("aria-current")).toBe(false)
   expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
   expect(root.container.textContent).not.toContain("Generated securely on this device.")
-  fireEvent.click(root.getByRole("button", { name: "Open full generator" }))
+  expect(root.queryByRole("button", { name: "Open full generator" })).toBeNull()
   fireEvent.click(root.getByRole("button", { name: "Settings" }))
   expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
@@ -301,7 +301,7 @@ test("extensionPopupView renders text tabs and labeled action icons", () => {
   fireEvent.click(openFullVault)
   for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
 
-  expect(calls).toEqual(["generator", "settings", "full", "add", "sync", "lock", "logout"])
+  expect(calls).toEqual(["settings", "full", "add", "sync", "lock", "logout"])
 
   root.unmount()
 })
@@ -348,6 +348,21 @@ test("extensionPopupView renders the inline generator and keeps its controls com
   expect(root.queryByRole("heading", { name: "Generator" })).toBeNull()
   expect(root.getByLabelText("Generated passphrase")).toBeDefined()
   expect(root.queryByLabelText("Search logins")).toBeNull()
+
+  const generator = root.getByRole("region", { name: "Generator" })
+  expect(generator.querySelector(".extension-popup-generator-surface")).toBeDefined()
+  const generatorActions = generator.querySelectorAll(".extension-generator-actions button")
+  expect([...generatorActions].map((button) => button.getAttribute("title"))).toEqual([
+    "Copy generated passphrase",
+    "Regenerate passphrase",
+    "Hide generated secret",
+  ])
+  expect(generator.querySelectorAll("[role=radio] svg")).toHaveLength(2)
+  expect(generator.querySelectorAll(".extension-number-input")).toHaveLength(1)
+  expect(generator.querySelectorAll("button[title^='Decrease by']")).toHaveLength(1)
+  expect(generator.querySelectorAll("button[title^='Increase by']")).toHaveLength(1)
+  expect(root.queryByText("Include a number", { exact: true })).toBeDefined()
+  expect(root.container.querySelector(".extension-separator")).toBeNull()
 
   fireEvent.click(root.getByRole("radio", { name: "Password" }))
   const password = root.getByLabelText("Generated password") as HTMLInputElement
