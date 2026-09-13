@@ -199,6 +199,10 @@ html.extension-theme-root #root {
   color: var(--color-card-foreground);
 }
 
+.extension-popup-generator-surface {
+  border: 0;
+}
+
 .extension-subtle-surface {
   background-color: var(--color-muted);
   color: var(--color-foreground);
@@ -338,6 +342,51 @@ html.extension-theme-root #root {
 .extension-switch-control [role="radio"][aria-checked="false"]:hover {
   background-color: var(--color-accent);
   color: var(--color-accent-foreground);
+}
+
+.extension-generator-mode-control {
+  background-color: var(--color-card);
+  border-color: var(--color-border);
+  color: var(--color-foreground);
+}
+
+.extension-generator-mode-control[aria-checked="true"] {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.extension-generator-mode-control[aria-checked="true"] :is(svg, svg *) {
+  color: var(--color-primary-foreground);
+  fill: var(--color-primary-foreground);
+}
+
+.extension-generator-mode-control:hover {
+  background-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.extension-generator-mode-control[aria-checked="true"]:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-foreground);
+}
+
+.extension-generator-mode-control:disabled,
+.extension-generator-mode-control:disabled:hover {
+  background-color: var(--color-control-disabled);
+  border-color: var(--color-border);
+  color: var(--color-control-disabled-foreground);
+}
+
+.extension-number-input {
+  -moz-appearance: textfield;
+}
+
+.extension-number-input::-webkit-inner-spin-button,
+.extension-number-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .extension-switch-control [role="radio"]:disabled,

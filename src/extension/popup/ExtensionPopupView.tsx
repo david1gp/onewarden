@@ -1,5 +1,7 @@
 import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
+import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
+import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
 import { mdiOpenInNew } from "@adaptive-ds/mdi/mdiOpenInNew.js"
 import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
@@ -55,34 +57,36 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
   return (
     <Dynamic
       component={p.root ?? "main"}
-      class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-3 p-3"
+      class="extension-page-surface extension-popup-surface box-border flex w-90 max-w-full min-w-0 flex-col gap-2 p-2"
     >
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="extension-popup-navigation extension-subtle-surface flex min-w-0 flex-wrap items-center gap-1 rounded-xl p-1"
+        class="extension-popup-navigation flex min-w-0 flex-wrap items-center gap-1"
       >
         <fieldset
           aria-label="Vault and generator"
           class="extension-popup-navigation-tabs m-0 grid min-w-40 flex-1 grid-cols-2 items-center gap-1 border-0 p-0"
         >
-          <Button
+          <ExtensionButtonIcon
             variant="ghost"
+            icon={mdiLock}
             aria-current={state.isVaultPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.vaultPaneOpen}
-            class="extension-selected-control min-h-10 min-w-0 rounded-lg px-3"
+            class="extension-selected-control min-h-10 min-w-0 px-3"
           >
             Vault
-          </Button>
-          <Button
+          </ExtensionButtonIcon>
+          <ExtensionButtonIcon
             variant="ghost"
+            icon={mdiKey}
             aria-current={state.isGeneratorPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.generatorPaneOpen}
-            class="extension-selected-control min-h-10 min-w-0 rounded-lg px-3"
+            class="extension-selected-control min-h-10 min-w-0 px-3"
           >
             Generator
-          </Button>
+          </ExtensionButtonIcon>
         </fieldset>
         <div class="ml-auto flex shrink-0 items-center gap-1">
           <ExtensionButtonIcon
@@ -92,7 +96,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             disabled={state.busy()}
             onClick={state.settingsOpen}
             title="Open Settings in a full window"
-            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 p-2"
           />
           <ExtensionButtonIcon
             icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
@@ -100,7 +104,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
             title={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
             onClick={state.themeToggle}
-            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 p-2"
           />
         </div>
       </nav>
@@ -223,10 +227,10 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
 
         <Show when={!state.isEmpty()}>
-          <ul class="max-h-72 min-w-0 overflow-y-auto pr-1 flex list-none flex-col gap-2" aria-label="Saved logins">
+          <ul class="grid max-h-72 min-w-0 grid-cols-2 list-none gap-2 overflow-y-auto pr-1" aria-label="Saved logins">
             <For each={state.visibleLogins()}>
               {(login) => (
-                <li>
+                <li class="min-w-0">
                   <ExtensionPopupLoginCard
                     login={login}
                     disabled={state.busy()}
@@ -250,7 +254,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
         </Show>
       </Show>
 
-      <Show when={state.isVaultPane() || state.isGeneratorPane()}>
+      <Show when={state.isVaultPane()}>
         <ExtensionSeparator />
       </Show>
 
@@ -263,9 +267,9 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             Sync
           </ExtensionButtonIcon>
           <Show when={state.isReady()}>
-            <Button variant="outline" disabled={state.busy()} onClick={state.vaultLock}>
+            <ExtensionButtonIcon variant="outline" icon={mdiLock} disabled={state.busy()} onClick={state.vaultLock}>
               Lock
-            </Button>
+            </ExtensionButtonIcon>
           </Show>
           <Show when={!state.isLoggedOut()}>
             <ExtensionButtonIcon variant="outline" icon={mdiLogout} disabled={state.busy()} onClick={state.vaultLogout}>
@@ -273,21 +277,13 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             </ExtensionButtonIcon>
           </Show>
           <ExtensionButtonIcon
-            variant="ghost"
+            variant="outline"
             icon={mdiOpenInNew}
             disabled={state.busy()}
             onClick={state.fullVaultOpen}
-            class="ml-auto"
           >
             Open full vault
           </ExtensionButtonIcon>
-        </footer>
-      </Show>
-      <Show when={state.isGeneratorPane()}>
-        <footer class="flex justify-end">
-          <Button variant="ghost" onClick={state.generatorOpen}>
-            Open full generator
-          </Button>
         </footer>
       </Show>
     </Dynamic>

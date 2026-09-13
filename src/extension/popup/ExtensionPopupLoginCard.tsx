@@ -4,7 +4,6 @@ import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { fieldIconPathGet } from "../../shared/field/fieldIconPathGet.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
-import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 
 export interface ExtensionPopupLoginCardProps {
   login: ExtensionLogin
@@ -20,7 +19,7 @@ export interface ExtensionPopupLoginCardProps {
 /** One matched login with its explicit fill and per-field copy controls. */
 export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
   return (
-    <ExtensionCardWrapper class="min-w-0 p-3" aria-label={p.login.name}>
+    <article class="min-w-0" aria-label={p.login.name}>
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
           <p class="truncate text-sm font-semibold">{p.login.name}</p>
@@ -68,6 +67,6 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
           </Show>
         </div>
       </Show>
-    </ExtensionCardWrapper>
+    </article>
   )
 }

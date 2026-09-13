@@ -1,20 +1,17 @@
 import { mdiContentCopy } from "@adaptive-ds/mdi/mdiContentCopy.js"
 import { mdiEye } from "@adaptive-ds/mdi/mdiEye.js"
 import { mdiEyeOff } from "@adaptive-ds/mdi/mdiEyeOff.js"
+import { mdiFormTextboxPassword } from "@adaptive-ds/mdi/mdiFormTextboxPassword.js"
+import { mdiKeyVariant } from "@adaptive-ds/mdi/mdiKeyVariant.js"
 import { mdiRefresh } from "@adaptive-ds/mdi/mdiRefresh.js"
 import { type JSX, Show } from "solid-js"
 import { Label } from "#ui/input/label/Label.jsx"
+import { NumberInputS } from "#ui/input/number/NumberInputS.jsx"
 import { extensionFullWindowGeneratorPaneStateCreate } from "../fullwindow/extensionFullWindowGeneratorPaneStateCreate.js"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import { ExtensionCheckbox } from "../ui/ExtensionCheckbox.jsx"
 import { ExtensionInput } from "../ui/ExtensionInput.jsx"
-import { ExtensionSwitchSingle } from "../ui/ExtensionSwitchSingle.jsx"
-
-const generatorModeText: Record<string, string> = {
-  passphrase: "Passphrase",
-  password: "Password",
-}
 
 /** Compact popup surface backed by the shared extension generator state. */
 export function ExtensionPopupGeneratorPane(p: {
@@ -24,18 +21,39 @@ export function ExtensionPopupGeneratorPane(p: {
   const state = extensionFullWindowGeneratorPaneStateCreate(p.options)
 
   return (
-    <section aria-label="Generator" class="flex min-w-0 flex-col gap-2">
-      <ExtensionSwitchSingle
+    <section aria-label="Generator" class="flex min-w-0 flex-col gap-1">
+      <fieldset
         id={`${p.idPrefix ?? ""}popup-generator-type`}
-        valueSignal={state.modeSignal}
-        getOptions={state.modeOptions}
-        valueText={(mode) => generatorModeText[mode] ?? mode}
-        disabled={state.copyStatus() === "copying"}
-        class="w-full p-1 text-xs [&_[role=radio]]:grow"
-      />
+        aria-label="Generator type"
+        class="grid min-w-0 grid-cols-2 gap-1 border-0 p-0"
+      >
+        <legend class="sr-only">Generator type</legend>
+        <ExtensionButtonIcon
+          variant="ghost"
+          icon={mdiKeyVariant}
+          role="radio"
+          aria-checked={state.passphraseMode()}
+          disabled={state.copyStatus() === "copying"}
+          onClick={() => state.modeSignal.set("passphrase")}
+          class="extension-generator-mode-control min-h-9 min-w-0 rounded-lg border px-2 text-xs"
+        >
+          Passphrase
+        </ExtensionButtonIcon>
+        <ExtensionButtonIcon
+          variant="ghost"
+          icon={mdiFormTextboxPassword}
+          role="radio"
+          aria-checked={!state.passphraseMode()}
+          disabled={state.copyStatus() === "copying"}
+          onClick={() => state.modeSignal.set("password")}
+          class="extension-generator-mode-control min-h-9 min-w-0 rounded-lg border px-2 text-xs"
+        >
+          Password
+        </ExtensionButtonIcon>
+      </fieldset>
 
-      <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
-        <div class="extension-subtle-surface grid min-w-0 gap-2 p-2">
+      <ExtensionCardWrapper class="extension-popup-generator-surface overflow-hidden rounded-xl p-0 shadow-sm">
+        <div class="extension-subtle-surface grid min-w-0 gap-1.5 p-1.5">
           <Label for={`${p.idPrefix ?? ""}popup-generated-secret`} class="sr-only">
             Generated {state.passphraseMode() ? "passphrase" : "password"}
           </Label>
@@ -48,32 +66,35 @@ export function ExtensionPopupGeneratorPane(p: {
             spellcheck={false}
             class="h-10 w-full min-w-0 px-2 font-mono text-sm"
           />
-          <div class="grid grid-cols-3 gap-1.5">
+          <div class="extension-generator-actions grid grid-cols-3 gap-1">
             <ExtensionButtonIcon
-              variant="ghost"
-              icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
-              aria-label={state.passwordVisible() ? "Hide generated secret" : "Reveal generated secret"}
-              aria-pressed={state.passwordVisible()}
+              variant="filledBlue"
+              icon={mdiContentCopy}
+              aria-label={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
+              title={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
+              isLoading={state.copyStatus() === "copying"}
               disabled={state.copyStatus() === "copying"}
-              onClick={state.passwordVisibilityToggle}
-              class="w-full"
+              onClick={state.passwordCopy}
+              class="extension-primary-control min-h-9 w-full px-1"
             />
             <ExtensionButtonIcon
               variant="ghost"
               icon={mdiRefresh}
               aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
+              title={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
               disabled={state.copyStatus() === "copying"}
               onClick={state.passwordRegenerate}
-              class="w-full"
+              class="min-h-9 w-full px-1"
             />
             <ExtensionButtonIcon
-              variant="filledBlue"
-              icon={mdiContentCopy}
-              aria-label={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
-              isLoading={state.copyStatus() === "copying"}
+              variant="ghost"
+              icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
+              aria-label={state.passwordVisible() ? "Hide generated secret" : "Show generated secret"}
+              title={state.passwordVisible() ? "Hide generated secret" : "Show generated secret"}
+              aria-pressed={state.passwordVisible()}
               disabled={state.copyStatus() === "copying"}
-              onClick={state.passwordCopy}
-              class="extension-primary-control w-full"
+              onClick={state.passwordVisibilityToggle}
+              class="min-h-9 w-full px-1"
             />
           </div>
         </div>
@@ -81,8 +102,8 @@ export function ExtensionPopupGeneratorPane(p: {
         <Show
           when={state.passphraseMode()}
           fallback={
-            <div class="flex flex-col gap-3 p-3">
-              <div class="flex items-center gap-3">
+            <div class="flex flex-col gap-2 p-2">
+              <div class="flex items-center gap-2">
                 <Label for={`${p.idPrefix ?? ""}popup-password-length`} class="shrink-0 text-sm font-medium">
                   Length
                 </Label>
@@ -146,21 +167,22 @@ export function ExtensionPopupGeneratorPane(p: {
             </div>
           }
         >
-          <div class="grid grid-cols-2 gap-3 p-3">
+          <div class="flex flex-col gap-2 p-2">
             <div class="flex items-center justify-between gap-2">
               <Label for={`${p.idPrefix ?? ""}popup-word-count`} class="text-xs font-medium">
                 Words
               </Label>
-              <ExtensionInput
+              <NumberInputS
                 id={`${p.idPrefix ?? ""}popup-word-count`}
                 aria-label="Number of words"
-                type="number"
+                valueSignal={state.wordCountSignal}
                 min={3}
                 max={20}
-                value={state.wordCount()}
                 disabled={state.copyStatus() === "copying"}
-                onInput={state.wordCountInput}
-                class="h-9 w-14 text-center tabular-nums"
+                onValueChange={state.wordCountSet}
+                class="shrink-0"
+                inputClass="extension-input-control extension-number-input h-9 w-14 tabular-nums"
+                buttonClass="extension-icon-control size-9 p-1"
               />
             </div>
             <div class="flex items-center justify-between gap-2">
@@ -183,7 +205,6 @@ export function ExtensionPopupGeneratorPane(p: {
               checked={state.includeNumber()}
               disabled={state.copyStatus() === "copying"}
               onChange={state.includeNumberSet}
-              class="col-span-2"
             >
               <span class="text-xs">Include a number</span>
             </ExtensionCheckbox>

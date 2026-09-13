@@ -200,6 +200,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
     uppercaseDisabled,
     numbersDisabled,
     symbolsDisabled,
+    wordCountSignal,
     wordCount: wordCountSignal.get,
     wordCountSet,
     wordCountInput,
