@@ -1,12 +1,13 @@
+import { mdiCheck } from "@adaptive-ds/mdi/mdiCheck.js"
+import { mdiClose } from "@adaptive-ds/mdi/mdiClose.js"
 import { type JSX, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { CheckSingle } from "#ui/input/check/CheckSingle.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
+import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
-import { ExtensionBadge } from "../ui/ExtensionBadge.jsx"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
-import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
 import { extensionPasskeyConsentStateCreate } from "./extensionPasskeyConsentStateCreate.js"
 
 export interface ExtensionPasskeyConsentAppProps {
@@ -18,11 +19,6 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
   const state = extensionPasskeyConsentStateCreate(props.options)
   return (
     <Dynamic component={props.root ?? "main"} class="extension-page-surface flex min-h-dvh flex-col gap-4 p-5">
-      <header class="flex items-center justify-between gap-2">
-        <h1 class="text-lg font-semibold">Confirm passkey</h1>
-        <Show when={state.model()}>{(model) => <ExtensionBadge>{model().rpId}</ExtensionBadge>}</Show>
-      </header>
-      <ExtensionSeparator />
       <Show when={state.busy() && state.model() === null}>
         <div role="status" aria-label="Loading passkey request" class="flex justify-center py-10">
           <LoaderShuffle4Dots />
@@ -33,7 +29,7 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
           <>
             <p class="text-sm">
               {model().operation === "create" ? "Create a passkey for" : "Use a passkey for"}{" "}
-              <strong>{model().rpName ?? model().rpId}</strong>.
+              <strong>{model().rpName === null ? model().rpId : `${model().rpName} (${model().rpId})`}</strong>.
             </p>
             <Show when={(model().verificationRequired && !model().verified) || model().locked}>
               <ExtensionCardWrapper class="flex flex-col gap-3">
@@ -90,9 +86,6 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
                     disallowDeselection
                   />
                 </div>
-                <Show when={model().candidates.some((candidate) => candidate.readOnly)}>
-                  <p class="extension-muted-text text-xs">Read-only organization logins cannot be updated.</p>
-                </Show>
               </Show>
             </Show>
           </>
@@ -105,18 +98,19 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
           </p>
         )}
       </Show>
-      <div class="mt-auto flex justify-end gap-2">
-        <Button variant="outline" disabled={state.busy()} onClick={state.cancel}>
+      <div class="mt-auto grid w-full grid-cols-2 gap-2">
+        <ButtonIcon class="w-full" variant="outline" icon={mdiClose} disabled={state.busy()} onClick={state.cancel}>
           Cancel
-        </Button>
-        <Button
+        </ButtonIcon>
+        <ButtonIcon
           variant="filledBlue"
-          class="extension-primary-control"
+          class="extension-primary-control w-full"
+          icon={mdiCheck}
           disabled={state.busy() || state.selectedKeySignal.get() === ""}
           onClick={state.approve}
         >
           Confirm
-        </Button>
+        </ButtonIcon>
       </div>
     </Dynamic>
   )

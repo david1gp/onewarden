@@ -43,6 +43,15 @@ test("passkey consent view requests fresh verification before confirmation", asy
           organization: false,
           readOnly: false,
         },
+        {
+          cipherId: "login-2",
+          credentialId: null,
+          revisionDate: "2026-08-31T00:00:00.000Z",
+          name: "Example organization login",
+          userName: "organization@example.test",
+          organization: true,
+          readOnly: true,
+        },
       ],
     }) as Result<T>
   }
@@ -51,7 +60,21 @@ test("passkey consent view requests fresh verification before confirmation", asy
   ))
 
   const password = await root.findByLabelText("Master password")
+  expect(root.getByText("Example (example.test)").parentElement?.textContent).toBe(
+    "Create a passkey for Example (example.test).",
+  )
+  expect(root.queryByRole("heading", { name: "Confirm passkey" })).toBeNull()
+  expect(root.container.querySelector(".extension-separator")).toBeNull()
+  const cancel = root.getByRole("button", { name: "Cancel" })
   const confirm = root.getByRole("button", { name: "Confirm" })
+  const actionRow = cancel.parentElement
+  expect(actionRow).toBe(confirm.parentElement)
+  expect(actionRow?.classList.contains("w-full")).toBe(true)
+  expect(actionRow?.classList.contains("grid-cols-2")).toBe(true)
+  expect(cancel.classList.contains("w-full")).toBe(true)
+  expect(confirm.classList.contains("w-full")).toBe(true)
+  expect(cancel.querySelector("svg")).not.toBeNull()
+  expect(confirm.querySelector("svg")).not.toBeNull()
   expect(confirm.hasAttribute("disabled")).toBe(true)
   expect(confirm.classList.contains("extension-primary-control")).toBe(true)
   expect(root.getByRole("button", { name: "Verify" }).classList.contains("extension-primary-control")).toBe(true)
@@ -67,6 +90,8 @@ test("passkey consent view requests fresh verification before confirmation", asy
   const selectedEmail = root.getByText("user@example.test")
   expect(selectedCredential.contains(selectedEmail)).toBe(true)
   expect(selectedEmail.classList.contains("extension-muted-text")).toBe(true)
+  expect(root.queryByText("Example organization login")).toBeNull()
+  expect(root.queryByText("Read-only organization logins cannot be updated.")).toBeNull()
   expect(messages).toContainEqual({
     type: "passkeyConsentUiVerify",
     request: { requestId: "request-1", password: "correct" },
