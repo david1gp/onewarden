@@ -1,10 +1,10 @@
 import { For, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
+import { fieldIconPathGet } from "../../shared/field/fieldIconPathGet.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
-import { fieldIconPathGet } from "../../shared/field/fieldIconPathGet.js"
 
 export interface ExtensionPopupLoginCardProps {
   login: ExtensionLogin
@@ -29,7 +29,6 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
         <Show when={p.fillAvailable}>
           <Button
             variant="filledBlue"
-            size="sm"
             disabled={p.disabled}
             aria-label={`Fill ${p.login.name}`}
             onClick={() => p.onFill(p.login)}
@@ -45,7 +44,6 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
             {(field) => (
               <ButtonIcon
                 variant="outline"
-                size="sm"
                 icon={fieldIconPathGet(field.label)}
                 iconClass="size-3.5"
                 disabled={p.disabled}
@@ -59,7 +57,6 @@ export function ExtensionPopupLoginCard(p: ExtensionPopupLoginCardProps) {
           <Show when={p.login.totpAvailable}>
             <ButtonIcon
               variant="outline"
-              size="sm"
               icon={fieldIconPathGet("TOTP code")}
               iconClass="size-3.5"
               disabled={p.disabled}

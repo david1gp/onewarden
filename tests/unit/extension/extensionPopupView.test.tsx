@@ -1,4 +1,8 @@
 import { expect, test } from "bun:test"
+import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
+import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
+import { mdiOpenInNew } from "@adaptive-ds/mdi/mdiOpenInNew.js"
+import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
@@ -244,7 +248,7 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView renders compact text tabs and labeled icon-only actions", () => {
+test("extensionPopupView renders text tabs and labeled action icons", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
@@ -286,7 +290,15 @@ test("extensionPopupView renders compact text tabs and labeled icon-only actions
   expect(root.getByRole("button", { name: "Settings" }).hasAttribute("aria-current")).toBe(false)
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
-  fireEvent.click(root.getByRole("button", { name: "Open full vault" }))
+  const addLogin = root.getByRole("button", { name: "Add login" })
+  const sync = root.getByRole("button", { name: "Sync" })
+  const logout = root.getByRole("button", { name: "Log out" })
+  const openFullVault = root.getByRole("button", { name: "Open full vault" })
+  expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
+  expect(sync.querySelector("path")?.getAttribute("d")).toBe(mdiSync)
+  expect(logout.querySelector("path")?.getAttribute("d")).toBe(mdiLogout)
+  expect(openFullVault.querySelector("path")?.getAttribute("d")).toBe(mdiOpenInNew)
+  fireEvent.click(openFullVault)
   for (const name of ["Add login", "Sync", "Lock", "Log out"]) fireEvent.click(root.getByRole("button", { name }))
 
   expect(calls).toEqual(["generator", "settings", "full", "add", "sync", "lock", "logout"])

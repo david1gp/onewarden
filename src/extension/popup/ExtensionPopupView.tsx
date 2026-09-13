@@ -1,4 +1,8 @@
+import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
+import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
+import { mdiOpenInNew } from "@adaptive-ds/mdi/mdiOpenInNew.js"
+import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
@@ -55,15 +59,14 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
     >
       <nav
         aria-label={p.navigationLabel ?? "Extension navigation"}
-        class="extension-popup-navigation extension-subtle-surface flex min-w-0 items-center gap-1 rounded-xl p-1"
+        class="extension-popup-navigation extension-subtle-surface flex min-w-0 flex-wrap items-center gap-1 rounded-xl p-1"
       >
         <fieldset
           aria-label="Vault and generator"
-          class="extension-popup-navigation-tabs m-0 grid min-w-0 grow grid-cols-2 items-center gap-1 border-0 p-0"
+          class="extension-popup-navigation-tabs m-0 grid min-w-40 flex-1 grid-cols-2 items-center gap-1 border-0 p-0"
         >
           <Button
             variant="ghost"
-            size="sm"
             aria-current={state.isVaultPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.vaultPaneOpen}
@@ -73,7 +76,6 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           </Button>
           <Button
             variant="ghost"
-            size="sm"
             aria-current={state.isGeneratorPane() ? "page" : undefined}
             disabled={state.busy()}
             onClick={state.generatorPaneOpen}
@@ -82,25 +84,25 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             Generator
           </Button>
         </fieldset>
-        <ExtensionButtonIcon
-          variant="ghost"
-          size="sm"
-          icon={mdiCog}
-          aria-label="Settings"
-          disabled={state.busy()}
-          onClick={state.settingsOpen}
-          title="Open Settings in a full window"
-          class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
-        />
-        <ExtensionButtonIcon
-          icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
-          variant="ghost"
-          size="sm"
-          aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
-          title={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
-          onClick={state.themeToggle}
-          class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
-        />
+        <div class="ml-auto flex shrink-0 items-center gap-1">
+          <ExtensionButtonIcon
+            variant="ghost"
+            icon={mdiCog}
+            aria-label="Settings"
+            disabled={state.busy()}
+            onClick={state.settingsOpen}
+            title="Open Settings in a full window"
+            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+          />
+          <ExtensionButtonIcon
+            icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
+            variant="ghost"
+            aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+            title={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
+            onClick={state.themeToggle}
+            class="extension-popup-navigation-action extension-muted-text min-h-9 min-w-9 shrink-0 rounded-lg p-2"
+          />
+        </div>
       </nav>
 
       <Show when={state.isGeneratorPane()}>
@@ -254,30 +256,36 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
 
       <Show when={state.isVaultPane()}>
         <footer class="flex flex-wrap gap-1">
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.loginAdd}>
+          <ExtensionButtonIcon variant="outline" icon={mdiAccountPlus} disabled={state.busy()} onClick={state.loginAdd}>
             Add login
-          </Button>
-          <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
+          </ExtensionButtonIcon>
+          <ExtensionButtonIcon variant="outline" icon={mdiSync} disabled={state.busy()} onClick={state.vaultSync}>
             Sync
-          </Button>
+          </ExtensionButtonIcon>
           <Show when={state.isReady()}>
-            <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
+            <Button variant="outline" disabled={state.busy()} onClick={state.vaultLock}>
               Lock
             </Button>
           </Show>
           <Show when={!state.isLoggedOut()}>
-            <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
+            <ExtensionButtonIcon variant="outline" icon={mdiLogout} disabled={state.busy()} onClick={state.vaultLogout}>
               Log out
-            </Button>
+            </ExtensionButtonIcon>
           </Show>
-          <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.fullVaultOpen} class="ml-auto">
+          <ExtensionButtonIcon
+            variant="ghost"
+            icon={mdiOpenInNew}
+            disabled={state.busy()}
+            onClick={state.fullVaultOpen}
+            class="ml-auto"
+          >
             Open full vault
-          </Button>
+          </ExtensionButtonIcon>
         </footer>
       </Show>
       <Show when={state.isGeneratorPane()}>
         <footer class="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={state.generatorOpen}>
+          <Button variant="ghost" onClick={state.generatorOpen}>
             Open full generator
           </Button>
         </footer>

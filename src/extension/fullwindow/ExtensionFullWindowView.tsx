@@ -1,6 +1,9 @@
+import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
+import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
+import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { type JSX, Show } from "solid-js"
@@ -69,7 +72,6 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
         >
           <ExtensionButtonIcon
             variant="ghost"
-            size="sm"
             icon={mdiLock}
             aria-current={state.isVaultPane() ? "page" : undefined}
             onClick={state.vaultPaneOpen}
@@ -79,7 +81,6 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           </ExtensionButtonIcon>
           <ExtensionButtonIcon
             variant="ghost"
-            size="sm"
             icon={mdiKey}
             aria-current={state.isGeneratorPane() ? "page" : undefined}
             onClick={state.generatorPaneOpen}
@@ -89,7 +90,6 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           </ExtensionButtonIcon>
           <ExtensionButtonIcon
             variant="ghost"
-            size="sm"
             icon={mdiCog}
             aria-current={state.isSettingsPane() ? "page" : undefined}
             onClick={state.settingsPaneOpen}
@@ -106,14 +106,12 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           <ExtensionButtonIcon
             icon={state.theme() === "dark" ? mdiWeatherNight : mdiWhiteBalanceSunny}
             variant="ghost"
-            size="sm"
             aria-label={`Switch to ${state.theme() === "dark" ? "light" : "dark"} theme`}
             onClick={state.themeToggle}
           />
           <Show when={state.isLoggedOut()}>
             <Button
               variant="ghost"
-              size="sm"
               aria-current={state.isAuthPane() ? "page" : undefined}
               onClick={state.authPaneOpen}
               class="extension-selected-control min-h-10"
@@ -124,22 +122,27 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
           <Show when={state.isVaultPane()}>
             <span aria-hidden="true" class="extension-boundary mx-1 hidden h-6 border-l sm:block" />
             <Show when={state.isLoginCategory()}>
-              <Button variant="ghost" size="sm" disabled={state.busy() || !state.isReady()} onClick={state.loginAdd}>
+              <ExtensionButtonIcon
+                variant="ghost"
+                icon={mdiAccountPlus}
+                disabled={state.busy() || !state.isReady()}
+                onClick={state.loginAdd}
+              >
                 Add login
-              </Button>
+              </ExtensionButtonIcon>
             </Show>
-            <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultSync}>
+            <ExtensionButtonIcon variant="ghost" icon={mdiSync} disabled={state.busy()} onClick={state.vaultSync}>
               Sync
-            </Button>
+            </ExtensionButtonIcon>
             <Show when={state.isReady()}>
-              <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLock}>
+              <Button variant="ghost" disabled={state.busy()} onClick={state.vaultLock}>
                 Lock
               </Button>
             </Show>
             <Show when={!state.isLoggedOut()}>
-              <Button variant="ghost" size="sm" disabled={state.busy()} onClick={state.vaultLogout}>
+              <ExtensionButtonIcon variant="ghost" icon={mdiLogout} disabled={state.busy()} onClick={state.vaultLogout}>
                 Log out
-              </Button>
+              </ExtensionButtonIcon>
             </Show>
           </Show>
         </div>

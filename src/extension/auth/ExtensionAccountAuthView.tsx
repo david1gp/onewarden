@@ -31,7 +31,6 @@ export function ExtensionAccountAuthView(p: {
       <nav aria-label="Account setup" class="flex flex-wrap gap-1">
         <Button
           variant="outline"
-          size="sm"
           class="extension-selected-control"
           aria-current={state.isRegister() ? "step" : undefined}
           onClick={state.registerOpen}
@@ -40,7 +39,6 @@ export function ExtensionAccountAuthView(p: {
         </Button>
         <Button
           variant="outline"
-          size="sm"
           class="extension-selected-control"
           aria-current={state.isVerify() ? "step" : undefined}
           onClick={state.verifyOpen}
@@ -49,7 +47,6 @@ export function ExtensionAccountAuthView(p: {
         </Button>
         <Button
           variant="outline"
-          size="sm"
           class="extension-selected-control"
           aria-current={state.isPasswordSetup() ? "step" : undefined}
           onClick={state.passwordSetupOpen}
@@ -157,7 +154,7 @@ export function ExtensionAccountAuthView(p: {
         {(message) => (
           <div role="alert" class="extension-error-text flex flex-col gap-2 text-sm">
             <p>{message()}</p>
-            <Button variant="outline" size="sm" disabled={state.busy()} onClick={state.retry}>
+            <Button variant="outline" disabled={state.busy()} onClick={state.retry}>
               Retry
             </Button>
           </div>

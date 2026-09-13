@@ -51,7 +51,6 @@ export function ExtensionPopupGeneratorPane(p: {
           <div class="grid grid-cols-3 gap-1.5">
             <ExtensionButtonIcon
               variant="ghost"
-              size="sm"
               icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
               aria-label={state.passwordVisible() ? "Hide generated secret" : "Reveal generated secret"}
               aria-pressed={state.passwordVisible()}
@@ -61,7 +60,6 @@ export function ExtensionPopupGeneratorPane(p: {
             />
             <ExtensionButtonIcon
               variant="ghost"
-              size="sm"
               icon={mdiRefresh}
               aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
               disabled={state.copyStatus() === "copying"}
@@ -70,7 +68,6 @@ export function ExtensionPopupGeneratorPane(p: {
             />
             <ExtensionButtonIcon
               variant="filledBlue"
-              size="sm"
               icon={mdiContentCopy}
               aria-label={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
               isLoading={state.copyStatus() === "copying"}

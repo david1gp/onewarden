@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test"
+import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
+import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
+import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { fireEvent, render, within } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionFullWindowCommands } from "../../../src/extension/fullwindow/ExtensionFullWindowCommands.js"
@@ -345,9 +348,16 @@ test.serial("extensionFullWindowView preserves extension vault commands alongsid
     },
   )
 
-  for (const name of ["Add login", "Sync", "Lock", "Log out"]) {
-    fireEvent.click(root.getByRole("button", { name }))
-  }
+  const addLogin = root.getByRole("button", { name: "Add login" })
+  const sync = root.getAllByRole("button", { name: "Sync" })[0]
+  const logout = root.getByRole("button", { name: "Log out" })
+  expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
+  expect(sync.querySelector("path")?.getAttribute("d")).toBe(mdiSync)
+  expect(logout.querySelector("path")?.getAttribute("d")).toBe(mdiLogout)
+  fireEvent.click(addLogin)
+  fireEvent.click(sync)
+  fireEvent.click(root.getAllByRole("button", { name: "Lock" })[0])
+  fireEvent.click(logout)
 
   expect(calls).toEqual(["add", "sync", "lock", "logout"])
   root.unmount()
