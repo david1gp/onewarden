@@ -54,6 +54,7 @@ export function ExtensionDemo(): JSX.Element {
                 <ExtensionDemoFrame
                   label={fixture.label}
                   initialTheme={index() % 2 === 0 ? "light" : "dark"}
+                  frameClass="lg:p-0"
                   viewportClass="h-[min(48rem,75dvh)]"
                 >
                   {(theme, themeSet) => (
@@ -85,7 +86,7 @@ export function ExtensionDemo(): JSX.Element {
                 <ExtensionDemoFrame
                   label={fixture.label}
                   initialTheme={index() % 2 === 0 ? "light" : "dark"}
-                  frameClass="w-full max-w-md"
+                  frameClass="w-full max-w-md lg:p-0"
                   viewportClass="h-[30rem]"
                 >
                   {() => <ExtensionPasskeyConsentApp root="div" options={fixture.options} />}
