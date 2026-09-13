@@ -74,4 +74,26 @@ test.describe("task 4 extension demo coverage", () => {
 
     expect(idReferences).toEqual({ duplicateIds: [], brokenReferences: [] })
   })
+
+  test("keeps the first three popup examples readable at narrow and normal widths", async ({ page }) => {
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto("/demo/extension")
+
+      for (const frameLabel of ["Ready · copied feedback", "Loading", "Signed out"]) {
+        const frame = page.getByRole("article", { name: `${frameLabel} frame`, exact: true })
+        const preview = frame.locator(":scope > section")
+        const navigation = preview.getByRole("navigation")
+
+        await expect(frame).toBeVisible()
+        await expect(navigation).toBeVisible()
+        expect(await preview.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+        expect(
+          await navigation
+            .getByRole("button")
+            .evaluateAll((buttons) => buttons.every((button) => button.scrollWidth <= button.clientWidth)),
+        ).toBe(true)
+      }
+    }
+  })
 })
