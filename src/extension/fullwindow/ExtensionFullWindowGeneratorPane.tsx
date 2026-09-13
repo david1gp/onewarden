@@ -42,7 +42,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
           <Label for={`${p.idPrefix ?? ""}generated-password`} class="sr-only">
             Generated {state.passphraseMode() ? "passphrase" : "password"}
           </Label>
-          <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
+          <div class="flex min-w-0 flex-col gap-2 lg:flex-row">
             <ExtensionInput
               id={`${p.idPrefix ?? ""}generated-password`}
               type={state.passwordVisible() ? "text" : "password"}
@@ -52,34 +52,11 @@ export function ExtensionFullWindowGeneratorPane(p: {
               spellcheck={false}
               class="h-11 min-w-0 grow px-3 font-mono text-sm tracking-wide sm:text-base"
             />
-            <div class="grid shrink-0 grid-cols-3 gap-1.5 sm:flex sm:gap-2">
-              <ExtensionButtonIcon
-                variant="outline"
-                icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
-                iconClass="mr-0 lg:mr-2"
-                class="extension-selected-control h-11 w-full px-2 sm:w-auto sm:px-4"
-                aria-label={state.passwordVisible() ? "Hide generated secret" : "Show generated secret"}
-                aria-pressed={state.passwordVisible()}
-                disabled={state.copyStatus() === "copying"}
-                onClick={state.passwordVisibilityToggle}
-              >
-                <span class="hidden lg:inline">{state.passwordVisible() ? "Hide" : "Show"}</span>
-              </ExtensionButtonIcon>
-              <ExtensionButtonIcon
-                variant="outline"
-                icon={mdiRefresh}
-                iconClass="mr-0 lg:mr-2"
-                disabled={state.copyStatus() === "copying"}
-                onClick={state.passwordRegenerate}
-                aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
-                class="h-11 w-full px-2 sm:w-auto sm:px-4"
-              >
-                <span class="hidden lg:inline">Regenerate</span>
-              </ExtensionButtonIcon>
+            <div class="grid shrink-0 grid-cols-1 gap-1.5 sm:grid-cols-3 lg:flex lg:gap-2">
               <ExtensionButtonIcon
                 variant="filledBlue"
                 icon={mdiContentCopy}
-                iconClass="mr-0 lg:mr-2"
+                iconClass="mr-2"
                 isLoading={state.copyStatus() === "copying"}
                 disabled={state.copyStatus() === "copying"}
                 onClick={state.passwordCopy}
@@ -88,9 +65,32 @@ export function ExtensionFullWindowGeneratorPane(p: {
                 }
                 class="extension-primary-control h-11 w-full px-2 sm:w-auto sm:px-4 lg:min-w-24"
               >
-                <span class="hidden lg:inline">
+                <span>
                   {state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"}
                 </span>
+              </ExtensionButtonIcon>
+              <ExtensionButtonIcon
+                variant="outline"
+                icon={mdiRefresh}
+                iconClass="mr-2"
+                disabled={state.copyStatus() === "copying"}
+                onClick={state.passwordRegenerate}
+                aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
+                class="h-11 w-full px-2 sm:w-auto sm:px-4"
+              >
+                <span>Regenerate</span>
+              </ExtensionButtonIcon>
+              <ExtensionButtonIcon
+                variant="outline"
+                icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
+                iconClass="mr-2"
+                class="extension-selected-control h-11 w-full px-2 sm:w-auto sm:px-4"
+                aria-label={state.passwordVisible() ? "Hide generated secret" : "Show generated secret"}
+                aria-pressed={state.passwordVisible()}
+                disabled={state.copyStatus() === "copying"}
+                onClick={state.passwordVisibilityToggle}
+              >
+                <span>{state.passwordVisible() ? "Hide" : "Show"}</span>
               </ExtensionButtonIcon>
             </div>
           </div>

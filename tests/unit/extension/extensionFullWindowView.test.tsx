@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
+import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
 import { mdiLogout } from "@adaptive-ds/mdi/mdiLogout.js"
 import { mdiSync } from "@adaptive-ds/mdi/mdiSync.js"
 import { fireEvent, render, within } from "@solidjs/testing-library"
@@ -350,13 +351,15 @@ test.serial("extensionFullWindowView preserves extension vault commands alongsid
 
   const addLogin = root.getByRole("button", { name: "Add login" })
   const sync = root.getAllByRole("button", { name: "Sync" })[0]
+  const lock = root.getAllByRole("button", { name: "Lock" })[0]
   const logout = root.getByRole("button", { name: "Log out" })
   expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
   expect(sync.querySelector("path")?.getAttribute("d")).toBe(mdiSync)
+  expect(lock.querySelector("path")?.getAttribute("d")).toBe(mdiLock)
   expect(logout.querySelector("path")?.getAttribute("d")).toBe(mdiLogout)
   fireEvent.click(addLogin)
   fireEvent.click(sync)
-  fireEvent.click(root.getAllByRole("button", { name: "Lock" })[0])
+  fireEvent.click(lock)
   fireEvent.click(logout)
 
   expect(calls).toEqual(["add", "sync", "lock", "logout"])
@@ -386,6 +389,26 @@ test.serial("extensionFullWindowView saves the extension server settings", () =>
   fireEvent.click(root.getByRole("button", { name: "Save settings" }))
 
   expect(saved).toEqual([{ ...extensionFullWindowEnvironmentSettingsCreate(), base: "https://vault.example.com" }])
+  root.unmount()
+})
+
+test.serial("extensionFullWindowView lays settings out in responsive cards with usable security fields", () => {
+  const root = fullWindowRender(
+    { status: "ready", lockPolicy: { timeoutMinutes: null, action: "lock" } },
+    {},
+    { initialState: { pane: "settings" } },
+  )
+
+  const serverCard = root.getByLabelText("Server settings")
+  const settingsGrid = serverCard.parentElement
+  const timeoutField = root.getByLabelText("Vault timeout")
+  const securityFields = timeoutField.parentElement?.parentElement
+
+  expect(settingsGrid?.className).toContain("grid-cols-1")
+  expect(settingsGrid?.className).toContain("lg:grid-cols-2")
+  expect(settingsGrid?.className).toContain("2xl:grid-cols-3")
+  expect(securityFields?.className).toContain("grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]")
+  expect(root.getByText(/With Never selected/)).toBeDefined()
   root.unmount()
 })
 

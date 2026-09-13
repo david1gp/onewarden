@@ -135,9 +135,9 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
               Sync
             </ExtensionButtonIcon>
             <Show when={state.isReady()}>
-              <Button variant="ghost" disabled={state.busy()} onClick={state.vaultLock}>
+              <ExtensionButtonIcon variant="ghost" icon={mdiLock} disabled={state.busy()} onClick={state.vaultLock}>
                 Lock
-              </Button>
+              </ExtensionButtonIcon>
             </Show>
             <Show when={!state.isLoggedOut()}>
               <ExtensionButtonIcon variant="ghost" icon={mdiLogout} disabled={state.busy()} onClick={state.vaultLogout}>

@@ -20,6 +20,18 @@ test("full-window generator demo uses live password generation after the fixture
     />
   ))
 
+  const actions = root
+    .getAllByRole("button")
+    .filter((button) =>
+      ["Copied", "Regenerate passphrase", "Hide generated secret"].includes(button.getAttribute("aria-label") ?? ""),
+    )
+  expect(actions.map((button) => button.getAttribute("aria-label"))).toEqual([
+    "Copied",
+    "Regenerate passphrase",
+    "Hide generated secret",
+  ])
+  expect(actions.map((button) => button.textContent?.trim())).toEqual(["Copied", "Regenerate", "Hide"])
+
   fireEvent.click(root.getByRole("radio", { name: "Password" }))
 
   const password = root.getByLabelText("Generated password") as HTMLInputElement

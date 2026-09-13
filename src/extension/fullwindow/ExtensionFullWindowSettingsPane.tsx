@@ -54,7 +54,7 @@ export interface ExtensionFullWindowSettingsPaneProps {
 /** Security and server controls for the full-window settings pane. */
 export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPaneProps) {
   return (
-    <div class="flex max-w-2xl flex-col gap-4">
+    <div class="grid w-full min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
       <ExtensionCardWrapper class="flex flex-col gap-4 p-5" aria-label="Autofill settings">
         <div>
           <p class="extension-info-text text-xs font-semibold tracking-wide uppercase">Autofill</p>
@@ -129,7 +129,7 @@ export function ExtensionFullWindowSettingsPane(p: ExtensionFullWindowSettingsPa
             </Show>
           }
         >
-          <div class="grid gap-5 sm:grid-cols-2">
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-5">
             <div class="flex flex-col gap-1.5">
               <Label for={`${p.idPrefix ?? ""}extension-vault-timeout`}>Vault timeout</Label>
               <ExtensionSelectSingleNative
