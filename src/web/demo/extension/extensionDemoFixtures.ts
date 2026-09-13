@@ -458,7 +458,6 @@ export const extensionDemoFixtures = {
     initialPassword: "Northstar!Demo-2026",
     initialPasswordVisible: true,
     initialCopyStatus: "copied",
-    passwordGenerate: () => resultCreate("Northstar!Demo-2026"),
     clipboardWrite: async () => {},
   },
   passkey: [

@@ -24,6 +24,7 @@ test("generator pane defaults to passphrase mode and generates its default outpu
   expect(root.state.wordSeparator()).toBe("-")
   expect(root.state.includeNumber()).toBe(true)
   expect(root.state.password()).toBe("alpha-beta3-gamma")
+  expect(root.state.passwordVisible()).toBe(true)
   expect(passphraseCalls).toEqual([{ numWords: 3, wordSeparator: "-", includeNumber: true }])
 
   root.dispose()
@@ -117,12 +118,12 @@ test("generator pane preserves password controls and output in password mode", (
   })
 
   root.state.passwordVisibilityToggle()
-  expect(root.state.passwordVisible()).toBe(true)
+  expect(root.state.passwordVisible()).toBe(false)
 
   root.dispose()
 })
 
-test("generator pane saves mode and every password and passphrase preference change", () => {
+test("generator pane saves visibility, mode, and every password and passphrase preference change", () => {
   const changes: ExtensionGeneratorPreferences[] = []
   const root = createRoot((dispose) => ({
     dispose,
@@ -135,6 +136,9 @@ test("generator pane saves mode and every password and passphrase preference cha
 
   root.state.modeSignal.set(extensionFullWindowGeneratorMode.password)
   expect(changes.at(-1)?.mode).toBe(extensionFullWindowGeneratorMode.password)
+
+  root.state.passwordVisibilityToggle()
+  expect(changes.at(-1)?.passwordVisible).toBe(false)
 
   root.state.passwordLengthSet(32)
   expect(changes.at(-1)?.password.length).toBe(32)
@@ -156,11 +160,11 @@ test("generator pane saves mode and every password and passphrase preference cha
   root.state.includeNumberSet(false)
   expect(changes.at(-1)?.passphrase.includeNumber).toBe(false)
 
-  expect(changes).toHaveLength(10)
+  expect(changes).toHaveLength(11)
   root.dispose()
 })
 
-test("generator pane does not include generated, revealed, copied, or error state in saved preferences", async () => {
+test("generator pane persists visibility without saving generated, copied, or error state", async () => {
   const changes: ExtensionGeneratorPreferences[] = []
   const initialPreferences: ExtensionGeneratorPreferences = {
     ...extensionGeneratorPreferencesDefault,
@@ -189,14 +193,12 @@ test("generator pane does not include generated, revealed, copied, or error stat
   await root.state.passwordCopy()
   expect(root.state.passwordVisible()).toBe(false)
   expect(root.state.copyStatus()).toBe("copied")
-  expect(changes).toHaveLength(0)
-
-  root.state.passwordLengthSet(32)
   expect(changes).toEqual([
     {
       mode: extensionFullWindowGeneratorMode.password,
+      passwordVisible: false,
       password: {
-        length: 32,
+        length: 20,
         characterPolicy: {
           lowercase: true,
           uppercase: true,
@@ -211,5 +213,42 @@ test("generator pane does not include generated, revealed, copied, or error stat
       },
     },
   ])
+
+  root.state.passwordLengthSet(32)
+  expect(changes.at(-1)).toEqual({
+    mode: extensionFullWindowGeneratorMode.password,
+    passwordVisible: false,
+    password: {
+      length: 32,
+      characterPolicy: {
+        lowercase: true,
+        uppercase: true,
+        numbers: true,
+        symbols: true,
+      },
+    },
+    passphrase: {
+      numWords: 3,
+      wordSeparator: "-",
+      includeNumber: true,
+    },
+  })
+  expect(changes).toHaveLength(2)
+  root.dispose()
+})
+
+test("generator pane restores the persisted hidden preference", () => {
+  const root = createRoot((dispose) => ({
+    dispose,
+    state: extensionFullWindowGeneratorPaneStateCreate({
+      initialPreferences: {
+        ...extensionGeneratorPreferencesDefault,
+        passwordVisible: false,
+      },
+      initialPassword: "persisted-secret",
+    }),
+  }))
+
+  expect(root.state.passwordVisible()).toBe(false)
   root.dispose()
 })

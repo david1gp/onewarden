@@ -24,18 +24,18 @@ export function ExtensionPopupGeneratorPane(p: {
   const state = extensionFullWindowGeneratorPaneStateCreate(p.options)
 
   return (
-    <section aria-label="Generator" class="flex min-w-0 flex-col gap-3">
+    <section aria-label="Generator" class="flex min-w-0 flex-col gap-2">
       <ExtensionSwitchSingle
         id={`${p.idPrefix ?? ""}popup-generator-type`}
         valueSignal={state.modeSignal}
         getOptions={state.modeOptions}
         valueText={(mode) => generatorModeText[mode] ?? mode}
         disabled={state.copyStatus() === "copying"}
-        class="shrink-0 self-end p-1 text-xs"
+        class="w-full p-1 text-xs [&_[role=radio]]:grow"
       />
 
       <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
-        <div class="extension-subtle-surface flex gap-1.5 p-2">
+        <div class="extension-subtle-surface grid min-w-0 gap-2 p-2">
           <Label for={`${p.idPrefix ?? ""}popup-generated-secret`} class="sr-only">
             Generated {state.passphraseMode() ? "passphrase" : "password"}
           </Label>
@@ -46,35 +46,39 @@ export function ExtensionPopupGeneratorPane(p: {
             readOnly
             autocomplete="off"
             spellcheck={false}
-            class="h-10 min-w-0 grow px-2 font-mono text-sm"
+            class="h-10 w-full min-w-0 px-2 font-mono text-sm"
           />
-          <ExtensionButtonIcon
-            variant="ghost"
-            size="sm"
-            icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
-            aria-label={state.passwordVisible() ? "Hide generated secret" : "Reveal generated secret"}
-            aria-pressed={state.passwordVisible()}
-            disabled={state.copyStatus() === "copying"}
-            onClick={state.passwordVisibilityToggle}
-          />
-          <ExtensionButtonIcon
-            variant="ghost"
-            size="sm"
-            icon={mdiRefresh}
-            aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
-            disabled={state.copyStatus() === "copying"}
-            onClick={state.passwordRegenerate}
-          />
-          <ExtensionButtonIcon
-            variant="filledBlue"
-            size="sm"
-            icon={mdiContentCopy}
-            aria-label={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
-            isLoading={state.copyStatus() === "copying"}
-            disabled={state.copyStatus() === "copying"}
-            onClick={state.passwordCopy}
-            class="extension-primary-control"
-          />
+          <div class="grid grid-cols-3 gap-1.5">
+            <ExtensionButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
+              aria-label={state.passwordVisible() ? "Hide generated secret" : "Reveal generated secret"}
+              aria-pressed={state.passwordVisible()}
+              disabled={state.copyStatus() === "copying"}
+              onClick={state.passwordVisibilityToggle}
+              class="w-full"
+            />
+            <ExtensionButtonIcon
+              variant="ghost"
+              size="sm"
+              icon={mdiRefresh}
+              aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
+              disabled={state.copyStatus() === "copying"}
+              onClick={state.passwordRegenerate}
+              class="w-full"
+            />
+            <ExtensionButtonIcon
+              variant="filledBlue"
+              size="sm"
+              icon={mdiContentCopy}
+              aria-label={`Copy generated ${state.passphraseMode() ? "passphrase" : "password"}`}
+              isLoading={state.copyStatus() === "copying"}
+              disabled={state.copyStatus() === "copying"}
+              onClick={state.passwordCopy}
+              class="extension-primary-control w-full"
+            />
+          </div>
         </div>
 
         <Show

@@ -1,11 +1,9 @@
 import { mdiContentCopy } from "@adaptive-ds/mdi/mdiContentCopy.js"
 import { mdiEye } from "@adaptive-ds/mdi/mdiEye.js"
 import { mdiEyeOff } from "@adaptive-ds/mdi/mdiEyeOff.js"
-import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiRefresh } from "@adaptive-ds/mdi/mdiRefresh.js"
 import { type JSX, Show } from "solid-js"
 import { Label } from "#ui/input/label/Label.jsx"
-import { Icon } from "#ui/static/icon/Icon.jsx"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import { ExtensionCheckbox } from "../ui/ExtensionCheckbox.jsx"
@@ -26,41 +24,25 @@ export function ExtensionFullWindowGeneratorPane(p: {
   const state = extensionFullWindowGeneratorPaneStateCreate(p.options)
 
   return (
-    <section
-      aria-labelledby={`${p.idPrefix ?? ""}password-generator-title`}
-      class="mx-auto flex w-full max-w-4xl flex-col gap-3 py-1 sm:py-3"
-    >
-      <div class="flex flex-col items-start justify-between gap-3 px-1 sm:flex-row sm:items-center">
-        <div class="flex min-w-0 items-center gap-3">
-          <span class="extension-info-surface flex size-9 shrink-0 items-center justify-center rounded-lg">
-            <Icon path={mdiKey} class="size-5" />
-          </span>
-          <div class="min-w-0">
-            <h2 id={`${p.idPrefix ?? ""}password-generator-title`} class="text-lg font-semibold tracking-tight">
-              Generator
-            </h2>
-            <p class="extension-muted-text text-sm">Create a secure password or passphrase on this device.</p>
-          </div>
-        </div>
-        <fieldset class="shrink-0">
-          <legend class="sr-only">Type</legend>
-          <ExtensionSwitchSingle
-            id={`${p.idPrefix ?? ""}generator-type`}
-            valueSignal={state.modeSignal}
-            getOptions={state.modeOptions}
-            valueText={(mode) => generatorModeText[mode] ?? mode}
-            disabled={state.copyStatus() === "copying"}
-            class="w-fit p-1 text-sm"
-          />
-        </fieldset>
-      </div>
+    <section aria-label="Generator configuration" class="flex w-full min-w-0 flex-col gap-3 py-1 sm:py-2">
+      <fieldset class="w-full sm:w-fit">
+        <legend class="sr-only">Type</legend>
+        <ExtensionSwitchSingle
+          id={`${p.idPrefix ?? ""}generator-type`}
+          valueSignal={state.modeSignal}
+          getOptions={state.modeOptions}
+          valueText={(mode) => generatorModeText[mode] ?? mode}
+          disabled={state.copyStatus() === "copying"}
+          class="w-full p-1 text-sm [&_[role=radio]]:grow sm:w-fit sm:[&_[role=radio]]:grow-0"
+        />
+      </fieldset>
 
       <ExtensionCardWrapper class="overflow-hidden rounded-xl p-0 shadow-sm">
         <div class="extension-subtle-surface p-2 sm:p-3">
           <Label for={`${p.idPrefix ?? ""}generated-password`} class="sr-only">
             Generated {state.passphraseMode() ? "passphrase" : "password"}
           </Label>
-          <div class="flex gap-1.5 sm:gap-2">
+          <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
             <ExtensionInput
               id={`${p.idPrefix ?? ""}generated-password`}
               type={state.passwordVisible() ? "text" : "password"}
@@ -70,32 +52,43 @@ export function ExtensionFullWindowGeneratorPane(p: {
               spellcheck={false}
               class="h-11 min-w-0 grow px-3 font-mono text-sm tracking-wide sm:text-base"
             />
-            <div class="flex shrink-0 gap-1.5 sm:gap-2">
+            <div class="grid shrink-0 grid-cols-3 gap-1.5 sm:flex sm:gap-2">
               <ExtensionButtonIcon
                 variant="outline"
                 icon={state.passwordVisible() ? mdiEyeOff : mdiEye}
-                iconClass="mr-0 sm:mr-2"
-                class="extension-selected-control size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
-                aria-label={state.passwordVisible() ? "Hide" : "Show"}
+                iconClass="mr-0 lg:mr-2"
+                class="extension-selected-control h-11 w-full px-2 sm:w-auto sm:px-4"
+                aria-label={state.passwordVisible() ? "Hide generated secret" : "Show generated secret"}
                 aria-pressed={state.passwordVisible()}
                 disabled={state.copyStatus() === "copying"}
                 onClick={state.passwordVisibilityToggle}
               >
-                <span class="hidden sm:inline">{state.passwordVisible() ? "Hide" : "Show"}</span>
+                <span class="hidden lg:inline">{state.passwordVisible() ? "Hide" : "Show"}</span>
+              </ExtensionButtonIcon>
+              <ExtensionButtonIcon
+                variant="outline"
+                icon={mdiRefresh}
+                iconClass="mr-0 lg:mr-2"
+                disabled={state.copyStatus() === "copying"}
+                onClick={state.passwordRegenerate}
+                aria-label={`Regenerate ${state.passphraseMode() ? "passphrase" : "password"}`}
+                class="h-11 w-full px-2 sm:w-auto sm:px-4"
+              >
+                <span class="hidden lg:inline">Regenerate</span>
               </ExtensionButtonIcon>
               <ExtensionButtonIcon
                 variant="filledBlue"
                 icon={mdiContentCopy}
-                iconClass="mr-0 sm:mr-2"
+                iconClass="mr-0 lg:mr-2"
                 isLoading={state.copyStatus() === "copying"}
                 disabled={state.copyStatus() === "copying"}
                 onClick={state.passwordCopy}
                 aria-label={
                   state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"
                 }
-                class="extension-primary-control size-11 px-0 sm:h-11 sm:w-auto sm:min-w-24 sm:px-4"
+                class="extension-primary-control h-11 w-full px-2 sm:w-auto sm:px-4 lg:min-w-24"
               >
-                <span class="hidden sm:inline">
+                <span class="hidden lg:inline">
                   {state.copyStatus() === "copying" ? "Copying…" : state.copyStatus() === "copied" ? "Copied" : "Copy"}
                 </span>
               </ExtensionButtonIcon>
@@ -262,21 +255,7 @@ export function ExtensionFullWindowGeneratorPane(p: {
             </div>
           </div>
         </Show>
-
-        <div class="extension-boundary flex border-t p-3 sm:justify-end">
-          <ExtensionButtonIcon
-            variant="outline"
-            icon={mdiRefresh}
-            disabled={state.copyStatus() === "copying"}
-            onClick={state.passwordRegenerate}
-            class="w-full sm:w-auto"
-          >
-            Regenerate {state.passphraseMode() ? "passphrase" : "password"}
-          </ExtensionButtonIcon>
-        </div>
       </ExtensionCardWrapper>
-
-      <p class="extension-muted-text px-1 text-center text-xs">Generated securely. Nothing is sent or saved.</p>
     </section>
   )
 }

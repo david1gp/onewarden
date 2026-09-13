@@ -78,6 +78,7 @@ const createDraft: ExtensionCreateDraft = {
 }
 
 const generatorPreferences: ExtensionGeneratorPreferences = {
+  passwordVisible: false,
   mode: "password",
   password: {
     length: 32,

@@ -6,6 +6,7 @@ import { ExtensionPopupView, type ExtensionPopupViewProps } from "../../../src/e
 import type { ExtensionPopupViewModel } from "../../../src/extension/popup/ExtensionPopupViewModel.js"
 import { extensionPopupCommandsCreate } from "../../../src/extension/popup/extensionPopupCommandsCreate.js"
 import { extensionPopupViewModelCreate } from "../../../src/extension/popup/extensionPopupViewModelCreate.js"
+import { extensionGeneratorPreferencesDefault } from "../../../src/extension/storage/extensionGeneratorPreferencesDefault.js"
 
 const exampleLogin: ExtensionLogin = {
   id: "login-1",
@@ -318,10 +319,16 @@ test("extensionPopupView restores the content pane and does not persist Settings
 
 test("extensionPopupView renders the inline generator and keeps its controls compact", async () => {
   const copied: string[] = []
+  const preferenceChanges: boolean[] = []
   const root = popupRender(
     { status: "loading" },
     {},
-    { generatorOptions: { clipboardWrite: async (value) => copied.push(value) } },
+    {
+      generatorOptions: { clipboardWrite: async (value) => copied.push(value) },
+      generatorPreferences: () => extensionGeneratorPreferencesDefault,
+      generatorPreferencesLoaded: () => true,
+      onGeneratorPreferencesChange: (preferences) => preferenceChanges.push(preferences.passwordVisible),
+    },
   )
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
@@ -332,11 +339,14 @@ test("extensionPopupView renders the inline generator and keeps its controls com
 
   fireEvent.click(root.getByRole("radio", { name: "Password" }))
   const password = root.getByLabelText("Generated password") as HTMLInputElement
+  expect(password.type).toBe("text")
+  expect(root.getByRole("button", { name: "Hide generated secret" })).toBeDefined()
   fireEvent.input(root.getByLabelText("Password length"), { target: { value: "32" } })
   expect(password.value).toHaveLength(32)
 
-  fireEvent.click(root.getByRole("button", { name: "Reveal generated secret" }))
-  expect(password.type).toBe("text")
+  fireEvent.click(root.getByRole("button", { name: "Hide generated secret" }))
+  expect(password.type).toBe("password")
+  expect(preferenceChanges).toEqual([true, true, false])
   fireEvent.click(root.getByRole("button", { name: "Copy generated password" }))
   await new Promise((resolve) => setTimeout(resolve, 0))
 
@@ -352,6 +362,7 @@ test("extensionPopupView hydrates popup generator preferences before rendering c
     {},
     {
       generatorPreferences: () => ({
+        passwordVisible: false,
         mode: "password",
         password: {
           length: 47,
@@ -369,6 +380,7 @@ test("extensionPopupView hydrates popup generator preferences before rendering c
   expect((root.getByLabelText("Password length") as HTMLInputElement).value).toBe("47")
   expect((root.container.querySelector("#popup-generator-uppercase") as HTMLInputElement).checked).toBe(true)
   expect((root.container.querySelector("#popup-generator-lowercase") as HTMLInputElement).checked).toBe(false)
+  expect((root.getByLabelText("Generated password") as HTMLInputElement).type).toBe("password")
 
   root.unmount()
 })

@@ -692,7 +692,7 @@ test("extensionFullWindowView navigates among URL-backed vault, generator and se
   const root = fullWindowRender({ status: "ready", logins: [exampleLogin] })
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  expect(root.getByRole("heading", { name: "Generator" })).toBeDefined()
+  expect(root.getByRole("region", { name: "Generator configuration" })).toBeDefined()
   expect(root.queryByLabelText("Search logins")).toBeNull()
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -727,9 +727,9 @@ test("extensionFullWindowView uses the compact full-window shell and wide-screen
   ).toBe(true)
 
   fireEvent.click(root.getByRole("button", { name: "Generator" }))
-  const generator = root.getByRole("region", { name: "Generator" })
-  expect(generator.classList.contains("max-w-4xl")).toBe(true)
-  expect(generator.classList.contains("max-w-3xl")).toBe(false)
+  const generator = root.getByRole("region", { name: "Generator configuration" })
+  expect(generator.classList.contains("w-full")).toBe(true)
+  expect(generator.classList.contains("min-w-0")).toBe(true)
 
   root.unmount()
 })
@@ -764,6 +764,7 @@ test("extensionFullWindowGeneratorPane updates useful generation controls", () =
   fireEvent.click(root.getByRole("radio", { name: "Password" }))
   const password = root.getByLabelText("Generated password") as HTMLInputElement
 
+  expect(password.type).toBe("text")
   expect(password.value).toHaveLength(20)
   fireEvent.input(root.getByLabelText("Password length slider"), { target: { value: "32" } })
   expect(password.value).toHaveLength(32)
@@ -775,9 +776,9 @@ test("extensionFullWindowGeneratorPane updates useful generation controls", () =
   expect(password.value).toMatch(/^[a-z]{32}$/)
   expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).disabled).toBe(true)
 
-  fireEvent.click(root.getByRole("button", { name: "Show" }))
-  expect(password.type).toBe("text")
-  expect(root.getByRole("button", { name: "Hide" }).getAttribute("aria-pressed")).toBe("true")
+  fireEvent.click(root.getByRole("button", { name: "Hide generated secret" }))
+  expect(password.type).toBe("password")
+  expect(root.getByRole("button", { name: "Show generated secret" }).getAttribute("aria-pressed")).toBe("false")
 
   root.unmount()
 })
@@ -846,6 +847,7 @@ test("extensionFullWindowGeneratorPane defaults to and controls passphrases", ()
 
 test("extensionFullWindowView hydrates every generator preference into its controls", () => {
   const preferences: ExtensionGeneratorPreferences = {
+    passwordVisible: false,
     mode: "password",
     password: {
       length: 47,
@@ -873,6 +875,7 @@ test("extensionFullWindowView hydrates every generator preference into its contr
   )
 
   expect(root.getByRole("radio", { name: "Password" }).getAttribute("aria-checked")).toBe("true")
+  expect((root.getByLabelText("Generated password") as HTMLInputElement).type).toBe("password")
   expect((root.getByLabelText("Password length") as HTMLInputElement).value).toBe("47")
   expect((root.container.querySelector("#generator-lowercase") as HTMLInputElement).checked).toBe(false)
   expect((root.container.querySelector("#generator-uppercase") as HTMLInputElement).checked).toBe(true)

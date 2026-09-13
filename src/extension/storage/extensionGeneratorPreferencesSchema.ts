@@ -16,6 +16,7 @@ const extensionGeneratorPreferencesCharacterPolicySchema = v.pipe(
 )
 
 const extensionGeneratorPreferencesDataSchema = v.strictObject({
+  passwordVisible: v.optional(v.boolean(), true),
   mode: v.picklist([extensionFullWindowGeneratorMode.passphrase, extensionFullWindowGeneratorMode.password]),
   password: v.strictObject({
     length: v.pipe(v.number(), v.integer(), v.minValue(5), v.maxValue(128)),

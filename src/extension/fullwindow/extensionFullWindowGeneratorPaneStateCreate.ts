@@ -40,7 +40,9 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   const wordSeparatorSignal = createSignalObject(initialPreferences.passphrase.wordSeparator)
   const includeNumberSignal = createSignalObject(initialPreferences.passphrase.includeNumber)
   const passwordSignal = createSignalObject(options.initialPassword ?? "")
-  const passwordVisibleSignal = createSignalObject(options.initialPasswordVisible ?? false)
+  const passwordVisibleSignal = createSignalObject(
+    options.initialPasswordVisible ?? initialPreferences.passwordVisible ?? true,
+  )
   const copyStatusSignal = createSignalObject<PasswordCopyStatus>(options.initialCopyStatus ?? "idle")
   const errorMessageSignal = createSignalObject<string | null>(options.initialErrorMessage ?? null)
 
@@ -57,6 +59,7 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   const preferencesChanged = () => {
     options.onPreferencesChange?.({
       mode: modeValueSignal.get() as ExtensionGeneratorPreferences["mode"],
+      passwordVisible: passwordVisibleSignal.get(),
       password: {
         length: lengthSignal.get(),
         characterPolicy: {
@@ -126,7 +129,10 @@ export function extensionFullWindowGeneratorPaneStateCreate(
   const numbersDisabled = createMemo(() => numbersSignal.get() && enabledCharacterGroupCount() === 1)
   const symbolsDisabled = createMemo(() => symbolsSignal.get() && enabledCharacterGroupCount() === 1)
 
-  const passwordVisibilityToggle = () => passwordVisibleSignal.set(!passwordVisibleSignal.get())
+  const passwordVisibilityToggle = () => {
+    passwordVisibleSignal.set(!passwordVisibleSignal.get())
+    preferencesChanged()
+  }
   const passwordLengthSet = (length: number) => {
     if (!Number.isFinite(length)) return
     lengthSignal.set(Math.min(128, Math.max(5, Math.trunc(length))))

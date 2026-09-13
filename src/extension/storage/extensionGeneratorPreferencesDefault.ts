@@ -1,6 +1,7 @@
 import type { ExtensionGeneratorPreferences } from "./extensionGeneratorPreferencesSchema.js"
 
 export const extensionGeneratorPreferencesDefault: ExtensionGeneratorPreferences = {
+  passwordVisible: true,
   mode: "passphrase",
   password: {
     length: 20,
