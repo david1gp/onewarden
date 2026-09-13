@@ -6,6 +6,7 @@ import { vaultSortDefault } from "../../shared/vault/vaultSortDefault.js"
 import { vaultSortOptions } from "../../shared/vault/vaultSortOptions.js"
 import type { VaultSort } from "../../shared/vault/vaultSortSchema.js"
 import { vaultSortSchema } from "../../shared/vault/vaultSortSchema.js"
+import type { CipherPresentationAdapter } from "../../web/ciphers/ui/cipherPresentationAdapter.js"
 import type { ExtensionCopyableField } from "../ExtensionCopyableField.js"
 import type { ExtensionLogin } from "../ExtensionLogin.js"
 import { extensionVaultStatusStateCreate } from "../extensionVaultStatusStateCreate.js"
@@ -14,9 +15,8 @@ import type { ExtensionLockPolicy } from "../storage/extensionLockPolicySchema.j
 import { extensionThemeNext } from "../theme/extensionThemeNext.js"
 import { extensionThemeSet } from "../theme/extensionThemeSet.js"
 import type { ExtensionFullWindowCommands } from "./ExtensionFullWindowCommands.js"
-import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
-import type { CipherPresentationAdapter } from "../../web/ciphers/ui/cipherPresentationAdapter.js"
 import { extensionFullWindowEnvironmentSaveStatus } from "./ExtensionFullWindowEnvironmentSaveStatus.js"
+import type { ExtensionFullWindowInitialState } from "./ExtensionFullWindowInitialState.js"
 import { extensionFullWindowPane } from "./ExtensionFullWindowPane.js"
 import { extensionFullWindowRegion } from "./ExtensionFullWindowRegion.js"
 import { extensionFullWindowSecuritySaveStatus } from "./ExtensionFullWindowSecuritySaveStatus.js"
@@ -39,7 +39,7 @@ const regionLabels: Record<string, string> = {
 
 const defaultLockPolicy: ExtensionLockPolicy = { action: "lock", timeoutMinutes: null }
 const defaultAutofillPolicy: ExtensionAutofillPolicy = { pageLoadEnabled: false, disabledSites: [] }
-const timeoutOptions = ["1", "5", "15", "30", "60", "240", "never"]
+const timeoutOptions = ["1", "5", "15", "30", "60", "240", "1440", "4320", "10080", "never"]
 const timeoutLabels: Record<string, string> = {
   "1": "1 minute",
   "5": "5 minutes",
@@ -47,6 +47,9 @@ const timeoutLabels: Record<string, string> = {
   "30": "30 minutes",
   "60": "1 hour",
   "240": "4 hours",
+  "1440": "1 day",
+  "4320": "3 days",
+  "10080": "1 week",
   never: "Never",
 }
 const actionOptions = ["lock", "logout"]
