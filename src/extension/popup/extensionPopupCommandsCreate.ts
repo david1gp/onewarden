@@ -42,6 +42,10 @@ export function extensionPopupCommandsCreate(
     void sender({ type: "fullWindowOpen", pane: "vault" })
   }
 
+  const loginEdit = (login: ExtensionLogin) => {
+    void sender({ type: "sessionHandoffOpen", request: { operation: "edit", cipherId: login.id } })
+  }
+
   const fullVaultOpen = () => {
     void sender({ type: "fullWindowOpen", pane: "vault" })
   }
@@ -85,6 +89,7 @@ export function extensionPopupCommandsCreate(
 
   return {
     loginFill: commonCommands.loginFill,
+    loginEdit,
     fieldCopy: commonCommands.fieldCopy,
     totpCopy: commonCommands.totpCopy,
     loginAdd,

@@ -1,9 +1,9 @@
-import { fireEvent, render } from "@solidjs/testing-library"
 import { expect, test } from "bun:test"
+import { fireEvent, render } from "@solidjs/testing-library"
+import { createSignalObject } from "#ui/utils/createSignalObject.js"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import { ExtensionPopupLoginCard } from "../../../src/extension/popup/ExtensionPopupLoginCard.jsx"
 import { fieldIconPathGet } from "../../../src/shared/field/fieldIconPathGet.js"
-import { createSignalObject } from "#ui/utils/createSignalObject.js"
 
 const login: ExtensionLogin = {
   id: "login-1",
@@ -28,6 +28,7 @@ test("ExtensionPopupLoginCard uses semantic field icons and preserves password i
       disabled={false}
       fillAvailable={false}
       fieldIsCopied={(field) => copiedFieldKey.get() === field.key}
+      onEdit={() => {}}
       onFill={() => {}}
       onCopy={(_login, field) => copiedFieldKey.set(field.key)}
       totpIsCopied={() => false}
@@ -58,6 +59,7 @@ test("ExtensionPopupLoginCard spans its summary and lays out field actions in eq
       disabled={false}
       fillAvailable={true}
       fieldIsCopied={() => false}
+      onEdit={() => {}}
       onFill={() => {}}
       onCopy={() => {}}
       totpIsCopied={() => false}
@@ -67,12 +69,19 @@ test("ExtensionPopupLoginCard spans its summary and lays out field actions in eq
 
   const card = screen.getByLabelText("Northstar Mail")
   const summary = screen.getByRole("heading", { name: "Northstar Mail" }).parentElement?.parentElement
+  const edit = screen.getByRole("button", { name: "Edit Northstar Mail" })
+  const fill = screen.getByRole("button", { name: "Fill Northstar Mail" })
   const username = screen.getByRole("button", { name: "Copy Username of Northstar Mail" })
   const password = screen.getByRole("button", { name: "Copy Password of Northstar Mail" })
   const fieldGrid = username.parentElement
 
   expect(card.classList.contains("grid-cols-2")).toBe(true)
   expect(summary?.classList.contains("col-span-2")).toBe(true)
+  expect(screen.getByRole("heading", { name: "Northstar Mail" }).classList.contains("text-base")).toBe(true)
+  expect(edit.parentElement?.classList.contains("grid-cols-2")).toBe(true)
+  expect(edit.parentElement).toBe(fill.parentElement)
+  expect(edit.classList.contains("w-full")).toBe(true)
+  expect(fill.classList.contains("w-full")).toBe(true)
   expect(fieldGrid?.classList.contains("grid-cols-2")).toBe(true)
   expect(fieldGrid?.classList.contains("col-span-2")).toBe(true)
   expect(username.classList.contains("w-full")).toBe(true)

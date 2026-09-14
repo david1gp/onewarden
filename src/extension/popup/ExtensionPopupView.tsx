@@ -247,6 +247,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
                     disabled={state.busy()}
                     fillAvailable={state.fillAvailable()}
                     fieldIsCopied={state.fieldIsCopied}
+                    onEdit={state.loginEdit}
                     onFill={state.loginFill}
                     onCopy={state.fieldCopy}
                     totpIsCopied={state.totpIsCopied}

@@ -8,6 +8,8 @@ import type { ExtensionLogin } from "../ExtensionLogin.js"
 export interface ExtensionPopupCommands {
   /** Fill the selected login into the active tab; always user-initiated. */
   loginFill: (login: ExtensionLogin) => void
+  /** Open the selected login in the normal web edit page through a secure session handoff. */
+  loginEdit: (login: ExtensionLogin) => void
   /** Copy one standard or custom field value to the clipboard. */
   fieldCopy: (login: ExtensionLogin, field: ExtensionCopyableField) => void
   /** Generate and copy the current TOTP code without exposing its seed. */

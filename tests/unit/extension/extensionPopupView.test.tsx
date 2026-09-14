@@ -192,6 +192,20 @@ test("extensionPopupView fills only the explicitly selected login", () => {
   root.unmount()
 })
 
+test("extensionPopupView edits only the explicitly selected login", () => {
+  const edited: string[] = []
+  const root = popupRender(
+    { status: "ready", hostname: "example.com", logins: [exampleLogin, otherLogin], fillAvailable: true },
+    { loginEdit: (login) => edited.push(login.id) },
+  )
+
+  fireEvent.click(root.getByRole("button", { name: "Edit Example Admin" }))
+
+  expect(edited).toEqual(["login-2"])
+
+  root.unmount()
+})
+
 test("extensionPopupView hides fill controls when filling is unavailable", () => {
   const root = popupRender({
     status: "ready",

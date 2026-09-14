@@ -70,6 +70,7 @@ export function extensionPopupViewStateCreate(
   const totpIsCopied = (login: ExtensionLogin) => model().copiedFieldKey === `totp:${login.id}`
 
   const loginFill = (login: ExtensionLogin) => commands().loginFill(login)
+  const loginEdit = (login: ExtensionLogin) => commands().loginEdit(login)
   const fieldCopy = (login: ExtensionLogin, field: ExtensionCopyableField) => commands().fieldCopy(login, field)
   const totpCopy = (login: ExtensionLogin) => commands().totpCopy(login)
   const loginAdd = () => commands().loginAdd()
@@ -117,6 +118,7 @@ export function extensionPopupViewStateCreate(
     fieldIsCopied,
     totpIsCopied,
     loginFill,
+    loginEdit,
     fieldCopy,
     totpCopy,
     loginAdd,

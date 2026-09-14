@@ -1,6 +1,6 @@
 import type { Result } from "#result"
-import type { ExtensionLogin } from "../../../extension/ExtensionLogin.js"
 import type { ExtensionCipher } from "../../../extension/crypto/extensionCipherSchema.js"
+import type { ExtensionLogin } from "../../../extension/ExtensionLogin.js"
 import type { ExtensionFullWindowCommands } from "../../../extension/fullwindow/ExtensionFullWindowCommands.js"
 import type { ExtensionFullWindowInitialState } from "../../../extension/fullwindow/ExtensionFullWindowInitialState.js"
 import type { ExtensionFullWindowViewModel } from "../../../extension/fullwindow/ExtensionFullWindowViewModel.js"
@@ -120,6 +120,7 @@ const fixtureSshKey = {
 
 const popupCommands: ExtensionPopupCommands = {
   loginFill: actionIgnore,
+  loginEdit: actionIgnore,
   fieldCopy: actionIgnore,
   totpCopy: actionIgnore,
   loginAdd: actionIgnore,
