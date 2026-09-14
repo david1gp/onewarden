@@ -106,6 +106,7 @@ html.extension-theme-root #root {
   .extension-theme-root[data-extension-theme-source="host"]
   .extension-full-window-navigation-tabs
   .extension-selected-control {
+  --color-primary-foreground: #ffffff;
   color: #ffffff;
 }
 
