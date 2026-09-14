@@ -6,7 +6,6 @@ import { CheckSingle } from "#ui/input/check/CheckSingle.jsx"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
 import { LoaderShuffle4Dots } from "#ui/static/loaders/LoaderShuffle4Dots.jsx"
-import { ExtensionCardWrapper } from "../ui/ExtensionCardWrapper.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
 import { extensionPasskeyConsentStateCreate } from "./extensionPasskeyConsentStateCreate.js"
 
@@ -32,7 +31,7 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
               <strong>{model().rpName === null ? model().rpId : `${model().rpName} (${model().rpId})`}</strong>.
             </p>
             <Show when={(model().verificationRequired && !model().verified) || model().locked}>
-              <ExtensionCardWrapper class="flex flex-col gap-3">
+              <div class="flex w-full flex-col gap-3">
                 <p class="text-sm">
                   {model().verificationRequired
                     ? "Enter your master password for fresh verification."
@@ -48,13 +47,13 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
                 />
                 <Button
                   variant="filledBlue"
-                  class="extension-primary-control"
+                  class="extension-primary-control w-full"
                   disabled={state.busy() || state.passwordSignal.get() === ""}
                   onClick={state.verify}
                 >
                   Verify
                 </Button>
-              </ExtensionCardWrapper>
+              </div>
             </Show>
             <Show when={model().verified || (!model().verificationRequired && !model().locked)}>
               <Show
@@ -80,7 +79,11 @@ export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProp
                     }}
                     valueTextSubtitleClass="extension-muted-text"
                     variant="ghost"
-                    class="extension-credential-selector extension-card-surface"
+                    class={
+                      model().locked
+                        ? "extension-credential-selector w-full border-0 p-0"
+                        : "extension-credential-selector extension-card-surface"
+                    }
                     optionClass="extension-selected-control extension-credential-option"
                     disabled={state.busy()}
                     disallowDeselection
