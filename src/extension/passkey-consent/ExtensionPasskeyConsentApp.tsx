@@ -18,7 +18,7 @@ export interface ExtensionPasskeyConsentAppProps {
 export function ExtensionPasskeyConsentApp(props: ExtensionPasskeyConsentAppProps): JSX.Element {
   const state = extensionPasskeyConsentStateCreate(props.options)
   return (
-    <Dynamic component={props.root ?? "main"} class="extension-page-surface flex min-h-dvh flex-col gap-4 p-5">
+    <Dynamic component={props.root ?? "main"} class="extension-page-surface flex min-h-dvh flex-col gap-4 p-2">
       <Show when={state.busy() && state.model() === null}>
         <div role="status" aria-label="Loading passkey request" class="flex justify-center py-10">
           <LoaderShuffle4Dots />

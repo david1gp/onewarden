@@ -59,7 +59,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
   return (
     <Dynamic
       component={p.root ?? "main"}
-      class="extension-page-surface mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col gap-4 p-3 sm:p-4 lg:p-5"
+      class="extension-page-surface mx-auto flex min-h-dvh w-full max-w-screen-2xl flex-col gap-4 p-2"
     >
       <header class="extension-subtle-surface flex flex-wrap items-center gap-2 rounded-2xl p-2 shadow-sm sm:gap-3">
         <div class="flex min-w-0 items-center gap-2 px-1 sm:mr-1">
