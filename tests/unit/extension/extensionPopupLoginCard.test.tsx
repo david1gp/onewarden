@@ -77,6 +77,10 @@ test("ExtensionPopupLoginCard spans its summary and lays out field actions in eq
   expect(fieldGrid?.classList.contains("col-span-2")).toBe(true)
   expect(username.classList.contains("w-full")).toBe(true)
   expect(password.classList.contains("w-full")).toBe(true)
+  expect(username.classList.contains("justify-start")).toBe(true)
+  expect(password.classList.contains("justify-start")).toBe(true)
+  expect(username.querySelector("svg")?.classList.contains("size-6")).toBe(true)
+  expect(password.querySelector("svg")?.classList.contains("size-6")).toBe(true)
 
   screen.unmount()
 })

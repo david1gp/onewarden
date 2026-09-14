@@ -68,7 +68,7 @@ export function ExtensionFullWindowView(p: ExtensionFullWindowViewProps): JSX.El
 
         <nav
           aria-label={p.navigationLabel ?? "Extension navigation"}
-          class="order-3 grid w-full grid-cols-3 items-center gap-1 sm:order-none sm:w-auto sm:flex"
+          class="extension-full-window-navigation-tabs order-3 grid w-full grid-cols-3 items-center gap-1 sm:order-none sm:w-auto sm:flex"
         >
           <ExtensionButtonIcon
             variant="ghost"

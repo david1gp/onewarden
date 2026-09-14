@@ -96,6 +96,19 @@ html.extension-theme-root #root {
   color: var(--color-secondary-foreground);
 }
 
+.extension-theme-root.dark .extension-popup-navigation-tabs .extension-selected-control,
+.extension-theme-root.dark .extension-full-window-navigation-tabs .extension-selected-control,
+.dark
+  .extension-theme-root[data-extension-theme-source="host"]
+  .extension-popup-navigation-tabs
+  .extension-selected-control,
+.dark
+  .extension-theme-root[data-extension-theme-source="host"]
+  .extension-full-window-navigation-tabs
+  .extension-selected-control {
+  color: #ffffff;
+}
+
 .extension-destructive-control {
   background-color: var(--color-destructive);
   border-color: var(--color-destructive);

@@ -147,7 +147,6 @@ test("extensionPopupView omits popup identity text and shows matched logins", ()
   expect(savedLogins.classList.contains("min-h-0")).toBe(true)
   expect(savedLogins.classList.contains("overflow-y-auto")).toBe(true)
   expect(root.container.firstElementChild?.classList.contains("max-h-dvh")).toBe(true)
-  expect(root.getByRole("contentinfo").classList.contains("shrink-0")).toBe(true)
   expect(root.queryByLabelText("Sort logins")).toBeNull()
 
   root.unmount()
@@ -252,7 +251,7 @@ test("extensionPopupView marks the most recently copied field", () => {
   root.unmount()
 })
 
-test("extensionPopupView renders text tabs and only the retained popup footer action", () => {
+test("extensionPopupView renders text tabs and an icon-only add action beside search", () => {
   const calls: string[] = []
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin] },
@@ -292,6 +291,11 @@ test("extensionPopupView renders text tabs and only the retained popup footer ac
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
   const addLogin = root.getByRole("button", { name: "Add login" })
   expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
+  expect(addLogin.textContent).toBe("")
+  expect(addLogin.getAttribute("title")).toBe("Add login")
+  expect(root.getByLabelText("Search logins").nextElementSibling).toBe(addLogin)
+  expect(root.queryByRole("contentinfo")).toBeNull()
+  expect(root.container.querySelector(".extension-separator")).toBeNull()
   for (const name of ["Sync", "Lock", "Log out", "Open full vault"])
     expect(root.queryByRole("button", { name })).toBeNull()
   fireEvent.click(addLogin)
@@ -419,7 +423,7 @@ test("extensionPopupView provides form autocomplete metadata and bounded results
   locked.unmount()
 })
 
-test("extensionPopupView disables retained footer commands while a command is in flight", () => {
+test("extensionPopupView disables the add login search action while a command is in flight", () => {
   let addCalls = 0
   const root = popupRender(
     { status: "ready", hostname: "example.com", logins: [exampleLogin], busy: true },

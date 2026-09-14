@@ -12,7 +12,6 @@ import type { ExtensionGeneratorPreferences } from "../storage/extensionGenerato
 import type { ExtensionPopupPaneStorage } from "../storage/extensionPopupPaneStorageSchema.js"
 import { ExtensionButtonIcon } from "../ui/ExtensionButtonIcon.jsx"
 import { ExtensionInputS } from "../ui/ExtensionInputS.jsx"
-import { ExtensionSeparator } from "../ui/ExtensionSeparator.jsx"
 import { ExtensionSeparatorWithText } from "../ui/ExtensionSeparatorWithText.jsx"
 import type { ExtensionPopupCommands } from "./ExtensionPopupCommands.js"
 import { ExtensionPopupGeneratorPane } from "./ExtensionPopupGeneratorPane.jsx"
@@ -205,15 +204,27 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
       </Show>
 
       <Show when={state.isVaultPane() && state.isReady()}>
-        <ExtensionInputS
-          type="search"
-          id={`${p.idPrefix ?? ""}popup-login-search`}
-          aria-label="Search logins"
-          placeholder="Search logins"
-          autocomplete="off"
-          disabled={state.busy()}
-          valueSignal={state.searchQuerySignal}
-        />
+        <div class="flex min-w-0 items-center gap-2">
+          <ExtensionInputS
+            type="search"
+            id={`${p.idPrefix ?? ""}popup-login-search`}
+            aria-label="Search logins"
+            placeholder="Search logins"
+            autocomplete="off"
+            disabled={state.busy()}
+            valueSignal={state.searchQuerySignal}
+            class="min-w-0 flex-1"
+          />
+          <ExtensionButtonIcon
+            variant="outline"
+            icon={mdiAccountPlus}
+            aria-label="Add login"
+            title="Add login"
+            disabled={state.busy()}
+            onClick={state.loginAdd}
+            class="min-h-10 min-w-10 shrink-0 p-2"
+          />
+        </div>
 
         <Show when={state.errorMessage()}>
           {(message) => (
@@ -252,18 +263,6 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
             {state.hasNoLogins() ? "No logins saved for this site." : "No logins match your search."}
           </p>
         </Show>
-      </Show>
-
-      <Show when={state.isVaultPane()}>
-        <ExtensionSeparator />
-      </Show>
-
-      <Show when={state.isVaultPane()}>
-        <footer class="flex shrink-0 flex-wrap gap-1">
-          <ExtensionButtonIcon variant="outline" icon={mdiAccountPlus} disabled={state.busy()} onClick={state.loginAdd}>
-            Add login
-          </ExtensionButtonIcon>
-        </footer>
       </Show>
     </Dynamic>
   )

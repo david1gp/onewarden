@@ -81,6 +81,9 @@ test("web host CSS imports scoped extension colors without palette overrides", a
   expect(extensionStyles).toMatch(
     /\.extension-selected-control:not\([^}]+\)\s*\{\s*color:\s*var\(--color-secondary-foreground\);/u,
   )
+  expect(extensionStyles).toContain(
+    ".extension-theme-root.dark .extension-popup-navigation-tabs .extension-selected-control",
+  )
 })
 
 test("extension demo fixtures cover auth and every production full-window pane with unique roots", () => {
