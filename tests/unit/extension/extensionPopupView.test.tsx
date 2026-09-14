@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
+import { mdiPlus } from "@adaptive-ds/mdi/mdiPlus.js"
 import { fireEvent, render } from "@solidjs/testing-library"
 import type { ExtensionLogin } from "../../../src/extension/ExtensionLogin.js"
 import type { ExtensionPopupCommands } from "../../../src/extension/popup/ExtensionPopupCommands.js"
@@ -290,7 +290,7 @@ test("extensionPopupView renders text tabs and an icon-only add action beside se
   expect(root.getByRole("button", { name: "Generator" }).getAttribute("aria-current")).toBe("page")
   fireEvent.click(root.getByRole("button", { name: "Vault" }))
   const addLogin = root.getByRole("button", { name: "Add login" })
-  expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiAccountPlus)
+  expect(addLogin.querySelector("path")?.getAttribute("d")).toBe(mdiPlus)
   expect(addLogin.textContent).toBe("")
   expect(addLogin.getAttribute("title")).toBe("Add login")
   expect(root.getByLabelText("Search logins").nextElementSibling).toBe(addLogin)

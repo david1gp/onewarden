@@ -1,7 +1,7 @@
-import { mdiAccountPlus } from "@adaptive-ds/mdi/mdiAccountPlus.js"
 import { mdiCog } from "@adaptive-ds/mdi/mdiCog.js"
 import { mdiKey } from "@adaptive-ds/mdi/mdiKey.js"
 import { mdiLock } from "@adaptive-ds/mdi/mdiLock.js"
+import { mdiPlus } from "@adaptive-ds/mdi/mdiPlus.js"
 import { mdiWeatherNight } from "@adaptive-ds/mdi/mdiWeatherNight.js"
 import { mdiWhiteBalanceSunny } from "@adaptive-ds/mdi/mdiWhiteBalanceSunny.js"
 import { For, type JSX, Show } from "solid-js"
@@ -217,7 +217,7 @@ export function ExtensionPopupView(p: ExtensionPopupViewProps): JSX.Element {
           />
           <ExtensionButtonIcon
             variant="outline"
-            icon={mdiAccountPlus}
+            icon={mdiPlus}
             aria-label="Add login"
             title="Add login"
             disabled={state.busy()}
