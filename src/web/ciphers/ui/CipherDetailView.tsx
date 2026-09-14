@@ -1,3 +1,11 @@
+import { mdiArchiveArrowDown } from "@adaptive-ds/mdi/mdiArchiveArrowDown.js"
+import { mdiAutoFix } from "@adaptive-ds/mdi/mdiAutoFix.js"
+import { mdiContentCopy } from "@adaptive-ds/mdi/mdiContentCopy.js"
+import { mdiShareVariant } from "@adaptive-ds/mdi/mdiShareVariant.js"
+import { mdiSquareEditOutline } from "@adaptive-ds/mdi/mdiSquareEditOutline.js"
+import { mdiStar } from "@adaptive-ds/mdi/mdiStar.js"
+import { mdiStarOutline } from "@adaptive-ds/mdi/mdiStarOutline.js"
+import { mdiTrashCan } from "@adaptive-ds/mdi/mdiTrashCan.js"
 import { For, type JSX, Show } from "solid-js"
 import { Button } from "#ui/interactive/button/Button.jsx"
 import { ButtonIcon } from "#ui/interactive/button/ButtonIcon.jsx"
@@ -6,10 +14,10 @@ import { Badge } from "#ui/static/badge/Badge.jsx"
 import { CardWrapper } from "#ui/static/card/CardWrapper.jsx"
 import { Icon } from "#ui/static/icon/Icon.jsx"
 import { classesScrollbar } from "#ui/static/scrollbar/classesScrollbar.js"
+import { fieldIconPathGet } from "../../../shared/field/fieldIconPathGet.js"
 import { CopyActionButton } from "../../../ui/interactive/button/CopyActionButton.jsx"
 import { LabeledValueRow } from "../../../ui/static/value/LabeledValueRow.jsx"
 import { vaultSvgIcons } from "../../demo/vaultSvgIcons.js"
-import { fieldIconPathGet } from "../../../shared/field/fieldIconPathGet.js"
 import { CipherAttachmentsSection } from "./CipherAttachmentsSection.jsx"
 import { CipherCustomFieldsView } from "./CipherCustomFieldsView.jsx"
 import { CipherDeleteDialog } from "./CipherDeleteDialog.jsx"
@@ -155,7 +163,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
               <div class="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3">
                 <Show when={!state.isDeleted() && item().edit !== false && item().permissions?.delete !== false}>
                   <Button variant="contrast" size="sm" class="h-8 w-full text-sm" onClick={() => state.editItem()}>
-                    <Icon path={vaultSvgIcons.edit} class="mr-1.5 size-3.5" />
+                    <Icon path={mdiSquareEditOutline} class="mr-1.5 size-3.5" />
                     Edit
                   </Button>
                 </Show>
@@ -165,7 +173,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                     variant="outline"
                     size="sm"
                     class="h-8 w-full text-sm"
-                    icon={item().favorite ? vaultSvgIcons.star : vaultSvgIcons.starOutline}
+                    icon={item().favorite ? mdiStar : mdiStarOutline}
                     iconClass={`size-4 fill-current dark:fill-current ${
                       item().favorite ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"
                     }`}
@@ -185,6 +193,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                       onClick={state.handleFill}
                       aria-label={`Fill ${item().name}`}
                     >
+                      <Icon path={mdiAutoFix} class="mr-1.5 size-3.5" />
                       Fill
                     </Button>
                   </Show>
@@ -195,7 +204,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                     onClick={() => state.openShareDialog()}
                     title={item().organizationId ? "Manage Collections" : "Share to Organization"}
                   >
-                    <Icon path={vaultSvgIcons.share} class="size-3.5 mr-1" />
+                    <Icon path={mdiShareVariant} class="size-3.5 mr-1" />
                     {item().organizationId ? "Collections" : "Share"}
                   </Button>
 
@@ -207,7 +216,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                     disabled={state.isActionLoading()}
                     title="Clone cipher item"
                   >
-                    <Icon path={vaultSvgIcons.clone} class="size-3.5 mr-1" />
+                    <Icon path={mdiContentCopy} class="size-3.5 mr-1" />
                     Clone
                   </Button>
 
@@ -219,7 +228,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                     disabled={state.isActionLoading()}
                     title={state.isArchived() ? "Unarchive cipher" : "Archive cipher"}
                   >
-                    <Icon path={vaultSvgIcons.archive} class="size-3.5 mr-1" />
+                    <Icon path={mdiArchiveArrowDown} class="size-3.5 mr-1" />
                     {state.isArchived() ? "Unarchive" : "Archive"}
                   </Button>
 
@@ -230,7 +239,7 @@ export function CipherDetailView(props: CipherDetailViewProps | LegacyCipherDeta
                     onClick={() => state.openDeleteDialog(false)}
                     title="Move cipher to trash"
                   >
-                    <Icon path={vaultSvgIcons.trash} class="size-3.5 mr-1" />
+                    <Icon path={mdiTrashCan} class="size-3.5 mr-1" />
                     Trash
                   </Button>
                 </Show>
