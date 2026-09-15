@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="onepassword — the open-source password manager for teams, organizations, and modern work.">
+  <title>onepassword — Your private digital vault</title>
+  <style>
+    :root {
+      --ink: #10241c;
+      --muted: #61736a;
+      --soft: #f2f8f4;
+      --line: #dce9e1;
+      --green: #15966a;
+      --green-dark: #08734e;
+      --lime: #baf76b;
+      --mint: #dff8e9;
+      --white: #ffffff;
+      --shadow: 0 24px 70px rgba(16, 77, 50, .13);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #fbfdfb;
+      line-height: 1.55;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: 0; }
+    .container { width: min(1160px, calc(100% - 40px)); margin: auto; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 800; letter-spacing: .13em;
+      text-transform: uppercase; color: var(--green-dark);
+    }
+    .eyebrow:before { content: ""; width: 23px; height: 2px; background: var(--green); border-radius: 4px; }
+    h1, h2, h3 { letter-spacing: -.045em; line-height: 1.06; }
+    h1 { font-size: clamp(46px, 6.3vw, 82px); max-width: 780px; }
+    h2 { font-size: clamp(34px, 4.4vw, 58px); }
+    h3 { font-size: 22px; }
+    p { color: var(--muted); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 48px; padding: 0 20px; border-radius: 10px;
+      font-weight: 750; transition: .25s ease;
+    }
+    .btn-primary { color: #09281b; background: var(--lime); box-shadow: 0 8px 22px rgba(129, 215, 70, .25); }
+    .btn-primary:hover { transform: translateY(-3px); background: #ccff87; }
+    .btn-outline { color: var(--ink); border: 1px solid var(--line); background: white; }
+    .btn-outline:hover { border-color: var(--green); color: var(--green-dark); transform: translateY(-2px); }
+    .btn-dark { color: white; background: var(--ink); }
+    .btn-dark:hover { background: var(--green-dark); transform: translateY(-2px); }
+
+    /* Navigation */
+    .nav-wrap { position: absolute; width: 100%; top: 0; z-index: 5; }
+    nav { height: 78px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 9px; font-size: 21px; font-weight: 850; letter-spacing: -.06em; }
+    .logo-mark { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: var(--lime); color: var(--ink); }
+    .logo-mark svg { width: 18px; }
+    .nav-links { display: flex; align-items: center; gap: 30px; font-size: 14px; font-weight: 650; }
+    .nav-links a { opacity: .8; transition: .2s; }
+    .nav-links a:hover { color: var(--green-dark); opacity: 1; }
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .nav-actions .btn { min-height: 40px; padding: 0 15px; font-size: 13px; }
+    .menu-btn { display: none; background: transparent; font-size: 27px; color: var(--ink); }
+
+    /* Hero */
+    .hero { min-height: 750px; padding: 165px 0 100px; position: relative; overflow: hidden; background: linear-gradient(118deg, #e9f9ee 0%, #f8fdf8 58%, #dff6e6 100%); }
+    .hero:before { content: ""; position: absolute; width: 650px; height: 650px; background: rgba(181, 245, 108, .28); border-radius: 50%; filter: blur(5px); top: -265px; right: -120px; }
+    .hero-grid { position: relative; display: grid; grid-template-columns: 1.02fr .98fr; gap: 60px; align-items: center; }
+    .hero h1 { margin: 20px 0 25px; }
+    .hero h1 em { color: var(--green); font-style: normal; }
+    .hero-copy { max-width: 590px; font-size: 18px; }
+    .hero-buttons { display: flex; gap: 12px; margin-top: 32px; }
+    .trust-row { display: flex; gap: 22px; align-items: center; margin-top: 34px; font-size: 12px; color: var(--muted); font-weight: 700; }
+    .trust-row span { display: flex; align-items: center; gap: 6px; }
+    .check { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--green); color: white; font-size: 11px; }
+
+    /* Product visual */
+    .vault-window { position: relative; padding: 11px; border-radius: 20px; background: rgba(255,255,255,.72); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 32px 80px rgba(30, 100, 60, .19); transform: rotate(1.5deg); }
+    .vault-window:after { content: ""; position: absolute; z-index: -1; width: 100%; height: 100%; top: 25px; left: 25px; border: 1px solid #acd9bd; border-radius: 20px; }
+    .window-top { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #cad9d0; }
+    .window-title { margin: auto; color: #789087; font-size: 10px; font-weight: 700; }
+    .vault-body { display: grid; grid-template-columns: 132px 1fr; min-height: 337px; border-radius: 13px; overflow: hidden; background: white; }
+    .side { background: #f0f8f2; padding: 18px 10px; }
+    .side-label { color: #86a095; font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 0 8px 8px; }
+    .side-item { display: flex; align-items: center; gap: 7px; padding: 9px 8px; border-radius: 7px; font-size: 11px; color: #668078; margin-bottom: 2px; }
+    .side-item.active { color: var(--green-dark); background: #d8f3df; font-weight: 750; }
+    .side-item b { margin-left: auto; font-size: 9px; color: #9ab0a4; }
+    .vault-main { padding: 22px; }
+    .vault-head { display: flex; justify-content: space-between; align-items: start; }
+    .vault-head small { color: #91a39a; font-size: 10px; }
+    .vault-head h3 { font-size: 19px; margin-top: 3px; }
+    .add { width: 28px; height: 28px; border-radius: 7px; background: var(--ink); color: white; }
+    .search { margin: 18px 0 13px; border: 1px solid #e2ebe5; border-radius: 7px; padding: 8px 10px; color: #a7b6af; font-size: 10px; }
+    .login-card { display: flex; align-items: center; gap: 10px; border: 1px solid #e7efe9; padding: 10px; border-radius: 9px; margin-bottom: 8px; }
+    .fav { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; font-weight: 800; font-size: 12px; color: white; background: #315c9f; }
+    .login-card:nth-child(2) .fav { background: #ef8c42; }
+    .login-card:nth-child(3) .fav { background: #52a46d; }
+    .login-card strong { display: block; font-size: 11px; }
+    .login-card small { color: #a1b2a8; font-size: 9px; }
+    .more { margin-left: auto; color: #9ab0a4; }
+
+    /* Logos */
+    .logo-strip { padding: 28px 0; border-bottom: 1px solid var(--line); background: white; }
+    .logo-strip p { text-align: center; font-size: 12px; font-weight: 700; margin-bottom: 17px; color: #87978f; }
+    .logos { display: flex; justify-content: space-around; align-items: center; color: #83958b; font-size: 16px; font-weight: 850; letter-spacing: -.04em; opacity: .8; }
+
+    section { padding: 115px 0; }
+    .section-intro { max-width: 640px; margin-bottom: 52px; }
+    .section-intro h2 { margin: 17px 0; }
+    .section-intro p { font-size: 17px; }
+
+    /* Feature cards */
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; }
+    .feature-card { padding: 28px; min-height: 245px; border: 1px solid var(--line); border-radius: var(--radius); background: white; transition: .3s; }
+    .feature-card:hover { transform: translateY(-7px); box-shadow: var(--shadow); border-color: #b8ddc6; }
+    .feature-icon { width: 46px; height: 46px; display: grid; place-items: center; color: var(--green-dark); background: var(--mint); border-radius: 13px; margin-bottom: 28px; }
+    .feature-icon svg { width: 22px; height: 22px; }
+    .feature-card p { font-size: 14px; margin-top: 10px; }
+
+    /* Split */
+    .dark-section { background: var(--ink); color: white; position: relative; overflow: hidden; }
+    .dark-section:before { content: ""; position: absolute; width: 450px; height: 450px; border-radius: 50%; background: #126744; filter: blur(100px); right: -150px; top: -130px; opacity: .7; }
+    .split { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 90px; align-items: center; }
+    .dark-section p { color: #afc2b7; }
+    .dark-section h2 { margin: 17px 0 22px; }
+    .dark-section .eyebrow { color: var(--lime); }
+    .dark-section .eyebrow:before { background: var(--lime); }
+    .points { list-style: none; margin-top: 30px; display: grid; gap: 16px; }
+    .points li { display: flex; gap: 12px; align-items: flex-start; color: #d9e8de; font-size: 14px; }
+    .points .check { flex: 0 0 18px; background: #237b55; color: var(--lime); }
+    .code-card { background: #071b13; border: 1px solid #24533d; border-radius: 18px; padding: 25px; box-shadow: 0 20px 55px #06140d; }
+    .code-header { display: flex; align-items: center; gap: 7px; padding-bottom: 22px; color: #779586; font-size: 11px; }
+    .code-header .dot { background: #397458; }
+    pre { white-space: pre-wrap; color: #bce9bd; font: 12px/2 "SFMono-Regular", Consolas, monospace; }
+    .key { color: #a7d86e; } .str { color: #80cfb1; } .comment { color: #557c68; }
+
+    /* Tabs */
+    .center { text-align: center; margin-left: auto; margin-right: auto; }
+    .tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 34px; flex-wrap: wrap; }
+    .tab { border: 1px solid var(--line); background: white; border-radius: 30px; padding: 10px 17px; color: var(--muted); font-size: 13px; font-weight: 750; }
+    .tab.active, .tab:hover { color: var(--green-dark); border-color: #92cfaa; background: var(--mint); }
+    .tab-panel { display: none; grid-template-columns: .9fr 1.1fr; gap: 60px; align-items: center; }
+    .tab-panel.active { display: grid; animation: fade .35s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .panel-copy h3 { font-size: 32px; margin-bottom: 16px; }
+    .panel-copy p { font-size: 16px; }
+    .panel-visual { min-height: 280px; display: grid; place-items: center; border-radius: 24px; background: linear-gradient(140deg, #eaf9ee, #d1f1de); border: 1px solid #c5e7d0; }
+    .visual-box { width: 72%; background: white; border-radius: 13px; padding: 22px; box-shadow: var(--shadow); }
+    .visual-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2ee; font-size: 12px; }
+    .visual-row:last-child { border: 0; }
+    .visual-badge { display: grid; place-items: center; width: 30px; height: 30px; background: var(--mint); color: var(--green-dark); border-radius: 8px; font-weight: 800; }
+    .visual-row span:last-child { margin-left: auto; color: var(--green-dark); font-weight: 700; font-size: 11px; }
+
+    /* CTA & footer */
+    .cta { padding: 88px 30px; margin-bottom: 100px; border-radius: 28px; background: var(--green); color: white; text-align: center; position: relative; overflow: hidden; }
+    .cta:after { content: ""; position: absolute; width: 300px; height: 300px; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; right: -70px; top: -160px; box-shadow: 0 0 0 35px rgba(255,255,255,.05), 0 0 0 70px rgba(255,255,255,.04); }
+    .cta h2 { max-width: 650px; margin: auto; }
+    .cta p { color: #d5f4df; max-width: 520px; margin: 18px auto 28px; }
+    footer { background: #f0f7f2; padding: 60px 0 28px; }
+    .footer-top { display: flex; justify-content: space-between; gap: 30px; padding-bottom: 50px; }
+    .footer-brand { max-width: 245px; }
+    .footer-brand p { margin-top: 15px; font-size: 13px; }
+    .footer-links { display: flex; gap: 75px; }
+    .footer-col h4 { font-size: 12px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: .1em; }
+    .footer-col a { display: block; color: var(--muted); font-size: 13px; margin: 9px 0; }
+    .footer-col a:hover { color: var(--green-dark); }
+    .copyright { border-top: 1px solid var(--line); padding-top: 22px; color: #82968b; font-size: 12px; display: flex; justify-content: space-between; }
+
+    @media (max-width: 850px) {
+      .nav-links, .nav-actions { display: none; }
+      .menu-btn { display: block; }
+      .nav-links.open { display: flex; position: absolute; top: 67px; left: 20px; right: 20px; flex-direction: column; align-items: stretch; gap: 0; padding: 12px; background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+      .nav-links.open a { padding: 12px; }
+      .hero-grid, .split, .tab-panel.active { grid-template-columns: 1fr; gap: 42px; }
+      .hero { min-height: auto; padding-top: 130px; }
+      .vault-window { max-width: 570px; margin: auto; }
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .split { gap: 45px; }
+      .tab-panel.active { display: grid; }
+    }
+    @media (max-width: 560px) {
+      .container { width: min(100% - 28px, 1160px); }
+      section { padding: 75px 0; }
+      .hero { padding-bottom: 70px; }
+      .hero-buttons { flex-direction: column; align-items: stretch; }
+      .trust-row { flex-wrap: wrap; gap: 11px 16px; }
+      .vault-body { grid-template-columns: 100px 1fr; }
+      .side { padding-left: 5px; padding-right: 5px; }
+      .vault-main { padding: 15px; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .logos { gap: 16px; flex-wrap: wrap; font-size: 13px; }
+      .footer-top { flex-direction: column; }
+      .footer-links { gap: 30px; justify-content: space-between; }
+      .copyright { display: block; }
+      .copyright span { display: block; margin-top: 8px; }
+      .visual-box { width: 86%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav-wrap">
+    <div class="container">
+      <nav>
+        <a class="logo" href="#top">
+          <span class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7"><path d="M12 3 5 7v6c0 4.4 3 7.4 7 8 4-.6 7-3.6 7-8V7l-7-4Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          onepassword
+        </a>
+        <div class="nav-links" id="navLinks">
+          <a href="#features">Features</a>
+          <a href="#security">Security</a>
+          <a href="#integrations">Integrations</a>
+          <a href="#teams">For teams</a>
+          <a href="#pricing">Pricing</a>
+        </div>
+        <div class="nav-actions">
+          <a class="btn btn-outline" href="#login">Log in</a>
+          <a class="btn btn-dark" href="#start">Get started</a>
+        </div>
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu">☰</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">Your digital life, simplified</span>
+          <h1>One secure place for <em>everything.</em></h1>
+          <p class="hero-copy">onepassword is the open-source password manager that keeps your passwords, passkeys, secrets, and identity safe — across every device and every team.</p>
+          <div class="hero-buttons">
+            <a href="#start" class="btn btn-primary">Start for free <span>→</span></a>
+            <a href="#features" class="btn btn-outline">Explore features</a>
+          </div>
+          <div class="trust-row">
+            <span><i class="check">✓</i> Open source</span>
+            <span><i class="check">✓</i> Self-host or cloud</span>
+            <span><i class="check">✓</i> No credit card</span>
+          </div>
+        </div>
+        <div class="vault-window" aria-label="onepassword vault preview">
+          <div class="window-top"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="window-title">app.onepassword.com</span></div>
+          <div class="vault-body">
+            <aside class="side">
+              <div class="side-label">My vault</div>
+              <div class="side-item active">▦ All items <b>24</b></div>
+              <div class="side-item">♡ Favorites <b>6</b></div>
+              <div class="side-item">◈ Logins <b>18</b></div>
+              <div class="side-item">⚿ Secure notes <b>4</b></div>
+              <div class="side-label" style="margin-top:18px">Collections</div>
+              <div class="side-item">◉ Work</div>
+              <div class="side-item">◉ Personal</div>
+            </aside>
+            <div class="vault-main">
+              <div class="vault-head"><div><small>ALL ITEMS</small><h3>Good morning, Alex</h3></div><button class="add">+</button></div>
+              <div class="search">⌕ &nbsp; Search your vault</div>
+              <div class="login-card"><div class="fav">G</div><div><strong>GitHub</strong><small>github.com</small></div><span class="more">•••</span></div>
+              <div class="login-card"><div class="fav">S</div><div><strong>Stripe</strong><small>dashboard.stripe.com</small></div><span class="more">•••</span></div>
+              <div class="login-card"><div class="fav">W</div><div><strong>WhatsApp</strong><small>web.whatsapp.com</small></div><span class="more">•••</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="logo-strip">
+      <div class="container">
+        <p>Trusted by people who take privacy seriously</p>
+        <div class="logos"><span>◎ open source</span><span>◇ BITWARDEN</span><span>◈ OIDC READY</span><span>⚡ SELF-HOSTED</span><span>✦ PRIVACY FIRST</span></div>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="container">
+        <div class="section-intro">
+          <span class="eyebrow">Built for real life</span>
+          <h2>More than a password manager.</h2>
+          <p>Everything you need to protect your digital world without slowing down your day.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><div class="feature-icon">⌁</div><h3>Open by design</h3><p>Transparent, auditable, and community-powered. Inspect the code, self-host your vault, and stay in control.</p></article>
+          <article class="feature-card"><div class="feature-icon">⌑</div><h3>Sign in with OIDC</h3><p>Connect your favorite identity provider and let your team use the login they already trust.</p></article>
+          <article class="feature-card"><div class="feature-icon">▣</div><h3>Works with Bitwarden</h3><p>Import your existing vault in seconds. onepassword supports the Bitwarden format and ecosystem.</p></article>
+          <article class="feature-card"><div class="feature-icon">☏</div><h3>WhatsApp OTP</h3><p>Get secure one-time codes right where your team already communicates. Fast, familiar, and frictionless.</p></article>
+          <article class="feature-card"><div class="feature-icon">♧</div><h3>Made for organizations</h3><p>Shared collections, groups, roles, event logs, and policies that scale from a small studio to an enterprise.</p></article>
+          <article class="feature-card"><div class="feature-icon">⌘</div><h3>Every platform</h3><p>Browser extensions, mobile apps, desktop clients, passkeys, autofill, and secure sharing wherever you work.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="dark-section" id="security">
+      <div class="container split">
+        <div>
+          <span class="eyebrow">Privacy without compromise</span>
+          <h2>Security you can see. Control you can feel.</h2>
+          <p>Strong encryption should be understandable, not mysterious. onepassword is built around zero-knowledge architecture and modern security standards.</p>
+          <ul class="points">
+            <li><i class="check">✓</i><span>End-to-end encrypted vaults with AES-256 protection</span></li>
+            <li><i class="check">✓</i><span>Argon2 key derivation and secure cryptographic defaults</span></li>
+            <li><i class="check">✓</i><span>Passkeys, TOTP, emergency access, and breach monitoring</span></li>
+            <li><i class="check">✓</i><span>Detailed audit logs and organization-wide policies</span></li>
+          </ul>
+        </div>
+        <div class="code-card">
+          <div class="code-header"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>security.config</span></div>
+          <pre><span class="comment">// your keys. your infrastructure.</span>
+<span class="key">encryption</span>: {
+  <span class="key">algorithm</span>: <span class="str">"AES-256-GCM"</span>,
+  <span class="key">key_derivation</span>: <span class="str">"Argon2id"</span>,
+  <span class="key">zero_knowledge</span>: <span class="key">true</span>
+},
+<span class="key">access</span>: {
+  <span class="key">oidc</span>: <span class="key">enabled</span>,
+  <span class="key">passkeys</span>: <span class="key">enabled</span>,
+  <span class="key">audit_logs</span>: <span class="key">enabled</span>
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="integrations">
+      <div class="container">
+        <div class="section-intro center">
+          <span class="eyebrow">One vault, many possibilities</span>
+          <h2>Fits beautifully into your workflow.</h2>
+          <p>Powerful enough for your infrastructure. Simple enough for everyone on your team.</p>
+        </div>
+        <div class="tabs">
+          <button class="tab active" data-tab="personal">For you</button>
+          <button class="tab" data-tab="teams">For teams</button>
+          <button class="tab" data-tab="developers">For developers</button>
+        </div>
+        <div class="tab-panel active" id="personal">
+          <div class="panel-copy"><h3>Your whole life, protected.</h3><p>Store logins, credit cards, identities, Wi-Fi passwords, recovery codes, and private notes. Autofill with confidence and create impossible-to-guess passwords in one click.</p></div>
+          <div class="panel-visual"><div class="visual-box"><div class="visual-row"><div class="visual-badge">⚿</div><b>Strong password generated</b><span>Copied ✓</span></div><div class="visual-row"><div class="visual-badge">⌁</div><b>Passkey for example.com</b><span>Saved</span></div><div class="visual-row"><div class="visual-badge">☏</div><b>2FA authenticator code</b><span>••••••</span></div></div></div>
+        </div>
+        <div class="tab-panel" id="teams">
+          <div class="panel-copy"><h3>A safer way to work together.</h3><p>Give the right people the right access. Share credentials securely, onboard new teammates instantly, and know exactly what happened with complete event history.</p></div>
+          <div class="panel-visual"><div class="visual-box"><div class="visual-row"><div class="visual-badge">A</div><b>Product team</b><span>12 members</span></div><div class="visual-row"><div class="visual-badge">S</div><b>Shared vault</b><span>8 items</span></div><div class="visual-row"><div class="visual-badge">✓</div><b>Access policy</b><span>Healthy</span></div></div></div>
+        </div>
+        <div class="tab-panel" id="developers">
+          <div class="panel-copy"><h3>Secrets that ship with you.</h3><p>Keep API keys, environment variables, and deployment credentials out of chat and source control. Integrate with OIDC and your favorite developer tools.</p></div>
+          <div class="panel-visual"><div class="visual-box"><div class="visual-row"><div class="visual-badge">{ }</div><b>Production API</b><span>Protected</span></div><div class="visual-row"><div class="visual-badge">⌘</div><b>CLI access</b><span>Connected</span></div><div class="visual-row"><div class="visual-badge">◈</div><b>OIDC provider</b><span>Active</span></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="start" style="padding-top:20px;">
+      <div class="container">
+        <div class="cta">
+          <h2>Make your next login your last weak one.</h2>
+          <p>Join a better way to manage passwords. Start free, invite your team, and bring your vault with you.</p>
+          <a class="btn btn-primary" href="#pricing">Create your free vault <span>→</span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="pricing">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="logo" href="#top"><span class="logo-mark">✓</span> onepassword</a>
+          <p>Private by default. Open by design. A password manager for everyone.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col"><h4>Product</h4><a href="#features">Features</a><a href="#security">Security</a><a href="#integrations">Integrations</a><a href="#pricing">Pricing</a></div>
+          <div class="footer-col"><h4>Resources</h4><a href="#">Documentation</a><a href="#">Open source</a><a href="#">Help center</a><a href="#">Status</a></div>
+          <div class="footer-col"><h4>Company</h4><a href="#">About</a><a href="#">Contact</a><a href="#">Privacy</a><a href="#">Terms</a></div>
+        </div>
+      </div>
+      <div class="copyright"><span>© 2024 onepassword.com. Built for a safer internet.</span><span>Made with privacy in mind · 🌱</span></div>
+    </div>
+  </footer>
+
+  <script>
+    const menuBtn = document.getElementById('menuBtn');
+    const navLinks = document.getElementById('navLinks');
+    menuBtn.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      menuBtn.textContent = navLinks.classList.contains('open') ? '×' : '☰';
+    });
+    document.querySelectorAll('.nav-links a').forEach(link => link.addEventListener('click', () => {
+      navLinks.classList.remove('open'); menuBtn.textContent = '☰';
+    }));
+    document.querySelectorAll('.tab').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(button.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

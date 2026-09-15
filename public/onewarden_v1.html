@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#071b21" />
+  <title>Lockleaf — Passwords, protected beautifully.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #092329;
+      --muted: #637477;
+      --line: #dce7e4;
+      --cream: #f7f7f0;
+      --white: #ffffff;
+      --mint: #d8f5d6;
+      --mint-strong: #90e393;
+      --coral: #ff826c;
+      --yellow: #fff1a5;
+      --shadow: 0 22px 55px rgba(12, 45, 46, .12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--cream);
+      font-family: "Manrope", sans-serif;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; }
+    .shell { width: min(1180px, calc(100% - 48px)); margin: auto; }
+
+    .announcement {
+      min-height: 39px;
+      background: var(--ink);
+      color: #d9f7da;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      text-align: center;
+      padding: 8px 20px;
+    }
+    .announcement span { color: #fff6ae; margin-left: 7px; }
+    .announcement a { text-decoration: underline; text-underline-offset: 3px; margin-left: 8px; color: white; }
+
+    nav {
+      height: 82px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 10;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -.8px;
+    }
+    .brand-mark {
+      width: 33px; height: 33px; border-radius: 11px;
+      background: var(--ink);
+      display: grid; place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .brand-mark:before {
+      content: ""; width: 14px; height: 17px; border: 2px solid #d9f7d8;
+      border-radius: 8px 8px 5px 5px; transform: translateY(3px);
+    }
+    .brand-mark:after {
+      content: ""; position: absolute; height: 7px; width: 2px; background: #d9f7d8;
+      border-radius: 3px; bottom: 7px;
+    }
+    .nav-links { display: flex; align-items: center; gap: 30px; margin-left: 80px; }
+    .nav-links a { font-size: 13px; font-weight: 700; color: #395156; transition: color .2s; }
+    .nav-links a:hover { color: #0b272d; }
+    .nav-actions { display: flex; align-items: center; gap: 18px; }
+    .login { font-size: 13px; font-weight: 800; }
+    .button {
+      border: 0;
+      padding: 13px 20px;
+      border-radius: 12px;
+      color: white;
+      background: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+      transition: transform .2s, box-shadow .2s, background .2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    }
+    .button:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(9,35,41,.2); }
+    .button.light { background: #fff; color: var(--ink); }
+    .button.mint { background: var(--mint-strong); color: var(--ink); }
+    .arrow { font-size: 17px; line-height: 0; }
+    .menu-btn { display: none; border: 0; background: none; padding: 7px; }
+    .menu-btn i, .menu-btn:before, .menu-btn:after { content:""; display:block; width:23px; height:2px; margin:5px; background:var(--ink); border-radius:2px; }
+
+    .hero {
+      min-height: 680px;
+      padding: 74px 0 67px;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 77% 27%, rgba(183, 240, 182, .55) 0, rgba(183,240,182,.12) 23%, transparent 40%),
+        radial-gradient(circle at 5% 90%, rgba(255, 228, 145, .38), transparent 28%);
+    }
+    .hero:before {
+      content: ""; position: absolute; width: 460px; height: 460px; border: 1px solid rgba(18, 71, 72, .08);
+      border-radius: 50%; right: -115px; top: 75px;
+    }
+    .hero-grid { position: relative; display: grid; grid-template-columns: .94fr 1.06fr; gap: 30px; align-items: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 11px 7px 8px; background: rgba(255,255,255,.75);
+      border: 1px solid rgba(14, 61, 61, .1); border-radius: 100px;
+      font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+      color: #38595a;
+    }
+    .eyebrow b { width: 20px; height: 20px; border-radius: 50%; background: var(--mint-strong); display:grid; place-items:center; font-size:12px; color:var(--ink); }
+    h1 {
+      font-size: clamp(46px, 5.4vw, 76px); line-height: .99;
+      letter-spacing: -4.3px; margin: 22px 0 22px; max-width: 620px;
+    }
+    h1 em { font-family: "Playfair Display", serif; font-weight: 600; color: #28766a; letter-spacing: -3px; }
+    .hero-copy { max-width: 485px; color: #51666a; font-size: 17px; line-height: 1.7; margin: 0 0 30px; }
+    .hero-buttons { display:flex; flex-wrap:wrap; gap: 12px; }
+    .hero-buttons .button { padding: 16px 22px; }
+    .button.outline { background: transparent; color: var(--ink); border: 1px solid #adc5bf; }
+    .button.outline:hover { background: white; box-shadow: none; }
+    .micro-proof { display: flex; align-items: center; margin-top: 31px; gap: 10px; color: #526a6c; font-size: 12px; font-weight: 700; }
+    .avatars { display:flex; padding-left: 4px; }
+    .avatar { width:24px; height:24px; margin-left:-4px; border-radius:50%; border: 2px solid var(--cream); background: linear-gradient(135deg,#ffad82,#c66b5c); }
+    .avatar:nth-child(2){ background:linear-gradient(135deg,#88c8e6,#456a9b); }.avatar:nth-child(3){ background:linear-gradient(135deg,#64489c,#dba6e1);}.avatar:nth-child(4){background:linear-gradient(135deg,#f2d468,#57b985);}
+
+    .vault-visual { position: relative; min-height: 468px; }
+    .orb { position:absolute; width: 410px; height: 410px; border-radius: 43% 57% 59% 41% / 46% 41% 59% 54%; background: #c5f0bd; right: 35px; top: 23px; transform: rotate(-15deg); animation: blob 7s ease-in-out infinite; }
+    @keyframes blob { 50% { border-radius: 60% 40% 43% 57% / 54% 61% 39% 46%; transform: rotate(8deg) scale(1.03); } }
+    .vault-window {
+      position: absolute; z-index: 2; width: 465px; height: 350px; top: 64px; right: 5px;
+      background: rgba(255,255,255,.92); border: 1px solid rgba(255,255,255,.9); border-radius: 19px;
+      box-shadow: 0 25px 55px rgba(22,77,72,.2); overflow:hidden; display:grid; grid-template-columns: 128px 1fr;
+      backdrop-filter: blur(12px);
+      animation: float 5s ease-in-out infinite;
+    }
+    @keyframes float { 50% { transform: translateY(-8px); } }
+    .side-panel { background:#eff5f2; padding: 18px 13px; }
+    .mini-logo { font-size:12px; font-weight:800; display:flex; align-items:center; gap:6px; margin:1px 4px 24px; }
+    .mini-logo:before { content:""; width:15px; height:15px; border-radius:5px; background:var(--ink); }
+    .side-title { color:#7a8e8c; font-size:9px; letter-spacing:.06em; font-weight:800; text-transform:uppercase; margin:0 7px 9px; }
+    .side-item { display:flex; align-items:center; gap:8px; padding:8px 7px; font-size:10px; font-weight:700; color:#597071; border-radius:7px; margin:2px 0; }
+    .side-item.active { background:white; color:var(--ink); box-shadow:0 2px 7px rgba(31,70,63,.06); }
+    .side-icon { width:14px; text-align:center; font-size:12px; }
+    .window-main { padding: 18px 17px; overflow:hidden; }
+    .window-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .window-head strong { font-size:14px; letter-spacing:-.4px; }
+    .round-add { width:25px; height:25px; border:0; background:var(--ink); color:#c8fac3; font-size:17px; line-height:1; border-radius:8px; }
+    .search { height:29px; border-radius:8px; background:#f3f6f5; color:#8a999a; font-size:9px; display:flex; align-items:center; padding:0 10px; margin-bottom:10px; }
+    .credential { display:flex; align-items:center; gap:9px; padding:8px 5px; border-bottom:1px solid #edf2ef; }
+    .site-mark { width:27px; height:27px; border-radius:8px; color:white; display:grid; place-items:center; font-size:11px; font-weight:800; }
+    .site-mark.n { background:#141414; }.site-mark.s { background:#e75d4c; }.site-mark.f { background:#3856a5; }.site-mark.g { background:#f0a125; }
+    .credential-info { min-width:0; flex:1; }.credential-info strong { display:block; font-size:10px; }.credential-info span { display:block; color:#809091; font-size:8px; margin-top:2px; }
+    .dots { color:#5d7274; letter-spacing:1px; font-size:11px; }
+    .security-pill { position:absolute; z-index:3; background:var(--ink); color:white; border-radius:13px; padding:12px 15px; left: -2px; bottom:32px; box-shadow:0 14px 29px rgba(10,35,38,.22); display:flex; gap:10px; align-items:center; animation: float 5s 1s ease-in-out infinite; }
+    .security-icon { width:27px;height:27px;border-radius:8px;background:#8de191;color:var(--ink);display:grid;place-items:center;font-size:15px; }
+    .security-pill b { display:block; font-size:10px; }.security-pill span { display:block; font: 8px "DM Mono"; color:#b9ceca; margin-top:3px; }
+    .spark { position:absolute; color:#2d756b; font-size:31px; font-family:serif; }.spark.one { right:4px; top:24px; }.spark.two { left:35px; top:50px; font-size:22px; }
+
+    .trusted { padding: 25px 0 34px; background:white; border-top:1px solid #edf1ee; }
+    .trusted-inner { display:flex; justify-content:space-between; align-items:center; gap:25px; }
+    .trusted p { margin:0; font-size:11px; font-weight:800; letter-spacing:.06em; color:#819190; text-transform:uppercase; }
+    .company-logos { display:flex; align-items:center; justify-content:space-between; flex:1; max-width:720px; color:#53696b; }
+    .company-logos b { font-size:17px; letter-spacing:-1px; }.company-logos b:nth-child(2){font-family:Georgia;font-style:italic;}.company-logos b:nth-child(3){letter-spacing:1px;font-size:14px;}.company-logos b:nth-child(4){font-family:Georgia;font-size:18px;}.company-logos b:nth-child(5){font-size:15px;}
+
+    .features { padding: 116px 0; background:#fff; }
+    .section-label { color:#2d786b; font-size:11px; letter-spacing:.1em; font-weight:800; text-transform:uppercase; }
+    .section-top { display:flex; justify-content:space-between; align-items:end; margin-bottom:45px; }
+    h2 { font-size:clamp(34px,4vw,51px); letter-spacing:-2.8px; line-height:1.06; margin:13px 0 0; max-width:590px; }
+    .section-top p { max-width:300px; color:#65787a; line-height:1.65; font-size:14px; margin:0 0 3px; }
+    .feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:17px; }
+    .feature-card { min-height:315px; padding:26px; border:1px solid var(--line); border-radius:19px; position:relative; overflow:hidden; transition: transform .25s, box-shadow .25s; }
+    .feature-card:hover { transform:translateY(-5px); box-shadow:var(--shadow); }
+    .feature-card:nth-child(1){background:#e9f8e7;}.feature-card:nth-child(2){background:#fff8d8;}.feature-card:nth-child(3){background:#f2efff;}
+    .feature-card h3 { position:relative; z-index:2; font-size:19px; letter-spacing:-.8px; margin:0 0 9px; }.feature-card p { position:relative; z-index:2; max-width:230px; color:#557071; font-size:13px; line-height:1.6; margin:0; }
+    .feature-art { position:absolute; right:23px; bottom:20px; }
+    .key-art { width:136px; height:65px; border-radius:35px 10px 10px 35px; background:var(--ink); transform:rotate(-25deg); }
+    .key-art:before { content:""; position:absolute; width:47px;height:47px;border:12px solid var(--ink);background:#e9f8e7; border-radius:50%; left:-24px;top:9px; }.key-art:after {content:""; position:absolute;right:-15px;bottom:0;width:34px;height:18px;background:var(--ink);box-shadow:20px -13px 0 -3px var(--ink);}
+    .shield-art { width:105px;height:123px;background:#ffdc58;clip-path:polygon(50% 0,100% 16%,91% 79%,50% 100%,9% 79%,0 16%);display:grid;place-items:center;font-size:47px;color:var(--ink); transform:rotate(10deg); }
+    .share-art { width:110px;height:87px;border:2px solid #7062ae;border-radius:13px;background:white;transform:rotate(-8deg); }.share-art:before {content:"•••";letter-spacing:7px;position:absolute;left:25px;top:24px;font-size:25px;color:#7062ae;}.share-art:after{content:"";position:absolute;width:61px;height:2px;background:#a69cda;left:23px;bottom:22px;}
+
+    .security-section { background:var(--ink); color:white; padding:105px 0; position:relative; overflow:hidden; }
+    .security-section:after { content:""; position:absolute; width:600px;height:600px;border:1px solid rgba(174,250,177,.15);border-radius:50%;right:-260px;top:-150px; }
+    .security-grid { display:grid; grid-template-columns:1fr 1fr; gap:90px; align-items:center; position:relative; z-index:1; }
+    .security-section h2 { color:white; }.security-section .section-label { color:#a7eca5; }
+    .security-text { color:#b9ccca; line-height:1.75; font-size:15px; max-width:460px; margin:23px 0 28px; }
+    .security-list { display:grid; gap:15px; }
+    .security-list div { display:flex;align-items:center;gap:12px;font-size:13px;font-weight:700;color:#e1efec; }
+    .check { width:22px;height:22px;background:#8fe08d;color:var(--ink);border-radius:50%;display:grid;place-items:center;font-size:13px; }
+    .security-card { border:1px solid rgba(189,239,192,.25); background:rgba(255,255,255,.06); padding:31px; border-radius:20px; backdrop-filter:blur(10px); }
+    .security-card-top { display:flex;align-items:center;justify-content:space-between;margin-bottom:29px; }
+    .security-card-top span { font:10px "DM Mono"; color:#a4c2bc; letter-spacing:.06em; }.live { color:#a8eea5!important; }.live:before { content:""; display:inline-block;width:7px;height:7px;background:#a8eea5;border-radius:50%;margin-right:6px;box-shadow:0 0 0 4px rgba(168,238,165,.13); }
+    .score { display:flex;align-items:end;gap:17px; }.score strong { font-size:59px;letter-spacing:-4px;line-height:.8; }.score div { font-size:13px;font-weight:700;color:#bcd0ce;line-height:1.3; }
+    .meter { height:9px;border-radius:10px;background:rgba(255,255,255,.13);margin:29px 0 13px;overflow:hidden; }.meter i { display:block;width:94%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#73d88c,#e4ed8b); }
+    .meter-note { color:#a9c1bd;font-size:11px;display:flex;justify-content:space-between; }
+    .security-divider {height:1px;background:rgba(255,255,255,.12);margin:25px 0;}.security-status{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:700;}.status-lock{width:30px;height:30px;border-radius:8px;background:rgba(145,227,147,.16);display:grid;place-items:center;color:#a7eca5;}
+
+    .cta { padding: 93px 0; background:#d8f5d6; position:relative; overflow:hidden; text-align:center; }
+    .cta:before,.cta:after {content:"✦";position:absolute;color:#438d7c;font-family:Georgia;font-size:43px;}.cta:before{left:13%;top:25%;}.cta:after{right:14%;bottom:23%;font-size:28px;}
+    .cta h2 { max-width:710px; margin:13px auto 18px; }.cta p { color:#496b68;font-size:15px;margin:0 auto 27px; }.cta .button { padding:16px 23px; }
+    footer { background:var(--ink); color:#d2e1de; padding:50px 0 25px; }
+    .footer-top { display:flex;justify-content:space-between;gap:40px;padding-bottom:44px;border-bottom:1px solid rgba(255,255,255,.12); }
+    footer .brand { color:white; }.footer-note { font-size:12px;color:#92aaa7;max-width:260px;line-height:1.65;margin:13px 0 0; }
+    .footer-links { display:flex;gap:65px; }.footer-column h4{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#91aaa5;margin:0 0 15px;}.footer-column a{display:block;font-size:12px;color:#e1eeea;margin:9px 0;}.footer-bottom { padding-top:23px;display:flex;justify-content:space-between;color:#839b97;font-size:11px; }.socials{display:flex;gap:15px;}.socials a:hover{color:#a9eea8;}
+
+    .modal-backdrop { position:fixed;inset:0;z-index:50;background:rgba(4,22,25,.6);display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px); }
+    .modal-backdrop.show { display:flex; }
+    .modal { background:#fff;border-radius:20px;padding:31px;width:min(430px,100%);box-shadow:0 25px 70px rgba(0,0,0,.3);position:relative;animation:modalIn .25s ease; }
+    @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+    .modal-close{position:absolute;right:15px;top:13px;border:0;background:none;font-size:24px;color:#647878}.modal h3{font-size:25px;letter-spacing:-1px;margin:0 0 7px}.modal p{font-size:13px;color:#667a7b;line-height:1.6;margin:0 0 20px}.modal input{width:100%;border:1px solid #d8e4e0;border-radius:10px;padding:14px;margin-bottom:12px;font:13px "Manrope";outline-color:#67b77a}.modal .button{width:100%;padding:14px}.success-msg{display:none;text-align:center;padding:8px 0;color:#267262;font-size:14px;font-weight:700;}
+
+    @media (max-width: 800px) {
+      .shell{width:min(100% - 32px, 620px)} .nav-links,.nav-actions .login{display:none}.menu-btn{display:block}.nav-actions{gap:5px}.nav-actions .button{padding:11px 13px;font-size:12px}
+      .mobile-menu{display:none;position:absolute;top:73px;left:16px;right:16px;background:white;border:1px solid var(--line);border-radius:15px;padding:12px;box-shadow:var(--shadow)}.mobile-menu.open{display:block}.mobile-menu a{display:block;padding:11px;font-size:13px;font-weight:700}
+      .hero{padding:48px 0 36px;min-height:0}.hero-grid{grid-template-columns:1fr}.hero-copy{font-size:15px}.vault-visual{min-height:410px;margin-top:8px}.vault-window{width:min(100%,465px);right:0;top:40px}.orb{width:330px;height:330px;right:0;top:35px}.security-pill{left:0;bottom:0}
+      .trusted-inner{display:block;text-align:center}.trusted p{margin-bottom:20px}.company-logos{gap:20px;flex-wrap:wrap;justify-content:center}.company-logos b{font-size:14px!important}
+      .features{padding:70px 0}.section-top{display:block;margin-bottom:30px}.section-top p{margin-top:18px}.feature-grid{grid-template-columns:1fr}.feature-card{min-height:250px}
+      .security-section{padding:70px 0}.security-grid{grid-template-columns:1fr;gap:42px}.cta{padding:70px 20px}.footer-top{display:block}.footer-links{margin-top:35px;gap:35px;flex-wrap:wrap}.footer-bottom{gap:14px;flex-direction:column}
+    }
+    @media (min-width:801px){.mobile-menu{display:none!important}}
+    @media (max-width:430px){h1{letter-spacing:-3px}.hero-buttons .button{width:100%}.vault-window{grid-template-columns:105px 1fr;height:322px}.side-panel{padding:15px 8px}.side-item{font-size:9px}.security-pill{transform:scale(.9);transform-origin:left bottom}.announcement{font-size:10px}.announcement span{display:none}}
+  </style>
+</head>
+<body>
+  <div class="announcement">YOUR DIGITAL LIFE, IN GOOD HANDS <span>✦</span><a href="#security">See how we protect it</a></div>
+
+  <header class="shell">
+    <nav>
+      <a class="brand" href="#"><span class="brand-mark"></span>lockleaf</a>
+      <div class="nav-links">
+        <a href="#features">Why Lockleaf</a>
+        <a href="#security">Security</a>
+        <a href="#teams">For teams</a>
+        <a href="#pricing">Pricing</a>
+      </div>
+      <div class="nav-actions">
+        <a class="login" href="#" onclick="openModal('Welcome back', 'Enter your email to access your secure vault.'); return false;">Log in</a>
+        <button class="button" onclick="openModal('Start your free vault', 'No credit card required. Your first 14 days are on us.')">Get Lockleaf <span class="arrow">→</span></button>
+        <button class="menu-btn" aria-label="Open menu" onclick="toggleMenu()"><i></i></button>
+      </div>
+      <div class="mobile-menu" id="mobileMenu">
+        <a href="#features" onclick="toggleMenu()">Why Lockleaf</a>
+        <a href="#security" onclick="toggleMenu()">Security</a>
+        <a href="#teams" onclick="toggleMenu()">For teams</a>
+        <a href="#pricing" onclick="toggleMenu()">Pricing</a>
+        <a href="#" onclick="openModal('Welcome back', 'Enter your email to access your secure vault.'); toggleMenu(); return false;">Log in</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <div class="eyebrow"><b>✓</b> Private by design</div>
+          <h1>Your digital life,<br><em>under lock &amp; leaf.</em></h1>
+          <p class="hero-copy">A calmer, smarter password manager for every login, secret, and secure note that matters to you.</p>
+          <div class="hero-buttons">
+            <button class="button mint" onclick="openModal('Start your free vault', 'Create a private vault in less than a minute. No credit card required.')">Start for free <span class="arrow">→</span></button>
+            <a class="button outline" href="#features">Explore Lockleaf</a>
+          </div>
+          <div class="micro-proof">
+            <div class="avatars"><span class="avatar"></span><span class="avatar"></span><span class="avatar"></span><span class="avatar"></span></div>
+            Trusted with over 2 million private vaults
+          </div>
+        </div>
+
+        <div class="vault-visual" aria-label="Lockleaf vault preview">
+          <div class="orb"></div>
+          <div class="spark one">✦</div><div class="spark two">✦</div>
+          <div class="vault-window">
+            <aside class="side-panel">
+              <div class="mini-logo">lockleaf</div>
+              <p class="side-title">Vault</p>
+              <div class="side-item active"><span class="side-icon">▣</span>All items</div>
+              <div class="side-item"><span class="side-icon">◈</span>Favorites</div>
+              <div class="side-item"><span class="side-icon">◉</span>Watchtower</div>
+              <p class="side-title" style="margin-top:20px">Categories</p>
+              <div class="side-item"><span class="side-icon">◌</span>Logins</div>
+              <div class="side-item"><span class="side-icon">▤</span>Secure notes</div>
+            </aside>
+            <div class="window-main">
+              <div class="window-head"><strong>All items</strong><button class="round-add">+</button></div>
+              <div class="search">⌕ &nbsp; Search your vault</div>
+              <div class="credential"><div class="site-mark n">N</div><div class="credential-info"><strong>Notion</strong><span>mia@lockleaf.io</span></div><div class="dots">•••</div></div>
+              <div class="credential"><div class="site-mark s">S</div><div class="credential-info"><strong>Slack</strong><span>mia@lockleaf.io</span></div><div class="dots">•••</div></div>
+              <div class="credential"><div class="site-mark f">f</div><div class="credential-info"><strong>Figma</strong><span>mia@lockleaf.io</span></div><div class="dots">•••</div></div>
+              <div class="credential"><div class="site-mark g">G</div><div class="credential-info"><strong>GitHub</strong><span>mia@lockleaf.io</span></div><div class="dots">•••</div></div>
+            </div>
+          </div>
+          <div class="security-pill"><div class="security-icon">✓</div><div><b>Vault health: Excellent</b><span>0 security issues found</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trusted">
+      <div class="shell trusted-inner">
+        <p>Chosen by thoughtful teams at</p>
+        <div class="company-logos"><b>northstar</b><b>Wander</b><b>STUDIO/FORM</b><b>morrow</b><b>◎ lumin</b></div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="shell">
+        <div class="section-top">
+          <div><div class="section-label">One home for every secret</div><h2>Less remembering.<br>More <em style="font-family:'Playfair Display';font-weight:600;color:#28766a">living.</em></h2></div>
+          <p>Lockleaf quietly handles the details behind your digital life, so you can focus on the things in front of you.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>Remember nothing</h3>
+            <p>Create unique, unbreakable passwords and sign in instantly on every device.</p>
+            <div class="feature-art key-art"></div>
+          </article>
+          <article class="feature-card">
+            <h3>Stay one step ahead</h3>
+            <p>Your personal security guide spots weak passwords and compromised accounts.</p>
+            <div class="feature-art shield-art">✓</div>
+          </article>
+          <article class="feature-card">
+            <h3>Share with care</h3>
+            <p>Safely share passwords, cards, and documents with the people you trust.</p>
+            <div class="feature-art share-art"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="security-section" id="security">
+      <div class="shell security-grid">
+        <div>
+          <div class="section-label">Security without the jargon</div>
+          <h2>Private means<br>private. Always.</h2>
+          <p class="security-text">Your vault is protected with end-to-end encryption. Only you hold the key—not Lockleaf, not advertisers, and not anyone else.</p>
+          <div class="security-list">
+            <div><span class="check">✓</span> AES-256 bit end-to-end encryption</div>
+            <div><span class="check">✓</span> Zero-knowledge architecture</div>
+            <div><span class="check">✓</span> Independently audited security</div>
+          </div>
+        </div>
+        <div class="security-card">
+          <div class="security-card-top"><span>YOUR VAULT HEALTH</span><span class="live">ALL SYSTEMS SECURE</span></div>
+          <div class="score"><strong>94</strong><div>out of 100<br>Excellent protection</div></div>
+          <div class="meter"><i></i></div>
+          <div class="meter-note"><span>Strong security</span><span>94%</span></div>
+          <div class="security-divider"></div>
+          <div class="security-status"><span class="status-lock">▣</span><span>End-to-end encryption is active</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="teams">
+      <div class="section-label">A better way to be secure</div>
+      <h2>Ready for a little<br>more peace of mind?</h2>
+      <p>Join millions who have made room in their minds for what matters.</p>
+      <button class="button" onclick="openModal('Start your free vault', 'Create your vault today. It takes just a moment and no credit card is needed.')">Create your free vault <span class="arrow">→</span></button>
+    </section>
+  </main>
+
+  <footer id="pricing">
+    <div class="shell">
+      <div class="footer-top">
+        <div>
+          <a class="brand" href="#"><span class="brand-mark"></span>lockleaf</a>
+          <p class="footer-note">The quietly powerful home for your digital life.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-column"><h4>Product</h4><a href="#features">Features</a><a href="#security">Security</a><a href="#">Pricing</a></div>
+          <div class="footer-column"><h4>Company</h4><a href="#">About us</a><a href="#">Careers</a><a href="#">Contact</a></div>
+          <div class="footer-column"><h4>Resources</h4><a href="#">Help center</a><a href="#">Security blog</a><a href="#">Status</a></div>
+        </div>
+      </div>
+      <div class="footer-bottom"><span>© 2024 Lockleaf, Inc. Made for a safer internet.</span><div class="socials"><a href="#">𝕏</a><a href="#">in</a><a href="#">◎</a><a href="#">◉</a></div></div>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop" id="modalBackdrop" onclick="backdropClose(event)">
+    <div class="modal">
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal()">×</button>
+      <div id="formContent">
+        <h3 id="modalTitle">Start your free vault</h3>
+        <p id="modalCopy">Create a private vault in less than a minute.</p>
+        <input id="emailInput" type="email" placeholder="you@example.com" aria-label="Email address">
+        <button class="button mint" onclick="submitEmail()">Continue with email <span class="arrow">→</span></button>
+      </div>
+      <div class="success-msg" id="successMsg">✓ Perfect — check your inbox to continue securely.</div>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById('mobileMenu').classList.toggle('open');
+    }
+    function openModal(title, copy) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalCopy').textContent = copy;
+      document.getElementById('formContent').style.display = 'block';
+      document.getElementById('successMsg').style.display = 'none';
+      document.getElementById('emailInput').value = '';
+      document.getElementById('modalBackdrop').classList.add('show');
+      setTimeout(() => document.getElementById('emailInput').focus(), 100);
+    }
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('show');
+    }
+    function backdropClose(event) {
+      if (event.target === document.getElementById('modalBackdrop')) closeModal();
+    }
+    function submitEmail() {
+      const email = document.getElementById('emailInput');
+      if (!email.value || !email.value.includes('@')) {
+        email.style.borderColor = '#ff826c';
+        email.focus();
+        return;
+      }
+      document.getElementById('formContent').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>
