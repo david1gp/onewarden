@@ -21,4 +21,4 @@
 3. Completed: extension full-page uses shared web vault presentation with extension adapters; obsolete fullscreen panes removed and bundled entry retained.
 4. Completed: full-vault action focuses an existing vault tab or creates a tab in an existing window without replacing unrelated tabs.
 5. Completed: verify shared UI fixtures, builds, focused tests and adapter regressions; existing-window lookup includes query-error fallback.
-6. In progress: Luna runs commits skill, then deploy using existing project commands.
+6. Completed: Luna ran commits skill and pushed task commits; frontend and vault deployed with extension artifact built.

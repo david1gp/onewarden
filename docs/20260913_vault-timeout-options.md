@@ -15,4 +15,6 @@ Extend the existing options and labels, add focused coverage, verify the setting
 ## Tasks
 1. Completed: Add duration options and focused automated coverage; run relevant checks.
 2. Completed: Verify extension settings in a browser.
-3. In progress: Have a fresh Luna subagent use the commits skill, then deploy using the existing release workflow.
+3. Completed: Have a fresh Luna subagent use the commits skill and push the changes.
+4. Completed: Build the committed extension release artifact.
+5. Pending: Publish the extension release to the user's chosen distribution destination.
