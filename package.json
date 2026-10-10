@@ -43,7 +43,7 @@
     "format": "biome format --write src test vite.config.ts wrangler.jsonc package.json assets.config.json",
     "format:check": "biome format src test vite.config.ts wrangler.jsonc package.json assets.config.json",
     "lint": "biome lint src tests tools/compatibility/*.ts tools/backup/*.ts tools/release/*.ts vite.config.ts playwright.config.ts",
-    "typecheck": "bun tsc --noEmit",
+    "typecheck": "bun --check",
     "test:unit": "bun test --conditions=browser tests/unit",
     "test:integration": "bun test --conditions=browser tests/integration",
     "test:compatibility": "bun test --conditions=browser tests/compatibility",
